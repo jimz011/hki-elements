@@ -19,8 +19,11 @@
 **Cause:** No active packages or `days_back` limit too restrictive
 
 **Solution:**
+
 - Increase `days_back` value
+
 - Check if PostNL integration is receiving data
+
 - Verify sensor has package attributes
 
 ### Animation not showing
@@ -28,7 +31,9 @@
 **Cause:** `show_animation: false` or no package selected
 
 **Solution:**
+
 - Set `show_animation: true`
+
 - Click on a package to trigger animation
 
 ### Sent packages not showing
@@ -46,8 +51,11 @@ show_sent: true
 **Cause:** Incorrect path or image not accessible
 
 **Solution:**
+
 - Use `/local/` prefix for files in `www` folder
+
 - Use full URLs for external images
+
 - Verify image exists and is accessible
 
 ---
