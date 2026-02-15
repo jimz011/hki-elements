@@ -1,13 +1,5 @@
 # Troubleshooting
 
-## HKI Header Card
-
-## HKI Navigation Card
-
-## HKI Button Card
-
-## HKI PostNL Card
-
 ### Card shows "Entiteit niet gevonden"
 
 **Cause:** PostNL integration not installed or entity doesn't exist
@@ -55,6 +47,3 @@ show_sent: true
 - Verify image exists and is accessible
 
 ---
-## HKI Notification Card
-
-## HKI Notify
