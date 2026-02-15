@@ -14,14 +14,15 @@ theme:
     - content.code.copy          
     - content.tabs.link   
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: indigo
       accent: indigo
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
-
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: indigo
       accent: indigo
       toggle:
@@ -60,5 +61,6 @@ nav:
           - Overview: components/hki-notify/index.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
+
 
 
