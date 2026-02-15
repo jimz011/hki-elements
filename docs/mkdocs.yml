@@ -1,7 +1,4 @@
 site_name: HKI Elements Card Suite Documentation
-site_url: https://jimz011.github.io/hki-elements/
-repo_url: https://github.com/jimz011/hki-elements/
-repo_name: jimz011/hki-elements
 docs_dir: .
 theme:
   name: material
