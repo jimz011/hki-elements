@@ -91,3 +91,39 @@
     padding: .32rem .6rem;
   }
 }
+/* --- Active item styling (only for real pages) --- */
+.md-nav__link--active {
+  font-weight: 800;
+  background: rgba(0,0,0,.06);
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+  position: relative;
+}
+
+.md-nav__link--active::before {
+  content: "";
+  position: absolute;
+  left: -0.55rem;
+  top: .3rem;
+  bottom: .3rem;
+  width: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .9;
+}
+
+/* --- If the active link is a collapsible section header, keep it clean --- */
+/* Section headers are typically .md-nav__item--nested or --section */
+.md-nav__item--nested > .md-nav__link.md-nav__link--active,
+.md-nav__item--section > .md-nav__link.md-nav__link--active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Keep only ONE left indicator on section headers (optional) */
+.md-nav__item--nested > .md-nav__link.md-nav__link--active::before,
+.md-nav__item--section > .md-nav__link.md-nav__link--active::before {
+  left: -0.55rem;          /* stays on the left */
+  width: 3px;              /* slightly slimmer */
+  opacity: .65;            /* less loud for headers */
+}
+
