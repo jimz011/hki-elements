@@ -1,5 +1,6 @@
 site_name: HKI Elements Card Suite Documentation
 docs_dir: .
+site_dir: ../site
 theme:
   name: material
 nav:
