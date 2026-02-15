@@ -25,6 +25,5 @@ nav:
           - Examples: cards/hki-notification-card/examples.md
       - HKI Notify (Custom Component):
           - Overview: components/hki-notify/index.md
-          - Examples: components/hki-notify/examples.md
   - Troubleshooting: troubleshooting.md
   - Changelog: changelog.md
