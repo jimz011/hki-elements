@@ -2,6 +2,12 @@
 
 A custom Home Assistant card for tracking PostNL packages with an interactive visual interface, delivery animations, and detailed shipment information.
 
+## Requirements
+
+This card requires the **PostNL Integration** to be installed in Home Assistant:
+**[arjenbos/ha-postnl](https://github.com/arjenbos/ha-postnl)** - Home Assistant PostNL integration
+The integration creates sensors that track your PostNL packages automatically.
+
 ## Features
 
 ### 📦 Package Tracking
@@ -24,14 +30,3 @@ A custom Home Assistant card for tracking PostNL packages with an interactive vi
 - **Flexible Configuration** - Support for both delivery and distribution (sent packages) entities
 - **Visual Editor** - Easy configuration through Home Assistant UI
 
----
-
-## Requirements
-
-This card requires the **PostNL Integration** to be installed in Home Assistant:
-
-- **[arjenbos/ha-postnl](https://github.com/arjenbos/ha-postnl)** - Home Assistant PostNL integration
-
-The integration creates sensors that track your PostNL packages automatically.
-
----
