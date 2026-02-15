@@ -36,7 +36,7 @@
   transform: translateX(1px);
 }
 
-/* ===== Active item: pill + accent bar ===== */
+/* ===== Active item: pill + left accent bar ===== */
 .md-nav__link--active {
   font-weight: 800;
   background: rgba(0,0,0,.06);
@@ -44,6 +44,7 @@
   position: relative;
 }
 
+/* Left accent bar */
 .md-nav__link--active::before {
   content: "";
   position: absolute;
@@ -54,6 +55,34 @@
   border-radius: 999px;
   background: currentColor;
   opacity: .9;
+}
+
+/* --- FIX #1: remove the weird extra right-side "active" line --- */
+/* Material/your theme may add a right indicator via ::after or borders/shadows */
+.md-nav__link--active::after {
+  display: none !important;
+}
+
+/* If the active link is a collapsible section header, keep it clean (no pill) */
+.md-nav__item--nested > .md-nav__link.md-nav__link--active,
+.md-nav__item--section > .md-nav__link.md-nav__link--active {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-right: none !important;
+}
+
+/* Optional: either keep a subtle left bar on headers... */
+.md-nav__item--nested > .md-nav__link.md-nav__link--active::before,
+.md-nav__item--section > .md-nav__link.md-nav__link--active::before {
+  width: 3px;
+  opacity: .65;
+}
+
+/* ...and ensure the toggle (chevron area) never shows an active bar */
+.md-nav__item--nested > .md-nav__toggle,
+.md-nav__item--section > .md-nav__toggle {
+  box-shadow: none !important;
+  border-right: none !important;
 }
 
 /* ===== Hierarchy: indent + guide line (tree vibe) ===== */
@@ -85,45 +114,37 @@
   opacity: 1;
 }
 
+/* ===== FIX #2: Dark mode title readability ===== */
+[data-md-color-scheme="slate"] .md-nav__title,
+[data-md-color-scheme="slate"] .md-nav__title a,
+[data-md-color-scheme="slate"] .md-nav__title .md-nav__button {
+  color: rgba(255,255,255,.92) !important;
+}
+
+/* Section headings like CARDS / COMPONENTS */
+[data-md-color-scheme="slate"] .md-nav__item--section > .md-nav__link {
+  color: rgba(255,255,255,.60) !important;
+}
+
+/* Optional: make the nested guide line visible in dark mode */
+[data-md-color-scheme="slate"] .md-nav__list .md-nav__list {
+  border-left-color: rgba(255,255,255,.12);
+}
+
+/* Optional: hover color in dark mode */
+[data-md-color-scheme="slate"] .md-nav__link:hover {
+  background: rgba(255,255,255,.06);
+}
+
+/* Optional: active background in dark mode */
+[data-md-color-scheme="slate"] .md-nav__link--active {
+  background: rgba(255,255,255,.06);
+  box-shadow: 0 1px 0 rgba(255,255,255,.04);
+}
+
 /* ===== Optional: tighter look on mobile sidebar ===== */
 @media (max-width: 76.1875em) {
   .md-nav__link {
     padding: .32rem .6rem;
   }
 }
-/* --- Active item styling (only for real pages) --- */
-.md-nav__link--active {
-  font-weight: 800;
-  background: rgba(0,0,0,.06);
-  box-shadow: 0 1px 0 rgba(0,0,0,.04);
-  position: relative;
-}
-
-.md-nav__link--active::before {
-  content: "";
-  position: absolute;
-  left: -0.55rem;
-  top: .3rem;
-  bottom: .3rem;
-  width: 4px;
-  border-radius: 999px;
-  background: currentColor;
-  opacity: .9;
-}
-
-/* --- If the active link is a collapsible section header, keep it clean --- */
-/* Section headers are typically .md-nav__item--nested or --section */
-.md-nav__item--nested > .md-nav__link.md-nav__link--active,
-.md-nav__item--section > .md-nav__link.md-nav__link--active {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Keep only ONE left indicator on section headers (optional) */
-.md-nav__item--nested > .md-nav__link.md-nav__link--active::before,
-.md-nav__item--section > .md-nav__link.md-nav__link--active::before {
-  left: -0.55rem;          /* stays on the left */
-  width: 3px;              /* slightly slimmer */
-  opacity: .65;            /* less loud for headers */
-}
-
