@@ -148,3 +148,24 @@
     padding: .32rem .6rem;
   }
 }
+/* Kill the right-side active indicator on collapsible (nested) nav items */
+.md-nav__item--nested > .md-nav__toggle {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Some versions draw the bar on the toggle pseudo-elements */
+.md-nav__item--nested > .md-nav__toggle::before,
+.md-nav__item--nested > .md-nav__toggle::after {
+  display: none !important;
+}
+
+/* And some draw it on the icon itself */
+.md-nav__item--nested > .md-nav__toggle .md-nav__icon,
+.md-nav__item--nested > .md-nav__toggle .md-nav__icon::before,
+.md-nav__item--nested > .md-nav__toggle .md-nav__icon::after {
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
