@@ -169,3 +169,12 @@
   border: 0 !important;
 }
 
+.md-nav__item--nested > * {
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
+.md-nav__item--nested > *::before,
+.md-nav__item--nested > *::after {
+  box-shadow: none !important;
+}
+
