@@ -5,8 +5,8 @@ repo_name: jimz011/hki-elements
 theme:
   name: material
 nav:
-  - Home: index.md
-  - Installation: installation.md
+  - Home: source/index.md
+  - Installation: source/installation.md
   - Cards:
       - HKI Header Card:
           - Overview: cards/hki-header-card/index.md
@@ -25,5 +25,5 @@ nav:
           - Examples: cards/hki-notification-card/examples.md
       - HKI Notify (Custom Component):
           - Overview: components/hki-notify/index.md
-  - Troubleshooting: troubleshooting.md
-  - Changelog: changelog.md
+  - Troubleshooting: source/troubleshooting.md
+  - Changelog: source/changelog.md
