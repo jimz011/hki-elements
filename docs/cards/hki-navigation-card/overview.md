@@ -1,4 +1,9 @@
-# Features
+# HKI Navigation Card
+A fully customizable bottom styled navigation card for Home Assistant with tons of different customization options.
+
+***NOTE: HKI Cards were created for use with the visual editor in Home Assistant, it is possible that the documentation is not complete for all features when using YAML instead. If you think this documentation is missing something or needs editing, please open an issue or create a PR with the changes.***
+
+## Features
 
 ### 🎯 Layout Options
 - **Dual Layouts** - Independent horizontal and vertical button groups that can be used simultaneously
@@ -26,3 +31,4 @@
 - **Z-Index Control** - Layer buttons above or below other elements
 - **Reserve Space** - Prevent content from sliding under floating buttons
 - **Real-time Updates** - Templates update automatically when entities change
+
