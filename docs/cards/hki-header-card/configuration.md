@@ -357,9 +357,10 @@ top_bar_center:
 
 ---
 
-### Custom Card Slot
+### Custom Card / Notifications Slot
 
-Embed any Home Assistant card.
+This slot can be used to embed the HKI Notifications Card, but it also accepts any other custom card (if you want to use default HA cards, use a custom card first like custom:stack-in-card)
+As this slot was originally intended just to accept the notification card (but the byproduct is that any card is accepted) I will not officially support using custom cards here. It was meant for notifications. So use this at your own risk if you do wish to use custom cards instead.
 
 ```yaml
 top_bar_left:
@@ -378,7 +379,7 @@ top_bar_left:
 |----------|------|-------------|
 | `custom.card` | object | Complete card configuration |
 
-The card will automatically receive `use_header_styling: true` and `show_background: false` unless specified otherwise.
+The HKI Notifications Card will automatically receive `use_header_styling: true` and `show_background: false` unless specified otherwise.
 
 ---
 
