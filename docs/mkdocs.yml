@@ -1,0 +1,49 @@
+site_name: HKI Elements Card Suite Documentation
+site_url: https://jimz011.github.io/hki-elements/
+docs_dir: .
+site_dir: ../site
+theme:
+  name: material
+  features:
+    - navigation.sections        
+    - navigation.indexes         
+    - navigation.path            
+    - toc.follow                 
+    - content.code.copy          
+    - content.tabs.link   
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.highlight
+  - tables
+extra_css:
+  - assets/stylesheets/extra.css
+nav:
+  - Home: index.md
+  - Installation: source/installation.md
+  - Cards:
+      - HKI Header Card:
+          - Overview: cards/hki-header-card/index.md
+          - Examples: cards/hki-header-card/examples.md
+      - HKI Navigation Card:
+          - Overview: cards/hki-navigation-card/index.md
+          - Examples: cards/hki-navigation-card/examples.md
+      - HKI Button Card:
+          - Overview: cards/hki-button-card/index.md
+          - Examples: cards/hki-button-card/examples.md
+      - HKI PostNL Card:
+          - Overview: cards/hki-postnl-card/index.md
+          - Examples: cards/hki-postnl-card/examples.md
+      - HKI Notification Card:
+          - Overview: cards/hki-notification-card/index.md
+          - Examples: cards/hki-notification-card/examples.md
+      - HKI Notify (Custom Component):
+          - Overview: components/hki-notify/index.md
+  - Troubleshooting: source/troubleshooting.md
+  - Changelog: source/changelog.md

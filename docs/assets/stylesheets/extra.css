@@ -1,0 +1,13 @@
+/* Slightly stronger sidebar typography */
+.md-nav__title {
+  font-weight: 700;
+}
+
+.md-nav__link {
+  font-weight: 500;
+}
+
+/* Make active item stand out */
+.md-nav__link--active {
+  font-weight: 700;
+}
