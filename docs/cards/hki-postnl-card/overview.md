@@ -2,6 +2,8 @@
 
 A custom Home Assistant card for tracking PostNL packages with an interactive visual interface, delivery animations, and detailed shipment information.
 
+***NOTE: HKI Cards were created for the visual editor in Home Assistant, it is possible that the documentation is not complete for all features. If you think this documentation is missing something or needs editing, please open an issue or create a PR with the changes.***
+
 ## Requirements
 
 This card requires the **PostNL Integration** to be installed in Home Assistant:
@@ -29,4 +31,5 @@ The integration creates sensors that track your PostNL packages automatically.
 - **Layout Reordering** - Drag-and-drop to rearrange header, animation, tabs, and list order
 - **Flexible Configuration** - Support for both delivery and distribution (sent packages) entities
 - **Visual Editor** - Easy configuration through Home Assistant UI
+
 
