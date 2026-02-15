@@ -7,7 +7,9 @@ theme:
   features:
     - navigation.sections        
     - navigation.indexes         
-    - navigation.path            
+    - navigation.path 
+    - navigation.tracking
+    - navigation.instant
     - toc.follow                 
     - content.code.copy          
     - content.tabs.link   
@@ -48,3 +50,4 @@ nav:
           - Overview: components/hki-notify/index.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
+
