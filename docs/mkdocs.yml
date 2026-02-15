@@ -48,7 +48,10 @@ nav:
           - Tips & Tricks: cards/hki-header-card/tips.md
           - Examples: cards/hki-header-card/examples.md
       - HKI Navigation Card:
-          - Overview: cards/hki-navigation-card/overview.md
+          - Features: cards/hki-navigation-card/overview.md
+          - Basic Usage: cards/hki-navigation-card/basic-usage.md
+          - Configuration: cards/hki-navigation-card/configuration.md
+          - Tips & Tricks: cards/hki-navigation-card/tips.md
           - Examples: cards/hki-navigation-card/examples.md
       - HKI Button Card:
           - Overview: cards/hki-button-card/overview.md
@@ -64,6 +67,7 @@ nav:
           - Overview: components/hki-notify/overview.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
+
 
 
 
