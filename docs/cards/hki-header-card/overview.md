@@ -1,4 +1,5 @@
 # HKI Header Card
+A fully customizable header card for Home Assistant with support for backgrounds, person tracking, weather displays, datetime information, and flexible top bar layouts.
 
 ## Features
 
@@ -28,3 +29,4 @@
 - **Service Calls** - Call any Home Assistant service with custom data
 - **Navigation** - Quick navigation to views, URLs, or trigger more-info dialogs
 - **Per-Person Actions** - Individual tap/hold/double-tap actions for each person entity
+
