@@ -1,4 +1,5 @@
 site_name: HKI Elements Card Suite Documentation
+site_url: https://jimz011.github.io/hki-elements/
 docs_dir: .
 site_dir: ../site
 theme:
