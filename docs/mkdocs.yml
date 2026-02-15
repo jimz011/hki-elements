@@ -43,7 +43,8 @@ nav:
       - HKI Notification Card:
           - Overview: cards/hki-notification-card/index.md
           - Examples: cards/hki-notification-card/examples.md
-      - HKI Notify (Custom Component):
+  - Components:
+      - HKI Notify:
           - Overview: components/hki-notify/index.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
