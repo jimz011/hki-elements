@@ -1,13 +1,40 @@
-/* Slightly stronger sidebar typography */
-.md-nav__title {
-  font-weight: 700;
+/* Sidebar background + separation */
+.md-sidebar__scrollwrap {
+  border-right: 1px solid rgba(0,0,0,.08);
 }
 
+/* Stronger section titles */
+.md-nav__title {
+  font-weight: 700;
+  letter-spacing: .2px;
+  opacity: 1;
+}
+
+/* Nav item spacing + hover */
 .md-nav__link {
+  padding: .25rem .5rem;
+  border-radius: .4rem;
   font-weight: 500;
 }
 
-/* Make active item stand out */
+.md-nav__link:hover {
+  background: rgba(0,0,0,.05);
+}
+
+/* Active item: left accent bar + stronger weight */
 .md-nav__link--active {
-  font-weight: 700;
+  font-weight: 800;
+  position: relative;
+}
+
+.md-nav__link--active::before {
+  content: "";
+  position: absolute;
+  left: -0.5rem;
+  top: .35rem;
+  bottom: .35rem;
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: .9;
 }
