@@ -46,6 +46,9 @@ After installation, all five cards will be available in your Lovelace card picke
 - `type: hki-notification-card`
 - `type: hki-postnl-card`
 
+## Documentation
+Please check the documentation to check how to configure these cards on https://jimz011.github.io/hki-elements 
+
 ## Migration from Individual Cards
 
 If you previously installed individual HKI cards, here's how to migrate:
@@ -71,33 +74,6 @@ You can run HKI Elements alongside individual cards temporarily:
 - Both will work without conflicts
 - Remove individual cards when ready
 - No dashboard changes needed
-
-## Documentation
-
-For detailed documentation on each card, see:
-
-- [HKI Header Card](docs/header-card.md)
-- [HKI Button Card](docs/button-card.md)
-- [HKI Navigation Card](docs/navigation-card.md)
-- [HKI Notification Card](docs/notification-card.md)
-- [HKI PostNL Card](docs/postnl-card.md)
-
-Or visit the original repositories:
-- [HKI Header Card](https://github.com/jimz011/hki-header-card)
-- [HKI Button Card](https://github.com/jimz011/hki-button-card)
-- [HKI Navigation Card](https://github.com/jimz011/hki-navigation-card)
-- [HKI Notification Card](https://github.com/jimz011/hki-notification-card)
-
-## Version
-
-Current version: **1.0.0**
-
-Individual card versions included:
-- HKI Header Card: v2.0.5
-- HKI Button Card: v1.0.6
-- HKI Navigation Card: latest
-- HKI Notification Card: latest
-- HKI PostNL Card: v1.0.1
 
 ## Support
 
