@@ -6,8 +6,11 @@
 
 **Solution:**
 1. Install [arjenbos/ha-postnl](https://github.com/arjenbos/ha-postnl) integration
+
 2. Configure PostNL credentials in integration
+
 3. Check Developer Tools → States for entity
+
 4. Verify entity ID in card config
 
 ### No packages showing
