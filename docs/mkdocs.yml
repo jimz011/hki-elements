@@ -42,25 +42,26 @@ nav:
   - Installation: source/installation.md
   - Cards:
       - HKI Header Card:
-          - Overview: cards/hki-header-card/index.md
+          - Index: cards/hki-header-card/index.md
           - Examples: cards/hki-header-card/examples.md
       - HKI Navigation Card:
-          - Overview: cards/hki-navigation-card/index.md
+          - Index: cards/hki-navigation-card/index.md
           - Examples: cards/hki-navigation-card/examples.md
       - HKI Button Card:
-          - Overview: cards/hki-button-card/index.md
+          - Index: cards/hki-button-card/index.md
           - Examples: cards/hki-button-card/examples.md
       - HKI PostNL Card:
-          - Overview: cards/hki-postnl-card/index.md
+          - Index: cards/hki-postnl-card/index.md
           - Examples: cards/hki-postnl-card/examples.md
       - HKI Notification Card:
-          - Overview: cards/hki-notification-card/index.md
+          - Index: cards/hki-notification-card/index.md
           - Examples: cards/hki-notification-card/examples.md
   - Components:
       - HKI Notify:
-          - Overview: components/hki-notify/index.md
+          - Index: components/hki-notify/index.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
+
 
 
 
