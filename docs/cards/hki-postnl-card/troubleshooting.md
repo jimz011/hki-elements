@@ -5,6 +5,7 @@
 **Cause:** PostNL integration not installed or entity doesn't exist
 
 **Solution:**
+
 1. Install [arjenbos/ha-postnl](https://github.com/arjenbos/ha-postnl) integration
 
 2. Configure PostNL credentials in integration
