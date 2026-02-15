@@ -38,3 +38,22 @@
   background: currentColor;
   opacity: .9;
 }
+
+/* Indent nested nav levels (hierarchy) */
+.md-nav__list .md-nav__list {
+  margin-left: 0.8rem;      /* indentation */
+  padding-left: 0.6rem;     /* space for the guide line */
+  border-left: 1px solid rgba(0,0,0,.10);  /* subtle hierarchy line */
+}
+
+/* Slightly smaller / softer nested items */
+.md-nav__list .md-nav__list .md-nav__link {
+  font-size: 0.95em;
+  opacity: 0.95;
+}
+
+/* Optional: a touch more spacing between groups */
+.md-nav__item {
+  margin: 0.05rem 0;
+}
+
