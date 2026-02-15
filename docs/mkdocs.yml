@@ -4,26 +4,40 @@ docs_dir: .
 site_dir: ../site
 theme:
   name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.highlight
+  - tables
 nav:
-  - Home: source/index.md
+  - Home: index.md
   - Installation: source/installation.md
   - Cards:
       - HKI Header Card:
-          - Overview: cards/hki-header-card/index.md
+          - Overview: cards/hki-header-card/overview.md
           - Examples: cards/hki-header-card/examples.md
       - HKI Navigation Card:
-          - Overview: cards/hki-navigation-card/index.md
+          - Overview: cards/hki-navigation-card/overview.md
           - Examples: cards/hki-navigation-card/examples.md
       - HKI Button Card:
-          - Overview: cards/hki-button-card/index.md
+          - Overview: cards/hki-button-card/overview.md
           - Examples: cards/hki-button-card/examples.md
       - HKI PostNL Card:
-          - Overview: cards/hki-postnl-card/index.md
+          - Overview: cards/hki-postnl-card/overview.md
           - Examples: cards/hki-postnl-card/examples.md
       - HKI Notification Card:
-          - Overview: cards/hki-notification-card/index.md
+          - Overview: cards/hki-notification-card/overview.md
           - Examples: cards/hki-notification-card/examples.md
       - HKI Notify (Custom Component):
-          - Overview: components/hki-notify/index.md
+          - Overview: components/hki-notify/overview.md
   - Troubleshooting: source/troubleshooting.md
   - Changelog: source/changelog.md
