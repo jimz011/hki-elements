@@ -68,12 +68,16 @@ nav:
           - Troubleshooting: cards/hki-postnl-card/troubleshooting.md
       - HKI Notification Card:
           - Overview: cards/hki-notification-card/overview.md
+          - Basic Usage: cards/hki-notification-card/basic-usage.md
+          - Configuration: cards/hki-notification-card/configuration.md
+          - Tips & Tricks: cards/hki-notification-card/tips.md
           - Examples: cards/hki-notification-card/examples.md
           - Troubleshooting: cards/hki-notification-card/troubleshooting.md
   - Components:
       - HKI Notify:
           - Overview: components/hki-notify/overview.md
   - Changelog: source/changelog.md
+
 
 
 
