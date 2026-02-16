@@ -2577,10 +2577,10 @@ class HkiNotificationCardEditor extends LitElement {
           <div class="box-content">
             <ha-alert alert-type="info">
               <strong>Documentation</strong><br><br>
-              This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br><br>
-              This card can also be placed in the header/badges section!<br><br>
+              This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br>
+              This card can also be placed in the header/badges section!<br>
               This card can be integrated into <a href="https://github.com/jimz011/hki-header-card" target="_blank">hki-header-card</a><br><br>
-              Please read the documentation at <a href="https://github.com/jimz011/hki-notification-card" target="_blank">hki-notification-card</a> to set up this card.<br><br>
+              Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>
               <em>This card may contain bugs. Use at your own risk!</em>
             </ha-alert>
             

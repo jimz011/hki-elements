@@ -10653,7 +10653,13 @@ setConfig(config) {
 
       return html`
         <div class="card-config">
-          
+          <div class="disclaimer">
+            <ha-alert alert-type="info" title="Documentation">
+              Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a>
+              first to set up this card. <br><br>
+              This card may contain bugs. Use at your own risk!
+            </ha-alert>
+          </div>
           <div class="accordion-group">
             ${renderHeader("Card Layout", "layout_type")}
             <div class="accordion-content ${this._closedDetails['layout_type'] ? 'hidden' : ''}">

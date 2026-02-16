@@ -2589,7 +2589,7 @@ class HkiNavigationCardEditor extends LitElement {
           <div class="box-content">
             <ha-alert alert-type="warning">
               <div class="doc-title">Warning</div>
-              <div>This card uses fixed positions on your screen, to edit this card you will have to click on the placeholder card in the section where you have placed this card.<br><br>Please read the documentation at github.com/jimz011/hki-navigation-card to set up this card.<br><br>This card may contain bugs. Use at your own risk!</div>
+              <div>This card uses fixed positions on your screen, to edit this card you will have to click on the placeholder card in the section where you have placed this card.<br><br>Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>This card may contain bugs. Use at your own risk!</div>
             </ha-alert>
           </div>
         </details>

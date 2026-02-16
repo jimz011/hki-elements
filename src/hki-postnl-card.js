@@ -948,9 +948,9 @@ class HKIPostNLCardEditor extends LitElement {
             <div class="card-config">
                 <div class="warning-box">
                     <div class="warning-title">⚠️ Requirement</div>
-                    <div><strong>This card relies on the PostNL integration.</strong></div>
+                    <div><strong>This card requires the PostNL integration.</strong></div>
                     <div>You must install and configure the <a href="https://github.com/arjenbos/ha-postnl" target="_blank">PostNL Integration by Arjen Bos</a> before using this card.</div>
-                    <div style="margin-top: 8px;">Please read the documentation at <a href="https://github.com/jimz011/hki-postnl-card" target="_blank">github.com/jimz011/hki-postnl-card</a> to set up this card.</div>
+                    <div style="margin-top: 8px;">Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.</div>
                     <div class="warning-error">This card may contain bugs. Use at your own risk!</div>
                 </div>
 

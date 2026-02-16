@@ -3967,9 +3967,8 @@ class HkiHeaderCardEditor extends LitElement {
       <div class="card-config">
         <div class="disclaimer">
           <ha-alert alert-type="info" title="Documentation">
-            This card should be placed in the header section! Please read the documentation at 
-            <a href="https://github.com/jimz011/hki-header-card" target="_blank" rel="noopener noreferrer">github.com/jimz011/hki-header-card</a>
-            to set up this card. <br><br>
+            This card should be placed in the header section! Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a>
+            first to set up this card. <br><br>
             This card may contain bugs. Use at your own risk!
           </ha-alert>
         </div>
@@ -15320,7 +15319,13 @@ setConfig(config) {
 
       return html`
         <div class="card-config">
-          
+          <div class="disclaimer">
+            <ha-alert alert-type="info" title="Documentation">
+              Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a>
+              first to set up this card. <br><br>
+              This card may contain bugs. Use at your own risk!
+            </ha-alert>
+          </div>
           <div class="accordion-group">
             ${renderHeader("Card Layout", "layout_type")}
             <div class="accordion-content ${this._closedDetails['layout_type'] ? 'hidden' : ''}">
@@ -19755,7 +19760,7 @@ class HkiNavigationCardEditor extends LitElement {
           <div class="box-content">
             <ha-alert alert-type="warning">
               <div class="doc-title">Warning</div>
-              <div>This card uses fixed positions on your screen, to edit this card you will have to click on the placeholder card in the section where you have placed this card.<br><br>Please read the documentation at github.com/jimz011/hki-navigation-card to set up this card.<br><br>This card may contain bugs. Use at your own risk!</div>
+              <div>This card uses fixed positions on your screen, to edit this card you will have to click on the placeholder card in the section where you have placed this card.<br><br>Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>This card may contain bugs. Use at your own risk!</div>
             </ha-alert>
           </div>
         </details>
@@ -22548,10 +22553,10 @@ class HkiNotificationCardEditor extends LitElement {
           <div class="box-content">
             <ha-alert alert-type="info">
               <strong>Documentation</strong><br><br>
-              This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br><br>
-              This card can also be placed in the header/badges section!<br><br>
+              This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br>
+              This card can also be placed in the header/badges section!<br>
               This card can be integrated into <a href="https://github.com/jimz011/hki-header-card" target="_blank">hki-header-card</a><br><br>
-              Please read the documentation at <a href="https://github.com/jimz011/hki-notification-card" target="_blank">hki-notification-card</a> to set up this card.<br><br>
+              Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>
               <em>This card may contain bugs. Use at your own risk!</em>
             </ha-alert>
             
@@ -24035,9 +24040,9 @@ class HKIPostNLCardEditor extends LitElement {
             <div class="card-config">
                 <div class="warning-box">
                     <div class="warning-title">⚠️ Requirement</div>
-                    <div><strong>This card relies on the PostNL integration.</strong></div>
+                    <div><strong>This card requires the PostNL integration.</strong></div>
                     <div>You must install and configure the <a href="https://github.com/arjenbos/ha-postnl" target="_blank">PostNL Integration by Arjen Bos</a> before using this card.</div>
-                    <div style="margin-top: 8px;">Please read the documentation at <a href="https://github.com/jimz011/hki-postnl-card" target="_blank">github.com/jimz011/hki-postnl-card</a> to set up this card.</div>
+                    <div style="margin-top: 8px;">Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.</div>
                     <div class="warning-error">This card may contain bugs. Use at your own risk!</div>
                 </div>
 
