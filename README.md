@@ -24,6 +24,11 @@ This bundle includes five powerful custom cards:
 ## Documentation
 For documentation **[CLICK HERE](https://jimz011.github.io/hki-elements/)**
 
+## Screenshots
+<img width="480" height="1207" alt="hki-header-navigation" src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e" />
+<img width="539" height="1201" alt="hki-elements-room" src="https://github.com/user-attachments/assets/a3d49370-8717-49dc-b59d-3a7786c9218e" />
+*For more screenshots check the documentation
+
 ## Support
 Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/jimz011/hki-elements/issues).
 
