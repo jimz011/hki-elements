@@ -42,3 +42,17 @@ See the **HKI Notify Integration Documentation** for setup instructions.
 - Timestamp display (12h/24h/auto)
 - Auto-hide when empty
 - Header card styling inheritance
+
+
+## Integration with HKI Notify
+
+This card is designed to work with the **HKI Notify Integration**. 
+
+**Integration creates:**
+- Sensor entities that store messages
+
+**Card provides:**
+- Visual display of notifications
+- Multiple display modes
+- Swipe-to-dismiss functionality
+- Popup for viewing all notifications
