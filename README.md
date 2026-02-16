@@ -1,5 +1,5 @@
 # HKI Elements Card Suite
-<img width="1024" height="1024" alt="hki-elements" src="https://github.com/user-attachments/assets/d5a9c88b-5182-48f5-b6cc-20b816ee8429" />
+<img width="240" height="240" alt="hki-elements" src="https://github.com/user-attachments/assets/d5a9c88b-5182-48f5-b6cc-20b816ee8429" />
 
 A collection of custom Home Assistant dashboard cards.
 
