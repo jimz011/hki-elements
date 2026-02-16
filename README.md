@@ -25,7 +25,7 @@ This bundle includes five powerful custom cards:
 For documentation **[CLICK HERE](https://jimz011.github.io/hki-elements/)**
 
 ## Support
-Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/YOUR_USERNAME/hki-elements/issues).
+Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/jimz011/hki-elements/issues).
 
 ## Credits
 All cards created by [Jimz011](https://github.com/jimz011), with help from AI.
