@@ -1,4 +1,3 @@
-<img width="240" height="240" alt="hki-elements" src="https://github.com/user-attachments/assets/d5a9c88b-5182-48f5-b6cc-20b816ee8429" />
 <img width="697" height="350" alt="hki-elements" src="https://github.com/user-attachments/assets/19df414f-3d27-4147-a340-0e88e7a34194" />
 
 A collection of custom Home Assistant dashboard cards.
