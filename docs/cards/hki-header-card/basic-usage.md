@@ -1,5 +1,37 @@
 # Basic Usage
 
+### Placement Options
+
+#### Option 1: Header Section (Recommended!)
+Place the card in the header slot of your view to enable badge positioning features.
+
+1. Click on "Add Title" in the header section of your dashboard.
+2. Do not change anything yet but click on "Show Code Editor"
+3. Remove everything
+4. Type the following: `type: custom:hki-header-card`
+5. Click on "Show Visual Editor" to edit the card as normal
+6. Done! The card is now in the header section
+
+![Badge Setup Recommended](https://github.com/user-attachments/assets/b1685685-0b4b-4ff5-9271-b919e072cd62)
+
+
+#### Option 2: Header Section copied from default section
+Place the card in the header slot of your view to enable badge positioning features.
+
+1. Click on any section and add the HKI-Header-Card
+2. Edit the card and click "Show Code Editor"
+3. Copy the code
+4. Click "Add title" (the yellow pencil icon in the header area)
+5. Click "Show Code Editor", select all, and paste the copied code
+6. Done! The card is now in the header section
+
+![Badge Setup](https://github.com/user-attachments/assets/49195061-ecd7-44d5-9a8e-78d7355037d5)
+
+#### Option 3: Regular Section (NOT recommended!)
+Create a new full-width section at the top of your dashboard. Badge positioning features will not be available.
+
+> **⚠️ Important:** Badge positioning features ONLY work when the card is placed in the header section!
+
 ### Minimal Example
 
 ```yaml
