@@ -39,7 +39,7 @@ extra_css:
   - assets/stylesheets/extra.css
 nav:
   - Home: index.md
-  - Installation: source/installation.md
+  - Installation: installation.md
   - Cards:
       - HKI Header Card:
           - Features: cards/hki-header-card/overview.md
@@ -57,6 +57,9 @@ nav:
           - Troubleshooting: cards/hki-navigation-card/troubleshooting.md
       - HKI Button Card:
           - Features: cards/hki-button-card/overview.md
+          - Basic Usage: cards/hki-button-card/basic-usage.md
+          - Configuration: cards/hki-button-card/configuration.md
+          - Tips & Tricks: cards/hki-button-card/tips.md
           - Examples: cards/hki-button-card/examples.md
           - Troubleshooting: cards/hki-button-card/troubleshooting.md
       - HKI PostNL Card:
@@ -75,8 +78,13 @@ nav:
           - Troubleshooting: cards/hki-notification-card/troubleshooting.md
   - Components:
       - HKI Notify:
-          - Overview: components/hki-notify/overview.md
-  - Changelog: source/changelog.md
+          - Features: components/hki-notify/overview.md
+          - Installation: components/hki-notify/installation.md
+          - Configuration: components/hki-notify/configuration.md
+          - Advanced Usage: componente/hki-notify/advanced-usage.md
+          - Examples: components/hki-notify/examples.md
+          - Troubleshooting: components/hki-notify/troubleshooting.md
+
 
 
 
