@@ -13,3 +13,14 @@ The HKI Notify integration creates **sensor entities** that store notification m
 - **Confirmation Dialogs** - Optional confirmation before executing actions
 - **Timestamp Tracking** - Automatic or manual timestamp assignment
 
+## Integration with HKI Notification Card
+This integration is designed to work with the **HKI Notification Card**. 
+
+**Integration creates:**
+- Sensor entities that store messages
+
+**Card provides:**
+- Visual display of notifications
+- Multiple display modes
+- Swipe-to-dismiss functionality
+- Popup for viewing all notifications
