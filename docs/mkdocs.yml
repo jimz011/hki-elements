@@ -4,6 +4,7 @@ docs_dir: .
 site_dir: ../site
 theme:
   name: material
+  logo: assets/hki-elements.png
   features:
     - navigation.sections        
     - navigation.indexes         
@@ -90,6 +91,7 @@ nav:
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
   - Migration: migration.md
+
 
 
 
