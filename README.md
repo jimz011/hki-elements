@@ -11,21 +11,51 @@
 
 ## A collection of custom Home Assistant dashboard cards.
 
-## What's Included
-
-This bundle includes five powerful custom cards:
-
-1. **HKI Header Card** - Full-width customizable header with weather, time, and more
-2. **HKI Button Card** - Highly customizable buttons with built-in popups and controls
-3. **HKI Navigation Card** - Sleek navigation bar with floating action buttons
-4. **HKI Notification Card** - Animated notification ticker with marquee scrolling
-5. **HKI PostNL Card** - Track your PostNL packages
-
 ## Documentation
 For documentation **[CLICK HERE](https://jimz011.github.io/hki-elements/)**
 
+## What's Included
+
+### 📋 HKI Header Card
+
+Beautiful dashboard headers with backgrounds, weather displays, date/time, and person tracking. Perfect for setting the tone of your views.
+
+[Screenshots](https://jimz011.github.io/hki-elements/cards/hki-header-card/screenshots/)
+
+---
+### 🧭 HKI Navigation Card
+
+Floating navigation buttons with horizontal and vertical layouts, conditional visibility, and extensive styling options.
+
+[Screenshots](https://jimz011.github.io/hki-elements/cards/hki-navigation-card/screenshots/)
+
+---
+### 🔔 HKI Notification System
+
+**HKI Notify Integration** - Creates notification sensors and provides services to send, update, and dismiss notifications with rich styling and actions.
+
+**HKI Notification Card** - Displays notifications in multiple modes: ticker (auto-cycling), marquee (scrolling), list (stacked), or button (popup).
+
+[Screenshots](https://jimz011.github.io/hki-elements/cards/hki-notification-card/screenshots/)
+
+---
+### 📦 HKI PostNL Card
+
+Package tracking for PostNL deliveries with animated visualizations and detailed shipment information.
+
+[Screenshots](https://jimz011.github.io/hki-elements/cards/hki-postnl-card/screenshots/)
+
+---
+### 🎛️ HKI Button Card
+
+Advanced entity control card with multiple layouts (square, badge, tile, Google) and rich custom popups for lights, climate, dehumidifiers, fans, switches and locks (with more custom made popups coming in the future).
+
+[Screenshots](https://jimz011.github.io/hki-elements/cards/hki-button-card/screenshots/)
+
+---
+
 ## Screenshots 
-*For more screenshots check the documentation*
+*For more screenshots check the documentation or the links above*
 
 <img alt="hki-header-navigation" src="https://github.com/user-attachments/assets/a3d49370-8717-49dc-b59d-3a7786c9218e" width="320" /><img alt="hki-elements-room" src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e" width="320" /> 
 
