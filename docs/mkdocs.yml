@@ -47,6 +47,7 @@ nav:
           - Configuration: cards/hki-header-card/configuration.md
           - Tips & Tricks: cards/hki-header-card/tips.md
           - Examples: cards/hki-header-card/examples.md
+          - Screenshots: cards/hki-header-card/screenshots.md
           - Troubleshooting: cards/hki-header-card/troubleshooting.md
       - HKI Navigation Card:
           - Features: cards/hki-navigation-card/overview.md
@@ -54,6 +55,7 @@ nav:
           - Configuration: cards/hki-navigation-card/configuration.md
           - Tips & Tricks: cards/hki-navigation-card/tips.md
           - Examples: cards/hki-navigation-card/examples.md
+          - Screenshots: cards/hki-navigation-card/screenshots.md
           - Troubleshooting: cards/hki-navigation-card/troubleshooting.md
       - HKI Button Card:
           - Features: cards/hki-button-card/overview.md
@@ -61,6 +63,7 @@ nav:
           - Configuration: cards/hki-button-card/configuration.md
           - Tips & Tricks: cards/hki-button-card/tips.md
           - Examples: cards/hki-button-card/examples.md
+          - Screenshots: cards/hki-button-card/screenshots.md
           - Troubleshooting: cards/hki-button-card/troubleshooting.md
       - HKI PostNL Card:
           - Features: cards/hki-postnl-card/overview.md
@@ -68,6 +71,7 @@ nav:
           - Configuration: cards/hki-postnl-card/configuration.md
           - Tips & Tricks: cards/hki-postnl-card/tips.md
           - Examples: cards/hki-postnl-card/examples.md
+          - Screenshots: cards/hki-postnl-card/screenshots.md
           - Troubleshooting: cards/hki-postnl-card/troubleshooting.md
       - HKI Notification Card:
           - Features: cards/hki-notification-card/overview.md
@@ -75,6 +79,7 @@ nav:
           - Configuration: cards/hki-notification-card/configuration.md
           - Tips & Tricks: cards/hki-notification-card/tips.md
           - Examples: cards/hki-notification-card/examples.md
+          - Screenshots: cards/hki-notification-card/screenshots.md
           - Troubleshooting: cards/hki-notification-card/troubleshooting.md
   - Components:
       - HKI Notify:
@@ -84,6 +89,7 @@ nav:
           - Advanced Usage: componente/hki-notify/advanced-usage.md
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
+
 
 
 
