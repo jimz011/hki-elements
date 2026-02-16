@@ -26,17 +26,18 @@ For documentation **[CLICK HERE](https://jimz011.github.io/hki-elements/)**
 
 ## Screenshots
 
-<div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
-  <img src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e"
-       alt="hki-header-navigation"
-       style="width:48%; max-width:260px; height:auto; border-radius:12px;" />
-
+<div style="display:flex; gap:12px; justify-content:center; align-items:flex-start; flex-wrap:nowrap;">
   <img src="https://github.com/user-attachments/assets/a3d49370-8717-49dc-b59d-3a7786c9218e"
+       alt="hki-header-navigation"
+       style="width:50%; max-width:240px; height:auto; object-fit:contain; border-radius:12px;" />
+
+  <img src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e"
        alt="hki-elements-room"
-       style="width:48%; max-width:260px; height:auto; border-radius:12px;" />
+       style="width:50%; max-width:240px; height:auto; object-fit:contain; border-radius:12px;" />
 </div>
 
 *For more screenshots check the documentation*
+
 
 ## Support
 Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/jimz011/hki-elements/issues).
