@@ -89,6 +89,7 @@ nav:
           - Advanced Usage: componente/hki-notify/advanced-usage.md
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
+  - Migration: migration.md
 
 
 
