@@ -30,9 +30,6 @@ After installation, all five cards will be available in your Lovelace card picke
 - `type: hki-notification-card`
 - `type: hki-postnl-card`
 
-## Documentation
-Please check the documentation to check how to configure these cards on https://jimz011.github.io/hki-elements 
-
 ## Migration from Individual Cards
 
 If you previously installed individual HKI cards, here's how to migrate:
