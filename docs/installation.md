@@ -2,12 +2,14 @@
 
 ### HACS (Recommended)
 
-1. Open HACS in your Home Assistant instance
-2. Click on "Frontend"
-3. Click the "+" button
-4. Search for "HKI Elements"
-5. Click "Download"
-6. Restart Home Assistant
+1. Open HACS in Home Assistant
+2. Click on "Integrations"
+3. Click the three dots menu → "Custom repositories"
+4. Add repository URL: `https://github.com/jimz011/hki-elements`
+5. Select category: "Dashboard"
+6. Click "Add"
+7. Find "HKI Elements" and install it
+8. Refresh your browser
 
 ### Manual Installation
 
