@@ -26,8 +26,7 @@ For documentation **[CLICK HERE](https://jimz011.github.io/hki-elements/)**
 
 ## Screenshots
 
-|---|---|
-| <img alt="hki-header-navigation" src="https://github.com/user-attachments/assets/a3d49370-8717-49dc-b59d-3a7786c9218e" width="320" /> | <img alt="hki-elements-room" src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e" width="320" /> |
+<img alt="hki-header-navigation" src="https://github.com/user-attachments/assets/a3d49370-8717-49dc-b59d-3a7786c9218e" width="320" /><img alt="hki-elements-room" src="https://github.com/user-attachments/assets/60d7813a-854c-4957-b090-9dd0b63eef4e" width="320" /> 
 
 *For more screenshots check the documentation*
 
