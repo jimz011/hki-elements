@@ -43,15 +43,18 @@ Also check **Settings → Dashboards → Resources** for entries like:
 
 ### Step 2: Install HKI Elements
 
-#### Via HACS:
-1. Go to **HACS → Frontend**
-2. Click the **+** button
-3. Search for **"HKI Elements"**
-4. Click **Download**
-5. Restart Home Assistant
+#### Via HACS (Recommended):
+1. Open HACS in Home Assistant
+2. Click on "Integrations"
+3. Click the three dots menu → "Custom repositories"
+4. Add repository URL: `https://github.com/jimz011/hki-elements`
+5. Select category: "Dashboard"
+6. Click "Add"
+7. Find "HKI Elements" and install it
+8. Refresh your browser
 
 #### Manually:
-1. Download `hki-elements.js` from the [latest release](https://github.com/YOUR_USERNAME/hki-elements/releases)
+1. Download `hki-elements.js` from the [latest release](https://github.com/jimz011/hki-elements/releases)
 2. Place it in your `/config/www/` folder
 3. Go to **Settings → Dashboards → Resources**
 4. Add a new resource:
