@@ -1,7 +1,3 @@
-<img width="697" height="350" alt="hki-elements" src="https://github.com/user-attachments/assets/19df414f-3d27-4147-a340-0e88e7a34194" />
-
-A collection of custom Home Assistant dashboard cards.
-
 [![Release](https://img.shields.io/github/v/release/jimz011/hki-elements.svg)](https://github.com/jimz011/hki-elements/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -10,6 +6,10 @@ A collection of custom Home Assistant dashboard cards.
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow.svg)](https://www.buymeacoffee.com/w8Jnf6Hit)
 [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue.svg)](https://paypal.me/JimmySchings)
+
+<img width="697" height="350" alt="hki-elements" src="https://github.com/user-attachments/assets/19df414f-3d27-4147-a340-0e88e7a34194" />
+
+## A collection of custom Home Assistant dashboard cards.
 
 ## What's Included
 
