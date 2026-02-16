@@ -11,7 +11,7 @@
 
 ### Manual Installation
 
-1. Download `hki-elements.js` from the [latest release](https://github.com/YOUR_USERNAME/hki-elements/releases)
+1. Download `hki-elements.js` from the [latest release](https://github.com/jimz011/hki-elements/releases)
 2. Copy it to your `www` folder in your Home Assistant config directory
 3. Add the following to your Lovelace resources (Settings → Dashboards → Resources):
    ```yaml
