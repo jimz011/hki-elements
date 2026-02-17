@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.0 ',
+  '%c HKI-ELEMENTS %c v1.0.1 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -1255,7 +1255,6 @@ class HkiHeaderCard extends LitElement {
     
     // If config uses old flat format, migrate to nested first
     if (isOldFormat(config)) {
-      console.log('[HKI Header Card] Detected old flat format, migrating to nested format...');
       const nested = migrateToNestedFormat(config);
       workingConfig = flattenNestedFormat(nested); // Flatten back for internal use
     } else if (config.top_bar_left && typeof config.top_bar_left === 'object') {
@@ -5020,7 +5019,7 @@ class HkiButtonCard extends LitElement {
     // Also strips obsolete/unknown keys that are not in the valid set.
     static _migrateFlatConfig(config) {
       if (!config || typeof config !== 'object') return config;
-      const NESTED_SECTIONS = new Set(['styles','offsets','climate','hki_popup','lock']);
+      const NESTED_SECTIONS = new Set(['styles','offsets','climate','hki_popup','lock','custom_popup']);
       const MAPPED_FLAT_KEYS = new Set(HkiButtonCard._CONFIG_MAP.map(([k]) => k));
       const flat = {};
       // 1. Copy root-level keys that are in the valid whitelist (strips obsolete flat keys)
@@ -5704,25 +5703,17 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     /**
      * Get localized state string using Home Assistant's translation system
-     * Falls back to title-cased state if localization is unavailable
+     * Same approach as used in HKI Header Card for weather states
      */
     _getLocalizedState(state, domain) {
       if (!this.hass || !state) return state;
       
-      // Try domain-specific state first (e.g., component.climate.state._.heat)
-      if (domain) {
-        const domainKey = `component.${domain}.state._.${state}`;
-        const domainLocalized = this.hass.localize(domainKey);
-        if (domainLocalized && domainLocalized !== domainKey) {
-          return domainLocalized;
-        }
-      }
+      // Get the entity object
+      const entity = this.hass.states[this._config.entity];
       
-      // Try generic state (e.g., state.default.on, state.default.off)
-      const defaultKey = `state.default.${state}`;
-      const defaultLocalized = this.hass.localize(defaultKey);
-      if (defaultLocalized && defaultLocalized !== defaultKey) {
-        return defaultLocalized;
+      // Use HA's formatEntityState if available (same as header card)
+      if (this.hass.formatEntityState && entity) {
+        return this.hass.formatEntityState(entity);
       }
       
       // Fallback: title-case the state
@@ -6729,8 +6720,11 @@ _tileSliderClick(e) {
       const domain = this._getDomain();
       const entity = this._getEntity();
 
-      // Check for custom popup first
-      if (this._config.custom_popup_enabled && this._config.custom_popup_card) {
+      // Check for custom popup first (support both nested and flat formats)
+      const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
+      const customPopupCard = this._config.custom_popup?.card || this._config.custom_popup_card;
+      
+      if (customPopupEnabled && customPopupCard) {
         this._popupOpen = true;
         __hkiLockScroll();
         this._activeView = 'main';
@@ -11584,11 +11578,11 @@ document.body.appendChild(portal);
 
     _renderCustomCard() {
       const container = this._popupPortal?.querySelector('#customCardContainer');
-      if (!container || !this._config.custom_popup_card) return;
+      const cardConfig = this._config.custom_popup?.card || this._config.custom_popup_card;
+      
+      if (!container || !cardConfig) return;
 
       try {
-        const cardConfig = this._config.custom_popup_card;
-        
         // Try to use Home Assistant's helpers if available
         let cardElement;
         
@@ -16461,16 +16455,17 @@ ${isGoogleLayout ? '' : html`
                 <div class="separator"></div>
                 <strong>Custom Popup</strong>
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
-                <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
+                <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                ${this._config.custom_popup_enabled ? html`
+                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
                   <ha-yaml-editor
+                    key="custom-popup-card-editor"
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .defaultValue=${this._config.custom_popup_card || { type: 'entities', entities: [] }}
-                    .value=${this._config.custom_popup_card}
+                    .defaultValue=${this._config.custom_popup?.card || this._config.custom_popup_card || { type: 'entities', entities: [] }}
+                    .value=${this._config.custom_popup?.card || this._config.custom_popup_card}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;

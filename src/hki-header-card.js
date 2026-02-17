@@ -1231,7 +1231,6 @@ class HkiHeaderCard extends LitElement {
     
     // If config uses old flat format, migrate to nested first
     if (isOldFormat(config)) {
-      console.log('[HKI Header Card] Detected old flat format, migrating to nested format...');
       const nested = migrateToNestedFormat(config);
       workingConfig = flattenNestedFormat(nested); // Flatten back for internal use
     } else if (config.top_bar_left && typeof config.top_bar_left === 'object') {
