@@ -149,8 +149,8 @@ If you encounter issues during migration:
 1. Check the browser console (F12) for errors
 2. Verify resource URLs in Settings → Dashboards → Resources
 3. Try a hard refresh (Ctrl+F5 or Cmd+Shift+R)
-4. Open an issue on [GitHub](https://github.com/YOUR_USERNAME/hki-elements/issues)
+4. Open an issue on [GitHub](https://github.com/jimz011/hki-elements/issues)
 
 ## Contributing
 
-Found an issue or have a suggestion? Please report it on our [GitHub repository](https://github.com/YOUR_USERNAME/hki-elements).
+Found an issue or have a suggestion? Please report it on our [GitHub repository](https://github.com/jimz011/hki-elements).
