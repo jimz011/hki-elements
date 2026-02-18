@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11573,25 +11573,11 @@ document.body.appendChild(portal);
 
       // Forward more-info and dialog events — tile/button cards fire these directly
       // and they must reach the HA root to open the dialog.
-      // When more-info opens, push the portal behind the dialog by lowering z-index.
-      // When the dialog closes, restore it.
+      // Close our popup first so the dialog is fully visible.
       ['hass-more-info', 'hass-show-dialog', 'show-dialog'].forEach(evtName => {
         portal.addEventListener(evtName, (e) => {
           e.stopPropagation();
-          // Push popup behind HA's dialog layer
-          portal.style.zIndex = '100';
-          portal.style.opacity = '0.3';
-          // Restore when the dialog closes (HA fires dialog-closed on document)
-          const restore = () => {
-            portal.style.zIndex = '';
-            portal.style.opacity = '';
-            document.removeEventListener('dialog-closed', restore, true);
-            document.removeEventListener('hass-dialog-closed', restore, true);
-          };
-          document.addEventListener('dialog-closed', restore, true);
-          document.addEventListener('hass-dialog-closed', restore, true);
-          // Also restore on direct click on the popup portal
-          portal.addEventListener('click', restore, { once: true });
+          this._closePopup();
           this.dispatchEvent(new CustomEvent(evtName, {
             detail: e.detail,
             bubbles: true,
@@ -16697,7 +16683,7 @@ ${isGoogleLayout ? '' : html`
                   <textarea
                     class="card-config-textarea"
                     .value=${this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
-                    @input=${(ev) => {
+                    @blur=${(ev) => {
                       ev.stopPropagation();
                       const obj = this._yamlStrToObj(ev.target.value);
                       if (obj) this._fireChanged({ ...this._config, custom_popup_card: obj });
