@@ -62,6 +62,7 @@ nav:
           - Features: cards/hki-button-card/overview.md
           - Basic Usage: cards/hki-button-card/basic-usage.md
           - Configuration: cards/hki-button-card/configuration.md
+          - Custom Popups: cards/hki-button-card/custom-popups.md
           - Tips & Tricks: cards/hki-button-card/tips.md
           - Examples: cards/hki-button-card/examples.md
           - Screenshots: cards/hki-button-card/screenshots.md
@@ -91,6 +92,7 @@ nav:
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
   - Migration: migration.md
+
 
 
 
