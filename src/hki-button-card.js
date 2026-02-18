@@ -10635,6 +10635,25 @@ const iconAlign = this._config.icon_align || 'left';
 
 
     
+    _cardObjToYaml(obj) {
+      if (!obj || typeof obj !== 'object') return '';
+      try {
+        if (window.jsyaml) return window.jsyaml.dump(obj, { indent: 2, lineWidth: -1 }).trimEnd();
+        return JSON.stringify(obj, null, 2);
+      } catch(e) { return ''; }
+    }
+
+    _yamlStrToObj(str) {
+      if (!str || !str.trim()) return null;
+      try {
+        if (window.jsyaml) {
+          const obj = window.jsyaml.load(str);
+          return (obj && typeof obj === 'object') ? obj : null;
+        }
+        return JSON.parse(str);
+      } catch(e) { return null; }
+    }
+
     _defaultFontWeight(prefix) {
       if (prefix === "name") return "bold";
       if (prefix === "state") return "bold";
@@ -10642,10 +10661,6 @@ const iconAlign = this._config.icon_align || 'left';
       return "normal";
     }
 
-    updated(changedProps) {
-      // Value is pushed in _toggle() when the popup accordion opens,
-      // because CodeMirror ignores values set while its container is display:none.
-    }
 
 setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
@@ -11833,20 +11848,18 @@ ${isGoogleLayout ? '' : html`
                 <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-yaml-editor
-                    class="custom-popup-yaml-editor"
+                  <ha-code-editor
                     .hass=${this.hass}
+                    mode="yaml"
                     .label=${"Card Config"}
-                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? null}
+                    .value=${this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
-                      const value = ev.detail?.value;
-                      if (value && typeof value === 'object' && Object.keys(value).length > 0) {
-                        this._fireChanged({ ...this._config, custom_popup_card: value });
-                      }
+                      const obj = this._yamlStrToObj(ev.detail?.value);
+                      if (obj) this._fireChanged({ ...this._config, custom_popup_card: obj });
                     }}
                     @click=${(e) => e.stopPropagation()}
-                  ></ha-yaml-editor>
+                  ></ha-code-editor>
                   
                   <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
@@ -12199,22 +12212,7 @@ ${isGoogleLayout ? '' : html`
     }
 
     _toggle(key) {
-        const opening = this._closedDetails[key] === true;
         this._closedDetails = { ...this._closedDetails, [key]: !this._closedDetails[key] };
-        // CodeMirror (inside ha-yaml-editor) refuses to render content when its
-        // container is display:none. The popup accordion starts collapsed, so
-        // CodeMirror initialises with zero dimensions and ignores any value we
-        // set on it. Push the value imperatively the moment the accordion opens
-        // so CodeMirror has real dimensions and accepts the content.
-        if (opening && key === 'popup') {
-          const cardValue = this._config?.custom_popup_card ?? this._config?.custom_popup?.card ?? null;
-          if (cardValue) {
-            setTimeout(() => {
-              const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-              if (yamlEditor) yamlEditor.value = cardValue;
-            }, 0);
-          }
-        }
     }
     
     // For HA Selectors (Entity, Icon)
