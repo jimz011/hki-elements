@@ -88,10 +88,11 @@ nav:
           - Features: components/hki-notify/overview.md
           - Installation: components/hki-notify/installation.md
           - Configuration: components/hki-notify/configuration.md
-          - Advanced Usage: componente/hki-notify/advanced-usage.md
+          - Advanced Usage: components/hki-notify/advanced-usage.md
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
   - Migration: migration.md
+
 
 
 
