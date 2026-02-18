@@ -1084,6 +1084,17 @@ if (!shouldUpdate && oldEntity && newEntity &&
       return iconMap[domain] || 'mdi:gesture-tap-button';
     }
 
+    /**
+     * Return the resolved icon for popup headers.
+     * Priority: configured icon (with template evaluation) → entity attribute icon → provided fallback
+     */
+    _getResolvedIcon(entity, fallback) {
+      const cfgIcon = this._config.icon
+        ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
+        : '';
+      return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
+    }
+
     // Returns the best color for a climate entity by checking hvac_action first,
     // with smart temp-based inference when the action doesn't match reality.
     _getClimateColor(entity) {
@@ -4641,7 +4652,7 @@ _tileSliderClick(e) {
 
       const safeTitle = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-      const controlsIcon = 'mdi:window-shutter';
+      const controlsIcon = this._getResolvedIcon(entity, 'mdi:window-shutter');
 
       const groupBtn = isGroup ? `
         <button class="header-btn" id="coverGroupBtn" title="Group">
@@ -5262,7 +5273,7 @@ document.body.appendChild(portal);
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const icon = (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock';
+      const icon = this._getResolvedIcon(entity, (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock');
       const iconColor = (state === 'disarmed') ? '#4CAF50' : '#F44336';
 
       const portal = document.createElement('div');
@@ -5577,7 +5588,7 @@ document.body.appendChild(portal);
       const currentMode = attrs.mode || 'normal';
       
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:air-humidifier' : 'mdi:air-humidifier-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:air-humidifier' : 'mdi:air-humidifier-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -5995,7 +6006,7 @@ document.body.appendChild(portal);
       const supportsOscillate = attrs.supported_features ? (attrs.supported_features & 4) !== 0 : false;
       
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:fan' : 'mdi:fan-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:fan' : 'mdi:fan-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -6474,7 +6485,7 @@ document.body.appendChild(portal);
       }
 
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -6767,7 +6778,7 @@ document.body.appendChild(portal);
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const state = entity.state;
       const domain = this._getDomain();
-      const icon = this._config.icon || entity?.attributes?.icon || this._getDomainIcon(domain);
+      const icon = this._getResolvedIcon(entity, this._getDomainIcon(domain));
       
       // Get state color based on domain and state
       let color;
@@ -7058,12 +7069,12 @@ document.body.appendChild(portal);
       
       // Override color and state text if contact sensor is open
       let color = isLocked ? '#4CAF50' : (isJammed ? '#F44336' : '#FFC107');
-      let icon = isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open');
+      let icon = this._getResolvedIcon(entity, isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open'));
       let stateText = this._getLocalizedState(state, 'lock');
       
       if (isContactOpen) {
         color = '#F44336'; // Red when contact sensor is open
-        icon = 'mdi:lock-alert';
+        icon = this._getResolvedIcon(entity, 'mdi:lock-alert');
         stateText = contactOpenLabel;
       }
       
@@ -10631,6 +10642,27 @@ const iconAlign = this._config.icon_align || 'left';
       return "normal";
     }
 
+    updated(changedProps) {
+      // ha-yaml-editor initialises its CodeMirror instance asynchronously in
+      // firstUpdated/connectedCallback – AFTER Lit's property-binding pass.
+      // If we bind `.value` during the same microtask that creates the element
+      // (conditional block becoming true), the editor doesn't exist yet and
+      // silently drops the value.  We solve this by imperatively re-pushing the
+      // value every time _config changes and the element is already in the DOM.
+      if (changedProps.has('_config')) {
+        const cardValue = this._config?.custom_popup_card || this._config?.custom_popup?.card || null;
+        if (cardValue) {
+          // Use requestAnimationFrame so CodeMirror is guaranteed to be ready.
+          requestAnimationFrame(() => {
+            const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+            if (yamlEditor && yamlEditor.value !== cardValue) {
+              yamlEditor.value = cardValue;
+            }
+          });
+        }
+      }
+    }
+
 setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
@@ -11818,13 +11850,14 @@ ${isGoogleLayout ? '' : html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
                   <ha-yaml-editor
+                    class="custom-popup-yaml-editor"
                     .hass=${this.hass}
                     .label=${"Card Config"}
                     .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;
-                      if (value && typeof value === 'object') {
+                      if (value && typeof value === 'object' && Object.keys(value).length > 0) {
                         this._fireChanged({ ...this._config, custom_popup_card: value });
                       }
                     }}
