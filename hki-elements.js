@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-16 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-17 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -4783,6 +4783,14 @@ window.customCards.push({
       @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
       @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
       @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
+      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
+      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
+      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
+      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
+      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
+      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
+      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
+      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
     `;
     document.head.appendChild(s);
   }
@@ -6679,6 +6687,12 @@ _tileSliderClick(e) {
     }
 
     _supportsHkiPopup() {
+      // Allow HKI popup for any domain when a Custom Popup card is configured,
+      // since it doesn't depend on the entity domain.
+      const customPopupEnabled = this._config?.custom_popup?.enabled || this._config?.custom_popup_enabled;
+      const customPopupCard = this._config?.custom_popup?.card || this._config?.custom_popup_card;
+      if (customPopupEnabled && customPopupCard) return true;
+
       const domain = this._getDomain();
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
     }
@@ -6947,7 +6961,12 @@ _tileSliderClick(e) {
         'slide-right': 'hki-anim-slide-right',
         'flip':        'hki-anim-flip-in',
         'bounce':      'hki-anim-bounce-in',
+        'zoom':        'hki-anim-zoom-in',
+        'rotate':      'hki-anim-rotate-in',
+        'drop':        'hki-anim-drop-in',
+        'swing':       'hki-anim-swing-in',
       };
+
       return map[anim] || 'hki-anim-fade-in';
     }
 
@@ -6961,7 +6980,12 @@ _tileSliderClick(e) {
         'slide-right': 'hki-anim-slide-out-left',
         'flip':        'hki-anim-flip-out',
         'bounce':      'hki-anim-scale-out',
+        'zoom':        'hki-anim-zoom-out',
+        'rotate':      'hki-anim-rotate-out',
+        'drop':        'hki-anim-drop-out',
+        'swing':       'hki-anim-swing-out',
       };
+
       return map[anim] || 'hki-anim-fade-out';
     }
 
@@ -16838,15 +16862,7 @@ ${isGoogleLayout ? '' : html`
                     }}
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
-                  <button class="card-config-save-btn" @click=${(e) => {
-                    e.stopPropagation();
-                    const editor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-                    const raw = editor?.value ?? '';
-                    const obj = this._yamlStrToObj(raw);
-                    if (obj) this._fireChanged({ ...this._config, custom_popup_card: obj });
-                  }}>Save Card Config</button>
-                  
-                  <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
+<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
                     The popup will maintain its header (icon, name, timestamp), history button, and close button.
                   </p>
@@ -16867,6 +16883,10 @@ ${isGoogleLayout ? '' : html`
                     <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
                     <mwc-list-item value="flip">Flip</mwc-list-item>
                     <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                     <mwc-list-item value="drop">Drop</mwc-list-item>
+                     <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
                   <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
@@ -16880,6 +16900,10 @@ ${isGoogleLayout ? '' : html`
                     <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
                     <mwc-list-item value="flip">Flip</mwc-list-item>
                     <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                     <mwc-list-item value="drop">Drop</mwc-list-item>
+                     <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
                 </div>
                 <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
@@ -17819,24 +17843,6 @@ ${isGoogleLayout ? '' : html`
                 display: block; 
                 margin-bottom: 8px; 
             }
-
-            .card-config-save-btn {
-                display: block;
-                width: 100%;
-                margin-top: 8px;
-                padding: 10px;
-                background: var(--primary-color);
-                color: var(--text-primary-color, #fff);
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-            }
-            .card-config-save-btn:hover {
-                opacity: 0.85;
-            }
-            
             ha-formfield { 
                 display: flex; 
                 align-items: center; 
