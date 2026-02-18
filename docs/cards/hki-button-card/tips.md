@@ -1,5 +1,22 @@
 # Tips & Tricks
 
+### Dummy Card/Invisible Spacer
+
+You can use this card to create an invisible block, this is particularly useful if you want to have gaps in your grid config (e.g. you have 2 buttons, but want to show a 3 column grid, where the first button is placed in the first column and the second button in the third column). This would be the equivalent for a custom:button-card blank_card.
+To use this all you need to do is add this card and ONLY change the background color to `transparent` or `none`:
+
+```yaml
+type: custom:hki-button-card
+styles:
+  card:
+    color: none
+# or
+type: custom:hki-button-card
+styles:
+  card:
+    color: transparent
+```
+
 ### State-Based Dynamic Styling
 
 Use templates in style properties:
