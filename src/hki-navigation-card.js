@@ -320,10 +320,6 @@ function migrateConfig(config) {
     delete migrated.label_style;
   }
   
-  if (needsMigration) {
-    console.info('[HKI Navigation Card] Auto-migrated config to new nested structure');
-  }
-  
   return migrated;
 }
 

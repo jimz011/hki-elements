@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-06 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -15300,12 +15300,38 @@ const iconAlign = this._config.icon_align || 'left';
 
 
     
-    _cardObjToYaml(obj) {
-      if (!obj || typeof obj !== 'object') return '';
-      try {
-        if (window.jsyaml) return window.jsyaml.dump(obj, { indent: 2, lineWidth: -1 }).trimEnd();
-        return JSON.stringify(obj, null, 2);
-      } catch(e) { return ''; }
+    _cardObjToYaml(obj, indent = 0) {
+      if (obj == null) return '';
+      const pad = '  '.repeat(indent);
+      if (typeof obj === 'boolean' || typeof obj === 'number') return String(obj);
+      if (typeof obj === 'string') {
+        // Quote strings that could be misread as other types or contain special chars
+        if (/[:{}\[\],#&*?|<>=!%@`]/.test(obj) || /^\s|\s$/.test(obj) ||
+            obj === '' || ['true','false','null','yes','no','on','off'].includes(obj.toLowerCase())) {
+          return `"${obj.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`;
+        }
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(item => {
+          if (item && typeof item === 'object') {
+            const lines = this._cardObjToYaml(item, indent + 1);
+            const firstLine = lines.split('\n')[0];
+            const rest = lines.split('\n').slice(1).join('\n');
+            return `${pad}- ${firstLine}${rest ? '\n' + rest : ''}`;
+          }
+          return `${pad}- ${this._cardObjToYaml(item, indent + 1)}`;
+        }).join('\n');
+      }
+      if (typeof obj === 'object') {
+        return Object.entries(obj).map(([k, v]) => {
+          if (v && typeof v === 'object') {
+            return `${pad}${k}:\n${this._cardObjToYaml(v, indent + 1)}`;
+          }
+          return `${pad}${k}: ${this._cardObjToYaml(v, indent + 1)}`;
+        }).join('\n');
+      }
+      return String(obj);
     }
 
     _yamlStrToObj(str) {
@@ -17857,10 +17883,6 @@ function migrateConfig(config) {
     if (!migrated.button_defaults) migrated.button_defaults = {};
     migrated.button_defaults.label = migrated.label_style;
     delete migrated.label_style;
-  }
-  
-  if (needsMigration) {
-    console.info('[HKI Navigation Card] Auto-migrated config to new nested structure');
   }
   
   return migrated;
