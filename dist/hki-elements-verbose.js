@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.0 ',
+  '%c HKI-ELEMENTS %c v1.0.1-dev-07 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -1255,7 +1255,6 @@ class HkiHeaderCard extends LitElement {
     
     // If config uses old flat format, migrate to nested first
     if (isOldFormat(config)) {
-      console.log('[HKI Header Card] Detected old flat format, migrating to nested format...');
       const nested = migrateToNestedFormat(config);
       workingConfig = flattenNestedFormat(nested); // Flatten back for internal use
     } else if (config.top_bar_left && typeof config.top_bar_left === 'object') {
@@ -4963,6 +4962,9 @@ class HkiButtonCard extends LitElement {
       ['popup_card_opacity',        'hki_popup','card_opacity'],
       ['popup_default_view',        'hki_popup','default_view'],
       ['popup_default_section',     'hki_popup','default_section'],
+      // custom popup
+      ['custom_popup_enabled',      'custom_popup','enabled'],
+      ['custom_popup_card',         'custom_popup','card'],
       // lock
       ['lock_contact_sensor_entity','lock','contact_sensor_entity'],
       ['lock_contact_sensor_label', 'lock','contact_sensor_label'],
@@ -4987,6 +4989,8 @@ class HkiButtonCard extends LitElement {
       // Misc card settings
       'bar_border_radius', 'dynamic_bar_color',
       'icon_animation', 'icon_align', 'enable_icon_animation',
+      // Custom popup
+      'custom_popup',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
       'use_canvas_layout', 'canvas_layout',
@@ -5015,7 +5019,7 @@ class HkiButtonCard extends LitElement {
     // Also strips obsolete/unknown keys that are not in the valid set.
     static _migrateFlatConfig(config) {
       if (!config || typeof config !== 'object') return config;
-      const NESTED_SECTIONS = new Set(['styles','offsets','climate','hki_popup','lock']);
+      const NESTED_SECTIONS = new Set(['styles','offsets','climate','hki_popup','lock','custom_popup']);
       const MAPPED_FLAT_KEYS = new Set(HkiButtonCard._CONFIG_MAP.map(([k]) => k));
       const flat = {};
       // 1. Copy root-level keys that are in the valid whitelist (strips obsolete flat keys)
@@ -5430,6 +5434,17 @@ if (!shouldUpdate && oldEntity && newEntity &&
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';
 
           if (!isDropdownFocused) {
+          // Custom popup: update embedded card with new hass
+          if (this._popupType === 'custom') {
+            const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
+            const cardElement = cardContainer?.querySelector('*:not([style])');
+            if (cardElement && cardElement.hass !== this.hass) {
+              cardElement.hass = this.hass;
+            }
+            // Still re-render to update header state/timestamp
+            this._renderCustomPopupPortal(newEntity);
+            return;
+          }
           if (this._getDomain() === 'climate') {
             this._renderClimatePopupPortal(newEntity);
             return;
@@ -5684,6 +5699,54 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     _getDomain() {
       return this._config?.entity ? this._config.entity.split('.')[0] : '';
+    }
+
+    /**
+     * Get localized state string using Home Assistant's translation system
+     * Same approach as used in HKI Header Card for weather states
+     */
+    _getLocalizedState(state, domain) {
+      if (!this.hass || !state) return state;
+      
+      // Get the entity object
+      const entity = this.hass.states[this._config.entity];
+      
+      // Use HA's formatEntityState if available (same as header card)
+      if (this.hass.formatEntityState && entity) {
+        return this.hass.formatEntityState(entity);
+      }
+      
+      // Fallback: title-case the state
+      return String(state).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    /**
+     * Get default icon for domain
+     */
+    _getDomainIcon(domain) {
+      const iconMap = {
+        'light': 'mdi:lightbulb',
+        'switch': 'mdi:toggle-switch',
+        'fan': 'mdi:fan',
+        'cover': 'mdi:window-shutter',
+        'lock': 'mdi:lock',
+        'climate': 'mdi:thermostat',
+        'alarm_control_panel': 'mdi:shield-home',
+        'media_player': 'mdi:speaker',
+        'vacuum': 'mdi:robot-vacuum',
+        'camera': 'mdi:camera',
+        'sensor': 'mdi:gauge',
+        'binary_sensor': 'mdi:checkbox-marked-circle',
+        'input_boolean': 'mdi:toggle-switch',
+        'input_number': 'mdi:ray-vertex',
+        'input_select': 'mdi:format-list-bulleted',
+        'automation': 'mdi:robot',
+        'script': 'mdi:script-text',
+        'scene': 'mdi:palette',
+        'remote': 'mdi:remote',
+        'humidifier': 'mdi:air-humidifier',
+      };
+      return iconMap[domain] || 'mdi:gesture-tap-button';
     }
 
     // Returns the best color for a climate entity by checking hvac_action first,
@@ -6656,6 +6719,18 @@ _tileSliderClick(e) {
       
       const domain = this._getDomain();
       const entity = this._getEntity();
+
+      // Check for custom popup first (support both nested and flat formats)
+      const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
+      const customPopupCard = this._config.custom_popup?.card || this._config.custom_popup_card;
+      
+      if (customPopupEnabled && customPopupCard) {
+        this._popupOpen = true;
+        __hkiLockScroll();
+        this._activeView = 'main';
+        this._renderCustomPopupPortal(entity);
+        return;
+      }
 
       // Special handling: group.* entities
       if (domain === 'group') {
@@ -11348,6 +11423,225 @@ document.body.appendChild(portal);
       `;
     }
 
+    _renderCustomPopupPortal(entity) {
+      if (this._popupPortal) this._popupPortal.remove();
+      this._popupType = 'custom';
+      this._popupEntityId = entity?.entity_id || this._config?.entity || null;
+      if (!entity) return;
+
+      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const state = entity.state;
+      const domain = this._getDomain();
+      const icon = this._config.icon || entity?.attributes?.icon || this._getDomainIcon(domain);
+      
+      // Get state color based on domain and state
+      let color;
+      if (domain === 'climate') {
+        color = this._getClimateColor(entity);
+      } else if (domain === 'light' && state === 'on') {
+        color = this._getCurrentColor() || '#ffc107';
+      } else {
+        color = (state === 'on' || state === 'open' || state === 'locked') 
+          ? 'var(--primary-color, #03a9f4)' 
+          : 'var(--disabled-text-color, #6f6f6f)';
+      }
+
+      const borderRadius = this._config.popup_slider_radius ?? 12;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+      const portal = document.createElement('div');
+      portal.className = 'hki-popup-portal';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            ${this._getPopupPortalStyle()}
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
+          }
+          .hki-popup-container {
+            ${this._getPopupCardStyle()};
+            border-radius: ${popupBorderRadius}px;
+            width: ${popupWidth}; height: ${popupHeight};
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            display: flex; flex-direction: column; overflow: hidden; user-select: none; -webkit-user-select: none;
+          }
+          .hki-popup-header {
+            display: flex; justify-content: space-between; align-items: center; padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.03); border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.05));
+            flex-shrink: 0;
+          }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--divider-color, rgba(255, 255, 255, 0.05)); border: none;
+            color: var(--primary-text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+          }
+          .header-btn:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+
+          .hki-popup-content { 
+            flex: 1; padding: 20px; overflow-y: auto; 
+            display: flex; flex-direction: column;
+            min-height: 0; 
+          }
+
+          .custom-card-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 12px;
+          }
+
+          .hki-popup-nav {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.05));
+            flex-shrink: 0;
+            min-height: 74px;
+            box-sizing: border-box;
+          }
+        </style>
+
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getLocalizedState(state, domain)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="historyBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+
+          <div class="hki-popup-content" id="customContent">
+            ${this._renderCustomPopupContent(entity)}
+          </div>
+
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => {
+        if (isBackgroundClick && e.target === portal) this._closePopup();
+        isBackgroundClick = false;
+      });
+
+      document.body.appendChild(portal);
+      this._popupPortal = portal;
+
+      const closeBtn = portal.querySelector('#closeBtn');
+      if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
+
+      const historyBtn = portal.querySelector('#historyBtn');
+      if (historyBtn) {
+        historyBtn.addEventListener('click', () => {
+          this._activeView = this._activeView === 'history' ? 'main' : 'history';
+          this._renderCustomPopupPortal(entity);
+          if (this._activeView === 'history') {
+            setTimeout(() => this._loadHistory(), 100);
+          }
+        });
+      }
+
+      // Render the custom card after portal is in DOM
+      this._renderCustomCard();
+    }
+
+    _renderCustomPopupContent(entity) {
+      if (this._activeView === 'history') {
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+      }
+
+      return `<div class="custom-card-container" id="customCardContainer"></div>`;
+    }
+
+    _renderCustomCard() {
+      const container = this._popupPortal?.querySelector('#customCardContainer');
+      const cardConfig = this._config.custom_popup?.card || this._config.custom_popup_card;
+      
+      if (!container || !cardConfig) return;
+
+      try {
+        // Try to use Home Assistant's helpers if available
+        let cardElement;
+        
+        if (window.loadCardHelpers) {
+          // Modern HA - use card helpers
+          window.loadCardHelpers().then(helpers => {
+            if (helpers && helpers.createCardElement) {
+              cardElement = helpers.createCardElement(cardConfig);
+              cardElement.hass = this.hass;
+              container.innerHTML = '';
+              container.appendChild(cardElement);
+            }
+          }).catch(err => {
+            console.warn('Card helpers not available, falling back to createElement:', err);
+            this._createCardElementFallback(container, cardConfig);
+          });
+        } else {
+          // Fallback for older HA or when helpers unavailable
+          this._createCardElementFallback(container, cardConfig);
+        }
+      } catch (error) {
+        console.error('Failed to render custom popup card:', error);
+        container.innerHTML = `
+          <div style="padding: 20px; text-align: center; opacity: 0.6;">
+            <ha-icon icon="mdi:alert-circle" style="--mdc-icon-size: 48px; color: var(--error-color);"></ha-icon>
+            <div style="margin-top: 12px;">Failed to load custom card</div>
+            <div style="font-size: 12px; margin-top: 8px;">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    _createCardElementFallback(container, cardConfig) {
+      try {
+        const cardElement = document.createElement(cardConfig.type || 'hui-error-card');
+        
+        // Set config first (some cards need this before hass)
+        if (cardElement.setConfig) {
+          cardElement.setConfig(cardConfig);
+        }
+        
+        // Then set hass
+        cardElement.hass = this.hass;
+
+        // Clear container and add card
+        container.innerHTML = '';
+        container.appendChild(cardElement);
+      } catch (error) {
+        console.error('Fallback card creation failed:', error);
+        container.innerHTML = `
+          <div style="padding: 20px; text-align: center; opacity: 0.6;">
+            <ha-icon icon="mdi:alert-circle" style="--mdc-icon-size: 48px; color: var(--error-color);"></ha-icon>
+            <div style="margin-top: 12px;">Card type "${cardConfig.type}" not found</div>
+            <div style="font-size: 11px; margin-top: 8px;">Make sure the card is installed and registered</div>
+          </div>
+        `;
+      }
+    }
+
     _setupSwitchHandlers(portal, entity, serviceDomain = null) {
       if (!portal || !entity) return;
 
@@ -11408,7 +11702,7 @@ document.body.appendChild(portal);
       // Override color and state text if contact sensor is open
       let color = isLocked ? '#4CAF50' : (isJammed ? '#F44336' : '#FFC107');
       let icon = isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open');
-      let stateText = isLocked ? 'Locked' : (isJammed ? 'Jammed' : (isLocking ? 'Locking' : (isUnlocking ? 'Unlocking' : 'Unlocked')));
+      let stateText = this._getLocalizedState(state, 'lock');
       
       if (isContactOpen) {
         color = '#F44336'; // Red when contact sensor is open
@@ -12564,13 +12858,13 @@ document.body.appendChild(portal);
               .trim();
             stateText = this._titleCase(norm);
           } else if (entry.state === 'on') {
-            stateText = 'Turned On';
+            stateText = this.hass.localize('ui.card.button.turn_on') || 'Turned On';
           } else if (entry.state === 'off') {
-            stateText = 'Turned Off';
+            stateText = this.hass.localize('ui.card.button.turn_off') || 'Turned Off';
           } else if (entry.state === 'unavailable') {
-            stateText = 'Unavailable';
+            stateText = this._getLocalizedState('unavailable', domain);
           } else if (entry.state) {
-            stateText = this._titleCase(entry.state);
+            stateText = this._getLocalizedState(entry.state, domain);
           }
 
           
@@ -13043,14 +13337,8 @@ if (layout === 'square') {
       if (!stateText) {
           if (entity) {
             const domain = this._getDomain();
-            const pretty = (s) => String(s || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-            if (domain === 'climate') {
-              stateText = (entity.state === 'off') ? 'Off' : pretty(entity.state);
-            } else if (domain === 'cover') {
-              stateText = (entity.state === 'closed') ? 'Closed' : 'Open';
-            } else {
-              stateText = pretty(entity.state);
-            }
+            // Use localized state strings
+            stateText = this._getLocalizedState(entity.state, domain);
           } else {
             stateText = '';
           }
@@ -16163,6 +16451,34 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 12px; opacity: 0.7; margin: 8px 0; padding: 8px; background: var(--secondary-background-color); border-radius: 6px; border-left: 3px solid var(--primary-color);">
                   <strong>Note:</strong> These settings only work when an action is set to <code>more-info (HKI)</code>.
                 </p>
+                
+                <div class="separator"></div>
+                <strong>Custom Popup</strong>
+                <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
+                <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
+                
+                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
+                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
+                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
+                  <ha-yaml-editor
+                    .hass=${this.hass}
+                    .label=${"Card Config"}
+                    .defaultValue=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    @value-changed=${(ev) => {
+                      ev.stopPropagation();
+                      const value = ev.detail?.value;
+                      if (value && typeof value === 'object') {
+                        this._fireChanged({ ...this._config, custom_popup_card: value });
+                      }
+                    }}
+                    @click=${(e) => e.stopPropagation()}
+                  ></ha-yaml-editor>
+                  
+                  <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
+                    <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
+                    The popup will maintain its header (icon, name, timestamp), history button, and close button.
+                  </p>
+                ` : ''}
                 
                 <div class="separator"></div>
                 <strong>Popup Container</strong>
