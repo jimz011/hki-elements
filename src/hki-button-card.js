@@ -12029,21 +12029,31 @@ ${isGoogleLayout ? '' : html`
                 <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-code-editor
-                    .hass=${this.hass}
-                    autocomplete-entities
-                    autocomplete-icons
-                    .autocompleteEntities=${true}
-                    .autocompleteIcons=${true}
-                    .label=${"Card Config"}
+                  <textarea
+                    class="card-config-textarea"
                     .value=${this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
-                    @value-changed=${(ev) => {
+                    @input=${(ev) => {
                       ev.stopPropagation();
-                      const obj = this._yamlStrToObj(ev.detail?.value);
+                      const obj = this._yamlStrToObj(ev.target.value);
                       if (obj) this._fireChanged({ ...this._config, custom_popup_card: obj });
                     }}
                     @click=${(e) => e.stopPropagation()}
-                  ></ha-code-editor>
+                    @keydown=${(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const el = e.target;
+                        const start = el.selectionStart;
+                        const end = el.selectionEnd;
+                        el.value = el.value.slice(0, start) + '  ' + el.value.slice(end);
+                        el.selectionStart = el.selectionEnd = start + 2;
+                      }
+                    }}
+                    placeholder="type: custom:my-card&#10;cards:&#10;  - type: tile&#10;    entity: sensor.example"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                  ></textarea>
                   
                   <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
@@ -12985,6 +12995,31 @@ ${isGoogleLayout ? '' : html`
                 width: 100%; 
                 display: block; 
                 margin-bottom: 8px; 
+            }
+
+            .card-config-textarea {
+                width: 100%;
+                min-height: 220px;
+                box-sizing: border-box;
+                padding: 10px 12px;
+                font-family: "Roboto Mono", "Courier New", monospace;
+                font-size: 13px;
+                line-height: 1.6;
+                background: var(--code-editor-background-color, var(--secondary-background-color, #1e1e1e));
+                color: var(--primary-text-color);
+                border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+                border-radius: 4px;
+                resize: vertical;
+                tab-size: 2;
+                white-space: pre;
+                overflow-wrap: normal;
+                overflow-x: auto;
+                outline: none;
+                margin-bottom: 8px;
+                display: block;
+            }
+            .card-config-textarea:focus {
+                border-color: var(--primary-color);
             }
             
             ha-formfield { 
