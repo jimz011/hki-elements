@@ -14,7 +14,8 @@ color: >-
 
 # DO NOT DO IT LIKE THIS
 color: >-
-  {% if is_state('config.entity', 'on') %} # As you can see, it is quoted here, and this will NOT work, so when using this variable always make sure it is unquoted
+  {% if is_state('config.entity', 'on') %}
+# As you can see, it is quoted here, and this will NOT work, so when using this variable always make sure it is unquoted
 ```
 
 ### Dummy Card/Invisible Spacer
