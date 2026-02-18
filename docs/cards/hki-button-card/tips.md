@@ -1,5 +1,22 @@
 # Tips & Tricks
 
+### Jinja2 Template Tip
+
+Whenever you use jinja2 templates and you selected an entity for the card then you can use the `config.entity` variable to use in your templates. Using this variable will make copying this template to other cards easier since you will not have to enter an entity for each template over and over again. Note that `config.entity` should NOT be quoted. See the example below:
+
+```yaml
+color: >-
+  {% if is_state(config.entity, 'on') %}
+    rgba(255, 152, 0, 0.3)
+  {% else %}
+    rgba(100, 100, 100, 0.1)
+  {% endif %}
+
+# DO NOT DO IT LIKE THIS
+color: >-
+  {% if is_state('config.entity', 'on') %} # As you can see, it is quoted here, and this will NOT work, so when using this variable always make sure it is unquoted
+```
+
 ### Dummy Card/Invisible Spacer
 
 You can use this card to create an invisible block, this is particularly useful if you want to have gaps in your grid config (e.g. you have 2 buttons, but want to show a 3 column grid, where the first button is placed in the first column and the second button in the third column). This would be the equivalent for a custom:button-card blank_card.
