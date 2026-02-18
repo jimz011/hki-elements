@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-07 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-08 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -15346,12 +15346,125 @@ const iconAlign = this._config.icon_align || 'left';
     _yamlStrToObj(str) {
       if (!str || !str.trim()) return null;
       try {
-        if (window.jsyaml) {
-          const obj = window.jsyaml.load(str);
-          return (obj && typeof obj === 'object') ? obj : null;
-        }
-        return JSON.parse(str);
+        const lines = str.split('\n');
+        const [obj] = this._parseYamlBlock(lines, 0, 0);
+        return (obj && typeof obj === 'object') ? obj : null;
       } catch(e) { return null; }
+    }
+
+    _parseYamlValue(raw) {
+      const s = raw.trim();
+      if (s === 'true' || s === 'yes') return true;
+      if (s === 'false' || s === 'no') return false;
+      if (s === 'null' || s === '~' || s === '') return null;
+      if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))
+        return s.slice(1,-1).replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+      const n = Number(s);
+      if (!isNaN(n) && s !== '') return n;
+      return s;
+    }
+
+    _parseYamlBlock(lines, startIdx, baseIndent) {
+      // Returns [result, nextIdx]
+      // Detect if this block is an array or object by looking at first non-empty line
+      let idx = startIdx;
+      let result = null;
+
+      while (idx < lines.length) {
+        const line = lines[idx];
+        const trimmed = line.trimEnd();
+        if (trimmed === '' || trimmed.trimStart().startsWith('#')) { idx++; continue; }
+        const indent = trimmed.length - trimmed.trimStart().length;
+        if (indent < baseIndent) break; // dedented — end of block
+
+        const content = trimmed.trimStart();
+
+        if (content.startsWith('- ') || content === '-') {
+          // Array
+          if (!Array.isArray(result)) result = [];
+          const itemContent = content.startsWith('- ') ? content.slice(2).trimStart() : '';
+
+          if (itemContent === '') {
+            // Next lines form the item
+            idx++;
+            const [val, nextIdx] = this._parseYamlBlock(lines, idx, indent + 2);
+            result.push(val);
+            idx = nextIdx;
+          } else if (itemContent.includes(': ') || itemContent.endsWith(':')) {
+            // Inline object start: "- key: value" or "- key:"
+            const obj = {};
+            const colonIdx = itemContent.indexOf(': ');
+            const colonEnd = itemContent.endsWith(':');
+            const key = colonEnd ? itemContent.slice(0, -1) : itemContent.slice(0, colonIdx);
+            const valStr = colonEnd ? '' : itemContent.slice(colonIdx + 2);
+            idx++;
+            if (valStr === '' || colonEnd) {
+              const [val, nextIdx] = this._parseYamlBlock(lines, idx, indent + 2);
+              obj[key] = val;
+              idx = nextIdx;
+            } else {
+              obj[key] = this._parseYamlValue(valStr);
+            }
+            // Continue reading sibling keys at indent+2
+            while (idx < lines.length) {
+              const sibLine = lines[idx].trimEnd();
+              if (sibLine === '' || sibLine.trimStart().startsWith('#')) { idx++; continue; }
+              const sibIndent = sibLine.length - sibLine.trimStart().length;
+              if (sibIndent !== indent + 2) break;
+              const sibContent = sibLine.trimStart();
+              if (sibContent.startsWith('- ') || sibContent === '-') break; // next array item
+              const ci = sibContent.indexOf(': ');
+              const ce = sibContent.endsWith(':');
+              if (ci === -1 && !ce) break;
+              const sk = ce ? sibContent.slice(0,-1) : sibContent.slice(0, ci);
+              const sv = ce ? '' : sibContent.slice(ci + 2);
+              idx++;
+              if (sv === '' || ce) {
+                const [val, nextIdx] = this._parseYamlBlock(lines, idx, sibIndent + 2);
+                obj[sk] = val;
+                idx = nextIdx;
+              } else {
+                obj[sk] = this._parseYamlValue(sv);
+              }
+            }
+            result.push(obj);
+          } else {
+            result.push(this._parseYamlValue(itemContent));
+            idx++;
+          }
+        } else if (content.includes(': ') || content.endsWith(':')) {
+          // Object
+          if (!result || Array.isArray(result)) result = {};
+          const ci = content.indexOf(': ');
+          const ce = content.endsWith(':');
+          const key = ce ? content.slice(0,-1) : content.slice(0, ci);
+          const valStr = ce ? '' : content.slice(ci + 2);
+          idx++;
+          if (valStr === '' || ce) {
+            // Check if next line is more indented (nested block) or same (empty value)
+            let nextIdx2 = idx;
+            while (nextIdx2 < lines.length && lines[nextIdx2].trim() === '') nextIdx2++;
+            const nextLine = lines[nextIdx2];
+            if (nextLine !== undefined) {
+              const nextIndent = nextLine.length - nextLine.trimStart().length;
+              if (nextIndent > indent) {
+                const [val, ni] = this._parseYamlBlock(lines, idx, nextIndent);
+                result[key] = val;
+                idx = ni;
+              } else {
+                result[key] = null;
+              }
+            } else {
+              result[key] = null;
+            }
+          } else {
+            result[key] = this._parseYamlValue(valStr);
+          }
+        } else {
+          idx++;
+        }
+      }
+      return [result, idx];
     }
 
     _defaultFontWeight(prefix) {
