@@ -6908,9 +6908,25 @@ document.body.appendChild(portal);
 
       // Forward more-info and dialog events — tile/button cards fire these directly
       // and they must reach the HA root to open the dialog.
-      ['hass-more-info', 'hass-show-dialog', 'show-dialog', 'dialog-closed'].forEach(evtName => {
+      // When more-info opens, push the portal behind the dialog by lowering z-index.
+      // When the dialog closes, restore it.
+      ['hass-more-info', 'hass-show-dialog', 'show-dialog'].forEach(evtName => {
         portal.addEventListener(evtName, (e) => {
           e.stopPropagation();
+          // Push popup behind HA's dialog layer
+          portal.style.zIndex = '100';
+          portal.style.opacity = '0.3';
+          // Restore when the dialog closes (HA fires dialog-closed on document)
+          const restore = () => {
+            portal.style.zIndex = '';
+            portal.style.opacity = '';
+            document.removeEventListener('dialog-closed', restore, true);
+            document.removeEventListener('hass-dialog-closed', restore, true);
+          };
+          document.addEventListener('dialog-closed', restore, true);
+          document.addEventListener('hass-dialog-closed', restore, true);
+          // Also restore on direct click on the popup portal
+          portal.addEventListener('click', restore, { once: true });
           this.dispatchEvent(new CustomEvent(evtName, {
             detail: e.detail,
             bubbles: true,
@@ -10653,11 +10669,15 @@ const iconAlign = this._config.icon_align || 'left';
       const pad = '  '.repeat(indent);
       if (typeof obj === 'boolean' || typeof obj === 'number') return String(obj);
       if (typeof obj === 'string') {
-        if (/[:{}\[\],#&*?|<>=!%@`]/.test(obj) || /^\s|\s$/.test(obj) ||
-            obj === '' || ['true','false','null','yes','no','on','off'].includes(obj.toLowerCase())) {
-          return `"${obj.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`;
+        // Only quote when truly needed - NOT just because string contains ':'
+        // mdi:power, custom:card, scene.entity are all valid unquoted YAML values
+        const s = obj;
+        if (s === '' || ['true','false','null','yes','no','on','off'].includes(s.toLowerCase()) ||
+            (!isNaN(Number(s)) && s.trim() !== '') ||
+            /^[\{\[\*&!|>'"@`]/.test(s) || / #/.test(s) || /^\s|\s$/.test(s)) {
+          return `"${s.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`;
         }
-        return obj;
+        return s;
       }
       if (Array.isArray(obj)) {
         return obj.map(item => {
@@ -12011,7 +12031,6 @@ ${isGoogleLayout ? '' : html`
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
                   <ha-code-editor
                     .hass=${this.hass}
-                    mode="yaml"
                     autocomplete-entities
                     autocomplete-icons
                     .autocompleteEntities=${true}
