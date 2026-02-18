@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.1-dev-04 ',
+  '%c HKI-ELEMENTS %c v1.0.1-dev-05 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -15289,10 +15289,23 @@ setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
 
-      // Hydrate Custom Popup card editor value from config (flat takes precedence, then nested).
-      const popupCard = flat.custom_popup_card ?? flat.custom_popup?.card;
-      this._customPopupCard = (popupCard && typeof popupCard === 'object') ? popupCard : { type: 'entities', entities: [] };
-      this._customPopupCardKey = this._hashString(JSON.stringify(this._customPopupCard));
+      // Hydrate Custom Popup card editor value from config.
+// IMPORTANT: deep-clone to avoid Proxy/readonly objects causing ha-yaml-editor to mis-render on reopen.
+const popupCardRaw =
+  flat.custom_popup_card ??
+  config?.custom_popup?.card ??
+  config?.custom_popup_card ??
+  flat.custom_popup?.card;
+
+const popupCard =
+  (popupCardRaw && typeof popupCardRaw === 'object')
+    ? (typeof structuredClone === 'function'
+        ? structuredClone(popupCardRaw)
+        : JSON.parse(JSON.stringify(popupCardRaw)))
+    : { type: 'entities', entities: [] };
+
+this._customPopupCard = popupCard;
+this._customPopupCardKey = this._hashString(JSON.stringify(this._customPopupCard));
       // Auto-convert: if the incoming YAML differs from its normalized form,
       // immediately fire config-changed so HA saves the clean nested format.
       // This handles: old flat keys, obsolete/invalid keys, and nested drift.
@@ -15367,8 +15380,17 @@ setConfig(config) {
       }
       this._customPopupRefreshTimer = setTimeout(() => {
         try {
-          const yaml = this.renderRoot?.querySelector('ha-yaml-editor[key="custom-popup-card-editor"]');
+          const yaml = this.renderRoot?.querySelector('ha-yaml-editor');
           if (!yaml) return;
+
+          // Ensure the editor shows the current config (it can get stuck showing defaultValue on reopen)
+          try {
+            if (this._customPopupCard && typeof this._customPopupCard === 'object') {
+              yaml.value = (typeof structuredClone === 'function')
+                ? structuredClone(this._customPopupCard)
+                : JSON.parse(JSON.stringify(this._customPopupCard));
+            }
+          } catch (e) { /* no-op */ }
 
           // ha-yaml-editor usually wraps ha-code-editor in its shadowRoot
           const code = yaml.shadowRoot?.querySelector('ha-code-editor') || yaml.querySelector('ha-code-editor');
