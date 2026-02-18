@@ -6871,8 +6871,8 @@ document.body.appendChild(portal);
         </div>
       `;
 
-      const container = portal.querySelector('.hki-popup-container');
-      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      // No stopPropagation on container - embedded cards need click events for their actions.
+      // Background-click-to-close is handled below via the isBackgroundClick flag instead.
 
       let isBackgroundClick = false;
       portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
@@ -6880,6 +6880,19 @@ document.body.appendChild(portal);
       portal.addEventListener('click', (e) => {
         if (isBackgroundClick && e.target === portal) this._closePopup();
         isBackgroundClick = false;
+      });
+
+      // Forward hass-action events from built-in HA cards (button, tile, etc.).
+      // These cards fire hass-action events that need to reach the Lovelace handler.
+      // The portal lives on document.body (outside the HA tree), so we re-dispatch
+      // from `this` which IS inside the tree and will bubble to the correct handler.
+      portal.addEventListener('hass-action', (e) => {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('hass-action', {
+          detail: e.detail,
+          bubbles: true,
+          composed: true,
+        }));
       });
 
       document.body.appendChild(portal);
@@ -6952,7 +6965,16 @@ document.body.appendChild(portal);
 
     _createCardElementFallback(container, cardConfig) {
       try {
-        const cardElement = document.createElement(cardConfig.type || 'hui-error-card');
+        // Built-in HA cards are registered as hui-<type>-card, not as their YAML type name.
+        // Custom cards (type starts with 'custom:') use the registered custom element name.
+        const type = cardConfig.type || 'hui-error-card';
+        let tagName;
+        if (type.startsWith('custom:')) {
+          tagName = type.replace('custom:', '');
+        } else {
+          tagName = `hui-${type}-card`;
+        }
+        const cardElement = document.createElement(tagName);
         
         // Set config first (some cards need this before hass)
         if (cardElement.setConfig) {
@@ -11798,7 +11820,7 @@ ${isGoogleLayout ? '' : html`
                   <ha-yaml-editor
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .defaultValue=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;
