@@ -1,4 +1,4 @@
-# Custom Popup
+# Custom Popups
 
 The Custom Popup feature lets you embed any Home Assistant card inside the HKI Button Card popup frame. Instead of the built-in light/climate/switch controls, the popup will display your own card — making it ideal for remote controls, media players, custom dashboards, or any other use case that the built-in popup doesn't cover.
 
