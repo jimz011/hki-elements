@@ -10643,30 +10643,8 @@ const iconAlign = this._config.icon_align || 'left';
     }
 
     updated(changedProps) {
-      // ha-yaml-editor wraps CodeMirror which initialises async in its own
-      // firstUpdated(). Setting `.value` via Lit property binding is ignored
-      // when CodeMirror doesn't exist yet. The proper public API is setValue()
-      // which internally awaits the editor's updateComplete before writing.
-      // We use rAF so child firstUpdated() has already run, and a _syncingYaml
-      // flag to break the feedback loop (setValue can fire value-changed).
-      if (changedProps.has('_config') && !this._syncingYaml) {
-        const cardValue = this._config?.custom_popup_card ?? this._config?.custom_popup?.card ?? null;
-        if (cardValue == null) return;
-        this._syncingYaml = true;
-        requestAnimationFrame(() => {
-          const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-          if (yamlEditor) {
-            if (typeof yamlEditor.setValue === 'function') {
-              yamlEditor.setValue(cardValue).catch(() => {}).finally(() => { this._syncingYaml = false; });
-            } else {
-              yamlEditor.value = cardValue;
-              this._syncingYaml = false;
-            }
-          } else {
-            this._syncingYaml = false;
-          }
-        });
-      }
+      // Value is pushed in _toggle() when the popup accordion opens,
+      // because CodeMirror ignores values set while its container is display:none.
     }
 
 setConfig(config) {
@@ -11862,7 +11840,6 @@ ${isGoogleLayout ? '' : html`
                     .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
-                      if (this._syncingYaml) return;
                       const value = ev.detail?.value;
                       if (value && typeof value === 'object' && Object.keys(value).length > 0) {
                         this._fireChanged({ ...this._config, custom_popup_card: value });
@@ -12222,7 +12199,22 @@ ${isGoogleLayout ? '' : html`
     }
 
     _toggle(key) {
+        const opening = this._closedDetails[key] === true;
         this._closedDetails = { ...this._closedDetails, [key]: !this._closedDetails[key] };
+        // CodeMirror (inside ha-yaml-editor) refuses to render content when its
+        // container is display:none. The popup accordion starts collapsed, so
+        // CodeMirror initialises with zero dimensions and ignores any value we
+        // set on it. Push the value imperatively the moment the accordion opens
+        // so CodeMirror has real dimensions and accepts the content.
+        if (opening && key === 'popup') {
+          const cardValue = this._config?.custom_popup_card ?? this._config?.custom_popup?.card ?? null;
+          if (cardValue) {
+            setTimeout(() => {
+              const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+              if (yamlEditor) yamlEditor.value = cardValue;
+            }, 0);
+          }
+        }
     }
     
     // For HA Selectors (Entity, Icon)
