@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.1 ',
+  '%c HKI-ELEMENTS %c v1.0.1-dev-04 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -5073,6 +5073,9 @@ class HkiButtonCard extends LitElement {
     constructor() {
       super();
       this._paDomainCache = {};
+      // Keep a stable value for the Custom Popup YAML editor so it re-hydrates correctly on reopen.
+      this._customPopupCard = { type: 'entities', entities: [] };
+      this._customPopupCardKey = 0;
       this._popupOpen = false;
       this._popupPortal = null;
       this._activeView = 'brightness'; // brightness, temperature, color
@@ -5163,7 +5166,7 @@ class HkiButtonCard extends LitElement {
       this._sliderPendingValue = null;
     }
 
-    setConfig(config) {
+setConfig(config) {
       if (!config) throw new Error("Config is required");
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
@@ -15233,10 +15236,11 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, _config: { state: true }, _closedDetails: { state: true }, _customPopupCard: { state: true }, _customPopupCardKey: { state: true } }; }
     
     constructor() {
       super();
+      this._customPopupRefreshTimer = null;
       this._paDomainCache = {};
 
       this._closedDetails = {
@@ -15265,8 +15269,15 @@ const iconAlign = this._config.icon_align || 'left';
       };
     }
 
+    _hashString(str) {
+      let h = 5381;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) + h) ^ str.charCodeAt(i);
+      }
+      // Ensure positive 32-bit
+      return (h >>> 0);
+    }
 
-    
     _defaultFontWeight(prefix) {
       if (prefix === "name") return "bold";
       if (prefix === "state") return "bold";
@@ -15277,6 +15288,11 @@ const iconAlign = this._config.icon_align || 'left';
 setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
+
+      // Hydrate Custom Popup card editor value from config (flat takes precedence, then nested).
+      const popupCard = flat.custom_popup_card ?? flat.custom_popup?.card;
+      this._customPopupCard = (popupCard && typeof popupCard === 'object') ? popupCard : { type: 'entities', entities: [] };
+      this._customPopupCardKey = this._hashString(JSON.stringify(this._customPopupCard));
       // Auto-convert: if the incoming YAML differs from its normalized form,
       // immediately fire config-changed so HA saves the clean nested format.
       // This handles: old flat keys, obsolete/invalid keys, and nested drift.
@@ -15327,6 +15343,52 @@ setConfig(config) {
       }
     }
     
+
+    disconnectedCallback() {
+      super.disconnectedCallback?.();
+      if (this._customPopupRefreshTimer) {
+        clearTimeout(this._customPopupRefreshTimer);
+        this._customPopupRefreshTimer = null;
+      }
+    }
+
+    updated(changedProps) {
+      super.updated?.(changedProps);
+
+      // Workaround: ha-yaml-editor / CodeMirror can render blank when created in (previously) hidden panels.
+      // We refresh the underlying code editor whenever Custom Popup is enabled.
+      if (!this._config) return;
+
+      const enabled = this._config.custom_popup_enabled === true;
+      if (!enabled) return;
+
+      if (this._customPopupRefreshTimer) {
+        clearTimeout(this._customPopupRefreshTimer);
+      }
+      this._customPopupRefreshTimer = setTimeout(() => {
+        try {
+          const yaml = this.renderRoot?.querySelector('ha-yaml-editor[key="custom-popup-card-editor"]');
+          if (!yaml) return;
+
+          // ha-yaml-editor usually wraps ha-code-editor in its shadowRoot
+          const code = yaml.shadowRoot?.querySelector('ha-code-editor') || yaml.querySelector('ha-code-editor');
+          if (!code) return;
+
+          // Try common editor handles
+          const cm = code.codemirror || code._editor || code.editor;
+          if (cm && typeof cm.refresh === 'function') cm.refresh();
+
+          if (typeof code.resize === 'function') code.resize();
+
+          // Nudge layout listeners
+          code.dispatchEvent(new Event('resize'));
+          window.dispatchEvent(new Event('resize'));
+        } catch (e) {
+          // no-op: best-effort refresh
+        }
+      }, 0);
+    }
+
     render() {
       if (!this.hass || !this._config) return html``;
       
@@ -16461,15 +16523,17 @@ ${isGoogleLayout ? '' : html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
                   <ha-yaml-editor
-                    key="custom-popup-card-editor"
+                    key=${`custom-popup-card-editor-${this._customPopupCardKey}`}
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .defaultValue=${this._config.custom_popup?.card || this._config.custom_popup_card || { type: 'entities', entities: [] }}
-                    .value=${this._config.custom_popup?.card || this._config.custom_popup_card}
+                    .defaultValue=${{ type: 'entities', entities: [] }}
+                    .value=${this._customPopupCard}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;
                       if (value && typeof value === 'object') {
+                        this._customPopupCard = value;
+                        this._customPopupCardKey = this._hashString(JSON.stringify(value));
                         this._fireChanged({ ...this._config, custom_popup_card: value });
                       }
                     }}
