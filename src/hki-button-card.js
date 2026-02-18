@@ -10640,7 +10640,6 @@ const iconAlign = this._config.icon_align || 'left';
       const pad = '  '.repeat(indent);
       if (typeof obj === 'boolean' || typeof obj === 'number') return String(obj);
       if (typeof obj === 'string') {
-        // Quote strings that could be misread as other types or contain special chars
         if (/[:{}\[\],#&*?|<>=!%@`]/.test(obj) || /^\s|\s$/.test(obj) ||
             obj === '' || ['true','false','null','yes','no','on','off'].includes(obj.toLowerCase())) {
           return `"${obj.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"`;
@@ -10650,12 +10649,22 @@ const iconAlign = this._config.icon_align || 'left';
       if (Array.isArray(obj)) {
         return obj.map(item => {
           if (item && typeof item === 'object') {
-            const lines = this._cardObjToYaml(item, indent + 1);
-            const firstLine = lines.split('\n')[0];
-            const rest = lines.split('\n').slice(1).join('\n');
-            return `${pad}- ${firstLine}${rest ? '\n' + rest : ''}`;
+            // Render object entries; first entry goes inline with "- ", rest align to same column
+            const entries = Object.entries(item);
+            if (entries.length === 0) return `${pad}-`;
+            const [firstKey, firstVal] = entries[0];
+            const firstValStr = (firstVal && typeof firstVal === 'object')
+              ? `\n${this._cardObjToYaml(firstVal, indent + 2)}`
+              : ` ${this._cardObjToYaml(firstVal, indent + 1)}`;
+            const rest = entries.slice(1).map(([k, v]) => {
+              const valStr = (v && typeof v === 'object')
+                ? `\n${this._cardObjToYaml(v, indent + 2)}`
+                : ` ${this._cardObjToYaml(v, indent + 1)}`;
+              return `${'  '.repeat(indent + 1)}${k}:${valStr}`;
+            });
+            return [`${pad}- ${firstKey}:${firstValStr}`, ...rest].join('\n');
           }
-          return `${pad}- ${this._cardObjToYaml(item, indent + 1)}`;
+          return `${pad}- ${this._cardObjToYaml(item, indent)}`;
         }).join('\n');
       }
       if (typeof obj === 'object') {
@@ -10663,7 +10672,7 @@ const iconAlign = this._config.icon_align || 'left';
           if (v && typeof v === 'object') {
             return `${pad}${k}:\n${this._cardObjToYaml(v, indent + 1)}`;
           }
-          return `${pad}${k}: ${this._cardObjToYaml(v, indent + 1)}`;
+          return `${pad}${k}: ${this._cardObjToYaml(v, indent)}`;
         }).join('\n');
       }
       return String(obj);
