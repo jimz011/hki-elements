@@ -11798,7 +11798,7 @@ ${isGoogleLayout ? '' : html`
                   <ha-yaml-editor
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    .defaultValue=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;

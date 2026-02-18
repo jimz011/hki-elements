@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.1-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.0.1-dev-07 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -16463,7 +16463,7 @@ ${isGoogleLayout ? '' : html`
                   <ha-yaml-editor
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    .defaultValue=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
                       const value = ev.detail?.value;
