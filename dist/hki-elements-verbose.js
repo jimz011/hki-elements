@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.2 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-03 ',
   'color: white; background: #17a2b8; font-weight: bold;',
   'color: #17a2b8; background: white; font-weight: bold;'
 );
@@ -15308,23 +15308,29 @@ const iconAlign = this._config.icon_align || 'left';
     }
 
     updated(changedProps) {
-      // ha-yaml-editor initialises its CodeMirror instance asynchronously in
-      // firstUpdated/connectedCallback – AFTER Lit's property-binding pass.
-      // If we bind `.value` during the same microtask that creates the element
-      // (conditional block becoming true), the editor doesn't exist yet and
-      // silently drops the value.  We solve this by imperatively re-pushing the
-      // value every time _config changes and the element is already in the DOM.
-      if (changedProps.has('_config')) {
-        const cardValue = this._config?.custom_popup_card || this._config?.custom_popup?.card || null;
-        if (cardValue) {
-          // Use requestAnimationFrame so CodeMirror is guaranteed to be ready.
-          requestAnimationFrame(() => {
-            const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-            if (yamlEditor && yamlEditor.value !== cardValue) {
+      // ha-yaml-editor wraps CodeMirror which initialises async in its own
+      // firstUpdated(). Setting `.value` via Lit property binding is ignored
+      // when CodeMirror doesn't exist yet. The proper public API is setValue()
+      // which internally awaits the editor's updateComplete before writing.
+      // We use rAF so child firstUpdated() has already run, and a _syncingYaml
+      // flag to break the feedback loop (setValue can fire value-changed).
+      if (changedProps.has('_config') && !this._syncingYaml) {
+        const cardValue = this._config?.custom_popup_card ?? this._config?.custom_popup?.card ?? null;
+        if (cardValue == null) return;
+        this._syncingYaml = true;
+        requestAnimationFrame(() => {
+          const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+          if (yamlEditor) {
+            if (typeof yamlEditor.setValue === 'function') {
+              yamlEditor.setValue(cardValue).catch(() => {}).finally(() => { this._syncingYaml = false; });
+            } else {
               yamlEditor.value = cardValue;
+              this._syncingYaml = false;
             }
-          });
-        }
+          } else {
+            this._syncingYaml = false;
+          }
+        });
       }
     }
 
@@ -16511,16 +16517,17 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
+                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
                   <ha-yaml-editor
                     class="custom-popup-yaml-editor"
                     .hass=${this.hass}
                     .label=${"Card Config"}
-                    .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? null}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
+                      if (this._syncingYaml) return;
                       const value = ev.detail?.value;
                       if (value && typeof value === 'object' && Object.keys(value).length > 0) {
                         this._fireChanged({ ...this._config, custom_popup_card: value });
@@ -16533,7 +16540,7 @@ ${isGoogleLayout ? '' : html`
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
                     The popup will maintain its header (icon, name, timestamp), history button, and close button.
                   </p>
-                ` : ''}
+                </div>
                 
                 <div class="separator"></div>
                 <strong>Popup Container</strong>
