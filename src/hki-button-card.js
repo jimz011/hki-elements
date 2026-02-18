@@ -435,6 +435,11 @@ class HkiButtonCard extends LitElement {
     constructor() {
       super();
       this._paDomainCache = {};
+
+      // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
+      this._customPopupYamlDraft = null;
+      this._customPopupYamlFocused = false;
+      this._customPopupYamlDebounce = null;
       this._popupOpen = false;
       this._popupPortal = null;
       this._activeView = 'brightness'; // brightness, temperature, color
@@ -10933,6 +10938,12 @@ const iconAlign = this._config.icon_align || 'left';
 setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
+      // If the user is not actively editing the YAML, drop the draft so the editor shows the
+      // serialized value from config again. While focused, keep the draft to avoid cursor jumps.
+      if (!this._customPopupYamlFocused) {
+        this._customPopupYamlDraft = null;
+      }
+
       // Auto-convert: if the incoming YAML differs from its normalized form,
       // immediately fire config-changed so HA saves the clean nested format.
       // This handles: old flat keys, obsolete/invalid keys, and nested drift.
@@ -12140,7 +12151,26 @@ ${isGoogleLayout ? '' : html`
                     .autocompleteEntities=${true}
                     .autocompleteIcons=${true}
                     .label=${"Card Config"}
-                    .value=${this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
+                    .value=${this._customPopupYamlDraft ?? this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
+                    @focus=${() => { this._customPopupYamlFocused = true; }}
+                    @blur=${() => { this._customPopupYamlFocused = false; }}
+                    @value-changed=${(ev) => {
+                      ev.stopPropagation();
+                      const raw = ev.detail?.value ?? "";
+                      // Keep what the user typed; don't re-serialize YAML while typing (prevents cursor jumps / spacing issues)
+                      this._customPopupYamlDraft = raw;
+
+                      clearTimeout(this._customPopupYamlDebounce);
+                      this._customPopupYamlDebounce = setTimeout(() => {
+                        const obj = this._yamlStrToObj(raw);
+                        if (!obj) return; // invalid YAML: keep draft, don't overwrite config
+
+                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                        if (JSON.stringify(obj) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: obj });
+                        }
+                      }, 300);
+                    }}
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                   <button class="card-config-save-btn" @click=${(e) => {
