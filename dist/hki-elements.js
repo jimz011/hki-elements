@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-18 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-19 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -4783,14 +4783,6 @@ window.customCards.push({
       @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
       @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
       @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
-      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
-      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
-      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
-      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
-      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
-      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
-      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
-      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
     `;
     document.head.appendChild(s);
   }
@@ -5109,6 +5101,7 @@ class HkiButtonCard extends LitElement {
       super();
       this._paDomainCache = {};
 
+      this._popupUiSection = 'custom';
       // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
       this._customPopupYamlDraft = null;
       this._customPopupYamlFocused = false;
@@ -6687,13 +6680,6 @@ _tileSliderClick(e) {
     }
 
     _supportsHkiPopup() {
-      // Allow HKI popup for any domain when Custom Popup is enabled,
-      // because it doesn't depend on the entity domain. This also enables
-      // dummy buttons (no entity) to open a Custom Popup.
-      const customPopupEnabled = this._config?.custom_popup?.enabled || this._config?.custom_popup_enabled;
-      const customPopupCard = this._config?.custom_popup?.card || this._config?.custom_popup_card;
-      if (customPopupEnabled) return true; // card may be edited after enabling
-
       const domain = this._getDomain();
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
     }
@@ -6962,12 +6948,7 @@ _tileSliderClick(e) {
         'slide-right': 'hki-anim-slide-right',
         'flip':        'hki-anim-flip-in',
         'bounce':      'hki-anim-bounce-in',
-        'zoom':        'hki-anim-zoom-in',
-        'rotate':      'hki-anim-rotate-in',
-        'drop':        'hki-anim-drop-in',
-        'swing':       'hki-anim-swing-in',
       };
-
       return map[anim] || 'hki-anim-fade-in';
     }
 
@@ -6981,12 +6962,7 @@ _tileSliderClick(e) {
         'slide-right': 'hki-anim-slide-out-left',
         'flip':        'hki-anim-flip-out',
         'bounce':      'hki-anim-scale-out',
-        'zoom':        'hki-anim-zoom-out',
-        'rotate':      'hki-anim-rotate-out',
-        'drop':        'hki-anim-drop-out',
-        'swing':       'hki-anim-swing-out',
       };
-
       return map[anim] || 'hki-anim-fade-out';
     }
 
@@ -15514,81 +15490,6 @@ const iconAlign = this._config.icon_align || 'left';
       return s;
     }
 
-    _parseYamlBlockScalar(lines, startIdx, parentIndent, style) {
-      // Minimal YAML block scalar support for "|" (literal) and ">" (folded)
-      // Returns [stringValue, nextIdx]
-      let idx = startIdx;
-
-      // Find indentation level of the scalar content (first non-empty line)
-      let contentIndent = null;
-      while (idx < lines.length) {
-        const line = lines[idx];
-        if (line.trimEnd() === '') { idx++; continue; }
-        const indent = line.length - line.trimStart().length;
-        if (indent <= parentIndent) {
-          // no content (or scalar ended immediately)
-          return ['', idx];
-        }
-        contentIndent = indent;
-        break;
-      }
-      if (contentIndent === null) return ['', idx];
-
-      const outLines = [];
-      while (idx < lines.length) {
-        const line = lines[idx];
-        const trimmedEnd = line.trimEnd();
-        if (trimmedEnd === '') {
-          outLines.push('');
-          idx++;
-          continue;
-        }
-        const indent = line.length - line.trimStart().length;
-        if (indent <= parentIndent) break; // scalar ended
-        // Strip the content indentation (or as much as available)
-        outLines.push(line.slice(Math.min(contentIndent, line.length)));
-        idx++;
-      }
-
-      if (style === '>') {
-        // Fold: turn single newlines into spaces, keep paragraph breaks
-        const paragraphs = [];
-        let current = [];
-        for (const l of outLines) {
-          if (l === '') {
-            if (current.length) {
-              paragraphs.push(current.join(' ').trimEnd());
-              current = [];
-            }
-            // keep empty line as paragraph separator
-            paragraphs.push('');
-          } else {
-            current.push(l.trimEnd());
-          }
-        }
-        if (current.length) paragraphs.push(current.join(' ').trimEnd());
-
-        // Rebuild, preserving blank lines
-        let folded = '';
-        for (let p = 0; p < paragraphs.length; p++) {
-          const part = paragraphs[p];
-          if (part === '') {
-            // avoid trailing extra blank lines
-            if (!folded.endsWith('\n') && folded !== '') folded += '\n';
-            folded += '\n';
-          } else {
-            if (folded !== '' && !folded.endsWith('\n\n')) folded += '\n';
-            folded += part;
-          }
-        }
-        return [folded.replace(/\n\n\n+/g, '\n\n'), idx];
-      }
-
-      // Literal
-      return [outLines.join('\n'), idx];
-    }
-
-
     _parseYamlBlock(lines, startIdx, baseIndent) {
       // Returns [result, nextIdx]
       // Detect if this block is an array or object by looking at first non-empty line
@@ -15628,14 +15529,7 @@ const iconAlign = this._config.icon_align || 'left';
               obj[key] = val;
               idx = nextIdx;
             } else {
-              if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
-                const style = valStr.trim().startsWith('>') ? '>' : '|';
-                const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
-                obj[key] = val;
-                idx = ni;
-              } else {
-                obj[key] = this._parseYamlValue(valStr);
-              }
+              obj[key] = this._parseYamlValue(valStr);
             }
             // Continue reading sibling keys at indent+2
             while (idx < lines.length) {
@@ -15656,14 +15550,7 @@ const iconAlign = this._config.icon_align || 'left';
                 obj[sk] = val;
                 idx = nextIdx;
               } else {
-                if (sv === '|' || sv.startsWith('|') || sv === '>' || sv.startsWith('>')) {
-                const style = sv.trim().startsWith('>') ? '>' : '|';
-                const [val, ni] = this._parseYamlBlockScalar(lines, idx, sibIndent, style);
-                obj[sk] = val;
-                idx = ni;
-              } else {
                 obj[sk] = this._parseYamlValue(sv);
-              }
               }
             }
             result.push(obj);
@@ -15697,14 +15584,7 @@ const iconAlign = this._config.icon_align || 'left';
               result[key] = null;
             }
           } else {
-            if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
-              const style = valStr.trim().startsWith('>') ? '>' : '|';
-              const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
-              result[key] = val;
-              idx = ni;
-            } else {
-              result[key] = this._parseYamlValue(valStr);
-            }
+            result[key] = this._parseYamlValue(valStr);
           }
         } else {
           idx++;
@@ -16921,6 +16801,32 @@ ${isGoogleLayout ? '' : html`
                 </p>
                 
                 <div class="separator"></div>
+                <ha-select
+                  label="Popup settings"
+                  .value=${this._popupUiSection || 'custom'}
+                  @selected=${(ev) => {
+                    const v = ev?.target?.value ?? ev?.detail?.value;
+                    this._popupUiSection = v || 'custom';
+                    this.requestUpdate();
+                  }}
+                  @closed=${(e) => e.stopPropagation()}
+                  @click=${(e) => e.stopPropagation()}
+                >
+                  <mwc-list-item value="custom">Custom popup</mwc-list-item>
+                  <mwc-list-item value="layout">Container & layout</mwc-list-item>
+                  <mwc-list-item value="animation">Animation</mwc-list-item>
+                  <mwc-list-item value="display">Content display</mwc-list-item>
+                  <mwc-list-item value="styling">Styling</mwc-list-item>
+                  <mwc-list-item value="domain">Domain features</mwc-list-item>
+                </ha-select>
+
+                <p style="font-size: 10px; opacity: 0.6; margin: 6px 0 0 0;">
+                  Tip: Most users only need <strong>Custom popup</strong>. Domain features are ignored when Custom Popup is enabled.
+                </p>
+
+                <div class="separator"></div>
+
+                <div style="${this._popupUiSection === 'custom' ? '' : 'display:none'}">
                 <strong>Custom Popup</strong>
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
@@ -16959,13 +16865,25 @@ ${isGoogleLayout ? '' : html`
                     }}
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
-<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
+                  <button class="card-config-save-btn" @click=${(e) => {
+                    e.stopPropagation();
+                    const editor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+                    const raw = editor?.value ?? '';
+                    const obj = this._yamlStrToObj(raw);
+                    if (obj) this._fireChanged({ ...this._config, custom_popup_card: obj });
+                  }}>Save Card Config</button>
+                  
+                  <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
                     The popup will maintain its header (icon, name, timestamp), history button, and close button.
                   </p>
                 </div>
                 
                 <div class="separator"></div>
+                
+                </div>
+
+                <div style="${this._popupUiSection === 'animation' ? '' : 'display:none'}">
                 <strong>Popup Animation</strong>
                 <div class="side-by-side">
                   <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
@@ -16980,10 +16898,6 @@ ${isGoogleLayout ? '' : html`
                     <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
                     <mwc-list-item value="flip">Flip</mwc-list-item>
                     <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                     <mwc-list-item value="drop">Drop</mwc-list-item>
-                     <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
                   <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
@@ -16997,15 +16911,15 @@ ${isGoogleLayout ? '' : html`
                     <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
                     <mwc-list-item value="flip">Flip</mwc-list-item>
                     <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                     <mwc-list-item value="drop">Drop</mwc-list-item>
-                     <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
                 </div>
                 <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
 
                 <div class="separator"></div>
+                
+                </div>
+
+                <div style="${this._popupUiSection === 'layout' ? '' : 'display:none'}">
                 <strong>Popup Container</strong>
                 <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
                 <div class="side-by-side">
@@ -17111,7 +17025,12 @@ ${isGoogleLayout ? '' : html`
                   
                   return html`
                     <div class="separator"></div>
-                    <strong>Features</strong>
+                    
+                </div>
+
+                <div style="${this._popupUiSection === 'domain' ? '' : 'display:none'}">
+                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? 'display:none' : ''}">
+                <strong>Features</strong>
                     <div class="checkbox-grid">
                       ${showLightOptions ? html`
                         <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
@@ -17128,6 +17047,16 @@ ${isGoogleLayout ? '' : html`
                 })()}
                 
                 <div class="separator"></div>
+                
+                </div>
+                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
+                  <p style="font-size: 12px; opacity: 0.7; margin: 8px 0; padding: 8px; background: var(--secondary-background-color); border-radius: 6px; border-left: 3px solid var(--warning-color);">
+                    Domain-specific features are disabled when <strong>Custom Popup</strong> is enabled.
+                  </p>
+                </div>
+                </div>
+
+                <div style="${this._popupUiSection === 'display' ? '' : 'display:none'}">
                 <strong>Content Display</strong>
                 <ha-textfield label="Slider Border Radius (px)" type="number" .value=${this._config.popup_slider_radius ?? 12} @input=${(ev) => this._textChanged(ev, "popup_slider_radius")}></ha-textfield>
                 <ha-formfield .label=${"Hide Text Under Buttons"}><ha-switch .checked=${this._config.popup_hide_button_text === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_button_text")}></ha-switch></ha-formfield>
@@ -17158,6 +17087,10 @@ ${isGoogleLayout ? '' : html`
                 </ha-select>
                 
                 <div class="separator"></div>
+                
+                </div>
+
+                <div style="${this._popupUiSection === 'styling' ? '' : 'display:none'}">
                 <strong>Active Button Styling</strong>
                 <p style="font-size: 11px; opacity: 0.7; margin-top: 0;">Customize selected/highlighted buttons</p>
                 <div class="side-by-side">
@@ -17262,6 +17195,9 @@ ${isGoogleLayout ? '' : html`
                   <div class="sub-accordion-content ${this._closedDetails['action_icon_double_tap'] ? 'hidden' : ''}">
                     ${renderActionDropdown("Icon Double Tap Action", "icon_double_tap_action")}
                   </div>
+                
+                </div>
+
                 </div>
              </div>
           </div>
@@ -17940,6 +17876,24 @@ ${isGoogleLayout ? '' : html`
                 display: block; 
                 margin-bottom: 8px; 
             }
+
+            .card-config-save-btn {
+                display: block;
+                width: 100%;
+                margin-top: 8px;
+                padding: 10px;
+                background: var(--primary-color);
+                color: var(--text-primary-color, #fff);
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+            }
+            .card-config-save-btn:hover {
+                opacity: 0.85;
+            }
+            
             ha-formfield { 
                 display: flex; 
                 align-items: center; 
