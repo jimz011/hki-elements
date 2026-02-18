@@ -6906,6 +6906,19 @@ document.body.appendChild(portal);
         }));
       });
 
+      // Forward more-info and dialog events — tile/button cards fire these directly
+      // and they must reach the HA root to open the dialog.
+      ['hass-more-info', 'hass-show-dialog', 'show-dialog', 'dialog-closed'].forEach(evtName => {
+        portal.addEventListener(evtName, (e) => {
+          e.stopPropagation();
+          this.dispatchEvent(new CustomEvent(evtName, {
+            detail: e.detail,
+            bubbles: true,
+            composed: true,
+          }));
+        });
+      });
+
       document.body.appendChild(portal);
       this._popupPortal = portal;
 
@@ -11999,6 +12012,10 @@ ${isGoogleLayout ? '' : html`
                   <ha-code-editor
                     .hass=${this.hass}
                     mode="yaml"
+                    autocomplete-entities
+                    autocomplete-icons
+                    .autocompleteEntities=${true}
+                    .autocompleteIcons=${true}
                     .label=${"Card Config"}
                     .value=${this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
                     @value-changed=${(ev) => {
