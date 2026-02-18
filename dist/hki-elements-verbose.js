@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-17 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-18 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -6687,11 +6687,12 @@ _tileSliderClick(e) {
     }
 
     _supportsHkiPopup() {
-      // Allow HKI popup for any domain when a Custom Popup card is configured,
-      // since it doesn't depend on the entity domain.
+      // Allow HKI popup for any domain when Custom Popup is enabled,
+      // because it doesn't depend on the entity domain. This also enables
+      // dummy buttons (no entity) to open a Custom Popup.
       const customPopupEnabled = this._config?.custom_popup?.enabled || this._config?.custom_popup_enabled;
       const customPopupCard = this._config?.custom_popup?.card || this._config?.custom_popup_card;
-      if (customPopupEnabled && customPopupCard) return true;
+      if (customPopupEnabled) return true; // card may be edited after enabling
 
       const domain = this._getDomain();
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
@@ -15513,6 +15514,81 @@ const iconAlign = this._config.icon_align || 'left';
       return s;
     }
 
+    _parseYamlBlockScalar(lines, startIdx, parentIndent, style) {
+      // Minimal YAML block scalar support for "|" (literal) and ">" (folded)
+      // Returns [stringValue, nextIdx]
+      let idx = startIdx;
+
+      // Find indentation level of the scalar content (first non-empty line)
+      let contentIndent = null;
+      while (idx < lines.length) {
+        const line = lines[idx];
+        if (line.trimEnd() === '') { idx++; continue; }
+        const indent = line.length - line.trimStart().length;
+        if (indent <= parentIndent) {
+          // no content (or scalar ended immediately)
+          return ['', idx];
+        }
+        contentIndent = indent;
+        break;
+      }
+      if (contentIndent === null) return ['', idx];
+
+      const outLines = [];
+      while (idx < lines.length) {
+        const line = lines[idx];
+        const trimmedEnd = line.trimEnd();
+        if (trimmedEnd === '') {
+          outLines.push('');
+          idx++;
+          continue;
+        }
+        const indent = line.length - line.trimStart().length;
+        if (indent <= parentIndent) break; // scalar ended
+        // Strip the content indentation (or as much as available)
+        outLines.push(line.slice(Math.min(contentIndent, line.length)));
+        idx++;
+      }
+
+      if (style === '>') {
+        // Fold: turn single newlines into spaces, keep paragraph breaks
+        const paragraphs = [];
+        let current = [];
+        for (const l of outLines) {
+          if (l === '') {
+            if (current.length) {
+              paragraphs.push(current.join(' ').trimEnd());
+              current = [];
+            }
+            // keep empty line as paragraph separator
+            paragraphs.push('');
+          } else {
+            current.push(l.trimEnd());
+          }
+        }
+        if (current.length) paragraphs.push(current.join(' ').trimEnd());
+
+        // Rebuild, preserving blank lines
+        let folded = '';
+        for (let p = 0; p < paragraphs.length; p++) {
+          const part = paragraphs[p];
+          if (part === '') {
+            // avoid trailing extra blank lines
+            if (!folded.endsWith('\n') && folded !== '') folded += '\n';
+            folded += '\n';
+          } else {
+            if (folded !== '' && !folded.endsWith('\n\n')) folded += '\n';
+            folded += part;
+          }
+        }
+        return [folded.replace(/\n\n\n+/g, '\n\n'), idx];
+      }
+
+      // Literal
+      return [outLines.join('\n'), idx];
+    }
+
+
     _parseYamlBlock(lines, startIdx, baseIndent) {
       // Returns [result, nextIdx]
       // Detect if this block is an array or object by looking at first non-empty line
@@ -15552,7 +15628,14 @@ const iconAlign = this._config.icon_align || 'left';
               obj[key] = val;
               idx = nextIdx;
             } else {
-              obj[key] = this._parseYamlValue(valStr);
+              if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
+                const style = valStr.trim().startsWith('>') ? '>' : '|';
+                const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
+                obj[key] = val;
+                idx = ni;
+              } else {
+                obj[key] = this._parseYamlValue(valStr);
+              }
             }
             // Continue reading sibling keys at indent+2
             while (idx < lines.length) {
@@ -15573,7 +15656,14 @@ const iconAlign = this._config.icon_align || 'left';
                 obj[sk] = val;
                 idx = nextIdx;
               } else {
+                if (sv === '|' || sv.startsWith('|') || sv === '>' || sv.startsWith('>')) {
+                const style = sv.trim().startsWith('>') ? '>' : '|';
+                const [val, ni] = this._parseYamlBlockScalar(lines, idx, sibIndent, style);
+                obj[sk] = val;
+                idx = ni;
+              } else {
                 obj[sk] = this._parseYamlValue(sv);
+              }
               }
             }
             result.push(obj);
@@ -15607,7 +15697,14 @@ const iconAlign = this._config.icon_align || 'left';
               result[key] = null;
             }
           } else {
-            result[key] = this._parseYamlValue(valStr);
+            if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
+              const style = valStr.trim().startsWith('>') ? '>' : '|';
+              const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
+              result[key] = val;
+              idx = ni;
+            } else {
+              result[key] = this._parseYamlValue(valStr);
+            }
           }
         } else {
           idx++;
