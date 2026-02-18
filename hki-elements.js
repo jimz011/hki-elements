@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-13 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-14 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -4763,6 +4763,30 @@ window.customCards.push({
   });
 
 
+  // Inject popup animation keyframes once into the document
+  if (!document.getElementById('hki-popup-animations')) {
+    const s = document.createElement('style');
+    s.id = 'hki-popup-animations';
+    s.textContent = `
+      @keyframes hki-anim-fade-in        { from { opacity:0 }                           to { opacity:1 } }
+      @keyframes hki-anim-fade-out       { from { opacity:1 }                           to { opacity:0 } }
+      @keyframes hki-anim-scale-in       { from { opacity:0; transform:scale(.85) }     to { opacity:1; transform:scale(1) } }
+      @keyframes hki-anim-scale-out      { from { opacity:1; transform:scale(1) }       to { opacity:0; transform:scale(.85) } }
+      @keyframes hki-anim-slide-up       { from { opacity:0; transform:translateY(40px) }  to { opacity:1; transform:translateY(0) } }
+      @keyframes hki-anim-slide-out-down { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(40px) } }
+      @keyframes hki-anim-slide-down     { from { opacity:0; transform:translateY(-40px) } to { opacity:1; transform:translateY(0) } }
+      @keyframes hki-anim-slide-out-up   { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(-40px) } }
+      @keyframes hki-anim-slide-left     { from { opacity:0; transform:translateX(40px) }  to { opacity:1; transform:translateX(0) } }
+      @keyframes hki-anim-slide-out-right{ from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(40px) } }
+      @keyframes hki-anim-slide-right    { from { opacity:0; transform:translateX(-40px) } to { opacity:1; transform:translateX(0) } }
+      @keyframes hki-anim-slide-out-left { from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(-40px) } }
+      @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
+      @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
+      @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
+    `;
+    document.head.appendChild(s);
+  }
+
   // Prevent background page scroll when any popup is open
   let __hkiPrevBodyScroll = null;
   let __hkiPrevBodyPosition = null;
@@ -4962,6 +4986,9 @@ class HkiButtonCard extends LitElement {
       ['popup_card_opacity',        'hki_popup','card_opacity'],
       ['popup_default_view',        'hki_popup','default_view'],
       ['popup_default_section',     'hki_popup','default_section'],
+      ['popup_open_animation',      'hki_popup','open_animation'],
+      ['popup_close_animation',     'hki_popup','close_animation'],
+      ['popup_animation_duration',  'hki_popup','animation_duration'],
       // custom popup
       ['custom_popup_enabled',      'custom_popup','enabled'],
       ['custom_popup_card',         'custom_popup','card'],
@@ -6858,14 +6885,79 @@ _tileSliderClick(e) {
     }
 
     _closePopup() {
-      this._popupOpen = false;
-      this._isDragging = false;
-      this._expandedEffects = false;
-      if (this._popupPortal) {
-        this._popupPortal.remove();
+      const portal = this._popupPortal;
+      if (!portal) return;
+
+      const anim = this._config.popup_close_animation || 'none';
+      const dur = this._config.popup_animation_duration ?? 300;
+
+      if (anim === 'none') {
+        this._popupOpen = false;
+        this._isDragging = false;
+        this._expandedEffects = false;
+        portal.remove();
         this._popupPortal = null;
+        __hkiUnlockScroll();
+        return;
       }
-      __hkiUnlockScroll();
+
+      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
+      if (container) {
+        container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
+        container.addEventListener('animationend', () => {
+          this._popupOpen = false;
+          this._isDragging = false;
+          this._expandedEffects = false;
+          portal.remove();
+          this._popupPortal = null;
+          __hkiUnlockScroll();
+        }, { once: true });
+      } else {
+        this._popupOpen = false;
+        this._isDragging = false;
+        this._expandedEffects = false;
+        portal.remove();
+        this._popupPortal = null;
+        __hkiUnlockScroll();
+      }
+    }
+
+    _applyOpenAnimation(portal) {
+      const anim = this._config.popup_open_animation || 'none';
+      if (anim === 'none') return;
+      const dur = this._config.popup_animation_duration ?? 300;
+      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
+      if (container) {
+        container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+      }
+    }
+
+    _getOpenKeyframe(anim) {
+      const map = {
+        'fade':        'hki-anim-fade-in',
+        'scale':       'hki-anim-scale-in',
+        'slide-up':    'hki-anim-slide-up',
+        'slide-down':  'hki-anim-slide-down',
+        'slide-left':  'hki-anim-slide-left',
+        'slide-right': 'hki-anim-slide-right',
+        'flip':        'hki-anim-flip-in',
+        'bounce':      'hki-anim-bounce-in',
+      };
+      return map[anim] || 'hki-anim-fade-in';
+    }
+
+    _getCloseKeyframe(anim) {
+      const map = {
+        'fade':        'hki-anim-fade-out',
+        'scale':       'hki-anim-scale-out',
+        'slide-up':    'hki-anim-slide-out-down',
+        'slide-down':  'hki-anim-slide-out-up',
+        'slide-left':  'hki-anim-slide-out-right',
+        'slide-right': 'hki-anim-slide-out-left',
+        'flip':        'hki-anim-flip-out',
+        'bounce':      'hki-anim-scale-out',
+      };
+      return map[anim] || 'hki-anim-fade-out';
     }
 
     _getColorName(hue, saturation) {
@@ -7862,6 +7954,7 @@ _tileSliderClick(e) {
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       // Populate header icon (avoid rendering lit-html objects into innerHTML)
@@ -8195,6 +8288,7 @@ _tileSliderClick(e) {
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -9622,6 +9716,7 @@ _tileSliderClick(e) {
       });
 
 document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
 
@@ -10108,6 +10203,7 @@ document.body.appendChild(portal);
       `;
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupAlarmPopupHandlers(portal);
 
@@ -10450,6 +10546,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -10872,6 +10969,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11364,6 +11462,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11587,6 +11686,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11959,6 +12059,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -15511,6 +15612,21 @@ setConfig(config) {
         });
       }
     }
+
+    disconnectedCallback() {
+      super.disconnectedCallback?.();
+      // HA's save button removes the editor from DOM without calling any save method.
+      // Flush any unsaved yaml editor content before we're destroyed.
+      const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+      if (!yamlEditor) return;
+      const raw = yamlEditor.value ?? '';
+      const obj = this._yamlStrToObj(raw);
+      if (!obj) return;
+      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+      if (JSON.stringify(obj) !== JSON.stringify(existing)) {
+        this._fireChanged({ ...this._config, custom_popup_card: obj });
+      }
+    }
     
     shouldUpdate(changedProps) {
       // Always update if hass changed
@@ -16706,6 +16822,38 @@ ${isGoogleLayout ? '' : html`
                   </p>
                 </div>
                 
+                <div class="separator"></div>
+                <strong>Popup Animation</strong>
+                <div class="side-by-side">
+                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
+                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
+                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                    <mwc-list-item value="none">None</mwc-list-item>
+                    <mwc-list-item value="fade">Fade</mwc-list-item>
+                    <mwc-list-item value="scale">Scale</mwc-list-item>
+                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                    <mwc-list-item value="flip">Flip</mwc-list-item>
+                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  </ha-select>
+                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
+                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
+                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                    <mwc-list-item value="none">None</mwc-list-item>
+                    <mwc-list-item value="fade">Fade</mwc-list-item>
+                    <mwc-list-item value="scale">Scale</mwc-list-item>
+                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                    <mwc-list-item value="flip">Flip</mwc-list-item>
+                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  </ha-select>
+                </div>
+                <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
+
                 <div class="separator"></div>
                 <strong>Popup Container</strong>
                 <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
