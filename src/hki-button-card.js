@@ -98,6 +98,38 @@
   });
 
 
+  // Inject popup animation keyframes once into the document
+  if (!document.getElementById('hki-popup-animations')) {
+    const s = document.createElement('style');
+    s.id = 'hki-popup-animations';
+    s.textContent = `
+      @keyframes hki-anim-fade-in        { from { opacity:0 }                           to { opacity:1 } }
+      @keyframes hki-anim-fade-out       { from { opacity:1 }                           to { opacity:0 } }
+      @keyframes hki-anim-scale-in       { from { opacity:0; transform:scale(.85) }     to { opacity:1; transform:scale(1) } }
+      @keyframes hki-anim-scale-out      { from { opacity:1; transform:scale(1) }       to { opacity:0; transform:scale(.85) } }
+      @keyframes hki-anim-slide-up       { from { opacity:0; transform:translateY(40px) }  to { opacity:1; transform:translateY(0) } }
+      @keyframes hki-anim-slide-out-down { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(40px) } }
+      @keyframes hki-anim-slide-down     { from { opacity:0; transform:translateY(-40px) } to { opacity:1; transform:translateY(0) } }
+      @keyframes hki-anim-slide-out-up   { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(-40px) } }
+      @keyframes hki-anim-slide-left     { from { opacity:0; transform:translateX(40px) }  to { opacity:1; transform:translateX(0) } }
+      @keyframes hki-anim-slide-out-right{ from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(40px) } }
+      @keyframes hki-anim-slide-right    { from { opacity:0; transform:translateX(-40px) } to { opacity:1; transform:translateX(0) } }
+      @keyframes hki-anim-slide-out-left { from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(-40px) } }
+      @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
+      @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
+      @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
+      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
+      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
+      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
+      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
+      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
+      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
+      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
+      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
+    `;
+    document.head.appendChild(s);
+  }
+
   // Prevent background page scroll when any popup is open
   let __hkiPrevBodyScroll = null;
   let __hkiPrevBodyPosition = null;
@@ -297,6 +329,9 @@ class HkiButtonCard extends LitElement {
       ['popup_card_opacity',        'hki_popup','card_opacity'],
       ['popup_default_view',        'hki_popup','default_view'],
       ['popup_default_section',     'hki_popup','default_section'],
+      ['popup_open_animation',      'hki_popup','open_animation'],
+      ['popup_close_animation',     'hki_popup','close_animation'],
+      ['popup_animation_duration',  'hki_popup','animation_duration'],
       // custom popup
       ['custom_popup_enabled',      'custom_popup','enabled'],
       ['custom_popup_card',         'custom_popup','card'],
@@ -408,6 +443,11 @@ class HkiButtonCard extends LitElement {
     constructor() {
       super();
       this._paDomainCache = {};
+
+      // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
+      this._customPopupYamlDraft = null;
+      this._customPopupYamlFocused = false;
+      this._customPopupYamlDebounce = null;
       this._popupOpen = false;
       this._popupPortal = null;
       this._activeView = 'brightness'; // brightness, temperature, color
@@ -771,6 +811,19 @@ if (!shouldUpdate && oldEntity && newEntity &&
           if (!isDropdownFocused) {
           // Custom popup: update embedded card with new hass
           if (this._popupType === 'custom') {
+            // If this custom popup was opened without an entity, there is nothing to
+            // diff/track in hass. Re-rendering the entire portal on every hass update
+            // causes rapid rebuilds ("go crazy") and can prevent closing.
+            // In that case, only forward the latest hass to the embedded card.
+            if (!trackedId) {
+              const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
+              const cardElement = cardContainer?.querySelector('*:not([style])');
+              if (cardElement && cardElement.hass !== this.hass) {
+                cardElement.hass = this.hass;
+              }
+              return;
+            }
+
             const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
             const cardElement = cardContainer?.querySelector('*:not([style])');
             if (cardElement && cardElement.hass !== this.hass) {
@@ -1082,6 +1135,17 @@ if (!shouldUpdate && oldEntity && newEntity &&
         'humidifier': 'mdi:air-humidifier',
       };
       return iconMap[domain] || 'mdi:gesture-tap-button';
+    }
+
+    /**
+     * Return the resolved icon for popup headers.
+     * Priority: configured icon (with template evaluation) → entity attribute icon → provided fallback
+     */
+    _getResolvedIcon(entity, fallback) {
+      const cfgIcon = this._config.icon
+        ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
+        : '';
+      return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
     }
 
     // Returns the best color for a climate entity by checking hvac_action first,
@@ -1843,7 +1907,8 @@ _tileSliderClick(e) {
       if (actionConfig.action === "toggle") {
         const domain = this._getDomain ? this._getDomain() : undefined;
         const entityId = this._config.entity;
-    
+        if (!entityId) return;
+
         // Climate: toggle OFF <-> last used HVAC mode
         if (domain === "climate") {
           const ent = this._getEntity && this._getEntity();
@@ -1971,6 +2036,13 @@ _tileSliderClick(e) {
     }
 
     _supportsHkiPopup() {
+      // Allow HKI popup for any domain when Custom Popup is enabled,
+      // because it doesn't depend on the entity domain. This also enables
+      // dummy buttons (no entity) to open a Custom Popup.
+      const customPopupEnabled = this._config?.custom_popup?.enabled || this._config?.custom_popup_enabled;
+      const customPopupCard = this._config?.custom_popup?.card || this._config?.custom_popup_card;
+      if (customPopupEnabled) return true; // card may be edited after enabling
+
       const domain = this._getDomain();
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
     }
@@ -2182,14 +2254,89 @@ _tileSliderClick(e) {
     }
 
     _closePopup() {
-      this._popupOpen = false;
-      this._isDragging = false;
-      this._expandedEffects = false;
-      if (this._popupPortal) {
-        this._popupPortal.remove();
+      const portal = this._popupPortal;
+      if (!portal) return;
+
+      const anim = this._config.popup_close_animation || 'none';
+      const dur = this._config.popup_animation_duration ?? 300;
+
+      if (anim === 'none') {
+        this._popupOpen = false;
+        this._isDragging = false;
+        this._expandedEffects = false;
+        portal.remove();
         this._popupPortal = null;
+        __hkiUnlockScroll();
+        return;
       }
-      __hkiUnlockScroll();
+
+      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
+      if (container) {
+        container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
+        container.addEventListener('animationend', () => {
+          this._popupOpen = false;
+          this._isDragging = false;
+          this._expandedEffects = false;
+          portal.remove();
+          this._popupPortal = null;
+          __hkiUnlockScroll();
+        }, { once: true });
+      } else {
+        this._popupOpen = false;
+        this._isDragging = false;
+        this._expandedEffects = false;
+        portal.remove();
+        this._popupPortal = null;
+        __hkiUnlockScroll();
+      }
+    }
+
+    _applyOpenAnimation(portal) {
+      const anim = this._config.popup_open_animation || 'none';
+      if (anim === 'none') return;
+      const dur = this._config.popup_animation_duration ?? 300;
+      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
+      if (container) {
+        container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+      }
+    }
+
+    _getOpenKeyframe(anim) {
+      const map = {
+        'fade':        'hki-anim-fade-in',
+        'scale':       'hki-anim-scale-in',
+        'slide-up':    'hki-anim-slide-up',
+        'slide-down':  'hki-anim-slide-down',
+        'slide-left':  'hki-anim-slide-left',
+        'slide-right': 'hki-anim-slide-right',
+        'flip':        'hki-anim-flip-in',
+        'bounce':      'hki-anim-bounce-in',
+        'zoom':        'hki-anim-zoom-in',
+        'rotate':      'hki-anim-rotate-in',
+        'drop':        'hki-anim-drop-in',
+        'swing':       'hki-anim-swing-in',
+      };
+
+      return map[anim] || 'hki-anim-fade-in';
+    }
+
+    _getCloseKeyframe(anim) {
+      const map = {
+        'fade':        'hki-anim-fade-out',
+        'scale':       'hki-anim-scale-out',
+        'slide-up':    'hki-anim-slide-out-down',
+        'slide-down':  'hki-anim-slide-out-up',
+        'slide-left':  'hki-anim-slide-out-right',
+        'slide-right': 'hki-anim-slide-out-left',
+        'flip':        'hki-anim-flip-out',
+        'bounce':      'hki-anim-scale-out',
+        'zoom':        'hki-anim-zoom-out',
+        'rotate':      'hki-anim-rotate-out',
+        'drop':        'hki-anim-drop-out',
+        'swing':       'hki-anim-swing-out',
+      };
+
+      return map[anim] || 'hki-anim-fade-out';
     }
 
     _getColorName(hue, saturation) {
@@ -3186,6 +3333,7 @@ _tileSliderClick(e) {
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       // Populate header icon (avoid rendering lit-html objects into innerHTML)
@@ -3233,7 +3381,6 @@ _tileSliderClick(e) {
 
     _renderClimatePopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -3519,6 +3666,7 @@ _tileSliderClick(e) {
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -4609,7 +4757,6 @@ _tileSliderClick(e) {
 
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-      if (!entity) return;
 
       if (this._popupPortal) {
         this._popupPortal.remove();
@@ -4641,7 +4788,7 @@ _tileSliderClick(e) {
 
       const safeTitle = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-      const controlsIcon = 'mdi:window-shutter';
+      const controlsIcon = this._getResolvedIcon(entity, 'mdi:window-shutter');
 
       const groupBtn = isGroup ? `
         <button class="header-btn" id="coverGroupBtn" title="Group">
@@ -4946,6 +5093,7 @@ _tileSliderClick(e) {
       });
 
 document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
 
@@ -5253,7 +5401,6 @@ document.body.appendChild(portal);
      * ------------------------------------------------------------------ */
     _renderAlarmPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-      if (!entity) return;
 
       if (this._popupPortal) this._popupPortal.remove();
 
@@ -5262,7 +5409,7 @@ document.body.appendChild(portal);
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const icon = (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock';
+      const icon = this._getResolvedIcon(entity, (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock');
       const iconColor = (state === 'disarmed') ? '#4CAF50' : '#F44336';
 
       const portal = document.createElement('div');
@@ -5432,6 +5579,7 @@ document.body.appendChild(portal);
       `;
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupAlarmPopupHandlers(portal);
 
@@ -5563,7 +5711,6 @@ document.body.appendChild(portal);
      */
     _renderHumidifierPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -5577,7 +5724,7 @@ document.body.appendChild(portal);
       const currentMode = attrs.mode || 'normal';
       
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:air-humidifier' : 'mdi:air-humidifier-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:air-humidifier' : 'mdi:air-humidifier-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -5774,6 +5921,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -5980,7 +6128,6 @@ document.body.appendChild(portal);
      */
     _renderFanPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -5995,7 +6142,7 @@ document.body.appendChild(portal);
       const supportsOscillate = attrs.supported_features ? (attrs.supported_features & 4) !== 0 : false;
       
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:fan' : 'mdi:fan-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:fan' : 'mdi:fan-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -6196,6 +6343,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -6450,7 +6598,16 @@ document.body.appendChild(portal);
       if (this._popupPortal) this._popupPortal.remove();
       this._popupType = 'switch';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
-      if (!entity) return;
+      const hasRealEntity = !!entity;
+      if (!entity) {
+        entity = {
+          entity_id: this._config?.entity || 'hki.dummy',
+          state: '',
+          attributes: { friendly_name: this._config?.name || 'Popup' },
+          last_changed: new Date().toISOString(),
+        };
+      }
+
 
       const domain = (entity.entity_id || this._config.entity || '').split('.')[0] || this._getDomain();
       const serviceDomain = domain === 'group' ? 'homeassistant' : (domain === 'input_boolean' ? 'input_boolean' : 'switch');
@@ -6474,7 +6631,7 @@ document.body.appendChild(portal);
       }
 
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
-      const icon = isOn ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off';
+      const icon = this._getResolvedIcon(entity, isOn ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -6688,6 +6845,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -6762,16 +6920,27 @@ document.body.appendChild(portal);
       if (this._popupPortal) this._popupPortal.remove();
       this._popupType = 'custom';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
-      if (!entity) return;
+      const hasRealEntity = !!entity;
+      if (!entity) {
+        entity = {
+          entity_id: this._config?.entity || 'hki.dummy',
+          state: '',
+          attributes: { friendly_name: this._config?.name || 'Popup' },
+          last_changed: new Date().toISOString(),
+        };
+      }
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
-      const state = entity.state;
-      const domain = this._getDomain();
-      const icon = this._config.icon || entity?.attributes?.icon || this._getDomainIcon(domain);
+
+      const name = entity?.attributes?.friendly_name || this._config?.name || this._config?.entity || 'Popup';
+      const state = entity?.state || '';
+      const domain = entity ? this._getDomain() : '';
+      const icon = entity ? this._getResolvedIcon(entity, this._getDomainIcon(domain)) : (this._config?.icon || 'mdi:information');
       
       // Get state color based on domain and state
       let color;
-      if (domain === 'climate') {
+      if (!entity) {
+        color = 'var(--primary-color, #03a9f4)';
+      } else if (domain === 'climate') {
         color = this._getClimateColor(entity);
       } else if (domain === 'light' && state === 'on') {
         color = this._getCurrentColor() || '#ffc107';
@@ -6895,7 +7064,23 @@ document.body.appendChild(portal);
         }));
       });
 
+      // Forward more-info and dialog events — tile/button cards fire these directly
+      // and they must reach the HA root to open the dialog.
+      // Close our popup first so the dialog is fully visible.
+      ['hass-more-info', 'hass-show-dialog', 'show-dialog'].forEach(evtName => {
+        portal.addEventListener(evtName, (e) => {
+          e.stopPropagation();
+          this._closePopup();
+          this.dispatchEvent(new CustomEvent(evtName, {
+            detail: e.detail,
+            bubbles: true,
+            composed: true,
+          }));
+        });
+      });
+
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -7040,7 +7225,6 @@ document.body.appendChild(portal);
     }
     _renderLockPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const state = entity.state;
@@ -7058,12 +7242,12 @@ document.body.appendChild(portal);
       
       // Override color and state text if contact sensor is open
       let color = isLocked ? '#4CAF50' : (isJammed ? '#F44336' : '#FFC107');
-      let icon = isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open');
+      let icon = this._getResolvedIcon(entity, isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open'));
       let stateText = this._getLocalizedState(state, 'lock');
       
       if (isContactOpen) {
         color = '#F44336'; // Red when contact sensor is open
-        icon = 'mdi:lock-alert';
+        icon = this._getResolvedIcon(entity, 'mdi:lock-alert');
         stateText = contactOpenLabel;
       }
       
@@ -7268,6 +7452,7 @@ document.body.appendChild(portal);
       });
 
       document.body.appendChild(portal);
+      this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -9010,7 +9195,7 @@ const iconAlign = this._config.icon_align || 'left';
               // Don't handle if slider is active (let slider handle it)
               if (showBrightnessSlider) return;
               e.stopPropagation(); 
-              this._handleDelayClick(this._config.tap_action || { action: "toggle" }, this._config.double_tap_action); 
+              this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action); 
             }}
             @mousedown=${(e) => {
               // Don't handle if slider is active
@@ -9043,7 +9228,7 @@ const iconAlign = this._config.icon_align || 'left';
                 @click=${(e) => { 
                   e.stopPropagation();
                   // When slider is enabled, the card itself ignores taps; so the icon handles them.
-                  const ta = (this._config.icon_tap_action || this._config.tap_action || { action: "toggle" });
+                  const ta = (this._config.icon_tap_action || this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }));
                   const dta = (this._config.icon_double_tap_action || this._config.double_tap_action);
                   this._handleDelayClick(ta, dta);
                 }}
@@ -9330,7 +9515,7 @@ const iconAlign = this._config.icon_align || 'left';
             --hki-icon-circle-size: calc(var(--hki-icon-size) + 16px);
             
           "
-          @click=${() => this._handleDelayClick(this._config.tap_action || { action: "toggle" }, this._config.double_tap_action || { action: "hki-more-info" })}
+          @click=${() => this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action || { action: "hki-more-info" })}
 	          
           @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
           @mouseup=${() => this._clearHold()}
@@ -10624,6 +10809,283 @@ const iconAlign = this._config.icon_align || 'left';
 
 
     
+    _cardObjToYaml(obj, indent = 0) {
+      if (obj == null) return '';
+      const pad = '  '.repeat(indent);
+      if (typeof obj === 'boolean' || typeof obj === 'number') return String(obj);
+      if (typeof obj === 'string') {
+        const s = obj;
+
+        // Multiline strings -> YAML block scalar (preserves formatting/templates)
+        if (s.includes('\n')) {
+          const indentStr = '  '.repeat(indent + 1);
+          const lines = s.split('\n').map(line => `${indentStr}${line}`).join('\n');
+          return `|-\n${lines}`;
+        }
+
+        // Only quote when truly needed - NOT just because string contains ':'
+        // mdi:power, custom:card, scene.entity are all valid unquoted YAML values
+        if (s === '' || ['true','false','null','yes','no','on','off'].includes(s.toLowerCase()) ||
+            (!isNaN(Number(s)) && s.trim() !== '') ||
+            /^[\{\[\*&!|>'"@`]/.test(s) || / #/.test(s) || /^\s|\s$/.test(s)) {
+          return `"${s.replace(/\\/g,'\\\\').replace(/"/g,'\\\"')}"`;
+        }
+        return s;
+      }
+
+if (Array.isArray(obj)) {
+        return obj.map(item => {
+          if (item && typeof item === 'object') {
+            // Render object entries; first entry goes inline with "- ", rest align to same column
+            const entries = Object.entries(item);
+            if (entries.length === 0) return `${pad}-`;
+            const [firstKey, firstVal] = entries[0];
+            const firstValStr = (firstVal && typeof firstVal === 'object')
+              ? `\n${this._cardObjToYaml(firstVal, indent + 2)}`
+              : ` ${this._cardObjToYaml(firstVal, indent + 1)}`;
+            const rest = entries.slice(1).map(([k, v]) => {
+              const valStr = (v && typeof v === 'object')
+                ? `\n${this._cardObjToYaml(v, indent + 2)}`
+                : ` ${this._cardObjToYaml(v, indent + 1)}`;
+              return `${'  '.repeat(indent + 1)}${k}:${valStr}`;
+            });
+            return [`${pad}- ${firstKey}:${firstValStr}`, ...rest].join('\n');
+          }
+          return `${pad}- ${this._cardObjToYaml(item, indent)}`;
+        }).join('\n');
+      }
+      if (typeof obj === 'object') {
+        return Object.entries(obj).map(([k, v]) => {
+          if (v && typeof v === 'object') {
+            return `${pad}${k}:\n${this._cardObjToYaml(v, indent + 1)}`;
+          }
+          const rendered = this._cardObjToYaml(v, indent);
+          return `${pad}${k}: ${rendered}`;
+        }).join('\n');
+      }
+      return String(obj);
+    }
+
+    _yamlStrToObj(str) {
+      if (!str || !str.trim()) return null;
+      try {
+        const lines = str.split('\n');
+        const [obj] = this._parseYamlBlock(lines, 0, 0);
+        return (obj && typeof obj === 'object') ? obj : null;
+      } catch(e) { return null; }
+    }
+
+    _parseYamlValue(raw) {
+      const s = raw.trim();
+      if (s === 'true' || s === 'yes') return true;
+      if (s === 'false' || s === 'no') return false;
+      if (s === 'null' || s === '~' || s === '') return null;
+      if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))
+        return s.slice(1,-1).replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+      const n = Number(s);
+      if (!isNaN(n) && s !== '') return n;
+      return s;
+    }
+
+    _parseYamlBlockScalar(lines, startIdx, parentIndent, style) {
+      // Minimal YAML block scalar support for "|" (literal) and ">" (folded)
+      // Returns [stringValue, nextIdx]
+      let idx = startIdx;
+
+      // Find indentation level of the scalar content (first non-empty line)
+      let contentIndent = null;
+      while (idx < lines.length) {
+        const line = lines[idx];
+        if (line.trimEnd() === '') { idx++; continue; }
+        const indent = line.length - line.trimStart().length;
+        if (indent <= parentIndent) {
+          // no content (or scalar ended immediately)
+          return ['', idx];
+        }
+        contentIndent = indent;
+        break;
+      }
+      if (contentIndent === null) return ['', idx];
+
+      const outLines = [];
+      while (idx < lines.length) {
+        const line = lines[idx];
+        const trimmedEnd = line.trimEnd();
+        if (trimmedEnd === '') {
+          outLines.push('');
+          idx++;
+          continue;
+        }
+        const indent = line.length - line.trimStart().length;
+        if (indent <= parentIndent) break; // scalar ended
+        // Strip the content indentation (or as much as available)
+        outLines.push(line.slice(Math.min(contentIndent, line.length)));
+        idx++;
+      }
+
+      if (style === '>') {
+        // Fold: turn single newlines into spaces, keep paragraph breaks
+        const paragraphs = [];
+        let current = [];
+        for (const l of outLines) {
+          if (l === '') {
+            if (current.length) {
+              paragraphs.push(current.join(' ').trimEnd());
+              current = [];
+            }
+            // keep empty line as paragraph separator
+            paragraphs.push('');
+          } else {
+            current.push(l.trimEnd());
+          }
+        }
+        if (current.length) paragraphs.push(current.join(' ').trimEnd());
+
+        // Rebuild, preserving blank lines
+        let folded = '';
+        for (let p = 0; p < paragraphs.length; p++) {
+          const part = paragraphs[p];
+          if (part === '') {
+            // avoid trailing extra blank lines
+            if (!folded.endsWith('\n') && folded !== '') folded += '\n';
+            folded += '\n';
+          } else {
+            if (folded !== '' && !folded.endsWith('\n\n')) folded += '\n';
+            folded += part;
+          }
+        }
+        return [folded.replace(/\n\n\n+/g, '\n\n'), idx];
+      }
+
+      // Literal
+      return [outLines.join('\n'), idx];
+    }
+
+
+    _parseYamlBlock(lines, startIdx, baseIndent) {
+      // Returns [result, nextIdx]
+      // Detect if this block is an array or object by looking at first non-empty line
+      let idx = startIdx;
+      let result = null;
+
+      while (idx < lines.length) {
+        const line = lines[idx];
+        const trimmed = line.trimEnd();
+        if (trimmed === '' || trimmed.trimStart().startsWith('#')) { idx++; continue; }
+        const indent = trimmed.length - trimmed.trimStart().length;
+        if (indent < baseIndent) break; // dedented — end of block
+
+        const content = trimmed.trimStart();
+
+        if (content.startsWith('- ') || content === '-') {
+          // Array
+          if (!Array.isArray(result)) result = [];
+          const itemContent = content.startsWith('- ') ? content.slice(2).trimStart() : '';
+
+          if (itemContent === '') {
+            // Next lines form the item
+            idx++;
+            const [val, nextIdx] = this._parseYamlBlock(lines, idx, indent + 2);
+            result.push(val);
+            idx = nextIdx;
+          } else if (itemContent.includes(': ') || itemContent.endsWith(':')) {
+            // Inline object start: "- key: value" or "- key:"
+            const obj = {};
+            const colonIdx = itemContent.indexOf(': ');
+            const colonEnd = itemContent.endsWith(':');
+            const key = colonEnd ? itemContent.slice(0, -1) : itemContent.slice(0, colonIdx);
+            const valStr = colonEnd ? '' : itemContent.slice(colonIdx + 2);
+            idx++;
+            if (valStr === '' || colonEnd) {
+              const [val, nextIdx] = this._parseYamlBlock(lines, idx, indent + 2);
+              obj[key] = val;
+              idx = nextIdx;
+            } else {
+              if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
+                const style = valStr.trim().startsWith('>') ? '>' : '|';
+                const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
+                obj[key] = val;
+                idx = ni;
+              } else {
+                obj[key] = this._parseYamlValue(valStr);
+              }
+            }
+            // Continue reading sibling keys at indent+2
+            while (idx < lines.length) {
+              const sibLine = lines[idx].trimEnd();
+              if (sibLine === '' || sibLine.trimStart().startsWith('#')) { idx++; continue; }
+              const sibIndent = sibLine.length - sibLine.trimStart().length;
+              if (sibIndent !== indent + 2) break;
+              const sibContent = sibLine.trimStart();
+              if (sibContent.startsWith('- ') || sibContent === '-') break; // next array item
+              const ci = sibContent.indexOf(': ');
+              const ce = sibContent.endsWith(':');
+              if (ci === -1 && !ce) break;
+              const sk = ce ? sibContent.slice(0,-1) : sibContent.slice(0, ci);
+              const sv = ce ? '' : sibContent.slice(ci + 2);
+              idx++;
+              if (sv === '' || ce) {
+                const [val, nextIdx] = this._parseYamlBlock(lines, idx, sibIndent + 2);
+                obj[sk] = val;
+                idx = nextIdx;
+              } else {
+                if (sv === '|' || sv.startsWith('|') || sv === '>' || sv.startsWith('>')) {
+                const style = sv.trim().startsWith('>') ? '>' : '|';
+                const [val, ni] = this._parseYamlBlockScalar(lines, idx, sibIndent, style);
+                obj[sk] = val;
+                idx = ni;
+              } else {
+                obj[sk] = this._parseYamlValue(sv);
+              }
+              }
+            }
+            result.push(obj);
+          } else {
+            result.push(this._parseYamlValue(itemContent));
+            idx++;
+          }
+        } else if (content.includes(': ') || content.endsWith(':')) {
+          // Object
+          if (!result || Array.isArray(result)) result = {};
+          const ci = content.indexOf(': ');
+          const ce = content.endsWith(':');
+          const key = ce ? content.slice(0,-1) : content.slice(0, ci);
+          const valStr = ce ? '' : content.slice(ci + 2);
+          idx++;
+          if (valStr === '' || ce) {
+            // Check if next line is more indented (nested block) or same (empty value)
+            let nextIdx2 = idx;
+            while (nextIdx2 < lines.length && lines[nextIdx2].trim() === '') nextIdx2++;
+            const nextLine = lines[nextIdx2];
+            if (nextLine !== undefined) {
+              const nextIndent = nextLine.length - nextLine.trimStart().length;
+              if (nextIndent > indent) {
+                const [val, ni] = this._parseYamlBlock(lines, idx, nextIndent);
+                result[key] = val;
+                idx = ni;
+              } else {
+                result[key] = null;
+              }
+            } else {
+              result[key] = null;
+            }
+          } else {
+            if (valStr === '|' || valStr.startsWith('|') || valStr === '>' || valStr.startsWith('>')) {
+              const style = valStr.trim().startsWith('>') ? '>' : '|';
+              const [val, ni] = this._parseYamlBlockScalar(lines, idx, indent, style);
+              result[key] = val;
+              idx = ni;
+            } else {
+              result[key] = this._parseYamlValue(valStr);
+            }
+          }
+        } else {
+          idx++;
+        }
+      }
+      return [result, idx];
+    }
+
     _defaultFontWeight(prefix) {
       if (prefix === "name") return "bold";
       if (prefix === "state") return "bold";
@@ -10631,9 +11093,16 @@ const iconAlign = this._config.icon_align || 'left';
       return "normal";
     }
 
+
 setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
+      // If the user is not actively editing the YAML, drop the draft so the editor shows the
+      // serialized value from config again. While focused, keep the draft to avoid cursor jumps.
+      if (!this._customPopupYamlFocused) {
+        this._customPopupYamlDraft = null;
+      }
+
       // Auto-convert: if the incoming YAML differs from its normalized form,
       // immediately fire config-changed so HA saves the clean nested format.
       // This handles: old flat keys, obsolete/invalid keys, and nested drift.
@@ -10646,6 +11115,21 @@ setConfig(config) {
             composed: true,
           }));
         });
+      }
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback?.();
+      // HA's save button removes the editor from DOM without calling any save method.
+      // Flush any unsaved yaml editor content before we're destroyed.
+      const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
+      if (!yamlEditor) return;
+      const raw = yamlEditor.value ?? '';
+      const obj = this._yamlStrToObj(raw);
+      if (!obj) return;
+      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+      if (JSON.stringify(obj) !== JSON.stringify(existing)) {
+        this._fireChanged({ ...this._config, custom_popup_card: obj });
       }
     }
     
@@ -11814,29 +12298,86 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
+                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-yaml-editor
+                  <ha-code-editor
+                    class="custom-popup-yaml-editor"
                     .hass=${this.hass}
+                    mode="yaml"
+                    autocomplete-entities
+                    autocomplete-icons
+                    .autocompleteEntities=${true}
+                    .autocompleteIcons=${true}
                     .label=${"Card Config"}
-                    .value=${this._config.custom_popup_card || this._config.custom_popup?.card || null}
+                    .value=${this._customPopupYamlDraft ?? this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
+                    @focus=${() => { this._customPopupYamlFocused = true; }}
+                    @blur=${() => { this._customPopupYamlFocused = false; }}
                     @value-changed=${(ev) => {
                       ev.stopPropagation();
-                      const value = ev.detail?.value;
-                      if (value && typeof value === 'object') {
-                        this._fireChanged({ ...this._config, custom_popup_card: value });
-                      }
+                      const raw = ev.detail?.value ?? "";
+                      // Keep what the user typed; don't re-serialize YAML while typing (prevents cursor jumps / spacing issues)
+                      this._customPopupYamlDraft = raw;
+
+                      clearTimeout(this._customPopupYamlDebounce);
+                      this._customPopupYamlDebounce = setTimeout(() => {
+                        const obj = this._yamlStrToObj(raw);
+                        if (!obj) return; // invalid YAML: keep draft, don't overwrite config
+
+                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                        if (JSON.stringify(obj) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: obj });
+                        }
+                      }, 300);
                     }}
                     @click=${(e) => e.stopPropagation()}
-                  ></ha-yaml-editor>
-                  
-                  <p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
+                  ></ha-code-editor>
+<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
                     <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
                     The popup will maintain its header (icon, name, timestamp), history button, and close button.
                   </p>
-                ` : ''}
+                </div>
                 
+                <div class="separator"></div>
+                <strong>Popup Animation</strong>
+                <div class="side-by-side">
+                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
+                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
+                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                    <mwc-list-item value="none">None</mwc-list-item>
+                    <mwc-list-item value="fade">Fade</mwc-list-item>
+                    <mwc-list-item value="scale">Scale</mwc-list-item>
+                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                    <mwc-list-item value="flip">Flip</mwc-list-item>
+                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                     <mwc-list-item value="drop">Drop</mwc-list-item>
+                     <mwc-list-item value="swing">Swing</mwc-list-item>
+                  </ha-select>
+                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
+                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
+                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                    <mwc-list-item value="none">None</mwc-list-item>
+                    <mwc-list-item value="fade">Fade</mwc-list-item>
+                    <mwc-list-item value="scale">Scale</mwc-list-item>
+                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                    <mwc-list-item value="flip">Flip</mwc-list-item>
+                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                     <mwc-list-item value="drop">Drop</mwc-list-item>
+                     <mwc-list-item value="swing">Swing</mwc-list-item>
+                  </ha-select>
+                </div>
+                <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
+
                 <div class="separator"></div>
                 <strong>Popup Container</strong>
                 <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
@@ -12772,7 +13313,6 @@ ${isGoogleLayout ? '' : html`
                 display: block; 
                 margin-bottom: 8px; 
             }
-            
             ha-formfield { 
                 display: flex; 
                 align-items: center; 
