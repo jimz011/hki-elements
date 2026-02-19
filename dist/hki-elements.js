@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-22 ',
+  '%c HKI-ELEMENTS %c v1.0.3-dev-23 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5476,6 +5476,19 @@ if (!shouldUpdate && oldEntity && newEntity &&
           if (!isDropdownFocused) {
           // Custom popup: update embedded card with new hass
           if (this._popupType === 'custom') {
+            // If this custom popup was opened without an entity, there is nothing to
+            // diff/track in hass. Re-rendering the entire portal on every hass update
+            // causes rapid rebuilds ("go crazy") and can prevent closing.
+            // In that case, only forward the latest hass to the embedded card.
+            if (!trackedId) {
+              const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
+              const cardElement = cardContainer?.querySelector('*:not([style])');
+              if (cardElement && cardElement.hass !== this.hass) {
+                cardElement.hass = this.hass;
+              }
+              return;
+            }
+
             const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
             const cardElement = cardContainer?.querySelector('*:not([style])');
             if (cardElement && cardElement.hass !== this.hass) {
