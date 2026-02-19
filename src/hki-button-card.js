@@ -3368,7 +3368,6 @@ _tileSliderClick(e) {
 
     _renderClimatePopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -4745,7 +4744,6 @@ _tileSliderClick(e) {
 
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-      if (!entity) return;
 
       if (this._popupPortal) {
         this._popupPortal.remove();
@@ -5390,7 +5388,6 @@ document.body.appendChild(portal);
      * ------------------------------------------------------------------ */
     _renderAlarmPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-      if (!entity) return;
 
       if (this._popupPortal) this._popupPortal.remove();
 
@@ -5701,7 +5698,6 @@ document.body.appendChild(portal);
      */
     _renderHumidifierPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -6119,7 +6115,6 @@ document.body.appendChild(portal);
      */
     _renderFanPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const attrs = entity.attributes || {};
@@ -6590,7 +6585,16 @@ document.body.appendChild(portal);
       if (this._popupPortal) this._popupPortal.remove();
       this._popupType = 'switch';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
-      if (!entity) return;
+      const hasRealEntity = !!entity;
+      if (!entity) {
+        entity = {
+          entity_id: this._config?.entity || 'hki.dummy',
+          state: '',
+          attributes: { friendly_name: this._config?.name || 'Popup' },
+          last_changed: new Date().toISOString(),
+        };
+      }
+
 
       const domain = (entity.entity_id || this._config.entity || '').split('.')[0] || this._getDomain();
       const serviceDomain = domain === 'group' ? 'homeassistant' : (domain === 'input_boolean' ? 'input_boolean' : 'switch');
@@ -6903,16 +6907,27 @@ document.body.appendChild(portal);
       if (this._popupPortal) this._popupPortal.remove();
       this._popupType = 'custom';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
-      if (!entity) return;
+      const hasRealEntity = !!entity;
+      if (!entity) {
+        entity = {
+          entity_id: this._config?.entity || 'hki.dummy',
+          state: '',
+          attributes: { friendly_name: this._config?.name || 'Popup' },
+          last_changed: new Date().toISOString(),
+        };
+      }
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
-      const state = entity.state;
-      const domain = this._getDomain();
-      const icon = this._getResolvedIcon(entity, this._getDomainIcon(domain));
+
+      const name = entity?.attributes?.friendly_name || this._config?.name || this._config?.entity || 'Popup';
+      const state = entity?.state || '';
+      const domain = entity ? this._getDomain() : '';
+      const icon = entity ? this._getResolvedIcon(entity, this._getDomainIcon(domain)) : (this._config?.icon || 'mdi:information');
       
       // Get state color based on domain and state
       let color;
-      if (domain === 'climate') {
+      if (!entity) {
+        color = 'var(--primary-color, #03a9f4)';
+      } else if (domain === 'climate') {
         color = this._getClimateColor(entity);
       } else if (domain === 'light' && state === 'on') {
         color = this._getCurrentColor() || '#ffc107';
@@ -7197,7 +7212,6 @@ document.body.appendChild(portal);
     }
     _renderLockPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
-      if (!entity) return;
 
       const name = entity?.attributes?.friendly_name || '' || this._config.entity;
       const state = entity.state;
