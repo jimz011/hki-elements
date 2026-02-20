@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3-dev-23 ',
+  '%c HKI-ELEMENTS %c v1.0.4-dev-01 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5732,7 +5732,7 @@ if (!shouldUpdate && oldEntity && newEntity &&
       if (!this._popupPortal) return;
       const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon');
       if (headerIcon) {
-        headerIcon.style.color = this._getCurrentColor();
+        headerIcon.style.color = this._getPopupIconColor(this._getCurrentColor());
       }
       const stateEl = this._popupPortal.querySelector('.hki-light-popup-state');
       if (stateEl) {
@@ -5741,7 +5741,7 @@ if (!shouldUpdate && oldEntity && newEntity &&
 	        const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
 	        const isOnEffective = isUnavailable ? false : isOn;
         const brightness = this._getBrightness();
-	        stateEl.textContent = isOnEffective ? brightness + '%' : 'Off';
+	        stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
       }
     }
 
@@ -5811,6 +5811,46 @@ if (!shouldUpdate && oldEntity && newEntity &&
         ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
         : '';
       return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
+    }
+
+    /**
+     * Returns the display name for popup headers.
+     * Priority: config name (template-resolved) → entity friendly_name → entity id
+     */
+    _getPopupName(entity) {
+      if (this._config.name) {
+        return this._isTemplate(this._config.name)
+          ? (this._renderedName || entity?.attributes?.friendly_name || this._config.entity || '')
+          : this._config.name;
+      }
+      return entity?.attributes?.friendly_name || this._config.entity || '';
+    }
+
+    /**
+     * Returns the state string for popup headers.
+     * If state_label is explicitly configured, it takes priority over the
+     * domain-specific state string (e.g. brightness %, mode name, etc.).
+     */
+    _getPopupHeaderState(domainSpecificState) {
+      if (this._config.state_label !== undefined && this._config.state_label !== '') {
+        return this._isTemplate(this._config.state_label)
+          ? (this._renderedState || domainSpecificState)
+          : this._config.state_label;
+      }
+      return domainSpecificState;
+    }
+
+    /**
+     * Returns the icon color to use in popup headers.
+     * If icon_color is set in config it takes priority (template-aware).
+     * Otherwise the domain-specific color (brightness-derived, state-based, etc.) is used.
+     */
+    _getPopupIconColor(domainColor) {
+      if (this._config.icon_color) {
+        const rendered = this.renderTemplate('iconColor', this._config.icon_color);
+        if (rendered && rendered !== '[object Object]') return rendered;
+      }
+      return domainColor;
     }
 
     // Returns the best color for a climate entity by checking hvac_action first,
@@ -6922,7 +6962,7 @@ _tileSliderClick(e) {
       const portal = this._popupPortal;
       if (!portal) return;
 
-      const anim = this._config.popup_close_animation || 'none';
+      const anim = this._config.popup_close_animation || 'scale';
       const dur = this._config.popup_animation_duration ?? 300;
 
       if (anim === 'none') {
@@ -6957,7 +6997,7 @@ _tileSliderClick(e) {
     }
 
     _applyOpenAnimation(portal) {
-      const anim = this._config.popup_open_animation || 'none';
+      const anim = this._config.popup_open_animation || 'scale';
       if (anim === 'none') return;
       const dur = this._config.popup_animation_duration ?? 300;
       const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
@@ -7476,7 +7516,7 @@ _tileSliderClick(e) {
       }
 
       const entity = this._getEntity();
-      const entityName = this._config.name || ((entity ? entity?.attributes?.friendly_name || '' : '') || this._config.entity);
+      const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
       const isOnEffective = isUnavailable ? false : isOn;
@@ -7913,7 +7953,7 @@ _tileSliderClick(e) {
               <span id="hkiHeaderIconSlot"></span>
               <span class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off'))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </span>
             </span>
             <div class="hki-light-popup-header-controls">
@@ -8020,6 +8060,12 @@ _tileSliderClick(e) {
               el.icon = cfgIcon;
             }
 
+            // Apply custom icon_color if configured (overrides HA-native coloring)
+            const _slotIconColor = this._getPopupIconColor(null);
+            if (_slotIconColor) {
+              el.style.color = _slotIconColor;
+            }
+
             slot.appendChild(el);
           }
         }
@@ -8047,7 +8093,7 @@ _tileSliderClick(e) {
     _renderClimatePopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const mode = entity.state;
       const unit = '°';
@@ -8290,10 +8336,10 @@ _tileSliderClick(e) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${renderStateLine()}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -9428,7 +9474,7 @@ _tileSliderClick(e) {
       }
 
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const pos = this._getCoverPosition(entity);
 
       // Check default view configuration for groups
@@ -9706,10 +9752,10 @@ _tileSliderClick(e) {
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${controlsIcon}" style="color: rgba(33,150,243,0.95)"></ha-icon>
+              <ha-icon icon="${controlsIcon}" style="color: ${this._getPopupIconColor('rgba(33,150,243,0.95)')}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${pos}%${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(pos + '%')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -10069,7 +10115,7 @@ document.body.appendChild(portal);
 
       if (this._popupPortal) this._popupPortal.remove();
 
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const state = entity.state || 'unknown';
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -10210,10 +10256,10 @@ document.body.appendChild(portal);
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${icon}" style="color:${iconColor}"></ha-icon>
+              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(iconColor)}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${String(state).replace(/_/g,' ')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(String(state).replace(/_/g,' '))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -10377,7 +10423,7 @@ document.body.appendChild(portal);
     _renderHumidifierPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -10544,10 +10590,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -10794,7 +10840,7 @@ document.body.appendChild(portal);
     _renderFanPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -10954,10 +11000,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? speed + '%' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11277,7 +11323,7 @@ document.body.appendChild(portal);
       const domain = (entity.entity_id || this._config.entity || '').split('.')[0] || this._getDomain();
       const serviceDomain = domain === 'group' ? 'homeassistant' : (domain === 'input_boolean' ? 'input_boolean' : 'switch');
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isOn = state === 'on';
 
@@ -11477,10 +11523,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11596,7 +11642,7 @@ document.body.appendChild(portal);
       }
 
 
-      const name = entity?.attributes?.friendly_name || this._config?.name || this._config?.entity || 'Popup';
+      const name = this._getPopupName(entity) || 'Popup';
       const state = entity?.state || '';
       const domain = entity ? this._getDomain() : '';
       const icon = entity ? this._getResolvedIcon(entity, this._getDomainIcon(domain)) : (this._config?.icon || 'mdi:information');
@@ -11685,10 +11731,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getLocalizedState(state, domain)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11891,7 +11937,7 @@ document.body.appendChild(portal);
     _renderLockPopupPortal(entity) {
       if (this._popupPortal) this._popupPortal.remove();
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isLocked = state === 'locked';
       const isUnlocked = state === 'unlocked';
@@ -12078,10 +12124,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${stateText}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(stateText)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -17006,7 +17052,7 @@ ${isGoogleLayout ? '' : html`
                 <div class="separator"></div>
                 <strong>Popup Animation</strong>
                 <div class="side-by-side">
-                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
+                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
@@ -17023,7 +17069,7 @@ ${isGoogleLayout ? '' : html`
                      <mwc-list-item value="drop">Drop</mwc-list-item>
                      <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
-                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
+                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
