@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-10 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-11 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3544,18 +3544,6 @@ class HkiHeaderCardEditor extends LitElement {
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
   }
 
-  _handlePopupCardChange(ev, field) {
-    ev.stopPropagation();
-    if (!this._config) return;
-    const newCard = ev.detail?.config;
-    if (!newCard) return;
-    const currentAction = this._config?.[field] || { action: 'hki-more-info' };
-    if (JSON.stringify(newCard) === JSON.stringify(currentAction.custom_popup_card)) return;
-    this._config = { ...this._config, [field]: { ...currentAction, custom_popup_card: newCard } };
-    const strippedConfig = this._stripDefaults(this._config);
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: strippedConfig } }));
-  }
-
   _handleBgSizeSelect(ev) {
     ev.stopPropagation();
     // Use proper value extraction like other handlers - check detail.value first, then target.value
@@ -3960,7 +3948,13 @@ class HkiHeaderCardEditor extends LitElement {
             .hass=${this.hass}
             .lovelace=${this._getLovelace()}
             .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
-            @config-changed=${(ev) => this._handlePopupCardChange(ev, field)}
+            @config-changed=${(ev) => {
+              ev.stopPropagation();
+              const newCard = ev.detail?.config;
+              if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                patchAction({ custom_popup_card: newCard });
+              }
+            }}
           ></hui-card-element-editor>
         </div>
       ` : ''}
@@ -4986,7 +4980,6 @@ window.customCards.push({
   preview: false,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
-
 })();
 
 // ============================================================
@@ -16148,6 +16141,14 @@ setConfig(config) {
       // editor is embedded inside hui-card-element-editor (e.g. as a slot card in hki-header-card):
       // setConfig -> config-changed -> parent saves -> HA calls setConfig again -> repeat.
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
+    }
+
+    firstUpdated() {
+      // Pre-warm hui-card-element-editor so the card type picker works
+      // without another card editor being opened first.
+      if (!customElements.get('hui-card-element-editor')) {
+        document.dispatchEvent(new CustomEvent('ll-rebuild', { bubbles: true, composed: true }));
+      }
     }
 
     disconnectedCallback() {

@@ -11154,6 +11154,14 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
+    firstUpdated() {
+      // Pre-warm hui-card-element-editor so the card type picker works
+      // without another card editor being opened first.
+      if (!customElements.get('hui-card-element-editor')) {
+        document.dispatchEvent(new CustomEvent('ll-rebuild', { bubbles: true, composed: true }));
+      }
+    }
+
     disconnectedCallback() {
       super.disconnectedCallback?.();
       // hui-card-element-editor saves on every change, so no flush needed on disconnect.
