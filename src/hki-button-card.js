@@ -12987,39 +12987,41 @@ ${isGoogleLayout ? '' : html`
     _ensureCardEditorLoaded() {
       // Proactively load the built-in Lovelace card editor. HA lazy-loads this,
       // which can cause the card picker to be missing unless it was opened elsewhere first.
+      //
+      // APPROACH: Call getConfigElement() on already-registered HA cards. This is the
+      // same trick used by simple-swipe-card and triggers HA's own lazy-loader to
+      // register hui-card-picker and hui-card-element-editor as a side effect.
+      // This is far more reliable than trying to import() hardcoded/hashed JS paths.
       if (customElements.get('hui-card-element-editor')) return;
 
       if (this._waitingForCardEditor) return;
       this._waitingForCardEditor = true;
 
-      const base = (window.__BASE_PATH__ || '').replace(/\/$/, '');
-      const withBase = (p) => (p.startsWith('/') ? `${base}${p}` : p);
+      const triggers = [
+        () => customElements.get('hui-entities-card')?.getConfigElement?.(),
+        () => customElements.get('hui-conditional-card')?.getConfigElement?.(),
+        () => customElements.get('hui-vertical-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-horizontal-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-glance-card')?.getConfigElement?.(),
+        () => customElements.get('hui-picture-elements-card')?.getConfigElement?.(),
+        () => customElements.get('hui-button-card')?.getConfigElement?.(),
+      ];
 
-      const candidates = [
-        // Entry points (often stable across builds)
-        '/frontend_latest/entrypoints/lovelace-editor.js',
-        '/frontend_latest/entrypoints/lovelace.js',
-
-        // Older / alternative builds
-        '/frontend_es5/entrypoints/lovelace-editor.js',
-        '/frontend_es5/entrypoints/lovelace.js',
-
-        // Direct editor modules (may exist in some builds)
-        '/frontend_latest/editor/card-editor/hui-card-element-editor.js',
-        '/frontend_latest/editor/lovelace/hui-card-element-editor.js',
-        '/frontend_latest/editor/hui-card-element-editor.js',
-        '/frontend_es5/editor/card-editor/hui-card-element-editor.js',
-        '/frontend_es5/editor/lovelace/hui-card-element-editor.js',
-        '/frontend_es5/editor/hui-card-element-editor.js',
-      ].map(withBase);
-
-      // Try loading candidates; ignore failures and fall back to whenDefined().
-      Promise.any(candidates.map((p) => import(p))).catch(() => {}).finally(() => {
+      const tryTriggers = async () => {
+        for (const trigger of triggers) {
+          try {
+            await trigger();
+            if (customElements.get('hui-card-element-editor')) break;
+          } catch (_) {}
+        }
+        // Regardless of whether any trigger succeeded, wait for the element to be defined.
         customElements.whenDefined('hui-card-element-editor').then(() => {
           this._waitingForCardEditor = false;
           this.requestUpdate();
         });
-      });
+      };
+
+      tryTriggers();
     }
 
     _switchChanged(ev, field) { 
