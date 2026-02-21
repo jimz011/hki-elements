@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-21 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-22 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -18453,20 +18453,13 @@ ${isGoogleLayout ? '' : html`
 
     // For Switches (ha-switch)
     _getLovelace() {
-      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
       if (this.lovelace) return this.lovelace;
       try {
         const root = document.querySelector('home-assistant')?.shadowRoot
           ?.querySelector('ha-panel-lovelace')?.shadowRoot
           ?.querySelector('hui-root');
-        const huiRoot = root || document.querySelector('hui-root');
-        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
-        if (lv) return lv;
-        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
-        const existingEditor = document.querySelector('hui-card-element-editor');
-        if (existingEditor?.lovelace) return existingEditor.lovelace;
-        return null;
-      } catch (_) { return null; }
+        return root?.lovelace || root?.__lovelace || null;
+      } catch (e) { return null; }
     }
 
     _ensureCardEditorLoaded() {
