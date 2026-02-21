@@ -11154,23 +11154,7 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    connectedCallback() {
-      super.connectedCallback?.();
-      // Ensure hui-card-element-editor is registered before we render the card picker.
-      // It's loaded lazily by HA's lovelace panel, so we must trigger it ourselves
-      // the first time a button card editor opens (before any other card editor has run).
-      if (!customElements.get('hui-card-element-editor')) {
-        customElements.whenDefined('hui-card-element-editor').then(() => {
-          this.requestUpdate();
-        });
-        // Trigger HA to load the card editor helpers (this registers hui-card-element-editor)
-        window.loadCardHelpers?.().then(helpers => {
-          helpers?.createCardElement({ type: 'placeholder' }).catch(() => {});
-        }).catch(() => {});
-      }
-    }
-
-    disconnectedCallback() {
+disconnectedCallback() {
       super.disconnectedCallback?.();
       // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
@@ -11212,6 +11196,7 @@ setConfig(config) {
     
     render() {
       if (!this.hass || !this._config) return html``;
+      this._ensureCardEditorLoaded();
       
       const fonts = ["system", "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Raleway", "custom"];
       // Weights as Names
@@ -12956,13 +12941,29 @@ ${isGoogleLayout ? '' : html`
       // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
       if (this.lovelace) return this.lovelace;
       try {
-        // Try both the long shadow-root path and the short direct path
-        const root = document.querySelector("home-assistant")?.shadowRoot
-          ?.querySelector("ha-panel-lovelace")?.shadowRoot
-          ?.querySelector("hui-root");
-        const huiRoot = root || document.querySelector("hui-root");
-        return huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace || null;
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        const huiRoot = root || document.querySelector('hui-root');
+        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
+        if (lv) return lv;
+        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
+        const existingEditor = document.querySelector('hui-card-element-editor');
+        if (existingEditor?.lovelace) return existingEditor.lovelace;
+        return null;
       } catch (_) { return null; }
+    }
+
+    _ensureCardEditorLoaded() {
+      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
+      // This is triggered once when the editor first connects, after HA's lazy loading fires.
+      if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
+        this._waitingForCardEditor = true;
+        customElements.whenDefined('hui-card-element-editor').then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+      }
     }
 
     _switchChanged(ev, field) { 

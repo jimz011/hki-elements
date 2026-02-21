@@ -1929,20 +1929,25 @@ class HkiHeaderCard extends LitElement {
             resolveTemplate(finalAction.popup_name),
             resolveTemplate(finalAction.popup_state),
           ]).then(([resolvedName, resolvedState]) => {
-            const btn = document.createElement('hki-button-card');
-            btn.hass = this.hass;
-            btn.setConfig({
-              type: 'custom:hki-button-card',
-              custom_popup: { enabled: true, card: popupCard },
-              ...(resolvedName ? { name: resolvedName } : {}),
-              ...(resolvedState ? { state_label: resolvedState } : {}),
-              ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
-              ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
-              ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
-              ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
-            });
-            btn._openPopup();
-          });
+            try {
+              const btn = document.createElement('hki-button-card');
+              btn.hass = this.hass;
+              btn.setConfig({
+                type: 'custom:hki-button-card',
+                custom_popup: { enabled: true, card: popupCard },
+                ...(resolvedName ? { name: resolvedName } : {}),
+                ...(resolvedState ? { state_label: resolvedState } : {}),
+                ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+                ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+                ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+                ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+              });
+              document.body.appendChild(btn);
+              btn._openPopup();
+            } catch (err) {
+              console.error('[hki-header-card] Failed to open popup:', err);
+            }
+          }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
         }
         break;
       }

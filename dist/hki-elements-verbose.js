@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-12 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-13 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1953,20 +1953,25 @@ class HkiHeaderCard extends LitElement {
             resolveTemplate(finalAction.popup_name),
             resolveTemplate(finalAction.popup_state),
           ]).then(([resolvedName, resolvedState]) => {
-            const btn = document.createElement('hki-button-card');
-            btn.hass = this.hass;
-            btn.setConfig({
-              type: 'custom:hki-button-card',
-              custom_popup: { enabled: true, card: popupCard },
-              ...(resolvedName ? { name: resolvedName } : {}),
-              ...(resolvedState ? { state_label: resolvedState } : {}),
-              ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
-              ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
-              ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
-              ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
-            });
-            btn._openPopup();
-          });
+            try {
+              const btn = document.createElement('hki-button-card');
+              btn.hass = this.hass;
+              btn.setConfig({
+                type: 'custom:hki-button-card',
+                custom_popup: { enabled: true, card: popupCard },
+                ...(resolvedName ? { name: resolvedName } : {}),
+                ...(resolvedState ? { state_label: resolvedState } : {}),
+                ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+                ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+                ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+                ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+              });
+              document.body.appendChild(btn);
+              btn._openPopup();
+            } catch (err) {
+              console.error('[hki-header-card] Failed to open popup:', err);
+            }
+          }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
         }
         break;
       }
@@ -16152,23 +16157,7 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    connectedCallback() {
-      super.connectedCallback?.();
-      // Ensure hui-card-element-editor is registered before we render the card picker.
-      // It's loaded lazily by HA's lovelace panel, so we must trigger it ourselves
-      // the first time a button card editor opens (before any other card editor has run).
-      if (!customElements.get('hui-card-element-editor')) {
-        customElements.whenDefined('hui-card-element-editor').then(() => {
-          this.requestUpdate();
-        });
-        // Trigger HA to load the card editor helpers (this registers hui-card-element-editor)
-        window.loadCardHelpers?.().then(helpers => {
-          helpers?.createCardElement({ type: 'placeholder' }).catch(() => {});
-        }).catch(() => {});
-      }
-    }
-
-    disconnectedCallback() {
+disconnectedCallback() {
       super.disconnectedCallback?.();
       // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
@@ -16210,6 +16199,7 @@ setConfig(config) {
     
     render() {
       if (!this.hass || !this._config) return html``;
+      this._ensureCardEditorLoaded();
       
       const fonts = ["system", "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Raleway", "custom"];
       // Weights as Names
@@ -17954,13 +17944,29 @@ ${isGoogleLayout ? '' : html`
       // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
       if (this.lovelace) return this.lovelace;
       try {
-        // Try both the long shadow-root path and the short direct path
-        const root = document.querySelector("home-assistant")?.shadowRoot
-          ?.querySelector("ha-panel-lovelace")?.shadowRoot
-          ?.querySelector("hui-root");
-        const huiRoot = root || document.querySelector("hui-root");
-        return huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace || null;
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        const huiRoot = root || document.querySelector('hui-root');
+        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
+        if (lv) return lv;
+        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
+        const existingEditor = document.querySelector('hui-card-element-editor');
+        if (existingEditor?.lovelace) return existingEditor.lovelace;
+        return null;
       } catch (_) { return null; }
+    }
+
+    _ensureCardEditorLoaded() {
+      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
+      // This is triggered once when the editor first connects, after HA's lazy loading fires.
+      if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
+        this._waitingForCardEditor = true;
+        customElements.whenDefined('hui-card-element-editor').then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+      }
     }
 
     _switchChanged(ev, field) { 
