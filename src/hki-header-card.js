@@ -2039,12 +2039,12 @@ class HkiHeaderCard extends LitElement {
     if (needsUpdate) this.requestUpdate();
   }
 
-  _getSlotStyle(slotName) {
+  _getSlotStyle(slotName, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     
     // Generate cache key based on relevant config values
-    const cacheKey = `${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg.info_size_px}:${cfg.info_weight}:${cfg.info_color}:${cfg.info_pill}:${cfg.font_family}:${cfg.font_style}`;
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg.info_size_px}:${cfg.info_weight}:${cfg.info_color}:${cfg.info_pill}:${cfg.font_family}:${cfg.font_style}`;
     
     const cached = this._slotStyleCache.get(cacheKey);
     if (cached) return cached;
@@ -2104,27 +2104,27 @@ class HkiHeaderCard extends LitElement {
     return result;
   }
 
-  _renderSlotContent(type, slotName, cardId = null) {
+  _renderSlotContent(type, slotName, cardId = null, bar = "top_bar") {
       const cfg = this._config;
-      const slotStyle = this._getSlotStyle(slotName);
+      const slotStyle = this._getSlotStyle(slotName, bar);
       // Unique key to persist hold/click state across re-renders for this slot
       const stateKey = cardId || slotName;
       
       switch (type) {
-          case "weather": return this._renderWeatherSlot(slotName, slotStyle, stateKey);
-          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey);
+          case "weather": return this._renderWeatherSlot(slotName, slotStyle, stateKey, bar);
+          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey, bar);
           case "notifications":
           case "custom":
           case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId);
           case "spacer": return html`<div class="slot-spacer"></div>`;
-          case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey);
+          case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey, bar);
           default: return html``;
       }
   }
 
-  _renderButtonSlot(slotName, slotStyle, stateKey) {
+  _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
     const label = cfg[prefix + "label"] || "";
     const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
@@ -2208,9 +2208,9 @@ class HkiHeaderCard extends LitElement {
     this._handleAction(action, entityId);
   }
 
-  _renderWeatherSlot(slotName, slotStyle, stateKey) {
+  _renderWeatherSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     
     // Fallback to global if local is not set
     const entityId = cfg[prefix + "weather_entity"] || cfg.weather_entity;
@@ -2333,9 +2333,9 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderDatetimeSlot(slotName, slotStyle, stateKey) {
+  _renderDatetimeSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     const locale = this.hass?.language || 'en';
     
     const now = new Date(this._currentTime);
@@ -2490,9 +2490,9 @@ class HkiHeaderCard extends LitElement {
 
       return html`
         <div class="top-bar-container" style="${topStyle}">
-            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
-            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
-            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left", null, "top_bar")}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center", null, "top_bar")}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right", null, "top_bar")}</div>
         </div>
       `;
   }
@@ -2536,9 +2536,9 @@ class HkiHeaderCard extends LitElement {
 
       return html`
         <div class="bottom-bar-container" style="${bottomStyle}">
-            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left")}</div>
-            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center")}</div>
-            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left", "bottom_bar")}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center", "bottom_bar")}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right", "bottom_bar")}</div>
         </div>
       `;
   }
@@ -3390,8 +3390,8 @@ class HkiHeaderCardEditor extends LitElement {
         });
       }
       
-      // Type-specific config (weather/datetime/button only apply to top_bar)
-      if (bar === "top_bar" && slotType === "weather") {
+      // Type-specific config
+      if (slotType === "weather") {
         const weatherKeys = {
           weather_entity: 'entity',
           show_icon: 'show_icon',
