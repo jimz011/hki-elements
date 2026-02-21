@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-34 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-35 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5834,7 +5834,11 @@ class HkiButtonCard extends LitElement {
       }
       
       this.requestUpdate();
-    }
+    
+
+      // Ensure badge layout sizes to content inside HA stacks (avoids large gaps)
+      this._applyHostLayoutSizing();
+}
 
     connectedCallback() {
       super.connectedCallback();
@@ -5871,6 +5875,9 @@ class HkiButtonCard extends LitElement {
     }
 
     updated(changedProps) {
+
+      // Keep host sizing in sync with layout (important for badge layout in stacks)
+      this._applyHostLayoutSizing();
 
       // Ensure we have accurate stage dimensions for stable grid placement (especially inside parent type: grid cards).
       // We observe the ha-card (actual visible box) rather than the host element to avoid padding/overflow clipping issues.
@@ -6086,6 +6093,30 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
 
     /* --- HELPER METHODS --- */
+
+
+    _applyHostLayoutSizing() {
+      try {
+        const layout = (this._config?.card_layout || 'square');
+        // In HA stacks (e.g. horizontal-stack), children are flex: 1 by default, which makes
+        // "badge" layout leave large gaps. Force the host itself to size to content for badges.
+        if (layout === 'badge') {
+          this.style.setProperty('flex', '0 0 auto', 'important');
+          this.style.setProperty('width', 'fit-content');
+          this.style.setProperty('max-width', '100%');
+          // Avoid unintended stretching from min-width constraints
+          this.style.setProperty('min-width', '0');
+        } else {
+          // Reset so other layouts behave normally
+          this.style.removeProperty('flex');
+          this.style.removeProperty('width');
+          this.style.removeProperty('max-width');
+          this.style.removeProperty('min-width');
+        }
+      } catch (_) {}
+    }
+
+
     _getTempGradient() {
       return 'linear-gradient(to top, #00D9FF 0%, #00E5A0 25%, #DFFF00 50%, #FFB800 75%, #FF8C00 100%)';
     }
