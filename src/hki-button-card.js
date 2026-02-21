@@ -10821,7 +10821,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -11156,17 +11156,7 @@ setConfig(config) {
 
     disconnectedCallback() {
       super.disconnectedCallback?.();
-      // HA's save button removes the editor from DOM without calling any save method.
-      // Flush any unsaved yaml editor content before we're destroyed.
-      const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-      if (!yamlEditor) return;
-      const raw = yamlEditor.value ?? '';
-      const obj = this._yamlStrToObj(raw);
-      if (!obj) return;
-      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-      if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-        this._fireChanged({ ...this._config, custom_popup_card: obj });
-      }
+      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
     
     shouldUpdate(changedProps) {
@@ -12335,43 +12325,23 @@ ${isGoogleLayout ? '' : html`
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
                 <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
-                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
-                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-code-editor
-                    class="custom-popup-yaml-editor"
+                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
+                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
+                  <hui-card-element-editor
                     .hass=${this.hass}
-                    mode="yaml"
-                    autocomplete-entities
-                    autocomplete-icons
-                    .autocompleteEntities=${true}
-                    .autocompleteIcons=${true}
-                    .label=${"Card Config"}
-                    .value=${this._customPopupYamlDraft ?? this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
-                    @focus=${() => { this._customPopupYamlFocused = true; }}
-                    @blur=${() => { this._customPopupYamlFocused = false; }}
-                    @value-changed=${(ev) => {
+                    .lovelace=${this.lovelace}
+                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                    @config-changed=${(ev) => {
                       ev.stopPropagation();
-                      const raw = ev.detail?.value ?? "";
-                      // Keep what the user typed; don't re-serialize YAML while typing (prevents cursor jumps / spacing issues)
-                      this._customPopupYamlDraft = raw;
-
-                      clearTimeout(this._customPopupYamlDebounce);
-                      this._customPopupYamlDebounce = setTimeout(() => {
-                        const obj = this._yamlStrToObj(raw);
-                        if (!obj) return; // invalid YAML: keep draft, don't overwrite config
-
-                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                        if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-                          this._fireChanged({ ...this._config, custom_popup_card: obj });
-                        }
-                      }, 300);
+                      const newCard = ev.detail?.config;
+                      if (!newCard) return;
+                      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                      if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                        this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                      }
                     }}
                     @click=${(e) => e.stopPropagation()}
-                  ></ha-code-editor>
-<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
-                    <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
-                    The popup will maintain its header (icon, name, timestamp), history button, and close button.
-                  </p>
+                  ></hui-card-element-editor>
                 </div>
                 
                 <div class="separator"></div>

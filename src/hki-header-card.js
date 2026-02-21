@@ -153,6 +153,20 @@ const DEFAULTS = Object.freeze({
   top_bar_center_card: null,
   top_bar_right_card: null,
 
+  // Bottom Bar Layout
+  bottom_bar_enabled: false,
+  bottom_bar_offset_y: 10,
+  bottom_bar_padding_x: 0,
+  bottom_bar_left: "none",
+  bottom_bar_center: "none",
+  bottom_bar_right: "none",
+  bottom_bar_left_align: "start",
+  bottom_bar_center_align: "center",
+  bottom_bar_right_align: "end",
+  bottom_bar_left_card: null,
+  bottom_bar_center_card: null,
+  bottom_bar_right_card: null,
+
   // Global Info Styling (defaults for all slots)
   info_size_px: 12,
   info_weight: "medium",
@@ -263,12 +277,13 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_pill_border_color !== undefined) newConfig.info.pill_border_color = oldConfig.info_pill_border_color;
   }
   
-  // Migrate each slot (left, center, right)
+  // Migrate each slot (left, center, right) for both bars
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotType = oldConfig[`top_bar_${slot}`] || "none";
+    const slotType = oldConfig[`${bar}_${slot}`] || "none";
     if (slotType === "none") return;
     
-    const prefix = `top_bar_${slot}_`;
+    const prefix = `${bar}_${slot}_`;
     const slotConfig = { type: slotType };
     
     // Common slot properties
@@ -346,8 +361,9 @@ function migrateToNestedFormat(oldConfig) {
       double_tap_action: oldConfig[prefix + "double_tap_action"]
     };
     
-    newConfig[`top_bar_${slot}`] = slotConfig;
+    newConfig[`${bar}_${slot}`] = slotConfig;
   });
+  }); // end bar loop
   
   // Migrate persons
   if (oldConfig.persons_enabled || oldConfig.persons_entities) {
@@ -423,13 +439,14 @@ function flattenNestedFormat(nested) {
     if (nested.info.pill_border_color !== undefined) flat.info_pill_border_color = nested.info.pill_border_color;
   }
   
-  // Flatten slots
+  // Flatten slots (top and bottom bar)
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotConfig = nested[`top_bar_${slot}`];
+    const slotConfig = nested[`${bar}_${slot}`];
     if (!slotConfig) return;
     
-    const prefix = `top_bar_${slot}_`;
-    flat[`top_bar_${slot}`] = slotConfig.type || "none";
+    const prefix = `${bar}_${slot}_`;
+    flat[`${bar}_${slot}`] = slotConfig.type || "none";
     
     // Only process additional properties if slot type is not "none"
     if (slotConfig.type === "none") return;
@@ -498,6 +515,7 @@ function flattenNestedFormat(nested) {
       if (slotConfig.actions.double_tap_action) flat[prefix + "double_tap_action"] = slotConfig.actions.double_tap_action;
     }
   });
+  }); // end bar loop
   
   // Flatten persons
   if (nested.persons) {
@@ -626,7 +644,7 @@ class HkiHeaderCard extends LitElement {
     this._renderedTitle = "";
     this._renderedSubtitle = "";
     this._currentTime = Date.now();
-    this._customCards = { left: null, center: null, right: null };
+    this._customCards = { left: null, center: null, right: null, bottom_left: null, bottom_center: null, bottom_right: null };
 
     // Handlers & observers
     this._resizeHandler = null;
@@ -899,6 +917,20 @@ class HkiHeaderCard extends LitElement {
       .slot-align-start  { justify-content: flex-start !important; text-align: left !important; }
       .slot-align-center { justify-content: center !important;     text-align: center !important; }
       .slot-align-end    { justify-content: flex-end !important;   text-align: right !important; }
+
+      /* BOTTOM BAR LAYOUT */
+      .bottom-bar-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        z-index: 3;
+        box-sizing: border-box;
+        overflow: visible;
+      }
       
       /* Empty slots collapse to allow more space for occupied slots */
       .slot.slot-empty {
@@ -1358,6 +1390,9 @@ class HkiHeaderCard extends LitElement {
     if (m.top_bar_left === "custom") m.top_bar_left = "notifications";
     if (m.top_bar_center === "custom") m.top_bar_center = "notifications";
     if (m.top_bar_right === "custom") m.top_bar_right = "notifications";
+    m.bottom_bar_left = validSlotTypes.includes(m.bottom_bar_left) ? m.bottom_bar_left : "none";
+    m.bottom_bar_center = validSlotTypes.includes(m.bottom_bar_center) ? m.bottom_bar_center : "none";
+    m.bottom_bar_right = validSlotTypes.includes(m.bottom_bar_right) ? m.bottom_bar_right : "none";
     m.top_bar_left = validSlotTypes.includes(m.top_bar_left) ? m.top_bar_left : "none";
     m.top_bar_center = validSlotTypes.includes(m.top_bar_center) ? m.top_bar_center : "none";
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
@@ -1371,6 +1406,17 @@ class HkiHeaderCard extends LitElement {
       // Alignment default differs per slot
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
       m[prefix + "align"] = ["start", "center", "end"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+    });
+    ["left", "center", "right"].forEach(slot => {
+      const prefix = `bottom_bar_${slot}_`;
+      m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
+      m[prefix + "icon"] = m[prefix + "icon"] || "";
+      m[prefix + "label"] = m[prefix + "label"] || "";
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+      m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
+      m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
+      m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
       m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
       m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
@@ -1839,6 +1885,19 @@ class HkiHeaderCard extends LitElement {
         if (entity) this.dispatchEvent(new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: entity } }));
         break;
       }
+      case "hki-more-info": {
+        const popupCard = finalAction.custom_popup_card;
+        if (popupCard && customElements.get('hki-button-card')) {
+          const btn = document.createElement('hki-button-card');
+          btn.hass = this.hass;
+          btn.setConfig({
+            type: 'custom:hki-button-card',
+            custom_popup: { enabled: true, card: popupCard },
+          });
+          btn._openPopup();
+        }
+        break;
+      }
       case "toggle": {
         const toggleEntity = finalAction.entity;
         if (toggleEntity) this.hass.callService("homeassistant", "toggle", { entity_id: toggleEntity });
@@ -1865,19 +1924,29 @@ class HkiHeaderCard extends LitElement {
   async _updateCustomCards() {
     if (!window.loadCardHelpers) return;
     
-    const slots = ['left', 'center', 'right'];
+    const slots = [
+      { key: 'left', bar: 'top_bar' },
+      { key: 'center', bar: 'top_bar' },
+      { key: 'right', bar: 'top_bar' },
+      { key: 'left', bar: 'bottom_bar', cacheId: 'bottom_left' },
+      { key: 'center', bar: 'bottom_bar', cacheId: 'bottom_center' },
+      { key: 'right', bar: 'bottom_bar', cacheId: 'bottom_right' },
+    ];
     let helpersLoaded = null;
     let needsUpdate = false;
     
-    for (const slot of slots) {
-        const type = this._config[`top_bar_${slot}`];
-        const cardConfigKey = `top_bar_${slot}_card`;
+    for (const slotDef of slots) {
+        const slot = typeof slotDef === 'string' ? slotDef : slotDef.key;
+        const bar = typeof slotDef === 'string' ? 'top_bar' : slotDef.bar;
+        const cardId = (slotDef.cacheId) ? slotDef.cacheId : slot;
+        const type = this._config[`${bar}_${slot}`];
+        const cardConfigKey = `${bar}_${slot}_card`;
         const cardConfig = this._config[cardConfigKey];
         
         // Generate a simple hash to detect config changes
         const isCardSlot = type === 'notifications' || type === 'custom' || type === 'card';
         const configHash = isCardSlot ? JSON.stringify(cardConfig || {}) : '';
-        const cacheKey = `_customCardHash_${slot}`;
+        const cacheKey = `_customCardHash_${cardId}`;
         
         if (isCardSlot) {
             // Only recreate if config has changed
@@ -1901,16 +1970,16 @@ class HkiHeaderCard extends LitElement {
                     const element = await helpersLoaded.createCardElement(finalConfig);
                     if (this.hass) element.hass = this.hass;
                     element.style.display = "block";
-                    this._customCards[slot] = element;
+                    this._customCards[cardId] = element;
                     this[cacheKey] = configHash;
                     needsUpdate = true;
                 } catch (e) {
                     console.error(`Failed to create custom card for ${slot}`, e);
                 }
             }
-        } else if (this._customCards[slot]) {
-            this._customCards[slot] = null;
-            this[`_customCardHash_${slot}`] = '';
+        } else if (this._customCards[cardId]) {
+            this._customCards[cardId] = null;
+            this[cacheKey] = '';
             needsUpdate = true;
         }
     }
@@ -1983,7 +2052,7 @@ class HkiHeaderCard extends LitElement {
     return result;
   }
 
-  _renderSlotContent(type, slotName) {
+  _renderSlotContent(type, slotName, cardId = null) {
       const cfg = this._config;
       const slotStyle = this._getSlotStyle(slotName);
       
@@ -1992,7 +2061,7 @@ class HkiHeaderCard extends LitElement {
           case "datetime": return this._renderDatetimeSlot(slotName, slotStyle);
           case "notifications":
           case "custom":
-          case "card": return this._renderCustomCardSlot(slotName, slotStyle);
+          case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId);
           case "spacer": return html`<div class="slot-spacer"></div>`;
           case "button": return this._renderButtonSlot(slotName, slotStyle);
           default: return html``;
@@ -2307,8 +2376,8 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderCustomCardSlot(slotName, slotStyle) {
-    const cardEl = this._customCards[slotName];
+  _renderCustomCardSlot(slotName, slotStyle, cardId = null) {
+    const cardEl = this._customCards[cardId || slotName];
     if (!cardEl) return html``;
     
     const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
@@ -2368,6 +2437,52 @@ class HkiHeaderCard extends LitElement {
             <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
             <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
             <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
+        </div>
+      `;
+  }
+
+  _renderBottomBar() {
+      if (!this._config.bottom_bar_enabled) return html``;
+
+      const cfg = this._config;
+      const offsetY = cfg.bottom_bar_offset_y !== undefined ? cfg.bottom_bar_offset_y : 10;
+      const paddingX = cfg.bottom_bar_padding_x !== undefined ? cfg.bottom_bar_padding_x : 5;
+      const bottomStyle = `bottom: ${offsetY}px; padding: 0 ${paddingX}px;`;
+
+      const isMobile = this._viewportWidth > 0 && this._viewportWidth <= (cfg.mobile_breakpoint || 768);
+      const getOffset = (base, mobile) => {
+         if (isMobile && typeof mobile === 'number' && Number.isFinite(mobile)) return mobile;
+         return base || 0;
+      };
+
+      const leftX = getOffset(cfg.bottom_bar_left_offset_x, cfg.bottom_bar_left_offset_x_mobile);
+      const leftY = getOffset(cfg.bottom_bar_left_offset_y, cfg.bottom_bar_left_offset_y_mobile);
+      const centerX = getOffset(cfg.bottom_bar_center_offset_x, cfg.bottom_bar_center_offset_x_mobile);
+      const centerY = getOffset(cfg.bottom_bar_center_offset_y, cfg.bottom_bar_center_offset_y_mobile);
+      const rightX = getOffset(cfg.bottom_bar_right_offset_x, cfg.bottom_bar_right_offset_x_mobile);
+      const rightY = getOffset(cfg.bottom_bar_right_offset_y, cfg.bottom_bar_right_offset_y_mobile);
+
+      const leftStyle = (leftX || leftY) ? `transform: translate(${leftX}px, ${leftY}px);` : "";
+      const centerStyle = (centerX || centerY) ? `transform: translate(${centerX}px, ${centerY}px);` : "";
+      const rightStyle = (rightX || rightY) ? `transform: translate(${rightX}px, ${rightY}px);` : "";
+
+      const leftEmpty = cfg.bottom_bar_left === "none";
+      const centerEmpty = cfg.bottom_bar_center === "none";
+      const rightEmpty = cfg.bottom_bar_right === "none";
+
+      const leftOverflow = !!cfg.bottom_bar_left_overflow;
+      const centerOverflow = !!cfg.bottom_bar_center_overflow;
+      const rightOverflow = !!cfg.bottom_bar_right_overflow;
+
+      const leftAlign = cfg.bottom_bar_left_align || 'start';
+      const centerAlign = cfg.bottom_bar_center_align || 'center';
+      const rightAlign = cfg.bottom_bar_right_align || 'end';
+
+      return html`
+        <div class="bottom-bar-container" style="${bottomStyle}">
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left")}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center")}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right")}</div>
         </div>
       `;
   }
@@ -2773,6 +2888,7 @@ class HkiHeaderCard extends LitElement {
         <div class="overlay" style=${overlayStyle}></div>
         <div class="content" style=${contentStyle}>
           ${this._renderTopBar()}
+          ${this._renderBottomBar()}
           <div class="title-block" style=${titleBlockStyle}>
             <div class="title" style=${titleInline} role="heading" aria-level="1">${titleText}</div>
             ${subtitleVisible ? html`<div class="subtitle" style="${subtitleInline}${subtitleTransform}">${subtitleText}</div>` : html``}
@@ -3154,16 +3270,17 @@ class HkiHeaderCardEditor extends LitElement {
     }
     
     // Nest slots - always include them even if "none" for clarity
+    ['top_bar', 'bottom_bar'].forEach(bar => {
     ['left', 'center', 'right'].forEach(slot => {
-      const slotType = flat[`top_bar_${slot}`];
+      const slotType = flat[`${bar}_${slot}`];
       
       // If slot is "none" or undefined, just set type: "none"
       if (!slotType || slotType === "none") {
-        nested[`top_bar_${slot}`] = { type: "none" };
+        nested[`${bar}_${slot}`] = { type: "none" };
         return;
       }
       
-      const prefix = `top_bar_${slot}_`;
+      const prefix = `${bar}_${slot}_`;
       const slotConfig = { type: slotType };
       
       // Common properties
@@ -3187,8 +3304,8 @@ class HkiHeaderCardEditor extends LitElement {
         });
       }
       
-      // Type-specific config
-      if (slotType === "weather") {
+      // Type-specific config (weather/datetime/button only apply to top_bar)
+      if (bar === "top_bar" && slotType === "weather") {
         const weatherKeys = {
           weather_entity: 'entity',
           show_icon: 'show_icon',
@@ -3246,8 +3363,9 @@ class HkiHeaderCardEditor extends LitElement {
         if (flat[prefix + "double_tap_action"]) slotConfig.actions.double_tap_action = flat[prefix + "double_tap_action"];
       }
       
-      nested[`top_bar_${slot}`] = slotConfig;
+      nested[`${bar}_${slot}`] = slotConfig;
     });
+    }); // end bar loop
     
     // Nest persons
     const personsKeys = ['persons_enabled', 'persons_align', 'persons_offset_x', 'persons_offset_y',
@@ -3324,11 +3442,11 @@ class HkiHeaderCardEditor extends LitElement {
     return ev.detail?.value ?? ev.target?.value;
   }
 
-  _handleCustomCardChange(ev, slot) {
+  _handleCustomCardChange(ev, slot, bar = "top_bar") {
     ev.stopPropagation();
     if (!this._config) return;
     const newCardConfig = ev.detail.config;
-    const field = `top_bar_${slot}_card`;
+    const field = `${bar}_${slot}_card`;
     this._config = { ...this._config, [field]: newCardConfig };
     const strippedConfig = this._stripDefaults(this._config);
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
@@ -3473,14 +3591,14 @@ class HkiHeaderCardEditor extends LitElement {
     return labels[type] || "Empty";
   }
 
-  _renderSlotEditor(slotName) {
-    const prefix = `top_bar_${slotName}_`;
-    const type = this._config[`top_bar_${slotName}`] || "none";
+  _renderSlotEditor(slotName, bar = "top_bar") {
+    const prefix = `${bar}_${slotName}_`;
+    const type = this._config[`${bar}_${slotName}`] || "none";
     const useGlobal = this._config[prefix + "use_global"] !== false;
     
     const displayType = (type === "custom") ? "notifications" : type;
     return html`
-      <ha-select label="Content Type" .value=${displayType} data-field="top_bar_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+      <ha-select label="Content Type" .value=${displayType} data-field="${bar}_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
         <mwc-list-item value="none">None</mwc-list-item>
         <mwc-list-item value="spacer">Spacer</mwc-list-item>
         <mwc-list-item value="weather">Weather</mwc-list-item>
@@ -3592,9 +3710,9 @@ class HkiHeaderCardEditor extends LitElement {
                 use_header_styling: true, 
                 show_background: false,
                 show_empty: true,
-                ...(this._config[`top_bar_${slotName}_card`] || {})
+                ...(this._config[`${bar}_${slotName}_card`] || {})
               }}
-              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
             ></hui-card-element-editor>
           </div>
       ` : ''}
@@ -3604,8 +3722,8 @@ class HkiHeaderCardEditor extends LitElement {
             <hui-card-element-editor
               .hass=${this.hass}
               .lovelace=${this.lovelace}
-              .value=${this._config[`top_bar_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
-              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
+              .value=${this._config[`${bar}_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
             ></hui-card-element-editor>
           </div>
       ` : ''}
@@ -3689,6 +3807,7 @@ class HkiHeaderCardEditor extends LitElement {
         <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
         <mwc-list-item value="url">Open URL</mwc-list-item>
         <mwc-list-item value="more-info">More Info</mwc-list-item>
+        <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
         <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
         <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
       </ha-select>
@@ -3700,6 +3819,18 @@ class HkiHeaderCardEditor extends LitElement {
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+      ` : ''}
+      ${actionType === "hki-more-info" ? html`
+        <div class="section" style="margin-top: 12px;">Popup Card</div>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+        <div class="card-config">
+          <hui-card-element-editor
+            .hass=\${this.hass}
+            .lovelace=\${this.lovelace}
+            .value=\${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+            @config-changed=\${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
+          ></hui-card-element-editor>
+        </div>
       ` : ''}
       ${actionType === "perform-action" ? html`
         ${customElements.get("ha-service-picker") ? html`
@@ -4539,23 +4670,60 @@ class HkiHeaderCardEditor extends LitElement {
                 <details class="box-section">
                   <summary>Left Slot: ${this._getSlotLabel(this._config.top_bar_left)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('left')}
+                    ${this._renderSlotEditor('left', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Center Slot: ${this._getSlotLabel(this._config.top_bar_center)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('center')}
+                    ${this._renderSlotEditor('center', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Right Slot: ${this._getSlotLabel(this._config.top_bar_right)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('right')}
+                    ${this._renderSlotEditor('right', 'top_bar')}
                   </div>
                 </details>
+            ` : ''}
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Bottom Bar</summary>
+          <div class="box-content">
+            <div class="switch-row">
+              <ha-switch .checked=${!!this._config.bottom_bar_enabled} data-field="bottom_bar_enabled" @change=${this._changed}></ha-switch>
+              <span>Enable Bottom Bar</span>
+            </div>
+            ${this._config.bottom_bar_enabled ? html`
+              <div class="inline-fields-2" style="margin-top: 8px;">
+                <ha-textfield label="Y Offset (px)" type="number" .value=${String(this._config.bottom_bar_offset_y ?? 10)} data-field="bottom_bar_offset_y" @input=${this._changed}></ha-textfield>
+                <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_bar_padding_x ?? 0)} data-field="bottom_bar_padding_x" @input=${this._changed}></ha-textfield>
+              </div>
+
+              <details class="box-section">
+                <summary>Left Slot: ${this._getSlotLabel(this._config.bottom_bar_left)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('left', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Center Slot: ${this._getSlotLabel(this._config.bottom_bar_center)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('center', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Right Slot: ${this._getSlotLabel(this._config.bottom_bar_right)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('right', 'bottom_bar')}
+                </div>
+              </details>
             ` : ''}
           </div>
         </details>
