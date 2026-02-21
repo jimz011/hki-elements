@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-32 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-33 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -18147,9 +18147,27 @@ ${isGoogleLayout ? '' : html`
       customElements.whenDefined('hui-card-element-editor').then(onReady);
 
       (async () => {
+        // HA's editor bundle tries to register elements (like lit-virtualizer) that
+        // HKI may have already registered. Without patching, this throws a DOMException
+        // that aborts the bundle before hui-card-element-editor can be defined.
+        // We temporarily swallow duplicate-registration errors so the bundle completes.
+        const origDefine = customElements.define.bind(customElements);
+        customElements.define = function(name, ctor, opts) {
+          if (customElements.get(name)) return; // silently skip duplicates
+          origDefine(name, ctor, opts);
+        };
+        // Restore after a short window — enough for the async bundle to fully execute.
+        const restorePatch = setTimeout(() => {
+          customElements.define = origDefine;
+        }, 5000);
+
         // Strategy 1: loadCardHelpers() — a global HA utility in some versions
         try { await window.loadCardHelpers?.(); } catch (_) {}
-        if (customElements.get('hui-card-element-editor')) return;
+        if (customElements.get('hui-card-element-editor')) {
+          clearTimeout(restorePatch);
+          customElements.define = origDefine;
+          return;
+        }
 
         // Strategy 2: Call getConfigElement() on INSTANCES of built-in HA cards.
         // Must use document.createElement() to get an instance; calling it on the
@@ -18169,24 +18187,29 @@ ${isGoogleLayout ? '' : html`
               if (result && typeof result.then === 'function') await result;
             }
           } catch (_) {}
-          if (customElements.get('hui-card-element-editor')) return;
+          if (customElements.get('hui-card-element-editor')) {
+            clearTimeout(restorePatch);
+            customElements.define = origDefine;
+            return;
+          }
         }
 
-        // Strategy 3: Poll as a last resort — whenDefined() alone won't fire if
-        // nothing ever calls customElements.define('hui-card-element-editor')
-        console.warn('[hki-button-card] hui-card-element-editor not yet defined after triggers; polling...');
+        // Strategy 3: Poll — whenDefined() alone won't fire if the define never happens
         let attempts = 0;
         const poll = setInterval(() => {
           attempts++;
           if (customElements.get('hui-card-element-editor')) {
             clearInterval(poll);
-            console.info('[hki-button-card] hui-card-element-editor found via polling');
+            clearTimeout(restorePatch);
+            customElements.define = origDefine;
             onReady();
           } else if (attempts > 150) {
             clearInterval(poll);
+            clearTimeout(restorePatch);
+            customElements.define = origDefine;
             console.error('[hki-button-card] hui-card-element-editor never became available — card picker cannot be shown.');
           }
-        }, 200); // 200ms × 150 = 30 second max wait
+        }, 200);
       })();
     }
 
