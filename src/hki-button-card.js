@@ -12985,43 +12985,62 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // Proactively load the built-in Lovelace card editor. HA lazy-loads this,
-      // which can cause the card picker to be missing unless it was opened elsewhere first.
-      //
-      // APPROACH: Call getConfigElement() on already-registered HA cards. This is the
-      // same trick used by simple-swipe-card and triggers HA's own lazy-loader to
-      // register hui-card-picker and hui-card-element-editor as a side effect.
-      // This is far more reliable than trying to import() hardcoded/hashed JS paths.
+      // Load hui-card-element-editor using multiple fallback strategies.
+      // HA lazy-loads this element, and the exact mechanism varies by HA version.
       if (customElements.get('hui-card-element-editor')) return;
-
       if (this._waitingForCardEditor) return;
       this._waitingForCardEditor = true;
 
-      const triggers = [
-        () => customElements.get('hui-entities-card')?.getConfigElement?.(),
-        () => customElements.get('hui-conditional-card')?.getConfigElement?.(),
-        () => customElements.get('hui-vertical-stack-card')?.getConfigElement?.(),
-        () => customElements.get('hui-horizontal-stack-card')?.getConfigElement?.(),
-        () => customElements.get('hui-glance-card')?.getConfigElement?.(),
-        () => customElements.get('hui-picture-elements-card')?.getConfigElement?.(),
-        () => customElements.get('hui-button-card')?.getConfigElement?.(),
-      ];
-
-      const tryTriggers = async () => {
-        for (const trigger of triggers) {
-          try {
-            await trigger();
-            if (customElements.get('hui-card-element-editor')) break;
-          } catch (_) {}
-        }
-        // Regardless of whether any trigger succeeded, wait for the element to be defined.
-        customElements.whenDefined('hui-card-element-editor').then(() => {
-          this._waitingForCardEditor = false;
-          this.requestUpdate();
-        });
+      const onReady = () => {
+        this._waitingForCardEditor = false;
+        this.requestUpdate();
       };
 
-      tryTriggers();
+      // Always wire up whenDefined so we catch it however it gets defined
+      customElements.whenDefined('hui-card-element-editor').then(onReady);
+
+      (async () => {
+        // Strategy 1: loadCardHelpers() — a global HA utility in some versions
+        try { await window.loadCardHelpers?.(); } catch (_) {}
+        if (customElements.get('hui-card-element-editor')) return;
+
+        // Strategy 2: Call getConfigElement() on INSTANCES of built-in HA cards.
+        // Must use document.createElement() to get an instance; calling it on the
+        // constructor (what customElements.get() returns) does nothing.
+        const builtins = [
+          'hui-entities-card',
+          'hui-conditional-card',
+          'hui-vertical-stack-card',
+          'hui-horizontal-stack-card',
+          'hui-glance-card',
+        ];
+        for (const tag of builtins) {
+          try {
+            if (customElements.get(tag)) {
+              const instance = document.createElement(tag);
+              const result = instance.getConfigElement?.();
+              if (result && typeof result.then === 'function') await result;
+            }
+          } catch (_) {}
+          if (customElements.get('hui-card-element-editor')) return;
+        }
+
+        // Strategy 3: Poll as a last resort — whenDefined() alone won't fire if
+        // nothing ever calls customElements.define('hui-card-element-editor')
+        console.warn('[hki-button-card] hui-card-element-editor not yet defined after triggers; polling...');
+        let attempts = 0;
+        const poll = setInterval(() => {
+          attempts++;
+          if (customElements.get('hui-card-element-editor')) {
+            clearInterval(poll);
+            console.info('[hki-button-card] hui-card-element-editor found via polling');
+            onReady();
+          } else if (attempts > 150) {
+            clearInterval(poll);
+            console.error('[hki-button-card] hui-card-element-editor never became available — card picker cannot be shown.');
+          }
+        }, 200); // 200ms × 150 = 30 second max wait
+      })();
     }
 
     _switchChanged(ev, field) { 
