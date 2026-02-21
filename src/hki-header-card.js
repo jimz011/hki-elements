@@ -148,10 +148,10 @@ const DEFAULTS = Object.freeze({
   top_bar_center_align: "center",
   top_bar_right_align: "end",
   
-  // Default custom cards for slots
-  top_bar_left_card: { type: "custom:hki-notification-card" },
-  top_bar_center_card: { type: "custom:hki-notification-card" },
-  top_bar_right_card: { type: "custom:hki-notification-card" },
+  // Default custom cards for slots (no default for "card" type - shows picker)
+  top_bar_left_card: null,
+  top_bar_center_card: null,
+  top_bar_right_card: null,
 
   // Global Info Styling (defaults for all slots)
   info_size_px: 12,
@@ -2311,7 +2311,9 @@ class HkiHeaderCard extends LitElement {
     const cardEl = this._customCards[slotName];
     if (!cardEl) return html``;
     
-    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
+    const align = this._config[`top_bar_${slotName}_align`] || (slotName === "right" ? "end" : slotName === "left" ? "start" : "center");
+    const rtlStyle = align === "end" ? "direction: rtl;" : "";
+    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${rtlStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
 
     return html`
       <div class="info-item" style="${combinedStyle}">
