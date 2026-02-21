@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-18 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-19 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -4219,6 +4219,7 @@ class HkiHeaderCardEditor extends LitElement {
             <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
             <mwc-list-item value="url">Open URL</mwc-list-item>
             <mwc-list-item value="more-info">More Info</mwc-list-item>
+            <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
             <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
             <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
           </ha-select>
@@ -4230,6 +4231,45 @@ class HkiHeaderCardEditor extends LitElement {
           ` : ''}
           ${actionValue === "more-info" || actionValue === "toggle" ? html`
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
+          ` : ''}
+          ${actionValue === "hki-more-info" ? html`
+            <div class="section" style="margin-top: 12px;">Popup Header</div>
+            ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex + "_" + actionType, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+            ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex + "_" + actionType, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+            <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+            </div>
+            <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="none">None</mwc-list-item>
+              <mwc-list-item value="fade">Fade</mwc-list-item>
+              <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+              <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+            </ha-select>
+            <div class="switch-row" style="margin-top: 8px;">
+              <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+              <span>Background blur</span>
+            </div>
+            <div class="section" style="margin-top: 12px;">Popup Card</div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+            <div class="card-config">
+              <hui-card-element-editor
+                .hass=${this.hass}
+                .lovelace=${this._getLovelace()}
+                .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+                @config-changed=${(ev) => {
+                  ev.stopPropagation();
+                  const newCard = ev.detail?.config;
+                  if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                    patchAction({ custom_popup_card: newCard });
+                  }
+                }}
+              ></hui-card-element-editor>
+            </div>
           ` : ''}
           ${actionValue === "perform-action" ? html`
             ${customElements.get("ha-service-picker") ? html`
@@ -12071,8 +12111,10 @@ document.body.appendChild(portal);
     }
 
     _renderCustomPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // IMPORTANT: Don't remove/recreate the portal on every update.
+      // Rebuilding the portal causes the popup to "close + open" again whenever hass updates.
       this._popupType = 'custom';
+
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
       if (!entity) {
@@ -12107,6 +12149,42 @@ document.body.appendChild(portal);
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+
+      // If we already have an open custom popup, update it in-place instead of rebuilding.
+      // This prevents the popup from flickering/re-opening on every hass state change.
+      if (this._popupPortal && this._popupPortal.isConnected) {
+        try {
+          const existing = this._popupPortal;
+          // Update icon
+          const iconEl = existing.querySelector('.hki-popup-title ha-icon');
+          if (iconEl) {
+            iconEl.setAttribute('icon', icon);
+            iconEl.style.color = this._getPopupIconColor(color);
+          }
+          // Update title + state text
+          const titleTextEl = existing.querySelector('.hki-popup-title-text');
+          if (titleTextEl) {
+            const headerState = this._getPopupHeaderState(this._getLocalizedState(state, domain));
+            const lastTrig = this._formatLastTriggered(entity);
+            titleTextEl.innerHTML = `${name}<span class="hki-popup-state">${headerState}${lastTrig ? ` - ${lastTrig}` : ''}</span>`;
+          }
+
+          // Only rebuild the content area when the view actually changes (main <-> history).
+          const contentEl = existing.querySelector('#customContent');
+          if (contentEl) {
+            const wantHistory = this._activeView === 'history';
+            const hasHistory = !!contentEl.querySelector('#historyContainer');
+            if (wantHistory && !hasHistory) {
+              contentEl.innerHTML = this._renderCustomPopupContent(entity);
+            } else if (!wantHistory && hasHistory) {
+              contentEl.innerHTML = this._renderCustomPopupContent(entity);
+              this._renderCustomCard();
+            }
+          }
+        } catch (e) {}
+        return;
+      }
 
       const portal = document.createElement('div');
       portal.className = 'hki-popup-portal';
@@ -18063,9 +18141,42 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
-      // This is triggered once when the editor first connects, after HA's lazy loading fires.
-      if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
+      // Make sure HA's nested card editor (and its card-picker) is available immediately.
+      // Depending on HA version, these are lazily loaded and might not be registered yet.
+      if (customElements.get('hui-card-element-editor')) return;
+
+      if (!this._cardEditorImporting) {
+        this._cardEditorImporting = true;
+
+        (async () => {
+          // Try a few known frontend paths across HA versions/builds.
+          // (No single stable path exists for all installations.)
+          const candidates = [
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/config-elements/hui-card-element-editor.js',
+            '/frontend_latest/editor/hui-card-element-editor.js',
+            '/frontend_latest/lovelace/editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/hui-card-picker.js',
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-picker.js',
+          ];
+
+          for (const url of candidates) {
+            if (customElements.get('hui-card-element-editor')) break;
+            try {
+              // eslint-disable-next-line no-unused-expressions
+              await import(/* webpackIgnore: true */ url);
+            } catch (_) {}
+          }
+
+          this._cardEditorImporting = false;
+          if (customElements.get('hui-card-element-editor')) {
+            this.requestUpdate();
+          }
+        })();
+      }
+
+      // Fallback: if HA loads it later anyway, re-render once it registers.
+      if (!this._waitingForCardEditor) {
         this._waitingForCardEditor = true;
         customElements.whenDefined('hui-card-element-editor').then(() => {
           this._waitingForCardEditor = false;

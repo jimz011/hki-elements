@@ -4195,6 +4195,7 @@ class HkiHeaderCardEditor extends LitElement {
             <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
             <mwc-list-item value="url">Open URL</mwc-list-item>
             <mwc-list-item value="more-info">More Info</mwc-list-item>
+            <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
             <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
             <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
           </ha-select>
@@ -4206,6 +4207,45 @@ class HkiHeaderCardEditor extends LitElement {
           ` : ''}
           ${actionValue === "more-info" || actionValue === "toggle" ? html`
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
+          ` : ''}
+          ${actionValue === "hki-more-info" ? html`
+            <div class="section" style="margin-top: 12px;">Popup Header</div>
+            ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex + "_" + actionType, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+            ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex + "_" + actionType, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+            <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+            </div>
+            <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="none">None</mwc-list-item>
+              <mwc-list-item value="fade">Fade</mwc-list-item>
+              <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+              <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+            </ha-select>
+            <div class="switch-row" style="margin-top: 8px;">
+              <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+              <span>Background blur</span>
+            </div>
+            <div class="section" style="margin-top: 12px;">Popup Card</div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+            <div class="card-config">
+              <hui-card-element-editor
+                .hass=${this.hass}
+                .lovelace=${this._getLovelace()}
+                .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+                @config-changed=${(ev) => {
+                  ev.stopPropagation();
+                  const newCard = ev.detail?.config;
+                  if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                    patchAction({ custom_popup_card: newCard });
+                  }
+                }}
+              ></hui-card-element-editor>
+            </div>
           ` : ''}
           ${actionValue === "perform-action" ? html`
             ${customElements.get("ha-service-picker") ? html`

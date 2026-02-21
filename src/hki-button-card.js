@@ -6963,8 +6963,10 @@ document.body.appendChild(portal);
     }
 
     _renderCustomPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // IMPORTANT: Don't remove/recreate the portal on every update.
+      // Rebuilding the portal causes the popup to "close + open" again whenever hass updates.
       this._popupType = 'custom';
+
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
       if (!entity) {
@@ -6999,6 +7001,42 @@ document.body.appendChild(portal);
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+
+      // If we already have an open custom popup, update it in-place instead of rebuilding.
+      // This prevents the popup from flickering/re-opening on every hass state change.
+      if (this._popupPortal && this._popupPortal.isConnected) {
+        try {
+          const existing = this._popupPortal;
+          // Update icon
+          const iconEl = existing.querySelector('.hki-popup-title ha-icon');
+          if (iconEl) {
+            iconEl.setAttribute('icon', icon);
+            iconEl.style.color = this._getPopupIconColor(color);
+          }
+          // Update title + state text
+          const titleTextEl = existing.querySelector('.hki-popup-title-text');
+          if (titleTextEl) {
+            const headerState = this._getPopupHeaderState(this._getLocalizedState(state, domain));
+            const lastTrig = this._formatLastTriggered(entity);
+            titleTextEl.innerHTML = `${name}<span class="hki-popup-state">${headerState}${lastTrig ? ` - ${lastTrig}` : ''}</span>`;
+          }
+
+          // Only rebuild the content area when the view actually changes (main <-> history).
+          const contentEl = existing.querySelector('#customContent');
+          if (contentEl) {
+            const wantHistory = this._activeView === 'history';
+            const hasHistory = !!contentEl.querySelector('#historyContainer');
+            if (wantHistory && !hasHistory) {
+              contentEl.innerHTML = this._renderCustomPopupContent(entity);
+            } else if (!wantHistory && hasHistory) {
+              contentEl.innerHTML = this._renderCustomPopupContent(entity);
+              this._renderCustomCard();
+            }
+          }
+        } catch (e) {}
+        return;
+      }
 
       const portal = document.createElement('div');
       portal.className = 'hki-popup-portal';
@@ -12955,9 +12993,42 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
-      // This is triggered once when the editor first connects, after HA's lazy loading fires.
-      if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
+      // Make sure HA's nested card editor (and its card-picker) is available immediately.
+      // Depending on HA version, these are lazily loaded and might not be registered yet.
+      if (customElements.get('hui-card-element-editor')) return;
+
+      if (!this._cardEditorImporting) {
+        this._cardEditorImporting = true;
+
+        (async () => {
+          // Try a few known frontend paths across HA versions/builds.
+          // (No single stable path exists for all installations.)
+          const candidates = [
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/config-elements/hui-card-element-editor.js',
+            '/frontend_latest/editor/hui-card-element-editor.js',
+            '/frontend_latest/lovelace/editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/hui-card-picker.js',
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-picker.js',
+          ];
+
+          for (const url of candidates) {
+            if (customElements.get('hui-card-element-editor')) break;
+            try {
+              // eslint-disable-next-line no-unused-expressions
+              await import(/* webpackIgnore: true */ url);
+            } catch (_) {}
+          }
+
+          this._cardEditorImporting = false;
+          if (customElements.get('hui-card-element-editor')) {
+            this.requestUpdate();
+          }
+        })();
+      }
+
+      // Fallback: if HA loads it later anyway, re-render once it registers.
+      if (!this._waitingForCardEditor) {
         this._waitingForCardEditor = true;
         customElements.whenDefined('hui-card-element-editor').then(() => {
           this._waitingForCardEditor = false;
