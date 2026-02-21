@@ -3520,6 +3520,18 @@ class HkiHeaderCardEditor extends LitElement {
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
   }
 
+  _handlePopupCardChange(ev, field) {
+    ev.stopPropagation();
+    if (!this._config) return;
+    const newCard = ev.detail?.config;
+    if (!newCard) return;
+    const currentAction = this._config?.[field] || { action: 'hki-more-info' };
+    if (JSON.stringify(newCard) === JSON.stringify(currentAction.custom_popup_card)) return;
+    this._config = { ...this._config, [field]: { ...currentAction, custom_popup_card: newCard } };
+    const strippedConfig = this._stripDefaults(this._config);
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: strippedConfig } }));
+  }
+
   _handleBgSizeSelect(ev) {
     ev.stopPropagation();
     // Use proper value extraction like other handlers - check detail.value first, then target.value
@@ -3924,7 +3936,7 @@ class HkiHeaderCardEditor extends LitElement {
             .hass=${this.hass}
             .lovelace=${this._getLovelace()}
             .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
-            @config-changed=${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
+            @config-changed=${(ev) => this._handlePopupCardChange(ev, field)}
           ></hui-card-element-editor>
         </div>
       ` : ''}
