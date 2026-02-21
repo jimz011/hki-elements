@@ -2107,20 +2107,22 @@ class HkiHeaderCard extends LitElement {
   _renderSlotContent(type, slotName, cardId = null) {
       const cfg = this._config;
       const slotStyle = this._getSlotStyle(slotName);
+      // Unique key to persist hold/click state across re-renders for this slot
+      const stateKey = cardId || slotName;
       
       switch (type) {
-          case "weather": return this._renderWeatherSlot(slotName, slotStyle);
-          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle);
+          case "weather": return this._renderWeatherSlot(slotName, slotStyle, stateKey);
+          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey);
           case "notifications":
           case "custom":
           case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId);
           case "spacer": return html`<div class="slot-spacer"></div>`;
-          case "button": return this._renderButtonSlot(slotName, slotStyle);
+          case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey);
           default: return html``;
       }
   }
 
-  _renderButtonSlot(slotName, slotStyle) {
+  _renderButtonSlot(slotName, slotStyle, stateKey) {
     const cfg = this._config;
     const prefix = `top_bar_${slotName}_`;
     const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
@@ -2136,52 +2138,52 @@ class HkiHeaderCard extends LitElement {
     const buttonPillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${buttonPaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${buttonPillStyle}`;
     
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
-    let clickTimer = null;
-    let clickCount = 0;
+    // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
+    // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
+      state.holdActive = false;
       if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+        state.holdTimer = setTimeout(() => {
+          state.holdActive = true;
           this._handleSlotTapAction(holdAction, slotName);
         }, 500);
       }
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
+      if (!state.holdActive && tapAction) {
         // Use click debouncing for double-tap detection
-        clickCount++;
-        if (clickCount === 1) {
-          clickTimer = setTimeout(() => {
-            if (clickCount === 1) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
               this._handleSlotTapAction(tapAction, slotName);
             }
-            clickCount = 0;
+            state.clickCount = 0;
           }, 250);
-        } else if (clickCount === 2) {
-          clearTimeout(clickTimer);
-          clickCount = 0;
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
           this._handleSlotTapAction(doubleTapAction, slotName);
         }
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
     
     return html`
@@ -2206,7 +2208,7 @@ class HkiHeaderCard extends LitElement {
     this._handleAction(action, entityId);
   }
 
-  _renderWeatherSlot(slotName, slotStyle) {
+  _renderWeatherSlot(slotName, slotStyle, stateKey) {
     const cfg = this._config;
     const prefix = `top_bar_${slotName}_`;
     
@@ -2267,37 +2269,38 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    const holdState = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
+      holdState.holdActive = false;
       if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+        holdState.holdTimer = setTimeout(() => {
+          holdState.holdActive = true;
           this._handleSlotTapAction(holdAction, slotName, entityId);
         }, 500);
       }
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
+      if (!holdState.holdActive && tapAction) {
         this._handleSlotTapAction(tapAction, slotName, entityId);
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
 
     return html`
@@ -2330,7 +2333,7 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderDatetimeSlot(slotName, slotStyle) {
+  _renderDatetimeSlot(slotName, slotStyle, stateKey) {
     const cfg = this._config;
     const prefix = `top_bar_${slotName}_`;
     const locale = this.hass?.language || 'en';
@@ -2370,37 +2373,38 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
+      state.holdActive = false;
       if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+        state.holdTimer = setTimeout(() => {
+          state.holdActive = true;
           this._handleSlotTapAction(holdAction, slotName);
         }, 500);
       }
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
+      if (!state.holdActive && tapAction) {
         this._handleSlotTapAction(tapAction, slotName);
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     return html`
@@ -2704,37 +2708,38 @@ class HkiHeaderCard extends LitElement {
           // Apply grayscale filter to image/icon only, not the container
           const contentFilter = (!isHome && grayscaleAway) ? "filter:grayscale(100%);" : "";
 
-          // Hold timer and state (like button slot)
-          let holdTimer = null;
-          let holdActive = false;
+          // Hold state lives on the instance (keyed by entity) so it survives re-renders
+          if (!this._slotHoldState) this._slotHoldState = {};
+          if (!this._slotHoldState[entityId]) this._slotHoldState[entityId] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+          const state = this._slotHoldState[entityId];
 
           const startHold = (e) => {
-            holdActive = false;
+            state.holdActive = false;
             if (holdAction && holdAction.action !== "none") {
-              holdTimer = setTimeout(() => {
-                holdActive = true;
+              state.holdTimer = setTimeout(() => {
+                state.holdActive = true;
                 this._handleAction(holdAction, entityId);
               }, 500);
             }
           };
 
           const endHold = (e) => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            if (!holdActive && tapAction) {
+            if (!state.holdActive && tapAction) {
               this._handleAction(tapAction, entityId);
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
           const cancelHold = () => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
           const handleTouchStart = (e) => {
