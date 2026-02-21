@@ -3866,13 +3866,15 @@ class HkiHeaderCardEditor extends LitElement {
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
+      const strippedConfig = this._stripDefaults(this._config);
       this.dispatchEvent(
         new CustomEvent("config-changed", {
-          detail: { config: this._config },
+          detail: { config: strippedConfig },
           bubbles: true,
           composed: true,
         })
       );
+      this.requestUpdate();
     };
 
     const patchAction = (patch) => {

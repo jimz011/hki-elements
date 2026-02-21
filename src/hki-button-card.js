@@ -12940,8 +12940,11 @@ ${isGoogleLayout ? '' : html`
       // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
       if (this.lovelace) return this.lovelace;
       try {
-        const huiRoot = document.querySelector("hui-root") ||
-                        document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+        // Try both the long shadow-root path and the short direct path
+        const root = document.querySelector("home-assistant")?.shadowRoot
+          ?.querySelector("ha-panel-lovelace")?.shadowRoot
+          ?.querySelector("hui-root");
+        const huiRoot = root || document.querySelector("hui-root");
         return huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace || null;
       } catch (_) { return null; }
     }
@@ -12991,16 +12994,6 @@ ${isGoogleLayout ? '' : html`
         // Keep mandatory fields
         next.type = next.type || "custom:hki-button-card";
         this._fireChanged(next);
-    }
-
-    _getLovelace() {
-      if (this.lovelace) return this.lovelace;
-      try {
-        const root = document.querySelector('home-assistant')?.shadowRoot
-          ?.querySelector('ha-panel-lovelace')?.shadowRoot
-          ?.querySelector('hui-root');
-        return root?.lovelace || root?.__lovelace || null;
-      } catch (e) { return null; }
     }
 
     _fireChanged(newConfig) {
