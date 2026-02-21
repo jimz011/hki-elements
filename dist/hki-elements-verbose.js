@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-18 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-19 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -2140,10 +2140,66 @@ class HkiHeaderCard extends LitElement {
           case "notifications":
           case "custom":
           case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId);
-          case "spacer": return html`<div class="slot-spacer"></div>`;
+          case "spacer": return this._renderSpacerSlot(slotName, stateKey, bar);
           case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey, bar);
           default: return html``;
       }
+  }
+
+  _renderSpacerSlot(slotName, stateKey, bar = "top_bar") {
+    const cfg = this._config;
+    const prefix = `${bar}_${slotName}_`;
+    const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
+    const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
+    const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+
+    const hasAnyAction = tapAction.action !== "none" || holdAction.action !== "none" || doubleTapAction.action !== "none";
+    if (!hasAnyAction) return html`<div class="slot-spacer"></div>`;
+
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    const state = this._slotHoldState[stateKey];
+
+    const startHold = () => {
+      state.holdActive = false;
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction.action !== "none") this._handleSlotTapAction(holdAction, slotName);
+      }, 500);
+    };
+    const endHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) this._handleSlotTapAction(tapAction, slotName);
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
+      }
+      state.holdActive = false;
+    };
+    const cancelHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      state.holdActive = false;
+    };
+
+    return html`
+      <div class="slot-spacer"
+        @mousedown=${startHold}
+        @mouseup=${endHold}
+        @mouseleave=${cancelHold}
+        @touchstart=${startHold}
+        @touchend=${endHold}
+        @contextmenu=${(e) => e.preventDefault()}
+        style="cursor:pointer;"
+      ></div>
+    `;
   }
 
   _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
@@ -2170,12 +2226,13 @@ class HkiHeaderCard extends LitElement {
 
     const startHold = () => {
       state.holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        state.holdTimer = setTimeout(() => {
-          state.holdActive = true;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
@@ -2183,7 +2240,7 @@ class HkiHeaderCard extends LitElement {
         clearTimeout(state.holdTimer);
         state.holdTimer = null;
       }
-      if (!state.holdActive && tapAction) {
+      if (!state.holdActive) {
         // Use click debouncing for double-tap detection
         state.clickCount++;
         if (state.clickCount === 1) {
@@ -2300,12 +2357,13 @@ class HkiHeaderCard extends LitElement {
 
     const startHold = () => {
       holdState.holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdState.holdTimer = setTimeout(() => {
-          holdState.holdActive = true;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      holdState.holdTimer = setTimeout(() => {
+        holdState.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName, entityId);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
@@ -2313,8 +2371,20 @@ class HkiHeaderCard extends LitElement {
         clearTimeout(holdState.holdTimer);
         holdState.holdTimer = null;
       }
-      if (!holdState.holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName, entityId);
+      if (!holdState.holdActive) {
+        holdState.clickCount++;
+        if (holdState.clickCount === 1) {
+          holdState.clickTimer = setTimeout(() => {
+            if (holdState.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName, entityId);
+            }
+            holdState.clickCount = 0;
+          }, 250);
+        } else if (holdState.clickCount === 2) {
+          clearTimeout(holdState.clickTimer);
+          holdState.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
+        }
       }
       holdState.holdActive = false;
     };
@@ -2336,11 +2406,6 @@ class HkiHeaderCard extends LitElement {
         @mouseleave=${cancelHold}
         @touchstart=${startHold}
         @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
-        }}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${showIcon ? (useSvg 
@@ -2404,12 +2469,13 @@ class HkiHeaderCard extends LitElement {
 
     const startHold = () => {
       state.holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        state.holdTimer = setTimeout(() => {
-          state.holdActive = true;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
@@ -2417,8 +2483,20 @@ class HkiHeaderCard extends LitElement {
         clearTimeout(state.holdTimer);
         state.holdTimer = null;
       }
-      if (!state.holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName);
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName);
+            }
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
       }
       state.holdActive = false;
     };
@@ -2440,11 +2518,6 @@ class HkiHeaderCard extends LitElement {
         @mouseleave=${cancelHold}
         @touchstart=${startHold}
         @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName);
-        }}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${icon ? html`
@@ -2739,12 +2812,13 @@ class HkiHeaderCard extends LitElement {
 
           const startHold = (e) => {
             state.holdActive = false;
-            if (holdAction && holdAction.action !== "none") {
-              state.holdTimer = setTimeout(() => {
-                state.holdActive = true;
+            // Always set timer so a long-press is recognized even when holdAction is "none"
+            state.holdTimer = setTimeout(() => {
+              state.holdActive = true;
+              if (holdAction && holdAction.action !== "none") {
                 this._handleAction(holdAction, entityId);
-              }, 500);
-            }
+              }
+            }, 500);
           };
 
           const endHold = (e) => {
@@ -2752,8 +2826,20 @@ class HkiHeaderCard extends LitElement {
               clearTimeout(state.holdTimer);
               state.holdTimer = null;
             }
-            if (!state.holdActive && tapAction) {
-              this._handleAction(tapAction, entityId);
+            if (!state.holdActive) {
+              state.clickCount++;
+              if (state.clickCount === 1) {
+                state.clickTimer = setTimeout(() => {
+                  if (state.clickCount === 1) {
+                    this._handleAction(tapAction, entityId);
+                  }
+                  state.clickCount = 0;
+                }, 250);
+              } else if (state.clickCount === 2) {
+                clearTimeout(state.clickTimer);
+                state.clickCount = 0;
+                this._handleAction(doubleTapAction, entityId);
+              }
             }
             state.holdActive = false;
           };
@@ -2786,11 +2872,6 @@ class HkiHeaderCard extends LitElement {
               @touchstart=${handleTouchStart}
               @touchend=${handleTouchEnd}
               @touchcancel=${cancelHold}
-              @dblclick=${(e) => {
-                e.preventDefault();
-                cancelHold();
-                this._handleAction(doubleTapAction, entityId);
-              }}
               @contextmenu=${(e) => e.preventDefault()}
             >
               ${showPicture 
