@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.4-dev-01 ',
+  '%c HKI-ELEMENTS %c v1.0.4-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -15806,6 +15806,7 @@ if (Array.isArray(obj)) {
 
 
 setConfig(config) {
+      const isFirstLoad = !this._config;
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
       // If the user is not actively editing the YAML, drop the draft so the editor shows the
@@ -15817,15 +15818,21 @@ setConfig(config) {
       // Auto-convert: if the incoming YAML differs from its normalized form,
       // immediately fire config-changed so HA saves the clean nested format.
       // This handles: old flat keys, obsolete/invalid keys, and nested drift.
-      const normalizedOutput = HkiButtonCard._serializeToNested(flat);
-      if (JSON.stringify(normalizedOutput) !== JSON.stringify(config)) {
-        Promise.resolve().then(() => {
-          this.dispatchEvent(new CustomEvent('config-changed', {
-            detail: { config: normalizedOutput },
-            bubbles: true,
-            composed: true,
-          }));
-        });
+      // Skip on the first load to prevent an infinite re-render loop when this
+      // editor is embedded inside hui-card-element-editor (e.g. in hki-header-card
+      // slot settings). Firing config-changed during initial setConfig propagates
+      // upward, causing HA to rebuild the parent editor and crash.
+      if (!isFirstLoad) {
+        const normalizedOutput = HkiButtonCard._serializeToNested(flat);
+        if (JSON.stringify(normalizedOutput) !== JSON.stringify(config)) {
+          Promise.resolve().then(() => {
+            this.dispatchEvent(new CustomEvent('config-changed', {
+              detail: { config: normalizedOutput },
+              bubbles: true,
+              composed: true,
+            }));
+          });
+        }
       }
     }
 
