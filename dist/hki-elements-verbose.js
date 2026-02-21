@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-13 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-14 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1966,7 +1966,6 @@ class HkiHeaderCard extends LitElement {
                 ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
                 ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
               });
-              document.body.appendChild(btn);
               btn._openPopup();
             } catch (err) {
               console.error('[hki-header-card] Failed to open popup:', err);
@@ -17958,14 +17957,18 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
-      // This is triggered once when the editor first connects, after HA's lazy loading fires.
+      // If hui-card-element-editor isn't registered yet:
+      // 1. Call window.loadCardHelpers() to trigger HA to load the lovelace helpers bundle
+      //    (this is what registers hui-card-element-editor in the custom elements registry)
+      // 2. Wait for definition then re-render so the card picker shows immediately
       if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
         this._waitingForCardEditor = true;
         customElements.whenDefined('hui-card-element-editor').then(() => {
           this._waitingForCardEditor = false;
           this.requestUpdate();
         });
+        // Trigger HA to actually load the bundle — without this, whenDefined never fires
+        window.loadCardHelpers?.().catch(() => {});
       }
     }
 

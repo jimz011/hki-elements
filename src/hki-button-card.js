@@ -12955,14 +12955,18 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // If hui-card-element-editor isn't registered yet, wait for it then re-render.
-      // This is triggered once when the editor first connects, after HA's lazy loading fires.
+      // If hui-card-element-editor isn't registered yet:
+      // 1. Call window.loadCardHelpers() to trigger HA to load the lovelace helpers bundle
+      //    (this is what registers hui-card-element-editor in the custom elements registry)
+      // 2. Wait for definition then re-render so the card picker shows immediately
       if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
         this._waitingForCardEditor = true;
         customElements.whenDefined('hui-card-element-editor').then(() => {
           this._waitingForCardEditor = false;
           this.requestUpdate();
         });
+        // Trigger HA to actually load the bundle — without this, whenDefined never fires
+        window.loadCardHelpers?.().catch(() => {});
       }
     }
 

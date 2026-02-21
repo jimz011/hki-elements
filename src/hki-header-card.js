@@ -1942,7 +1942,6 @@ class HkiHeaderCard extends LitElement {
                 ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
                 ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
               });
-              document.body.appendChild(btn);
               btn._openPopup();
             } catch (err) {
               console.error('[hki-header-card] Failed to open popup:', err);
