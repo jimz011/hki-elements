@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-19 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-18 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -2157,7 +2157,7 @@ class HkiHeaderCard extends LitElement {
     if (!hasAnyAction) return html`<div class="slot-spacer"></div>`;
 
     if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
     const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
@@ -2189,13 +2189,19 @@ class HkiHeaderCard extends LitElement {
       state.holdActive = false;
     };
 
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
     return html`
       <div class="slot-spacer"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
         style="cursor:pointer;"
       ></div>
@@ -2221,7 +2227,7 @@ class HkiHeaderCard extends LitElement {
     // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
     // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
     if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
     const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
@@ -2267,15 +2273,21 @@ class HkiHeaderCard extends LitElement {
       state.holdActive = false;
     };
     
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+    
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon} style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
@@ -2352,7 +2364,7 @@ class HkiHeaderCard extends LitElement {
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
     const holdState = this._slotHoldState[stateKey];
 
     const startHold = () => {
@@ -2397,15 +2409,21 @@ class HkiHeaderCard extends LitElement {
       holdState.holdActive = false;
     };
 
+    const handleTouchStart = () => { holdState.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { holdState.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (holdState.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (holdState.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!holdState.touchHandled) cancelHold(); };
+
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${showIcon ? (useSvg 
@@ -2464,7 +2482,7 @@ class HkiHeaderCard extends LitElement {
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
     const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
@@ -2509,15 +2527,21 @@ class HkiHeaderCard extends LitElement {
       state.holdActive = false;
     };
 
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${icon ? html`
@@ -2807,7 +2831,7 @@ class HkiHeaderCard extends LitElement {
 
           // Hold state lives on the instance (keyed by entity) so it survives re-renders
           if (!this._slotHoldState) this._slotHoldState = {};
-          if (!this._slotHoldState[entityId]) this._slotHoldState[entityId] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0 };
+          if (!this._slotHoldState[entityId]) this._slotHoldState[entityId] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
           const state = this._slotHoldState[entityId];
 
           const startHold = (e) => {
@@ -2852,23 +2876,19 @@ class HkiHeaderCard extends LitElement {
             state.holdActive = false;
           };
 
-          const handleTouchStart = (e) => {
-            e.preventDefault();
-            startHold(e);
-          };
-
-          const handleTouchEnd = (e) => {
-            e.preventDefault();
-            endHold(e);
-          };
+          const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+          const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+          const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+          const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+          const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
 
           return html`
             <div 
               class="person-avatar" 
               style="${avatarStyle}"
-              @mousedown=${startHold}
-              @mouseup=${endHold}
-              @mouseleave=${cancelHold}
+              @mousedown=${handleMouseDown}
+              @mouseup=${handleMouseUp}
+              @mouseleave=${handleMouseLeave}
               @touchstart=${handleTouchStart}
               @touchend=${handleTouchEnd}
               @touchcancel=${cancelHold}
