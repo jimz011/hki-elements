@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-33 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-34 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -17519,7 +17519,40 @@ ${isGoogleLayout ? '' : html`
                         }
                       }}
                     ></hui-card-element-editor>`
-                      : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
+                      : customElements.get('hui-card-picker')
+                        ? html`
+                          <hui-card-picker
+                            .hass=${this.hass}
+                            .lovelace=${this._getLovelace()}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @config-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const picked = ev.detail?.config;
+                              if (!picked) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(picked) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: picked });
+                              }
+                            }}
+                          ></hui-card-picker>
+
+                          <ha-yaml-editor
+                            .hass=${this.hass}
+                            .label=${"Popup Card (YAML)"}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @value-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const newCard = ev.detail?.value;
+                              if (!newCard) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                              }
+                            }}
+                            @click=${(e) => e.stopPropagation()}
+                          ></ha-yaml-editor>
+                        `
+                        : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
                   </div>
                 ` : ''}
                 
@@ -18132,85 +18165,47 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // Load hui-card-element-editor using multiple fallback strategies.
-      // HA lazy-loads this element, and the exact mechanism varies by HA version.
-      if (customElements.get('hui-card-element-editor')) return;
+      // Proactively load the built-in Lovelace card editor. HA lazy-loads this,
+      // which can cause the card picker to be missing unless it was opened elsewhere first.
+      //
+      // APPROACH: Call getConfigElement() on already-registered HA cards. This is the
+      // same trick used by simple-swipe-card and triggers HA's own lazy-loader to
+      // register hui-card-picker and hui-card-element-editor as a side effect.
+      // This is far more reliable than trying to import() hardcoded/hashed JS paths.
+      if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) return;
+
       if (this._waitingForCardEditor) return;
       this._waitingForCardEditor = true;
 
-      const onReady = () => {
-        this._waitingForCardEditor = false;
-        this.requestUpdate();
-      };
+      const triggers = [
+        () => customElements.get('hui-entities-card')?.getConfigElement?.(),
+        () => customElements.get('hui-conditional-card')?.getConfigElement?.(),
+        () => customElements.get('hui-vertical-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-horizontal-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-glance-card')?.getConfigElement?.(),
+        () => customElements.get('hui-picture-elements-card')?.getConfigElement?.(),
+        () => customElements.get('hui-button-card')?.getConfigElement?.(),
+      ];
 
-      // Always wire up whenDefined so we catch it however it gets defined
-      customElements.whenDefined('hui-card-element-editor').then(onReady);
-
-      (async () => {
-        // HA's editor bundle tries to register elements (like lit-virtualizer) that
-        // HKI may have already registered. Without patching, this throws a DOMException
-        // that aborts the bundle before hui-card-element-editor can be defined.
-        // We temporarily swallow duplicate-registration errors so the bundle completes.
-        const origDefine = customElements.define.bind(customElements);
-        customElements.define = function(name, ctor, opts) {
-          if (customElements.get(name)) return; // silently skip duplicates
-          origDefine(name, ctor, opts);
-        };
-        // Restore after a short window — enough for the async bundle to fully execute.
-        const restorePatch = setTimeout(() => {
-          customElements.define = origDefine;
-        }, 5000);
-
-        // Strategy 1: loadCardHelpers() — a global HA utility in some versions
-        try { await window.loadCardHelpers?.(); } catch (_) {}
-        if (customElements.get('hui-card-element-editor')) {
-          clearTimeout(restorePatch);
-          customElements.define = origDefine;
-          return;
-        }
-
-        // Strategy 2: Call getConfigElement() on INSTANCES of built-in HA cards.
-        // Must use document.createElement() to get an instance; calling it on the
-        // constructor (what customElements.get() returns) does nothing.
-        const builtins = [
-          'hui-entities-card',
-          'hui-conditional-card',
-          'hui-vertical-stack-card',
-          'hui-horizontal-stack-card',
-          'hui-glance-card',
-        ];
-        for (const tag of builtins) {
+      const tryTriggers = async () => {
+        for (const trigger of triggers) {
           try {
-            if (customElements.get(tag)) {
-              const instance = document.createElement(tag);
-              const result = instance.getConfigElement?.();
-              if (result && typeof result.then === 'function') await result;
-            }
+            await trigger();
+            if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) break;
           } catch (_) {}
-          if (customElements.get('hui-card-element-editor')) {
-            clearTimeout(restorePatch);
-            customElements.define = origDefine;
-            return;
-          }
         }
+        // Regardless of whether any trigger succeeded, wait for the element to be defined.
+        Promise.race([
+          customElements.whenDefined('hui-card-element-editor'),
+          customElements.whenDefined('hui-card-picker'),
+          new Promise((res) => setTimeout(res, 3000)),
+        ]).then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+};
 
-        // Strategy 3: Poll — whenDefined() alone won't fire if the define never happens
-        let attempts = 0;
-        const poll = setInterval(() => {
-          attempts++;
-          if (customElements.get('hui-card-element-editor')) {
-            clearInterval(poll);
-            clearTimeout(restorePatch);
-            customElements.define = origDefine;
-            onReady();
-          } else if (attempts > 150) {
-            clearInterval(poll);
-            clearTimeout(restorePatch);
-            customElements.define = origDefine;
-            console.error('[hki-button-card] hui-card-element-editor never became available — card picker cannot be shown.');
-          }
-        }, 200);
-      })();
+      tryTriggers();
     }
 
     _switchChanged(ev, field) { 
