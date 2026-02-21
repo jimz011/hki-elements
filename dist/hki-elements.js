@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -445,6 +445,13 @@ function flattenNestedFormat(nested) {
     if (nested.top_bar.enabled !== undefined) flat.top_bar_enabled = nested.top_bar.enabled;
     if (nested.top_bar.offset_y !== undefined) flat.top_bar_offset_y = nested.top_bar.offset_y;
     if (nested.top_bar.padding_x !== undefined) flat.top_bar_padding_x = nested.top_bar.padding_x;
+  }
+
+  // Flatten bottom_bar
+  if (nested.bottom_bar && typeof nested.bottom_bar === 'object') {
+    if (nested.bottom_bar.enabled !== undefined) flat.bottom_bar_enabled = nested.bottom_bar.enabled;
+    if (nested.bottom_bar.offset_y !== undefined) flat.bottom_bar_offset_y = nested.bottom_bar.offset_y;
+    if (nested.bottom_bar.padding_x !== undefined) flat.bottom_bar_padding_x = nested.bottom_bar.padding_x;
   }
   
   // Flatten info
@@ -1588,6 +1595,8 @@ class HkiHeaderCard extends LitElement {
         if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
         if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
         if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -1933,17 +1942,38 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         const popupCard = finalAction.custom_popup_card;
         if (popupCard && customElements.get('hki-button-card')) {
-          const btn = document.createElement('hki-button-card');
-          btn.hass = this.hass;
-          btn.setConfig({
-            type: 'custom:hki-button-card',
-            custom_popup: { enabled: true, card: popupCard },
-            ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
-            ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
-            ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
-            ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+          // Resolve name/state templates if needed, then open popup
+          const resolveTemplate = async (str) => {
+            if (!str) return str;
+            if (!(str.includes('{{') || str.includes('{%'))) return str;
+            try {
+              const res = await this.hass.callWS({
+                type: 'render_template',
+                template: str,
+                variables: { config: this._config ?? {}, user: this.hass?.user?.name || '' },
+                strict: false,
+              });
+              return res?.result != null ? String(res.result) : str;
+            } catch (_) { return str; }
+          };
+          Promise.all([
+            resolveTemplate(finalAction.popup_name),
+            resolveTemplate(finalAction.popup_state),
+          ]).then(([resolvedName, resolvedState]) => {
+            const btn = document.createElement('hki-button-card');
+            btn.hass = this.hass;
+            btn.setConfig({
+              type: 'custom:hki-button-card',
+              custom_popup: { enabled: true, card: popupCard },
+              ...(resolvedName ? { name: resolvedName } : {}),
+              ...(resolvedState ? { state_label: resolvedState } : {}),
+              ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+              ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+              ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+              ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+            });
+            btn._openPopup();
           });
-          btn._openPopup();
         }
         break;
       }
@@ -3623,7 +3653,9 @@ class HkiHeaderCardEditor extends LitElement {
   }
 
   _renderTemplateEditor(label, field, options = {}) {
-    const value = this._config?.[field] ?? "";
+    // options.value / options.onchange allow standalone use outside of this._config
+    const hasCustomBinding = options.onchange !== undefined;
+    const value = hasCustomBinding ? (options.value ?? "") : (this._config?.[field] ?? "");
     return html`
       <div class="section">${label}</div>
       <ha-code-editor
@@ -3633,9 +3665,12 @@ class HkiHeaderCardEditor extends LitElement {
         autocomplete-entities
         @value-changed=${(ev) => {
           ev.stopPropagation();
-          const newValue = ev.detail?.value;
-          if (newValue !== value) {
-            this._config = { ...this._config, [field]: (newValue ?? "") };
+          const newValue = ev.detail?.value ?? "";
+          if (newValue === value) return;
+          if (hasCustomBinding) {
+            options.onchange(newValue);
+          } else {
+            this._config = { ...this._config, [field]: newValue };
             const strippedConfig = this._stripDefaults(this._config);
             this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: strippedConfig }, bubbles: true, composed: true }));
           }
@@ -3891,6 +3926,9 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
+        <div class="section" style="margin-top: 12px;">Popup Header</div>
+        ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + field, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+        ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + field, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
         <div class="section" style="margin-top: 12px;">Popup Appearance</div>
         <div class="inline-fields-2">
           <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
