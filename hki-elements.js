@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-22 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-23 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -18453,13 +18453,17 @@ ${isGoogleLayout ? '' : html`
 
     // For Switches (ha-switch)
     _getLovelace() {
+      // HA sets this.lovelace on our editor element — use it if available (has editMode:true).
       if (this.lovelace) return this.lovelace;
       try {
-        const root = document.querySelector('home-assistant')?.shadowRoot
-          ?.querySelector('ha-panel-lovelace')?.shadowRoot
-          ?.querySelector('hui-root');
-        return root?.lovelace || root?.__lovelace || null;
-      } catch (e) { return null; }
+        // Fallback: borrow lovelace from the outer hui-card-element-editor that HA uses to
+        // host our editor. It always has editMode:true, which is required for the card picker
+        // to show. The DOM-walk path (home-assistant > ha-panel-lovelace) is incorrect in
+        // modern HA (missing home-assistant-main in the chain) and always returns null.
+        const existingEditor = document.querySelector('hui-card-element-editor');
+        if (existingEditor?.lovelace) return existingEditor.lovelace;
+        return null;
+      } catch (_) { return null; }
     }
 
     _ensureCardEditorLoaded() {
