@@ -13306,33 +13306,65 @@ ${isGoogleLayout ? '' : html`
 
     // For Switches (ha-switch)
     _getLovelace() {
-      // HA sets this.lovelace on our editor element — use it if available (has editMode:true).
+      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
       if (this.lovelace) return this.lovelace;
       try {
-        // Fallback: borrow lovelace from the outer hui-card-element-editor that HA uses to
-        // host our editor. It always has editMode:true, which is required for the card picker
-        // to show. The DOM-walk path (home-assistant > ha-panel-lovelace) is incorrect in
-        // modern HA (missing home-assistant-main in the chain) and always returns null.
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        const huiRoot = root || document.querySelector('hui-root');
+        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
+        if (lv) return lv;
+        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
         const existingEditor = document.querySelector('hui-card-element-editor');
         if (existingEditor?.lovelace) return existingEditor.lovelace;
         return null;
       } catch (_) { return null; }
     }
-
     _ensureCardEditorLoaded() {
-      // hui-card-element-editor is lazy-loaded by HA. We render the element
-      // unconditionally so the browser upgrades it in-place once HA registers it.
-      // We just need requestUpdate() at that point so LitElement passes .hass/.lovelace.
+      // Make sure HA's nested card editor (and its card-picker) is available immediately.
+      // Depending on HA version, these are lazily loaded and might not be registered yet.
       if (customElements.get('hui-card-element-editor')) return;
-      if (this._waitingForCardEditor) return;
-      this._waitingForCardEditor = true;
-      customElements.whenDefined('hui-card-element-editor').then(() => {
-        this._waitingForCardEditor = false;
-        this.requestUpdate();
-      });
+
+      if (!this._cardEditorImporting) {
+        this._cardEditorImporting = true;
+
+        (async () => {
+          // Try a few known frontend paths across HA versions/builds.
+          // (No single stable path exists for all installations.)
+          const candidates = [
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/config-elements/hui-card-element-editor.js',
+            '/frontend_latest/editor/hui-card-element-editor.js',
+            '/frontend_latest/lovelace/editor/hui-card-element-editor.js',
+            '/frontend_latest/panels/lovelace/editor/hui-card-picker.js',
+            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-picker.js',
+          ];
+
+          for (const url of candidates) {
+            if (customElements.get('hui-card-element-editor')) break;
+            try {
+              // eslint-disable-next-line no-unused-expressions
+              await import(/* webpackIgnore: true */ url);
+            } catch (_) {}
+          }
+
+          this._cardEditorImporting = false;
+          if (customElements.get('hui-card-element-editor')) {
+            this.requestUpdate();
+          }
+        })();
+      }
+
+      // Fallback: if HA loads it later anyway, re-render once it registers.
+      if (!this._waitingForCardEditor) {
+        this._waitingForCardEditor = true;
+        customElements.whenDefined('hui-card-element-editor').then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+      }
     }
-
-
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
