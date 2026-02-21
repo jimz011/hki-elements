@@ -2360,6 +2360,18 @@ _tileSliderClick(e) {
       return map[anim] || 'hki-anim-fade-in';
     }
 
+    _resetPopupPortalIfNeeded(type, entityId) {
+      // Prevent popup flicker by reusing the existing portal while the popup is open.
+      // Only tear down the portal when the popup "context" changes (type or entity).
+      if (this._popupPortal && (this._popupType !== type || this._popupEntityId !== entityId)) {
+        this._popupPortal.remove();
+        this._popupPortal = null;
+      }
+      this._popupType = type;
+      this._popupEntityId = entityId;
+    }
+
+
     _getCloseKeyframe(anim) {
       const map = {
         'fade':        'hki-anim-fade-out',
@@ -2846,11 +2858,8 @@ _tileSliderClick(e) {
 
 
     _renderPopupPortal() {
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
-      const entity = this._getEntity();
+      this._resetPopupPortalIfNeeded('light', entity?.entity_id || this._config?.entity || null);
+const entity = this._getEntity();
       const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
@@ -2881,7 +2890,15 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
       
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-light-popup-portal';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -3372,7 +3389,7 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -3426,9 +3443,8 @@ _tileSliderClick(e) {
     }
 
     _renderClimatePopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const name = this._getPopupName(entity);
+      this._resetPopupPortalIfNeeded('climate', entity?.entity_id || this._config?.entity || null);
+const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const mode = entity.state;
       const unit = '°';
@@ -3448,7 +3464,15 @@ _tileSliderClick(e) {
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-popup-portal';
 
       const renderStateLine = () => {
@@ -3711,7 +3735,7 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -4803,12 +4827,8 @@ _tileSliderClick(e) {
 
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
-      const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
+      this._resetPopupPortalIfNeeded('cover', entity?.entity_id || this._config?.entity || null);
+const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
       const entityName = this._getPopupName(entity);
       const pos = this._getCoverPosition(entity);
 
@@ -4829,7 +4849,15 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-light-popup-portal';
 
       const safeTitle = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -5138,7 +5166,7 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-document.body.appendChild(portal);
+if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
@@ -5447,10 +5475,8 @@ document.body.appendChild(portal);
      * ------------------------------------------------------------------ */
     _renderAlarmPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const entityName = this._getPopupName(entity);
+      this._resetPopupPortalIfNeeded('alarm', entity?.entity_id || this._config?.entity || null);
+const entityName = this._getPopupName(entity);
       const state = entity.state || 'unknown';
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -5458,7 +5484,15 @@ document.body.appendChild(portal);
       const icon = this._getResolvedIcon(entity, (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock');
       const iconColor = (state === 'disarmed') ? '#4CAF50' : '#F44336';
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-light-popup-portal';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -5624,7 +5658,7 @@ document.body.appendChild(portal);
         </div>
       `;
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
       this._setupAlarmPopupHandlers(portal);
@@ -5756,9 +5790,8 @@ document.body.appendChild(portal);
      * Humidifier Popup
      */
     _renderHumidifierPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const name = this._getPopupName(entity);
+      this._resetPopupPortalIfNeeded('humidifier', entity?.entity_id || this._config?.entity || null);
+const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -5778,7 +5811,15 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-popup-portal';
 
       portal.innerHTML = `
@@ -5966,7 +6007,7 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -6173,9 +6214,8 @@ document.body.appendChild(portal);
      * Fan Popup
      */
     _renderFanPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const name = this._getPopupName(entity);
+      this._resetPopupPortalIfNeeded('fan', entity?.entity_id || this._config?.entity || null);
+const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -6196,7 +6236,15 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-popup-portal';
 
       portal.innerHTML = `
@@ -6388,7 +6436,7 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -6641,8 +6689,8 @@ document.body.appendChild(portal);
      */
 
     _renderSwitchPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
-      this._popupType = 'switch';
+      this._resetPopupPortalIfNeeded('switch', entity?.entity_id || this._config?.entity || null);
+this._popupType = 'switch';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
       if (!entity) {
@@ -6691,7 +6739,15 @@ document.body.appendChild(portal);
         </button>
       ` : '';
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-popup-portal';
 
       portal.innerHTML = `
@@ -6890,7 +6946,7 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -6963,10 +7019,8 @@ document.body.appendChild(portal);
     }
 
     _renderCustomPopupPortal(entity) {
-      // IMPORTANT: Don't remove/recreate the portal on every update.
-      // Rebuilding the portal causes the popup to "close + open" again whenever hass updates.
-      this._popupType = 'custom';
-
+      this._resetPopupPortalIfNeeded('custom', entity?.entity_id || this._config?.entity || null);
+this._popupType = 'custom';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
       if (!entity) {
@@ -7002,43 +7056,15 @@ document.body.appendChild(portal);
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-
-      // If we already have an open custom popup, update it in-place instead of rebuilding.
-      // This prevents the popup from flickering/re-opening on every hass state change.
-      if (this._popupPortal && this._popupPortal.isConnected) {
-        try {
-          const existing = this._popupPortal;
-          // Update icon
-          const iconEl = existing.querySelector('.hki-popup-title ha-icon');
-          if (iconEl) {
-            iconEl.setAttribute('icon', icon);
-            iconEl.style.color = this._getPopupIconColor(color);
-          }
-          // Update title + state text
-          const titleTextEl = existing.querySelector('.hki-popup-title-text');
-          if (titleTextEl) {
-            const headerState = this._getPopupHeaderState(this._getLocalizedState(state, domain));
-            const lastTrig = this._formatLastTriggered(entity);
-            titleTextEl.innerHTML = `${name}<span class="hki-popup-state">${headerState}${lastTrig ? ` - ${lastTrig}` : ''}</span>`;
-          }
-
-          // Only rebuild the content area when the view actually changes (main <-> history).
-          const contentEl = existing.querySelector('#customContent');
-          if (contentEl) {
-            const wantHistory = this._activeView === 'history';
-            const hasHistory = !!contentEl.querySelector('#historyContainer');
-            if (wantHistory && !hasHistory) {
-              contentEl.innerHTML = this._renderCustomPopupContent(entity);
-            } else if (!wantHistory && hasHistory) {
-              contentEl.innerHTML = this._renderCustomPopupContent(entity);
-              this._renderCustomCard();
-            }
-          }
-        } catch (e) {}
-        return;
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
       }
-
-      const portal = document.createElement('div');
       portal.className = 'hki-popup-portal';
 
       portal.innerHTML = `
@@ -7163,7 +7189,7 @@ document.body.appendChild(portal);
         });
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -7308,9 +7334,8 @@ document.body.appendChild(portal);
       });
     }
     _renderLockPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const name = this._getPopupName(entity);
+      this._resetPopupPortalIfNeeded('lock', entity?.entity_id || this._config?.entity || null);
+const name = this._getPopupName(entity);
       const state = entity.state;
       const isLocked = state === 'locked';
       const isUnlocked = state === 'unlocked';
@@ -7345,7 +7370,15 @@ document.body.appendChild(portal);
       // Supported features: bit 0 (1) indicates "open" support for locks in Home Assistant
       const canOpenDoor = ((Number(entity?.attributes?.supported_features) || 0) & 1) === 1;
 
-      const portal = document.createElement('div');
+      let portal = this._popupPortal;
+      const _isNewPortal = !portal;
+      if (!portal) {
+        portal = document.createElement('div');
+        this._popupPortal = portal;
+      } else {
+        // Keep portal mounted to avoid flicker, but rebuild its contents.
+        portal.innerHTML = '';
+      }
       portal.className = 'hki-popup-portal';
 
       // Calculate slider position (locked = top/100%, unlocked = bottom/0%)
@@ -7535,7 +7568,7 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
+      if (!portal.isConnected) document.body.appendChild(portal);
       this._applyOpenAnimation(portal);
       this._popupPortal = portal;
 
@@ -10860,6 +10893,30 @@ const iconAlign = this._config.icon_align || 'left';
     }
 
     static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+
+    connectedCallback() {
+      super.connectedCallback?.();
+      // Make sure lovelace is available for hui-card-element-editor (it needs this for the card picker).
+      if (!this.lovelace) {
+        try {
+          const root =
+            document.querySelector('hui-root') ||
+            document.querySelector('home-assistant') ||
+            document.querySelector('ha-app');
+          const ll =
+            root?.lovelace ||
+            root?.shadowRoot?.querySelector('hui-root')?.lovelace ||
+            document.querySelector('hui-masonry-view')?.lovelace ||
+            document.querySelector('hui-view')?.lovelace ||
+            null;
+          if (ll) this.lovelace = ll;
+        } catch (_) { /* ignore */ }
+      }
+
+      this._ensureCardEditorLoaded();
+    }
+
+
     
     constructor() {
       super();
@@ -12993,46 +13050,28 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // Make sure HA's nested card editor (and its card-picker) is available immediately.
-      // Depending on HA version, these are lazily loaded and might not be registered yet.
-      if (customElements.get('hui-card-element-editor')) return;
-
-      if (!this._cardEditorImporting) {
-        this._cardEditorImporting = true;
-
-        (async () => {
-          // Try a few known frontend paths across HA versions/builds.
-          // (No single stable path exists for all installations.)
-          const candidates = [
-            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-element-editor.js',
-            '/frontend_latest/panels/lovelace/editor/config-elements/hui-card-element-editor.js',
-            '/frontend_latest/editor/hui-card-element-editor.js',
-            '/frontend_latest/lovelace/editor/hui-card-element-editor.js',
-            '/frontend_latest/panels/lovelace/editor/hui-card-picker.js',
-            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-picker.js',
-          ];
-
-          for (const url of candidates) {
-            if (customElements.get('hui-card-element-editor')) break;
-            try {
-              // eslint-disable-next-line no-unused-expressions
-              await import(/* webpackIgnore: true */ url);
-            } catch (_) {}
-          }
-
-          this._cardEditorImporting = false;
-          if (customElements.get('hui-card-element-editor')) {
-            this.requestUpdate();
-          }
-        })();
-      }
-
-      // Fallback: if HA loads it later anyway, re-render once it registers.
-      if (!this._waitingForCardEditor) {
+      // Try to proactively load the built-in card editor (it is lazy-loaded by HA).
+      // If this fails, we still fall back to waiting for registration.
+      if (!customElements.get('hui-card-element-editor') && !this._waitingForCardEditor) {
         this._waitingForCardEditor = true;
-        customElements.whenDefined('hui-card-element-editor').then(() => {
-          this._waitingForCardEditor = false;
-          this.requestUpdate();
+
+        const candidates = [
+          // Different HA versions/builds expose the editor at different paths.
+          '/frontend_latest/editor/card-editor/hui-card-element-editor.js',
+          '/frontend_latest/editor/lovelace/hui-card-element-editor.js',
+          '/frontend_latest/editor/hui-card-element-editor.js',
+          '/frontend_es5/editor/card-editor/hui-card-element-editor.js',
+          '/frontend_es5/editor/lovelace/hui-card-element-editor.js',
+          '/frontend_es5/editor/hui-card-element-editor.js',
+        ];
+
+        Promise.any(candidates.map((p) => import(p))).catch(() => {
+          // ignore; we'll just wait for whenDefined below
+        }).finally(() => {
+          customElements.whenDefined('hui-card-element-editor').then(() => {
+            this._waitingForCardEditor = false;
+            this.requestUpdate();
+          });
         });
       }
     }
