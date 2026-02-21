@@ -12697,7 +12697,6 @@ ${isGoogleLayout ? '' : html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
                   <div class="card-config">
-                    ${customElements.get('hui-card-element-editor') ? html`
                     <hui-card-element-editor
                       .hass=${this.hass}
                       .lovelace=${this._getLovelace()}
@@ -12712,26 +12711,6 @@ ${isGoogleLayout ? '' : html`
                         }
                       }}
                     ></hui-card-element-editor>
-                    ` : html`
-                    <div style="background: var(--secondary-background-color); border-radius: 8px; padding: 12px; margin-top: 4px;">
-                      <p style="font-size: 11px; opacity: 0.8; margin: 0 0 6px 0; font-weight: 500;">⏳ Visual card editor loading…</p>
-                      <p style="font-size: 11px; opacity: 0.6; margin: 0 0 10px 0;">
-                        The visual card picker loads automatically when any lovelace card editor has been opened.
-                        Use the YAML editor below in the meantime, or open another card's editor first and then return here.
-                      </p>
-                      <ha-yaml-editor
-                        .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                        @value-changed=${(ev) => {
-                          const val = ev.detail?.value;
-                          if (!val || typeof val !== 'object') return;
-                          const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                          if (JSON.stringify(val) !== JSON.stringify(existing)) {
-                            this._fireChanged({ ...this._config, custom_popup_card: val });
-                          }
-                        }}
-                      ></ha-yaml-editor>
-                    </div>
-                    `}
                   </div>
                 ` : ''}
                 
@@ -13344,73 +13323,18 @@ ${isGoogleLayout ? '' : html`
     }
 
     _ensureCardEditorLoaded() {
-      // Make sure HA's nested card editor (and its card-picker) is available immediately.
-      // hui-card-element-editor is lazy-loaded by HA when the lovelace editor first opens.
+      // hui-card-element-editor is lazy-loaded by HA. We render the element
+      // unconditionally so the browser upgrades it in-place once HA registers it.
+      // We just need requestUpdate() at that point so LitElement passes .hass/.lovelace.
       if (customElements.get('hui-card-element-editor')) return;
-
-      // Listen so we re-render the editor once it becomes defined (however it loads).
-      if (!this._waitingForCardEditor) {
-        this._waitingForCardEditor = true;
-        customElements.whenDefined('hui-card-element-editor').then(() => {
-          this._waitingForCardEditor = false;
-          this.requestUpdate();
-        });
-      }
-
-      if (this._cardEditorImporting) return;
-      this._cardEditorImporting = true;
-
-      (async () => {
-        try {
-          // Strategy 1: window.loadCardHelpers() — HA's official API that loads card
-          // infrastructure and often triggers loading of editor components as a side-effect.
-          if (window.loadCardHelpers) {
-            await window.loadCardHelpers();
-            if (customElements.get('hui-card-element-editor')) {
-              this._cardEditorImporting = false;
-              this.requestUpdate();
-              return;
-            }
-          }
-
-          // Strategy 2: Walk the shadow DOM to find the lovelace panel and trigger
-          // its internal component loading by accessing lovelace editor objects.
-          try {
-            const haApp = document.querySelector('home-assistant');
-            const main = haApp?.shadowRoot?.querySelector('home-assistant-main');
-            const panel = main?.shadowRoot?.querySelector('ha-panel-lovelace');
-            const huiRoot = panel?.shadowRoot?.querySelector('hui-root');
-            if (huiRoot?.lovelace) {
-              // Touching lovelace causes HA to load card editor chunks
-              const _ = huiRoot.lovelace.config;
-            }
-          } catch (_) {}
-
-          if (customElements.get('hui-card-element-editor')) {
-            this._cardEditorImporting = false;
-            this.requestUpdate();
-            return;
-          }
-
-          // Strategy 3: Try a handful of known paths (may succeed on some HA builds).
-          const candidates = [
-            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-element-editor.js',
-            '/frontend_latest/panels/lovelace/editor/config-elements/hui-card-element-editor.js',
-            '/frontend_latest/editor/hui-card-element-editor.js',
-            '/frontend_latest/lovelace/editor/hui-card-element-editor.js',
-            '/frontend_latest/panels/lovelace/editor/hui-card-picker.js',
-            '/frontend_latest/panels/lovelace/editor/card-editor/hui-card-picker.js',
-          ];
-          for (const url of candidates) {
-            if (customElements.get('hui-card-element-editor')) break;
-            try { await import(/* webpackIgnore: true */ url); } catch (_) {}
-          }
-        } catch (_) {}
-
-        this._cardEditorImporting = false;
-        if (customElements.get('hui-card-element-editor')) this.requestUpdate();
-      })();
+      if (this._waitingForCardEditor) return;
+      this._waitingForCardEditor = true;
+      customElements.whenDefined('hui-card-element-editor').then(() => {
+        this._waitingForCardEditor = false;
+        this.requestUpdate();
+      });
     }
+
 
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
