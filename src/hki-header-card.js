@@ -2311,9 +2311,7 @@ class HkiHeaderCard extends LitElement {
     const cardEl = this._customCards[slotName];
     if (!cardEl) return html``;
     
-    const align = this._config[`top_bar_${slotName}_align`] || (slotName === "right" ? "end" : slotName === "left" ? "start" : "center");
-    const rtlStyle = align === "end" ? "direction: rtl;" : "";
-    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${rtlStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
+    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
 
     return html`
       <div class="info-item" style="${combinedStyle}">
@@ -3606,7 +3604,7 @@ class HkiHeaderCardEditor extends LitElement {
             <hui-card-element-editor
               .hass=${this.hass}
               .lovelace=${this.lovelace}
-              .value=${this._config[`top_bar_${slotName}_card`] || {}}
+              .value=${this._config[`top_bar_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
               @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
             ></hui-card-element-editor>
           </div>
