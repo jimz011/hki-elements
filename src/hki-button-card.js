@@ -1,11 +1,18 @@
 // HKI Button Card
 
 (function() {
-  // Use the LitElement/html/css set globally by the bundle (hki-elements.js),
-  // which imports them from unpkg — the same source header card uses.
-  const LitElement = window.LitElement;
-  const html = window.html;
-  const css = window.css;
+  const _getLit = () => {
+    const base =
+      customElements.get("hui-masonry-view") ||
+      customElements.get("ha-panel-lovelace") ||
+      customElements.get("ha-app");
+    const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
+    const html = LitElement?.prototype?.html || window.html;
+    const css = LitElement?.prototype?.css || window.css;
+    return { LitElement, html, css };
+  };
+
+  const { LitElement, html, css } = _getLit();
 
   const CARD_TYPE = "hki-button-card";
   const EDITOR_TAG = "hki-button-card-editor";
@@ -826,34 +833,32 @@ if (!shouldUpdate && oldEntity && newEntity &&
             this._renderCustomPopupPortal(newEntity);
             return;
           }
-          // Use in-place updates for all domain-specific popups so the popup stays
-          // open and stable (no remove → re-append → animation replay on every hass tick).
           if (this._getDomain() === 'climate') {
-            this._updateClimatePopupInPlace(newEntity);
+            this._renderClimatePopupPortal(newEntity);
             return;
           }
           if (this._getDomain() === 'alarm_control_panel') {
-            this._updateAlarmPopupInPlace(newEntity);
+            this._renderAlarmPopupPortal(newEntity);
             return;
           }
           if (this._getDomain() === 'cover') {
-            this._updateCoverPopupInPlace(newEntity);
+            this._renderCoverPopupPortal(newEntity);
             return;
           }
           if (this._getDomain() === 'humidifier') {
-            this._updateHumidifierPopupInPlace(newEntity);
+            this._renderHumidifierPopupPortal(newEntity);
             return;
           }
           if (this._getDomain() === 'fan') {
-            this._updateFanPopupInPlace(newEntity);
+            this._renderFanPopupPortal(newEntity);
             return;
           }
           if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') {
-            this._updateSwitchPopupInPlace(newEntity);
+            this._renderSwitchPopupPortal(newEntity);
             return;
           }
           if (this._getDomain() === 'lock') {
-            this._updateLockPopupInPlace(newEntity);
+            this._renderLockPopupPortal(newEntity);
             return;
           }
 
@@ -3417,334 +3422,6 @@ _tileSliderClick(e) {
       
       if (this._activeView === 'color') {
           setTimeout(() => this._setInitialColorIndicator(), 100);
-      }
-    }
-
-    // ─── In-place popup updates ────────────────────────────────────────────────
-    // Called from updated() to refresh only the changing parts of an already-open
-    // popup. Avoids the "portal.remove() → appendChild()" cycle that causes the
-    // popup to visually close and reopen (and replay its open animation) on every
-    // hass state-change tick.
-
-    _updateClimatePopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const attrs = entity.attributes || {};
-      const mode = entity.state;
-      const color = this._getClimateColor(entity);
-
-      // 1. Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const cur = this._getClimateBadgeTemperature(entity);
-        const curText = (cur !== undefined && cur !== null && cur !== '') ? ` • ${cur}°` : '';
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(`${String(mode).replace(/_/g, ' ')}${curText}`) +
-          (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // 2. Header icon
-      const headerIcon = portal.querySelector('.hki-popup-title ha-icon');
-      if (headerIcon) {
-        const newIcon = ((this.renderTemplate?.('icon', this._config.icon || '') || '').toString().trim()) ||
-                        (attrs.icon) || HVAC_ICONS[mode] || 'mdi:thermostat';
-        headerIcon.setAttribute('icon', newIcon);
-        headerIcon.style.color = this._getPopupIconColor(color);
-      }
-
-      // 3. Slider / circular content in main view
-      if (this._activeView === 'main') {
-        if (mode === 'off') {
-          // Mode changed to off — rebuild content area only if it's still showing controls
-          const content = portal.querySelector('#popupContent');
-          if (content && content.querySelector('.vertical-slider-track, #circularSlider')) {
-            content.innerHTML = this._renderClimatePopupContent(entity, color);
-          }
-        } else {
-          this._tempMin = attrs.min_temp || 7;
-          this._tempMax = attrs.max_temp || 35;
-          this._step = this._getTempStep();
-          const range = this._tempMax - this._tempMin;
-          const unit = attrs.temperature_unit || this.hass?.config?.unit_system?.temperature || '°';
-
-          if (this._config.climate_use_circular_slider) {
-            const temp = this._optimisticClimateTemp ?? attrs.temperature ?? attrs.current_temperature;
-            const value = temp ?? this._tempMin;
-            const percentage = Math.max(0, Math.min(100, range > 0 ? ((value - this._tempMin) / range) * 100 : 0));
-            const maxArcLength = 628.32 * 0.75;
-            const arcLength = (percentage / 100) * maxArcLength;
-            const startAngle = 135 * (Math.PI / 180);
-            const arcAngle = (percentage / 100) * 270 * (Math.PI / 180);
-            const totalAngle = startAngle + arcAngle;
-            const thumbX = 140 + 100 * Math.cos(totalAngle);
-            const thumbY = 140 + 100 * Math.sin(totalAngle);
-            const progress = portal.querySelector('#circularProgress');
-            const thumb = portal.querySelector('#circularThumb');
-            const valueEl = portal.querySelector('#circularTempValue');
-            if (progress) progress.setAttribute('stroke-dasharray', `${arcLength.toFixed(2)} 628.32`);
-            if (thumb) { thumb.setAttribute('cx', thumbX.toFixed(2)); thumb.setAttribute('cy', thumbY.toFixed(2)); }
-            if (valueEl) {
-              const valueSize = this._config.popup_value_font_size || 64;
-              valueEl.innerHTML = `${value}<span style="font-size: ${valueSize / 2}px;">${unit}</span>`;
-            }
-          } else {
-            const updateSlider = (id, value) => {
-              if (value === undefined || value === null) return;
-              const pct = Math.max(0, Math.min(100, range > 0 ? ((value - this._tempMin) / range) * 100 : 0));
-              const fill = portal.querySelector(`#slider-${id} .vertical-slider-fill`);
-              const thumb = portal.querySelector(`#slider-${id} .vertical-slider-thumb`);
-              const disp = portal.querySelector(`#display-${id}`);
-              if (fill) fill.style.height = `${pct}%`;
-              if (thumb) thumb.style.bottom = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
-              if (disp) disp.innerHTML = `${value}<span>${unit}</span>`;
-            };
-            const isRange = (mode === 'heat_cool' || mode === 'auto') &&
-                            attrs.target_temp_high !== undefined && attrs.target_temp_low !== undefined;
-            if (isRange) {
-              updateSlider('target_temp_low', attrs.target_temp_low);
-              updateSlider('target_temp_high', attrs.target_temp_high);
-            } else {
-              updateSlider('temperature', this._optimisticClimateTemp ?? attrs.temperature ?? attrs.current_temperature);
-            }
-          }
-        }
-      }
-
-      // 4. HVAC mode nav buttons (skip when optimistic update is in flight)
-      if (!this._optimisticHvacMode) {
-        portal.querySelectorAll('.nav-btn[data-mode]').forEach(btn => {
-          const btnMode = btn.dataset.mode;
-          const isActive = btnMode === mode;
-          btn.classList.toggle('active', isActive);
-          const customStyle = isActive ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false);
-          const colorStyle = isActive
-            ? `color:${(btnMode === 'off') ? 'var(--primary-text-color)' : ((HVAC_COLORS && HVAC_COLORS[btnMode]) || '')}`
-            : '';
-          btn.setAttribute('style', [customStyle, colorStyle].filter(Boolean).join('; '));
-        });
-      }
-    }
-
-    _updateCoverPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const pos = this._getCoverPosition(entity);
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-light-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(pos + '%') + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Slider / group — skip in history/favorites views
-      if (!this._coverHistoryOpen && this._activeView !== 'favorites') {
-        if (this._coverGroupMode && Array.isArray(entity.attributes?.entity_id)) {
-          // Update each group member's slider row
-          entity.attributes.entity_id.forEach(id => {
-            const row = portal.querySelector(`.cover-row[data-entity-id="${id}"]`);
-            if (!row) return;
-            const st = this.hass?.states?.[id];
-            if (!st) return;
-            const p = this._getCoverPosition(st);
-            const fill = row.querySelector('.cover-row-fill');
-            const thumb = row.querySelector('.cover-row-thumb');
-            const stateLabel = row.querySelector('.cover-row-state');
-            if (fill) fill.style.width = `${p}%`;
-            if (thumb) thumb.style.left = `${p}%`;
-            if (stateLabel) stateLabel.textContent = `${p}%`;
-          });
-        } else {
-          // Update main position slider
-          const disp = portal.querySelector('#coverPosDisp');
-          const fill = portal.querySelector('#coverPosTrack .vertical-slider-fill');
-          const thumb = portal.querySelector('#coverPosTrack .vertical-slider-thumb');
-          if (disp) disp.innerHTML = `${pos}<span>%</span>`;
-          if (fill) fill.style.height = `${pos}%`;
-          if (thumb) thumb.style.bottom = pos <= 0 ? '0px' : `calc(${pos}% - 6px)`;
-        }
-      }
-    }
-
-    _updateAlarmPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const state = entity.state;
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(String(state).replace(/_/g, ' ')) + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Nav button active states
-      const btnMap = { disarmed: '#btnDisarm', armed_home: '#btnHome', armed_away: '#btnAway', armed_night: '#btnNight' };
-      Object.entries(btnMap).forEach(([s, id]) => {
-        const btn = portal.querySelector(id);
-        if (!btn) return;
-        const isActive = state === s;
-        btn.classList.toggle('active', isActive);
-        btn.setAttribute('style', isActive ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false));
-      });
-    }
-
-    _updateHumidifierPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const attrs = entity.attributes || {};
-      const isOn = entity.state === 'on';
-      const targetHumidity = attrs.humidity ?? 50;
-      const currentHumidity = attrs.current_humidity ?? '--';
-      const minHumidity = attrs.min_humidity ?? 0;
-      const maxHumidity = attrs.max_humidity ?? 100;
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(isOn ? 'On' : 'Off') + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Nav toggle button
-      const toggleBtn = portal.querySelector('#humidifierToggle');
-      if (toggleBtn) {
-        toggleBtn.classList.toggle('active', isOn);
-        toggleBtn.setAttribute('style', isOn ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false));
-        toggleBtn.querySelector('ha-icon')?.setAttribute('icon', isOn ? 'mdi:power' : 'mdi:power-off');
-        const span = toggleBtn.querySelector('span');
-        if (span) span.textContent = isOn ? 'On' : 'Off';
-      }
-
-      // Slider (only in main view when on)
-      if (this._activeView === 'main' && isOn) {
-        const range = maxHumidity - minHumidity;
-        const pct = range > 0 ? ((targetHumidity - minHumidity) / range) * 100 : 0;
-        const thumbPos = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
-        const disp = portal.querySelector('#displayHumidity');
-        const fill = portal.querySelector('#sliderHumidity .vertical-slider-fill');
-        const thumb = portal.querySelector('#sliderHumidity .vertical-slider-thumb');
-        const cur = portal.querySelector('.humidifier-current-value');
-        if (disp) disp.innerHTML = `${targetHumidity}<span>%</span>`;
-        if (fill) fill.style.height = `${pct}%`;
-        if (thumb) thumb.style.bottom = thumbPos;
-        if (cur) cur.innerHTML = `${currentHumidity}<span style="font-size: 18px; opacity: 0.7;">%</span>`;
-      }
-    }
-
-    _updateFanPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const attrs = entity.attributes || {};
-      const isOn = entity.state === 'on';
-      const speed = Math.round(attrs.percentage ?? 0);
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(isOn ? speed + '%' : 'Off') + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Nav toggle button
-      const toggleBtn = portal.querySelector('#fanToggle');
-      if (toggleBtn) {
-        toggleBtn.classList.toggle('active', isOn);
-        toggleBtn.setAttribute('style', isOn ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false));
-        toggleBtn.querySelector('ha-icon')?.setAttribute('icon', isOn ? 'mdi:power' : 'mdi:power-off');
-        const span = toggleBtn.querySelector('span');
-        if (span) span.textContent = isOn ? 'On' : 'Off';
-      }
-
-      // Speed slider (main view, when on)
-      if (this._activeView === 'main' && isOn) {
-        const pct = speed;
-        const thumbPos = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
-        const disp = portal.querySelector('#displaySpeed');
-        const fill = portal.querySelector('#sliderSpeed .vertical-slider-fill');
-        const thumb = portal.querySelector('#sliderSpeed .vertical-slider-thumb');
-        if (disp) disp.innerHTML = `${speed}<span>%</span>`;
-        if (fill) fill.style.height = `${pct}%`;
-        if (thumb) thumb.style.bottom = thumbPos;
-      }
-    }
-
-    _updateSwitchPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const isOn = entity.state === 'on';
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(isOn ? 'On' : 'Off') + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Switch slider active class
-      const switchEl = portal.querySelector('#switchSlider');
-      if (switchEl) switchEl.classList.toggle('active', isOn);
-
-      // Group view: update each member row
-      if (this._activeView === 'group' && Array.isArray(entity.attributes?.entity_id)) {
-        entity.attributes.entity_id.forEach(id => {
-          const row = portal.querySelector(`.switch-row[data-entity-id="${id}"]`);
-          if (!row) return;
-          const st = this.hass?.states?.[id];
-          if (!st) return;
-          const memberOn = st.state === 'on';
-          const toggle = row.querySelector('.switch-row-toggle');
-          if (toggle) {
-            toggle.classList.toggle('active', memberOn);
-            toggle.setAttribute('style', memberOn ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false));
-          }
-        });
-      }
-    }
-
-    _updateLockPopupInPlace(entity) {
-      if (!this._popupPortal || !this._popupPortal.isConnected) return;
-      const portal = this._popupPortal;
-      const state = entity.state;
-      const isLocked = state === 'locked';
-      const isJammed = state === 'jammed';
-      const isLocking = state === 'locking';
-
-      const contactSensorEntity = this._config.lock_contact_sensor_entity
-        ? this.hass?.states?.[this._config.lock_contact_sensor_entity] : null;
-      const contactSensorState = contactSensorEntity ? contactSensorEntity.state : null;
-      const isContactOpen = contactSensorState === 'on' || contactSensorState === 'open';
-      const contactOpenLabel = this._config.lock_contact_sensor_label || 'Door Open';
-
-      let color = isLocked ? '#4CAF50' : (isJammed ? '#F44336' : '#FFC107');
-      let icon = this._getResolvedIcon?.(entity, isLocked ? 'mdi:lock' : (isJammed ? 'mdi:lock-alert' : 'mdi:lock-open')) || 'mdi:lock';
-      let stateText = this._getLocalizedState(state, 'lock');
-      if (isContactOpen) { color = '#F44336'; icon = this._getResolvedIcon?.(entity, 'mdi:lock-alert') || 'mdi:lock-alert'; stateText = contactOpenLabel; }
-
-      // Header icon
-      const headerIcon = portal.querySelector('.hki-popup-title ha-icon');
-      if (headerIcon) { headerIcon.setAttribute('icon', icon); headerIcon.style.color = this._getPopupIconColor(color); }
-
-      // Header state text
-      const stateEl = portal.querySelector('.hki-popup-state');
-      if (stateEl) {
-        const lastTrig = this._formatLastTriggered(entity);
-        stateEl.textContent = this._getPopupHeaderState(stateText) + (lastTrig ? ` - ${lastTrig}` : '');
-      }
-
-      // Content state label
-      const valueDisp = portal.querySelector('#lockContent .value-display');
-      if (valueDisp) valueDisp.textContent = stateText;
-
-      // Slider position: locked/locking = top (100%), unlocked/unlocking = bottom (0%)
-      const sliderPos = (isLocked || isLocking) ? 100 : 0;
-      const handleBottom = sliderPos === 0 ? '4px' : sliderPos === 100 ? 'calc(100% - 124px)' : `calc(${sliderPos}% - 60px)`;
-      const slider = portal.querySelector('#lockSlider');
-      if (slider) {
-        const fill = slider.querySelector('.vertical-slider-fill');
-        const thumb = slider.querySelector('.vertical-slider-thumb');
-        if (fill) fill.style.height = `${sliderPos}%`;
-        if (thumb) thumb.style.bottom = handleBottom;
       }
     }
 
@@ -11182,7 +10859,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, lovelace: { attribute: false }, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -11516,7 +11193,8 @@ setConfig(config) {
     }
 
 disconnectedCallback() {
-      super.connectedCallback?.();
+      super.disconnectedCallback?.();
+      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
     
     shouldUpdate(changedProps) {
@@ -13313,6 +12991,7 @@ ${isGoogleLayout ? '' : html`
         return null;
       } catch (_) { return null; }
     }
+
     _ensureCardEditorLoaded() {
       // Make sure HA's nested card editor (and its card-picker) is available immediately.
       // Depending on HA version, these are lazily loaded and might not be registered yet.
@@ -13357,6 +13036,7 @@ ${isGoogleLayout ? '' : html`
         });
       }
     }
+
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
