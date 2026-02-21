@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3162,6 +3162,15 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.perform_action) cleaned.perform_action = action.perform_action;
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
+        break;
+      case "hki-more-info":
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -16143,11 +16152,19 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    firstUpdated() {
-      // Pre-warm hui-card-element-editor so the card type picker works
-      // without another card editor being opened first.
+    connectedCallback() {
+      super.connectedCallback?.();
+      // Ensure hui-card-element-editor is registered before we render the card picker.
+      // It's loaded lazily by HA's lovelace panel, so we must trigger it ourselves
+      // the first time a button card editor opens (before any other card editor has run).
       if (!customElements.get('hui-card-element-editor')) {
-        document.dispatchEvent(new CustomEvent('ll-rebuild', { bubbles: true, composed: true }));
+        customElements.whenDefined('hui-card-element-editor').then(() => {
+          this.requestUpdate();
+        });
+        // Trigger HA to load the card editor helpers (this registers hui-card-element-editor)
+        window.loadCardHelpers?.().then(helpers => {
+          helpers?.createCardElement({ type: 'placeholder' }).catch(() => {});
+        }).catch(() => {});
       }
     }
 

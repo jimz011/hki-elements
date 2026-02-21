@@ -3139,6 +3139,15 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
         break;
+      case "hki-more-info":
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
+        break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
         Object.keys(action).forEach(key => {

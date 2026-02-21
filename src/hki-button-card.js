@@ -11154,11 +11154,19 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    firstUpdated() {
-      // Pre-warm hui-card-element-editor so the card type picker works
-      // without another card editor being opened first.
+    connectedCallback() {
+      super.connectedCallback?.();
+      // Ensure hui-card-element-editor is registered before we render the card picker.
+      // It's loaded lazily by HA's lovelace panel, so we must trigger it ourselves
+      // the first time a button card editor opens (before any other card editor has run).
       if (!customElements.get('hui-card-element-editor')) {
-        document.dispatchEvent(new CustomEvent('ll-rebuild', { bubbles: true, composed: true }));
+        customElements.whenDefined('hui-card-element-editor').then(() => {
+          this.requestUpdate();
+        });
+        // Trigger HA to load the card editor helpers (this registers hui-card-element-editor)
+        window.loadCardHelpers?.().then(helpers => {
+          helpers?.createCardElement({ type: 'placeholder' }).catch(() => {});
+        }).catch(() => {});
       }
     }
 
