@@ -140,10 +140,13 @@ const DEFAULTS = Object.freeze({
   top_bar_offset_y: 15,
   top_bar_padding_x: 0,
   
-  // Slot types: "none", "spacer", "weather", "datetime", "custom", "button"
+  // Slot types: "none", "spacer", "weather", "datetime", "notifications", "card", "button"
   top_bar_left: "none",
   top_bar_center: "none",
   top_bar_right: "none",
+  top_bar_left_align: "start",
+  top_bar_center_align: "center",
+  top_bar_right_align: "end",
   
   // Default custom cards for slots
   top_bar_left_card: { type: "custom:hki-notification-card" },
@@ -325,7 +328,12 @@ function migrateToNestedFormat(oldConfig) {
         icon: oldConfig[prefix + "icon"],
         label: oldConfig[prefix + "label"]
       };
-    } else if (slotType === "custom") {
+    } else if (slotType === "custom" || slotType === "notifications") {
+      slotConfig.custom = {
+        card: oldConfig[prefix + "card"]
+      };
+      if (slotType === "custom") slotConfig.type = "notifications"; // migrate legacy value
+    } else if (slotType === "card") {
       slotConfig.custom = {
         card: oldConfig[prefix + "card"]
       };
@@ -480,6 +488,8 @@ function flattenNestedFormat(nested) {
     if (slotConfig.custom) {
       flat[prefix + "card"] = slotConfig.custom.card;
     }
+    
+    if (slotConfig.align !== undefined) flat[prefix + "align"] = slotConfig.align;
     
     // Actions
     if (slotConfig.actions) {
@@ -856,7 +866,7 @@ class HkiHeaderCard extends LitElement {
         right: 0;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         z-index: 3;
         box-sizing: border-box;
       }
@@ -886,6 +896,9 @@ class HkiHeaderCard extends LitElement {
         justify-content: flex-end;
         text-align: right;
       }
+      .slot-align-start  { justify-content: flex-start !important; text-align: left !important; }
+      .slot-align-center { justify-content: center !important;     text-align: center !important; }
+      .slot-align-end    { justify-content: flex-end !important;   text-align: right !important; }
       
       /* Empty slots collapse to allow more space for occupied slots */
       .slot.slot-empty {
@@ -1340,7 +1353,11 @@ class HkiHeaderCard extends LitElement {
     m.top_bar_offset_y = toNum(m.top_bar_offset_y, 10);
     m.top_bar_padding_x = toNum(m.top_bar_padding_x, 5);
     
-    const validSlotTypes = ["none", "spacer", "weather", "datetime", "custom", "button"];
+    const validSlotTypes = ["none", "spacer", "weather", "datetime", "notifications", "custom", "card", "button"];
+    // Migrate legacy "custom" value to "notifications"
+    if (m.top_bar_left === "custom") m.top_bar_left = "notifications";
+    if (m.top_bar_center === "custom") m.top_bar_center = "notifications";
+    if (m.top_bar_right === "custom") m.top_bar_right = "notifications";
     m.top_bar_left = validSlotTypes.includes(m.top_bar_left) ? m.top_bar_left : "none";
     m.top_bar_center = validSlotTypes.includes(m.top_bar_center) ? m.top_bar_center : "none";
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
@@ -1351,6 +1368,9 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
       m[prefix + "icon"] = m[prefix + "icon"] || "";
       m[prefix + "label"] = m[prefix + "label"] || "";
+      // Alignment default differs per slot
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
       m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
       m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
@@ -1855,20 +1875,27 @@ class HkiHeaderCard extends LitElement {
         const cardConfig = this._config[cardConfigKey];
         
         // Generate a simple hash to detect config changes
-        const configHash = type === 'custom' ? JSON.stringify(cardConfig || {}) : '';
+        const isCardSlot = type === 'notifications' || type === 'custom' || type === 'card';
+        const configHash = isCardSlot ? JSON.stringify(cardConfig || {}) : '';
         const cacheKey = `_customCardHash_${slot}`;
         
-        if (type === 'custom') {
+        if (isCardSlot) {
             // Only recreate if config has changed
             if (this[cacheKey] !== configHash || !this._customCards[slot]) {
                 if (!helpersLoaded) helpersLoaded = await window.loadCardHelpers();
                 
-                let finalConfig = { 
-                    use_header_styling: true, 
-                    show_background: false,
-                    show_empty: true,
-                    ...(cardConfig || { type: "custom:hki-notification-card" })
-                };
+                // notifications type injects header-styling helpers; card type is bare
+                let finalConfig;
+                if (type === 'card') {
+                    finalConfig = { ...(cardConfig || {}) };
+                } else {
+                    finalConfig = { 
+                        use_header_styling: true, 
+                        show_background: false,
+                        show_empty: true,
+                        ...(cardConfig || { type: "custom:hki-notification-card" })
+                    };
+                }
 
                 try {
                     const element = await helpersLoaded.createCardElement(finalConfig);
@@ -1883,7 +1910,7 @@ class HkiHeaderCard extends LitElement {
             }
         } else if (this._customCards[slot]) {
             this._customCards[slot] = null;
-            this[cacheKey] = '';
+            this[`_customCardHash_${slot}`] = '';
             needsUpdate = true;
         }
     }
@@ -1963,7 +1990,9 @@ class HkiHeaderCard extends LitElement {
       switch (type) {
           case "weather": return this._renderWeatherSlot(slotName, slotStyle);
           case "datetime": return this._renderDatetimeSlot(slotName, slotStyle);
-          case "custom": return this._renderCustomCardSlot(slotName, slotStyle);
+          case "notifications":
+          case "custom":
+          case "card": return this._renderCustomCardSlot(slotName, slotStyle);
           case "spacer": return html`<div class="slot-spacer"></div>`;
           case "button": return this._renderButtonSlot(slotName, slotStyle);
           default: return html``;
@@ -2330,11 +2359,15 @@ class HkiHeaderCard extends LitElement {
       const centerOverflow = !!cfg.top_bar_center_overflow;
       const rightOverflow = !!cfg.top_bar_right_overflow;
 
+      const leftAlign = cfg.top_bar_left_align || 'start';
+      const centerAlign = cfg.top_bar_center_align || 'center';
+      const rightAlign = cfg.top_bar_right_align || 'end';
+
       return html`
         <div class="top-bar-container" style="${topStyle}">
-            <div class="slot slot-left ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
-            <div class="slot slot-center ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
-            <div class="slot slot-right ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
         </div>
       `;
   }
@@ -3139,6 +3172,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat[prefix + "offset_x_mobile"] !== undefined) slotConfig.offset_x_mobile = flat[prefix + "offset_x_mobile"];
       if (flat[prefix + "offset_y_mobile"] !== undefined) slotConfig.offset_y_mobile = flat[prefix + "offset_y_mobile"];
       if (flat[prefix + "overflow"] !== undefined) slotConfig.overflow = flat[prefix + "overflow"];
+      if (flat[prefix + "align"] !== undefined) slotConfig.align = flat[prefix + "align"];
       
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
@@ -3197,7 +3231,7 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
           if (flat[prefix + "label"] !== undefined) slotConfig.button.label = flat[prefix + "label"];
         }
-      } else if (slotType === "custom") {
+      } else if (slotType === "notifications" || slotType === "custom" || slotType === "card") {
         if (flat[prefix + "card"] !== undefined) {
           slotConfig.custom = { card: flat[prefix + "card"] };
         }
@@ -3431,7 +3465,9 @@ class HkiHeaderCardEditor extends LitElement {
       spacer: "Spacer",
       weather: "Weather",
       datetime: "Date/Time",
+      notifications: "Notifications",
       custom: "Notifications",
+      card: "Custom Card",
       button: "Button"
     };
     return labels[type] || "Empty";
@@ -3442,17 +3478,25 @@ class HkiHeaderCardEditor extends LitElement {
     const type = this._config[`top_bar_${slotName}`] || "none";
     const useGlobal = this._config[prefix + "use_global"] !== false;
     
+    const displayType = (type === "custom") ? "notifications" : type;
     return html`
-      <ha-select label="Content Type" .value=${type} data-field="top_bar_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+      <ha-select label="Content Type" .value=${displayType} data-field="top_bar_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
         <mwc-list-item value="none">None</mwc-list-item>
         <mwc-list-item value="spacer">Spacer</mwc-list-item>
         <mwc-list-item value="weather">Weather</mwc-list-item>
         <mwc-list-item value="datetime">Date/Time</mwc-list-item>
-        <mwc-list-item value="custom">Notifications</mwc-list-item>
+        <mwc-list-item value="notifications">Notifications</mwc-list-item>
+        <mwc-list-item value="card">Custom Card</mwc-list-item>
         <mwc-list-item value="button">Button</mwc-list-item>
       </ha-select>
       
       ${type !== "none" && type !== "spacer" ? html`
+        <div class="section" style="margin-top: 12px;">Alignment</div>
+        <ha-select label="Content Alignment" .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")} data-field="${prefix}align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+          <mwc-list-item value="start">Start (left)</mwc-list-item>
+          <mwc-list-item value="center">Center</mwc-list-item>
+          <mwc-list-item value="end">End (right)</mwc-list-item>
+        </ha-select>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -3534,8 +3578,8 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="Label (optional)" .value=${this._config[prefix + "label"] || ""} data-field="${prefix}label" @input=${this._changed}></ha-textfield>
       ` : ''}
       
-      ${type === "custom" ? html`
-          <ha-alert alert-type="warning" style="margin-bottom: 8px;">
+      ${(type === "notifications" || type === "custom") ? html`
+          <ha-alert alert-type="info" style="margin-bottom: 8px;">
             This requires the <b>hki-notify</b> integration and the <b>custom:hki-notification-card</b> resource.
           </ha-alert>
           <p style="opacity: 0.7; font-size: 0.9em; margin-top: 8px;">Enable "Use Header Styling" in the notification card below to inherit styling from the Global Styling (Defaults) settings.</p>
@@ -3555,6 +3599,17 @@ class HkiHeaderCardEditor extends LitElement {
           </div>
       ` : ''}
       
+      ${type === "card" ? html`
+          <div class="card-config">
+            <hui-card-element-editor
+              .hass=${this.hass}
+              .lovelace=${this.lovelace}
+              .value=${this._config[`top_bar_${slotName}_card`] || {}}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
+            ></hui-card-element-editor>
+          </div>
+      ` : ''}
+      
       ${type === "spacer" ? html`
         <div class="section" style="margin-top: 12px;">Actions</div>
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
@@ -3569,7 +3624,7 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
       ` : ''}
       
-      ${type !== "none" && type !== "custom" && type !== "spacer" ? html`
+      ${type !== "none" && type !== "notifications" && type !== "custom" && type !== "card" && type !== "spacer" ? html`
         <div class="section" style="margin-top: 12px;">Styling</div>
         <div class="switch-row">
           <ha-switch .checked=${useGlobal} data-field="${prefix}use_global" @change=${this._changed}></ha-switch>
