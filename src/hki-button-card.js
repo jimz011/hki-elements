@@ -12327,21 +12327,22 @@ ${isGoogleLayout ? '' : html`
                 ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
-                  <hui-card-element-editor
-                    .hass=${this.hass}
-                    .lovelace=${this.lovelace}
-                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                    @config-changed=${(ev) => {
-                      ev.stopPropagation();
-                      const newCard = ev.detail?.config;
-                      if (!newCard) return;
-                      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                      if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
-                        this._fireChanged({ ...this._config, custom_popup_card: newCard });
-                      }
-                    }}
-                    @click=${(e) => e.stopPropagation()}
-                  ></hui-card-element-editor>
+                  <div class="card-config">
+                    <hui-card-element-editor
+                      .hass=${this.hass}
+                      .lovelace=${this._getLovelace()}
+                      .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                      @config-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const newCard = ev.detail?.config;
+                        if (!newCard) return;
+                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                        if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                        }
+                      }}
+                    ></hui-card-element-editor>
+                  </div>
                 ` : ''}
                 
                 <div class="separator"></div>
@@ -12935,6 +12936,16 @@ ${isGoogleLayout ? '' : html`
     }
 
     // For Switches (ha-switch)
+    _getLovelace() {
+      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
+      if (this.lovelace) return this.lovelace;
+      try {
+        const huiRoot = document.querySelector("hui-root") ||
+                        document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+        return huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace || null;
+      } catch (_) { return null; }
+    }
+
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
@@ -12980,6 +12991,16 @@ ${isGoogleLayout ? '' : html`
         // Keep mandatory fields
         next.type = next.type || "custom:hki-button-card";
         this._fireChanged(next);
+    }
+
+    _getLovelace() {
+      if (this.lovelace) return this.lovelace;
+      try {
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        return root?.lovelace || root?.__lovelace || null;
+      } catch (e) { return null; }
     }
 
     _fireChanged(newConfig) {

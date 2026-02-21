@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-06 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1414,6 +1414,12 @@ class HkiHeaderCard extends LitElement {
     if (m.top_bar_left === "custom") m.top_bar_left = "notifications";
     if (m.top_bar_center === "custom") m.top_bar_center = "notifications";
     if (m.top_bar_right === "custom") m.top_bar_right = "notifications";
+    // Read bottom_bar settings from nested format
+    if (m.bottom_bar && typeof m.bottom_bar === 'object') {
+      if (m.bottom_bar.enabled !== undefined) m.bottom_bar_enabled = m.bottom_bar.enabled;
+      if (m.bottom_bar.offset_y !== undefined) m.bottom_bar_offset_y = m.bottom_bar.offset_y;
+      if (m.bottom_bar.padding_x !== undefined) m.bottom_bar_padding_x = m.bottom_bar.padding_x;
+    }
     m.bottom_bar_left = validSlotTypes.includes(m.bottom_bar_left) ? m.bottom_bar_left : "none";
     m.bottom_bar_center = validSlotTypes.includes(m.bottom_bar_center) ? m.bottom_bar_center : "none";
     m.bottom_bar_right = validSlotTypes.includes(m.bottom_bar_right) ? m.bottom_bar_right : "none";
@@ -1567,6 +1573,21 @@ class HkiHeaderCard extends LitElement {
         if (action.perform_action) cleaned.perform_action = action.perform_action;
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
+        break;
+      case "hki-more-info":
+        if (action.custom_popup_card) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        break;
+      case "hki-more-info":
+        // Preserve popup card config and all appearance settings
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -3017,6 +3038,16 @@ class HkiHeaderCardEditor extends LitElement {
     this._paDomainCache = {};
   }
 
+  _getLovelace() {
+    if (this.lovelace) return this.lovelace;
+    try {
+      const root = document.querySelector('home-assistant')?.shadowRoot
+        ?.querySelector('ha-panel-lovelace')?.shadowRoot
+        ?.querySelector('hui-root');
+      return root?.lovelace || root?.__lovelace || null;
+    } catch (e) { return null; }
+  }
+
   _renderNavigationPathPicker(label, value, onChange) {
     const val = value || "";
     if (customElements.get("ha-navigation-picker")) {
@@ -3276,6 +3307,15 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.top_bar_enabled !== undefined) nested.top_bar.enabled = flat.top_bar_enabled;
       if (flat.top_bar_offset_y !== undefined) nested.top_bar.offset_y = flat.top_bar_offset_y;
       if (flat.top_bar_padding_x !== undefined) nested.top_bar.padding_x = flat.top_bar_padding_x;
+    }
+
+    // Nest bottom_bar if any settings exist
+    const hasBottomBarConfig = flat.bottom_bar_enabled !== undefined || flat.bottom_bar_offset_y !== undefined || flat.bottom_bar_padding_x !== undefined;
+    if (hasBottomBarConfig) {
+      nested.bottom_bar = nested.bottom_bar || {};
+      if (flat.bottom_bar_enabled !== undefined) nested.bottom_bar.enabled = flat.bottom_bar_enabled;
+      if (flat.bottom_bar_offset_y !== undefined) nested.bottom_bar.offset_y = flat.bottom_bar_offset_y;
+      if (flat.bottom_bar_padding_x !== undefined) nested.bottom_bar.padding_x = flat.bottom_bar_padding_x;
     }
     
     // Nest info if any settings exist
@@ -3734,7 +3774,7 @@ class HkiHeaderCardEditor extends LitElement {
           <div class="card-config">
             <hui-card-element-editor
               .hass=${this.hass}
-              .lovelace=${this.lovelace}
+              .lovelace=${this._getLovelace()}
               .value=${{ 
                 type: "custom:hki-notification-card", 
                 use_header_styling: true, 
@@ -3751,7 +3791,7 @@ class HkiHeaderCardEditor extends LitElement {
           <div class="card-config">
             <hui-card-element-editor
               .hass=${this.hass}
-              .lovelace=${this.lovelace}
+              .lovelace=${this._getLovelace()}
               .value=${this._config[`${bar}_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
               @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
             ></hui-card-element-editor>
@@ -3851,16 +3891,6 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <div class="section" style="margin-top: 12px;">Popup Card</div>
-        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
-        <div class="card-config">
-          <hui-card-element-editor
-            .hass=${this.hass}
-            .lovelace=${this.lovelace}
-            .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
-            @config-changed=${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
-          ></hui-card-element-editor>
-        </div>
         <div class="section" style="margin-top: 12px;">Popup Appearance</div>
         <div class="inline-fields-2">
           <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
@@ -3878,6 +3908,16 @@ class HkiHeaderCardEditor extends LitElement {
         <div class="switch-row" style="margin-top: 8px;">
           <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
           <span>Background blur</span>
+        </div>
+        <div class="section" style="margin-top: 12px;">Popup Card</div>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+        <div class="card-config">
+          <hui-card-element-editor
+            .hass=${this.hass}
+            .lovelace=${this._getLovelace()}
+            .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+            @config-changed=${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
+          ></hui-card-element-editor>
         </div>
       ` : ''}
       ${actionType === "perform-action" ? html`
@@ -17238,21 +17278,22 @@ ${isGoogleLayout ? '' : html`
                 ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
-                  <hui-card-element-editor
-                    .hass=${this.hass}
-                    .lovelace=${this.lovelace}
-                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                    @config-changed=${(ev) => {
-                      ev.stopPropagation();
-                      const newCard = ev.detail?.config;
-                      if (!newCard) return;
-                      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                      if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
-                        this._fireChanged({ ...this._config, custom_popup_card: newCard });
-                      }
-                    }}
-                    @click=${(e) => e.stopPropagation()}
-                  ></hui-card-element-editor>
+                  <div class="card-config">
+                    <hui-card-element-editor
+                      .hass=${this.hass}
+                      .lovelace=${this._getLovelace()}
+                      .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                      @config-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const newCard = ev.detail?.config;
+                        if (!newCard) return;
+                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                        if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                        }
+                      }}
+                    ></hui-card-element-editor>
+                  </div>
                 ` : ''}
                 
                 <div class="separator"></div>
@@ -17846,6 +17887,16 @@ ${isGoogleLayout ? '' : html`
     }
 
     // For Switches (ha-switch)
+    _getLovelace() {
+      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
+      if (this.lovelace) return this.lovelace;
+      try {
+        const huiRoot = document.querySelector("hui-root") ||
+                        document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+        return huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace || null;
+      } catch (_) { return null; }
+    }
+
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
@@ -17891,6 +17942,16 @@ ${isGoogleLayout ? '' : html`
         // Keep mandatory fields
         next.type = next.type || "custom:hki-button-card";
         this._fireChanged(next);
+    }
+
+    _getLovelace() {
+      if (this.lovelace) return this.lovelace;
+      try {
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        return root?.lovelace || root?.__lovelace || null;
+      } catch (e) { return null; }
     }
 
     _fireChanged(newConfig) {
