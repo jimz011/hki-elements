@@ -3,7 +3,7 @@
 // Version: 1.0.0
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-08 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-09 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1580,13 +1580,6 @@ class HkiHeaderCard extends LitElement {
         if (action.perform_action) cleaned.perform_action = action.perform_action;
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
-        break;
-      case "hki-more-info":
-        if (action.custom_popup_card) cleaned.custom_popup_card = action.custom_popup_card;
-        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
-        if (action.popup_open_animation) cleaned.popup_open_animation = action.popup_open_animation;
-        if (action.popup_width) cleaned.popup_width = action.popup_width;
-        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
         break;
       case "hki-more-info":
         // Preserve popup card config and all appearance settings
@@ -3190,11 +3183,10 @@ class HkiHeaderCardEditor extends LitElement {
 
   _stripDefaults(config) {
     // Create a clean config object with essential fields always present
-    const stripped = { 
-      type: config.type,
-      title: config.title !== undefined ? config.title : "Header",
-      subtitle: config.subtitle !== undefined ? config.subtitle : ""
-    };
+    const stripped = { type: config.type };
+    // Only write title/subtitle when they differ from defaults (avoids noise in YAML)
+    if (config.title && config.title !== "Header") stripped.title = config.title;
+    if (config.subtitle) stripped.subtitle = config.subtitle;
     
     // Always include these essential fields even if they match defaults
     // This ensures Home Assistant recognizes this as a valid header card
