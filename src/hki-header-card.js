@@ -1893,6 +1893,10 @@ class HkiHeaderCard extends LitElement {
           btn.setConfig({
             type: 'custom:hki-button-card',
             custom_popup: { enabled: true, card: popupCard },
+            ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+            ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+            ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+            ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
           });
           btn._openPopup();
         }
@@ -2959,7 +2963,8 @@ class HkiHeaderCardEditor extends LitElement {
     "top_bar_right_pill_padding_x", "top_bar_right_pill_padding_y", "top_bar_right_pill_radius", "top_bar_right_pill_blur",
     "info_pill_border_width", "top_bar_left_pill_border_width", "top_bar_center_pill_border_width", "top_bar_right_pill_border_width",
     "card_border_width",
-    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width"
+    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width",
+    "bottom_bar_offset_y", "bottom_bar_padding_x"
   ]);
 
   static _nullableNumericFields = new Set([
@@ -2975,6 +2980,7 @@ class HkiHeaderCardEditor extends LitElement {
     "weather_show_pressure", "weather_colored_icons", "info_pill",
     "datetime_show_time", "datetime_show_date", "datetime_show_day", "top_bar_enabled",
     "blend_enabled", "persons_enabled", "persons_use_entity_picture", "persons_grayscale_away", "persons_dynamic_order", "persons_hide_away",
+    "bottom_bar_enabled",
     "top_bar_left_use_global", "top_bar_left_pill", "top_bar_left_overflow", "top_bar_left_show_icon", "top_bar_left_show_condition", "top_bar_left_show_temperature", "top_bar_left_show_humidity", "top_bar_left_show_wind", "top_bar_left_show_pressure", "top_bar_left_weather_colored_icons", "top_bar_left_show_day", "top_bar_left_show_date", "top_bar_left_show_time",
     "top_bar_center_use_global", "top_bar_center_pill", "top_bar_center_overflow", "top_bar_center_show_icon", "top_bar_center_show_condition", "top_bar_center_show_temperature", "top_bar_center_show_humidity", "top_bar_center_show_wind", "top_bar_center_show_pressure", "top_bar_center_weather_colored_icons", "top_bar_center_show_day", "top_bar_center_show_date", "top_bar_center_show_time",
     "top_bar_right_use_global", "top_bar_right_pill", "top_bar_right_overflow", "top_bar_right_show_icon", "top_bar_right_show_condition", "top_bar_right_show_temperature", "top_bar_right_show_humidity", "top_bar_right_show_wind", "top_bar_right_show_pressure", "top_bar_right_weather_colored_icons", "top_bar_right_show_day", "top_bar_right_show_date", "top_bar_right_show_time"
@@ -3825,11 +3831,29 @@ class HkiHeaderCardEditor extends LitElement {
         <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
         <div class="card-config">
           <hui-card-element-editor
-            .hass=\${this.hass}
-            .lovelace=\${this.lovelace}
-            .value=\${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
-            @config-changed=\${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
+            .hass=${this.hass}
+            .lovelace=${this.lovelace}
+            .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+            @config-changed=${(ev) => { ev.stopPropagation(); patchAction({ custom_popup_card: ev.detail.config }); }}
           ></hui-card-element-editor>
+        </div>
+        <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+        <div class="inline-fields-2">
+          <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+          <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+        </div>
+        <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="none">None</mwc-list-item>
+          <mwc-list-item value="fade">Fade</mwc-list-item>
+          <mwc-list-item value="scale">Scale</mwc-list-item>
+          <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+          <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+        </ha-select>
+        <div class="switch-row" style="margin-top: 8px;">
+          <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+          <span>Background blur</span>
         </div>
       ` : ''}
       ${actionType === "perform-action" ? html`

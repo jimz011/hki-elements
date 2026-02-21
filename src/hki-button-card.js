@@ -1065,7 +1065,7 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     _updateHeaderIcon() {
       if (!this._popupPortal) return;
-      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon');
+      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon, .hki-light-popup-title ha-state-icon');
       if (headerIcon) {
         headerIcon.style.color = this._getPopupIconColor(this._getCurrentColor());
       }
@@ -3395,8 +3395,8 @@ _tileSliderClick(e) {
               el.icon = cfgIcon;
             }
 
-            // Apply custom icon_color if configured (overrides HA-native coloring)
-            const _slotIconColor = this._getPopupIconColor(null);
+            // Apply custom icon_color if configured, else actual light/entity color
+            const _slotIconColor = this._getPopupIconColor(this._getCurrentColor());
             if (_slotIconColor) {
               el.style.color = _slotIconColor;
             }
@@ -12324,7 +12324,7 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
+                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
                   <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
                   <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
                   <hui-card-element-editor
@@ -12342,7 +12342,7 @@ ${isGoogleLayout ? '' : html`
                     }}
                     @click=${(e) => e.stopPropagation()}
                   ></hui-card-element-editor>
-                </div>
+                ` : ''}
                 
                 <div class="separator"></div>
                 <strong>Popup Animation</strong>
