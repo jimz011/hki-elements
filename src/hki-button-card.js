@@ -11189,7 +11189,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: { attribute: false }, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -11523,8 +11523,7 @@ setConfig(config) {
     }
 
 disconnectedCallback() {
-      super.disconnectedCallback?.();
-      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
+      super.connectedCallback?.();
     }
     
     shouldUpdate(changedProps) {

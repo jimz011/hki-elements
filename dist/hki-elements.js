@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-24 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-25 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -16336,7 +16336,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: { attribute: false }, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -16670,8 +16670,7 @@ setConfig(config) {
     }
 
 disconnectedCallback() {
-      super.disconnectedCallback?.();
-      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
+      super.connectedCallback?.();
     }
     
     shouldUpdate(changedProps) {
