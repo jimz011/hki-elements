@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-25 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-26 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5148,18 +5148,11 @@ window.customCards.push({
 // HKI Button Card
 
 (function() {
-  const _getLit = () => {
-    const base =
-      customElements.get("hui-masonry-view") ||
-      customElements.get("ha-panel-lovelace") ||
-      customElements.get("ha-app");
-    const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-    const html = LitElement?.prototype?.html || window.html;
-    const css = LitElement?.prototype?.css || window.css;
-    return { LitElement, html, css };
-  };
-
-  const { LitElement, html, css } = _getLit();
+  // Use the LitElement/html/css set globally by the bundle (hki-elements.js),
+  // which imports them from unpkg — the same source header card uses.
+  const LitElement = window.LitElement;
+  const html = window.html;
+  const css = window.css;
 
   const CARD_TYPE = "hki-button-card";
   const EDITOR_TAG = "hki-button-card-editor";
