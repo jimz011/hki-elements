@@ -547,6 +547,7 @@ class HkiButtonCard extends LitElement {
         // Badge does not support label/info display fields
         this._config.show_label = false;
         this._config.show_brightness = false;
+        this._config.show_info_display = false;
       }
 
 
@@ -8988,7 +8989,7 @@ const iconAlign = this._config.icon_align || 'left';
               const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
               
               const renderInfoDisplay = () => {
-                  if (this._config.show_brightness === false) return '';
+                  if (this._config.show_info_display === false) return '';
                   
                   let bottomValue = '';
                   
@@ -9568,7 +9569,7 @@ const iconAlign = this._config.icon_align || 'left';
                 const _name = (this._config.show_name !== false) ? elements.name?.() : '';
                 const _label = (this._config.show_label && labelText) ? elements.label?.() : '';
                 const _state = (this._config.show_state !== false) ? elements.state?.() : '';
-                const _info  = (this._config.show_brightness !== false) ? elements.info?.() : '';
+                const _info  = (this._config.show_info_display !== false) ? elements.info?.() : '';
                 const _temp  = (this._config.show_temp_badge !== false) ? elements.temp_badge?.() : '';
 
                 return html`
