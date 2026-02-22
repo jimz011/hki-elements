@@ -2,19 +2,7 @@
 
 const CARD_NAME = "hki-notification-card";
 
-const _getLit = () => {
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  return { LitElement, html, css };
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-notification-card";
 const EDITOR_TAG = "hki-notification-card-editor";
 

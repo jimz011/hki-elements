@@ -1,7 +1,5 @@
 // HKI Header Card
-
-import { LitElement, html, css } from "https://unpkg.com/lit@2.8.0/index.js?module";
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_NAME = "hki-header-card";
 
 const clamp = (n, min, max) => (Number.isFinite(n) ? Math.min(Math.max(n, min), max) : min);
@@ -2997,8 +2995,9 @@ class HkiHeaderCard extends LitElement {
       borderRadius ? `border-radius:${borderRadius}` : "",
       cfg.card_box_shadow ? `box-shadow:${cfg.card_box_shadow}` : "box-shadow:none",
       borderStyle,
-      // Only apply overflow:hidden when not fixed to allow box-shadow to show through wrapper
-      !effectiveFixed ? "overflow:hidden" : ""
+      // Only apply overflow:hidden when not fixed and no bottom bar slot has overflow enabled
+      // (bottom bar overflow:visible needs the card to not clip its content)
+      !effectiveFixed && !(cfg.bottom_bar_left_overflow || cfg.bottom_bar_center_overflow || cfg.bottom_bar_right_overflow) ? "overflow:hidden" : ""
     ].filter(Boolean).join(";");
 
     // Only show overlay gradient if blend is enabled

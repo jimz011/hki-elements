@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-35 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-36 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -17,14 +17,141 @@ if (!window.LitElement) {
   window.css = css;
 }
 
+// HKI shared helpers (load once, reuse across cards)
+window.HKI = window.HKI || {};
+
+// Resolve LitElement/html/css from HA's base elements when possible (better compatibility),
+// and cache the result to avoid repeated lookups.
+window.HKI.getLit = window.HKI.getLit || (() => {
+  let cache = null;
+  return () => {
+    if (cache) return cache;
+    const base =
+      customElements.get("hui-masonry-view") ||
+      customElements.get("ha-panel-lovelace") ||
+      customElements.get("ha-app");
+    const LitElementRef = base ? Object.getPrototypeOf(base) : window.LitElement;
+    const htmlRef = LitElementRef?.prototype?.html || window.html;
+    const cssRef = LitElementRef?.prototype?.css || window.css;
+    cache = { LitElement: LitElementRef, html: htmlRef, css: cssRef };
+    return cache;
+  };
+})();
+
+// Inject popup animation keyframes once into the document
+window.HKI.ensurePopupAnimations = window.HKI.ensurePopupAnimations || (() => {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    try {
+      if (document.getElementById("hki-popup-animations")) return;
+      const s = document.createElement("style");
+      s.id = "hki-popup-animations";
+      s.textContent = `
+        @keyframes hki-anim-fade-in        { 
+          from { opacity: 0; } 
+          to { opacity: 1; }
+        }
+        @keyframes hki-anim-fade-out       { 
+          from { opacity: 1; } 
+          to { opacity: 0; }
+        }
+        @keyframes hki-anim-zoom-in        { 
+          from { transform: scale(.92); opacity: 0; } 
+          to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes hki-anim-zoom-out       { 
+          from { transform: scale(1); opacity: 1; } 
+          to { transform: scale(.92); opacity: 0; }
+        }
+        @keyframes hki-anim-slide-up       { 
+          from { transform: translateY(14px); opacity: 0; } 
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes hki-anim-slide-down     { 
+          from { transform: translateY(0); opacity: 1; } 
+          to { transform: translateY(14px); opacity: 0; }
+        }
+        @keyframes hki-anim-slide-left     { 
+          from { transform: translateX(14px); opacity: 0; } 
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes hki-anim-slide-right    { 
+          from { transform: translateX(0); opacity: 1; } 
+          to { transform: translateX(14px); opacity: 0; }
+        }
+        @keyframes hki-anim-rotate-in      { 
+          from { transform: rotate(-2deg) scale(.96); opacity: 0; } 
+          to { transform: rotate(0) scale(1); opacity: 1; }
+        }
+        @keyframes hki-anim-rotate-out     { 
+          from { transform: rotate(0) scale(1); opacity: 1; } 
+          to { transform: rotate(2deg) scale(.96); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(s);
+    } catch (e) {
+      // no-op
+    }
+  };
+})();
+
+// Global scroll lock helpers (shared across cards)
+window.HKI._scrollState = window.HKI._scrollState || {
+  prevOverflow: null,
+  prevPosition: null,
+  prevTop: null,
+  scrollY: 0,
+};
+
+window.HKI.lockScroll = window.HKI.lockScroll || (() => {
+  const st = window.HKI._scrollState;
+  return () => {
+    try {
+      if (st.prevOverflow !== null) return; // already locked
+      st.scrollY = window.scrollY || window.pageYOffset || 0;
+      st.prevOverflow = document.body.style.overflow;
+      st.prevPosition = document.body.style.position;
+      st.prevTop = document.body.style.top;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${st.scrollY}px`;
+      document.body.style.width = "100%";
+    } catch (e) {
+      // no-op
+    }
+  };
+})();
+
+window.HKI.unlockScroll = window.HKI.unlockScroll || (() => {
+  const st = window.HKI._scrollState;
+  return () => {
+    try {
+      if (st.prevOverflow === null) return;
+      document.body.style.overflow = st.prevOverflow || "";
+      document.body.style.position = st.prevPosition || "";
+      document.body.style.top = st.prevTop || "";
+      document.body.style.width = "";
+      window.scrollTo(0, st.scrollY || 0);
+    } catch (e) {
+      // no-op
+    } finally {
+      st.prevOverflow = null;
+      st.prevPosition = null;
+      st.prevTop = null;
+      st.scrollY = 0;
+    }
+  };
+})();
+
 // ============================================================
 // hki-header-card
 // ============================================================
 
 (() => {
 // HKI Header Card
-
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_NAME = "hki-header-card";
 
 const clamp = (n, min, max) => (Number.isFinite(n) ? Math.min(Math.max(n, min), max) : min);
@@ -3020,8 +3147,9 @@ class HkiHeaderCard extends LitElement {
       borderRadius ? `border-radius:${borderRadius}` : "",
       cfg.card_box_shadow ? `box-shadow:${cfg.card_box_shadow}` : "box-shadow:none",
       borderStyle,
-      // Only apply overflow:hidden when not fixed to allow box-shadow to show through wrapper
-      !effectiveFixed ? "overflow:hidden" : ""
+      // Only apply overflow:hidden when not fixed and no bottom bar slot has overflow enabled
+      // (bottom bar overflow:visible needs the card to not clip its content)
+      !effectiveFixed && !(cfg.bottom_bar_left_overflow || cfg.bottom_bar_center_overflow || cfg.bottom_bar_right_overflow) ? "overflow:hidden" : ""
     ].filter(Boolean).join(";");
 
     // Only show overlay gradient if blend is enabled
@@ -5148,19 +5276,7 @@ window.customCards.push({
 // HKI Button Card
 
 (function() {
-  const _getLit = () => {
-    const base =
-      customElements.get("hui-masonry-view") ||
-      customElements.get("ha-panel-lovelace") ||
-      customElements.get("ha-app");
-    const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-    const html = LitElement?.prototype?.html || window.html;
-    const css = LitElement?.prototype?.css || window.css;
-    return { LitElement, html, css };
-  };
-
-  const { LitElement, html, css } = _getLit();
-
+  const { LitElement, html, css } = window.HKI.getLit();
   const CARD_TYPE = "hki-button-card";
   const EDITOR_TAG = "hki-button-card-editor";
 
@@ -5245,70 +5361,13 @@ window.customCards.push({
   });
 
 
-  // Inject popup animation keyframes once into the document
-  if (!document.getElementById('hki-popup-animations')) {
-    const s = document.createElement('style');
-    s.id = 'hki-popup-animations';
-    s.textContent = `
-      @keyframes hki-anim-fade-in        { from { opacity:0 }                           to { opacity:1 } }
-      @keyframes hki-anim-fade-out       { from { opacity:1 }                           to { opacity:0 } }
-      @keyframes hki-anim-scale-in       { from { opacity:0; transform:scale(.85) }     to { opacity:1; transform:scale(1) } }
-      @keyframes hki-anim-scale-out      { from { opacity:1; transform:scale(1) }       to { opacity:0; transform:scale(.85) } }
-      @keyframes hki-anim-slide-up       { from { opacity:0; transform:translateY(40px) }  to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-down { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(40px) } }
-      @keyframes hki-anim-slide-down     { from { opacity:0; transform:translateY(-40px) } to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-up   { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(-40px) } }
-      @keyframes hki-anim-slide-left     { from { opacity:0; transform:translateX(40px) }  to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-right{ from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(40px) } }
-      @keyframes hki-anim-slide-right    { from { opacity:0; transform:translateX(-40px) } to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-left { from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(-40px) } }
-      @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
-      @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
-      @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
-      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
-      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
-      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
-      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
-      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
-      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
-      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
-      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
-    `;
-    document.head.appendChild(s);
-  }
+  // Ensure popup animation keyframes are injected once (shared across HKI cards)
+  window.HKI?.ensurePopupAnimations?.();
 
   // Prevent background page scroll when any popup is open
-  let __hkiPrevBodyScroll = null;
-  let __hkiPrevBodyPosition = null;
-  let __hkiPrevBodyTop = null;
-  let __hkiScrollY = 0;
-  const __hkiLockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll !== null) return;
-      __hkiScrollY = window.scrollY || window.pageYOffset || 0;
-      __hkiPrevBodyScroll = document.body.style.overflow;
-      __hkiPrevBodyPosition = document.body.style.position;
-      __hkiPrevBodyTop = document.body.style.top;
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${__hkiScrollY}px`;
-      document.body.style.width = '100%';
-    } catch (e) {}
-  };
-  const __hkiUnlockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll === null) return;
-      document.body.style.overflow = __hkiPrevBodyScroll || '';
-      document.body.style.position = __hkiPrevBodyPosition || '';
-      document.body.style.top = __hkiPrevBodyTop || '';
-      document.body.style.width = '';
-      window.scrollTo(0, __hkiScrollY || 0);
-    } catch (e) {}
-    __hkiPrevBodyScroll = null;
-    __hkiPrevBodyPosition = null;
-    __hkiPrevBodyTop = null;
-    __hkiScrollY = 0;
-  };
+    // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
+  const __hkiLockScroll = () => window.HKI?.lockScroll?.();
+  const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
 
   
 
@@ -18694,23 +18753,7 @@ mwc-button.reset-defaults{
 (() => {
 // HKI Navigation Card
 
-// Global Cache for LitElement to avoid repeated lookups
-let _litCache = null;
-const _getLit = () => {
-  if (_litCache) return _litCache;
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  _litCache = { LitElement, html, css };
-  return _litCache;
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-navigation-card";
 const VERSION = "1.2.1"; // Fixed: Real-time template updates + unresponsive buttons after idle/navigation
 
@@ -21497,19 +21540,7 @@ window.customCards.push({
 
 const CARD_NAME = "hki-notification-card";
 
-const _getLit = () => {
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  return { LitElement, html, css };
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-notification-card";
 const EDITOR_TAG = "hki-notification-card-editor";
 
@@ -24611,9 +24642,8 @@ window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", descri
 
 (() => {
 // HKI PostNL Card
-
-
-const CARD_VERSION = '1.0.1';
+const { LitElement, html, css } = window.HKI.getLit();
+const CARD_VERSION = '1.0.2';
 
 // Default External Assets
 const DEFAULT_LOGO = "https://github.com/jimz011/hki-postnl-card/blob/main/images/postnl-logo.png?raw=true";
@@ -25271,7 +25301,7 @@ class HKIPostNLCard extends HTMLElement {
                 const dateLabel = this.formatDate(item.delivery_date || item.planned_date || item.planned_to);
                 
                 return `
-                <div class="parcel">
+                <div class="parcel" data-key="${item.key}">
                     <div class="parcel-header" data-key="${item.key}">
                         <div class="ph-left">
                             <span class="ph-name">${item.name || 'Onbekend'}</span>

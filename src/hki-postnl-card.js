@@ -1,8 +1,6 @@
 // HKI PostNL Card
-
-import { LitElement, html, css } from "https://unpkg.com/lit@2.8.0/index.js?module";
-
-const CARD_VERSION = '1.0.1';
+const { LitElement, html, css } = window.HKI.getLit();
+const CARD_VERSION = '1.0.2';
 
 // Default External Assets
 const DEFAULT_LOGO = "https://github.com/jimz011/hki-postnl-card/blob/main/images/postnl-logo.png?raw=true";
@@ -660,7 +658,7 @@ class HKIPostNLCard extends HTMLElement {
                 const dateLabel = this.formatDate(item.delivery_date || item.planned_date || item.planned_to);
                 
                 return `
-                <div class="parcel">
+                <div class="parcel" data-key="${item.key}">
                     <div class="parcel-header" data-key="${item.key}">
                         <div class="ph-left">
                             <span class="ph-name">${item.name || 'Onbekend'}</span>
