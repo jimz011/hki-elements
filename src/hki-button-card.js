@@ -5976,11 +5976,13 @@ if (!this._popupPortal) {
           .tab-btn.active { background: var(--primary-color, rgba(255,255,255,0.12)); color: var(--text-primary-color, var(--primary-text-color)); }
           .hki-popup-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
           /* Vertical slider */
-          .slider-with-buttons { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
-          .humidifier-current-display { display: flex; flex-direction: column; align-items: center; gap: 8px; position: absolute; right: 0px; }
+          .slider-with-buttons { display: block; position: relative; width: 100%; }
+          .slider-center { width: fit-content; margin: 0 auto; }
+          .humidifier-current-display { display: flex; flex-direction: column; align-items: center; gap: 6px; position: absolute; left: 24px; top: 50%; transform: translateY(-50%); pointer-events: none; }
           .humidifier-current-label { font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
           .humidifier-current-value { font-size: 28px; font-weight: 300; }
           .humidifier-slider-group { display: flex; flex-direction: column; align-items: center; gap: 12px; height: 320px; width: 80px; }
+          .sliders-wrapper { display: flex; gap: 24px; justify-content: center; width: 100%; align-items: center; }
           .value-display { font-size: ${valueSize}px; font-weight: ${valueWeight}; text-align: center; }
           .value-display span { font-size: ${Math.max(14, Math.round(valueSize/2))}px; opacity: 0.7; }
           .slider-label { font-size: 12px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
@@ -6148,98 +6150,166 @@ if (!this._popupPortal) {
         return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><div style="opacity:0.5;font-size:18px;font-weight:500;">Humidifier is Off</div></div>`;
       }
 
+      const attrs = entity.attributes || {};
       const useCircular = this._config.humidifier_use_circular_slider === true;
       const showButtons = this._config.humidifier_show_plus_minus === true;
       const labelSize = this._config.popup_label_font_size || 11;
       const labelWeight = this._config.popup_label_font_weight || 500;
       const vSize = this._config.popup_value_font_size || 64;
       const vWeight = this._config.popup_value_font_weight || 200;
+      const range = maxHumidity - minHumidity;
+
+      // Range (min/max target) support
+      const humLow = this._optimisticHumidityLow ?? attrs.target_humidity_low ?? null;
+      const humHigh = this._optimisticHumidityHigh ?? attrs.target_humidity_high ?? null;
+      const isRange = humLow !== null && humHigh !== null && this._config.humidifier_show_target_range !== false;
 
       if (useCircular) {
-        const range = maxHumidity - minHumidity;
-        const pct = Math.max(0, Math.min(100, ((targetHumidity - minHumidity) / range) * 100));
-        const maxArcLength = 628.32 * 0.75;
-        const arcLength = (pct / 100) * maxArcLength;
-        const startAngle = 135 * (Math.PI / 180);
-        const arcAngle = (pct / 100) * 270 * (Math.PI / 180);
-        const totalAngle = startAngle + arcAngle;
-        const thumbX = 140 + 100 * Math.cos(totalAngle);
-        const thumbY = 140 + 100 * Math.sin(totalAngle);
-        const useGradient = this._config.humidifier_show_gradient !== false;
-        const strokeColor = useGradient ? 'url(#humGradient)' : color;
-        return `
-          <div style="display:flex;align-items:center;justify-content:center;width:100%;">
-            <div class="circular-slider-wrapper">
-              <div class="circular-slider-container" id="circularSliderHum">
-                <svg class="circular-slider-svg" viewBox="0 0 280 280" width="280" height="280">
-                  ${useGradient ? `<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#29ABE2;stop-opacity:1"/><stop offset="100%" style="stop-color:#03a9f4;stop-opacity:1"/></linearGradient></defs>` : ''}
-                  <circle cx="140" cy="140" r="100" fill="none" stroke="var(--divider-color,rgba(255,255,255,0.05))" stroke-width="20" stroke-dasharray="${maxArcLength} 628.32" transform="rotate(135 140 140)"/>
-                  <circle cx="140" cy="140" r="100" fill="none" stroke="${strokeColor}" stroke-width="20" stroke-linecap="round" stroke-dasharray="${arcLength} 628.32" transform="rotate(135 140 140)" id="humCircularProgress"/>
-                  <circle cx="${thumbX}" cy="${thumbY}" r="12" fill="white" stroke="var(--card-background-color,#1c1c1c)" stroke-width="3" id="humCircularThumb" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
-                </svg>
-                <div class="circular-value-display">
-                  <div class="circular-temp-label-top" style="font-size:${labelSize}px;font-weight:${labelWeight};">TARGET</div>
-                  <div class="circular-temp-value" id="humCircularValue" style="font-size:${vSize}px;font-weight:${vWeight};">${targetHumidity}<span style="font-size:${vSize/2}px;">%</span></div>
-                </div>
-              </div>
-              ${showButtons ? `
-                <div class="circular-temp-buttons">
-                  <button class="circular-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
-                  <button class="circular-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
-                </div>
-              ` : ''}
-              <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-left:8px;">
-                <div style="font-size:10px;opacity:0.5;text-transform:uppercase;letter-spacing:1px;">Current</div>
-                <div style="font-size:28px;font-weight:300;">${currentHumidity}<span style="font-size:14px;opacity:0.7;">%</span></div>
-              </div>
-            </div>
-          </div>
-        `;
+        if (isRange) {
+          return this._buildHumidifierDualCircle(humLow, humHigh, minHumidity, maxHumidity, color, labelSize, labelWeight, vSize, vWeight, showButtons);
+        }
+        return this._buildHumidifierSingleCircle(targetHumidity, currentHumidity, minHumidity, maxHumidity, color, labelSize, labelWeight, vSize, vWeight, showButtons);
       }
 
-      // Vertical slider
-      const range = maxHumidity - minHumidity;
-      const pct = ((targetHumidity - minHumidity) / range) * 100;
-      const thumbPos = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
-      const background = color;
-      const sliderHtml = `
-        <div class="humidifier-slider-group">
-          <div class="value-display" id="displayHumidity">${targetHumidity}<span>%</span></div>
-          <div class="vertical-slider-track" id="sliderHumidity">
-            <div class="vertical-slider-fill" style="height:${pct}%;background:${background};"></div>
-            <div class="vertical-slider-thumb" style="bottom:${thumbPos}"></div>
-          </div>
-          <div class="slider-label">Target</div>
-        </div>
-      `;
-      const currentHtml = `
-        <div class="humidifier-current-display">
-          <div class="humidifier-current-label">Current</div>
-          <div class="humidifier-current-value">${currentHumidity}<span style="font-size:18px;opacity:0.7;">%</span></div>
-        </div>
-      `;
-      if (showButtons) {
+      // ── Vertical slider ─────────────────────────────────────────────────────
+      const renderSlider = (id, value, label) => {
+        const v = value ?? '--';
+        const pct = value == null ? 0 : ((value - minHumidity) / range) * 100;
+        const thumbPos = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
         return `
-          <div class="slider-with-buttons">
-            <div style="position:relative;">
-              ${sliderHtml}
-              <div class="vertical-temp-buttons">
-                <button class="vertical-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
-                <button class="vertical-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
-              </div>
+          <div class="humidifier-slider-group">
+            <div class="value-display" id="display-${id}">${v}<span>%</span></div>
+            <div class="vertical-slider-track" id="slider-${id}" data-type="${id}">
+              <div class="vertical-slider-fill" style="height:${pct}%;background:${color};"></div>
+              <div class="vertical-slider-thumb" style="bottom:${thumbPos}"></div>
             </div>
-            ${currentHtml}
+            <div class="slider-label">${label}</div>
           </div>
         `;
+      };
+
+      if (isRange) {
+        const slidersHtml = `
+          <div class="sliders-wrapper">
+            ${renderSlider('humidity_low', humLow, 'Low')}
+            ${renderSlider('humidity_high', humHigh, 'High')}
+          </div>
+        `;
+        if (showButtons) {
+          return `
+            <div class="slider-with-buttons">
+              <div class="slider-center">${slidersHtml}</div>
+              <div class="vertical-temp-buttons">
+                <button class="vertical-temp-btn plus" data-hum-action="plus-high"><ha-icon icon="mdi:plus"></ha-icon></button>
+                <button class="vertical-temp-btn minus" data-hum-action="minus-high"><ha-icon icon="mdi:minus"></ha-icon></button>
+              </div>
+            </div>
+          `;
+        }
+        return `<div class="slider-with-buttons"><div class="slider-center">${slidersHtml}</div></div>`;
       }
+
+      const sliderHtml = `<div class="sliders-wrapper">${renderSlider('humidity', targetHumidity, 'Target')}</div>`;
+
       return `
         <div class="slider-with-buttons">
-          ${sliderHtml}
-          ${currentHtml}
+          <div class="humidifier-current-display">
+            <div class="humidifier-current-label">Current</div>
+            <div class="humidifier-current-value">${currentHumidity}<span style="font-size:18px;opacity:0.7;">%</span></div>
+          </div>
+          <div class="slider-center">${sliderHtml}</div>
+          ${showButtons ? `
+            <div class="vertical-temp-buttons">
+              <button class="vertical-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
+              <button class="vertical-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
+            </div>
+          ` : ''}
         </div>
       `;
     }
 
+    _buildHumidifierSingleCircle(targetHumidity, currentHumidity, minHumidity, maxHumidity, color, labelSize, labelWeight, vSize, vWeight, showButtons) {
+      const range = maxHumidity - minHumidity;
+      const pct = Math.max(0, Math.min(100, ((targetHumidity - minHumidity) / range) * 100));
+      const maxArcLen = 628.32 * 0.75;
+      const arcLen = (pct / 100) * maxArcLen;
+      const sa = 135 * (Math.PI / 180);
+      const aa = (pct / 100) * 270 * (Math.PI / 180);
+      const tx = 140 + 100 * Math.cos(sa + aa);
+      const ty = 140 + 100 * Math.sin(sa + aa);
+      const useGradient = this._config.humidifier_show_gradient !== false;
+      const stroke = useGradient ? 'url(#humGradient)' : color;
+      const gradDefs = useGradient ? '<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#29ABE2;stop-opacity:1"/><stop offset="100%" style="stop-color:#03a9f4;stop-opacity:1"/></linearGradient></defs>' : '';
+      return `
+        <div class="circular-slider-wrapper">
+          <div class="circular-slider-container" id="circularSliderHum">
+            <svg class="circular-slider-svg" viewBox="0 0 280 280" width="280" height="280">
+              ${gradDefs}
+              <circle cx="140" cy="140" r="100" fill="none" stroke="var(--divider-color,rgba(255,255,255,0.05))" stroke-width="20" stroke-dasharray="${maxArcLen} 628.32" transform="rotate(135 140 140)"/>
+              <circle cx="140" cy="140" r="100" fill="none" stroke="${stroke}" stroke-width="20" stroke-linecap="round" stroke-dasharray="${arcLen} 628.32" transform="rotate(135 140 140)" id="humCircularProgress"/>
+              <circle cx="${tx}" cy="${ty}" r="12" fill="white" stroke="var(--card-background-color,#1c1c1c)" stroke-width="3" id="humCircularThumb" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
+            </svg>
+            <div class="circular-value-display">
+              <div class="circular-temp-label-top" style="font-size:${labelSize}px;font-weight:${labelWeight};">TARGET</div>
+              <div class="circular-temp-value" id="humCircularValue" style="font-size:${vSize}px;font-weight:${vWeight};">${targetHumidity}<span style="font-size:${vSize/2}px;">%</span></div>
+              <div style="font-size:13px;opacity:0.5;margin-top:8px;">Now: ${currentHumidity}%</div>
+            </div>
+          </div>
+          ${showButtons ? `
+            <div class="circular-temp-buttons">
+              <button class="circular-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
+              <button class="circular-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    _buildHumidifierDualCircle(humLow, humHigh, minHumidity, maxHumidity, color, labelSize, labelWeight, vSize, vWeight, showButtons) {
+      const range = maxHumidity - minHumidity;
+      const sz = Math.round(vSize * 0.75);
+      const buildArc = (val, idSuffix, gradId, col1, col2) => {
+        const pct = Math.max(0, Math.min(100, ((val - minHumidity) / range) * 100));
+        const maxArcLen = 628.32 * 0.75;
+        const arcLen = (pct / 100) * maxArcLen;
+        const sa = 135 * (Math.PI / 180);
+        const aa = (pct / 100) * 270 * (Math.PI / 180);
+        const tx = 140 + 100 * Math.cos(sa + aa);
+        const ty = 140 + 100 * Math.sin(sa + aa);
+        const useGradient = this._config.humidifier_show_gradient !== false;
+        const stroke = useGradient ? ('url(#' + gradId + ')') : color;
+        const gradDefs = useGradient ? ('<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:' + col1 + ';stop-opacity:1"/><stop offset="100%" style="stop-color:' + col2 + ';stop-opacity:1"/></linearGradient></defs>') : '';
+        return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <div style="font-size:${labelSize}px;font-weight:${labelWeight};opacity:0.6;text-transform:uppercase;letter-spacing:1.5px;">${idSuffix}</div>
+            <div class="circular-slider-container" id="circularSliderHum${idSuffix}" style="width:200px;height:200px;">
+              <svg class="circular-slider-svg" viewBox="0 0 280 280" width="200" height="200">
+                ${gradDefs}
+                <circle cx="140" cy="140" r="100" fill="none" stroke="var(--divider-color,rgba(255,255,255,0.05))" stroke-width="15" stroke-dasharray="${maxArcLen} 628.32" transform="rotate(135 140 140)"/>
+                <circle cx="140" cy="140" r="100" fill="none" stroke="${stroke}" stroke-width="15" stroke-linecap="round" stroke-dasharray="${arcLen} 628.32" transform="rotate(135 140 140)" id="humCircularProgress${idSuffix}"/>
+                <circle cx="${tx}" cy="${ty}" r="12" fill="white" stroke="var(--card-background-color,#1c1c1c)" stroke-width="3" id="humCircularThumb${idSuffix}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
+              </svg>
+              <div class="circular-value-display">
+                <div class="circular-temp-label-top" style="font-size:${labelSize}px;font-weight:${labelWeight};">TARGET</div>
+                <div class="circular-temp-value" id="humCircularValue${idSuffix}" style="font-size:${sz}px;font-weight:${vWeight};">${val}<span style="font-size:${sz/2}px;">%</span></div>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+      return `
+        <div class="circular-slider-wrapper">
+          ${buildArc(humLow, 'Low', 'humGradLow', '#29ABE2', '#1E90FF')}
+          ${buildArc(humHigh, 'High', 'humGradHigh', '#03a9f4', '#00BCD4')}
+          ${showButtons ? `
+            <div class="circular-temp-buttons">
+              <button class="circular-temp-btn plus" data-hum-action="plus-high"><ha-icon icon="mdi:plus"></ha-icon></button>
+              <button class="circular-temp-btn minus" data-hum-action="minus-high"><ha-icon icon="mdi:minus"></ha-icon></button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
     _renderHumidifierModesList(modes, currentMode, color) {
       return `
         <div class="mode-list">
@@ -6284,7 +6354,6 @@ if (!this._popupPortal) {
           item.addEventListener('click', () => {
             if (!fanEntityId) return;
             const mode = item.getAttribute('data-fan-mode');
-            // Try select entity first, then fan entity
             const domainGuess = fanEntityId.split('.')[0];
             if (domainGuess === 'select') {
               this.hass.callService('select', 'select_option', { entity_id: fanEntityId, option: mode });
@@ -6296,105 +6365,197 @@ if (!this._popupPortal) {
         return;
       }
 
+      const attrs = entity.attributes || {};
       const useCircular = this._config.humidifier_use_circular_slider === true;
       const step = this._config.humidifier_humidity_step ? parseFloat(this._config.humidifier_humidity_step) : 1;
       const range = maxHumidity - minHumidity;
+      const humLowAttr = attrs.target_humidity_low ?? null;
+      const humHighAttr = attrs.target_humidity_high ?? null;
+      const isRange = humLowAttr !== null && humHighAttr !== null && this._config.humidifier_show_target_range !== false;
+
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v / step) * step));
+      const commitRange = (low, high) => {
+        this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity_low: low, humidity_high: high });
+      };
 
       if (useCircular) {
-        const circEl = portal.querySelector('#circularSliderHum');
-        if (!circEl) return;
-        const svg = circEl.querySelector('svg');
-        const progress = circEl.querySelector('#humCircularProgress');
-        const thumb = circEl.querySelector('#humCircularThumb');
-        const valDisplay = circEl.querySelector('#humCircularValue');
         const maxArc = 628.32 * 0.75;
 
-        const updateFromVal = (val) => {
-          this._optimisticHumidity = val;
-          const pct = ((val - minHumidity) / range) * 100;
-          const arcLen = (pct / 100) * maxArc;
-          const sa = 135 * (Math.PI / 180);
-          const aa = (pct / 100) * 270 * (Math.PI / 180);
-          const ta = sa + aa;
-          const tx = 140 + 100 * Math.cos(ta);
-          const ty = 140 + 100 * Math.sin(ta);
-          if (progress) progress.setAttribute('stroke-dasharray', `${arcLen} 628.32`);
-          if (thumb) { thumb.setAttribute('cx', tx); thumb.setAttribute('cy', ty); }
-          if (valDisplay) valDisplay.innerHTML = `${val}<span style="font-size:${(this._config.popup_value_font_size||64)/2}px;">%</span>`;
+        const setupCircle = (idSuffix, getOptimistic, setOptimistic, commitFn) => {
+          const circEl = portal.querySelector(`#circularSliderHum${idSuffix}`);
+          if (!circEl) return;
+          const svg = circEl.querySelector('svg');
+          const progress = circEl.querySelector(`#humCircularProgress${idSuffix}`);
+          const thumb = circEl.querySelector(`#humCircularThumb${idSuffix}`);
+          const valDisplay = circEl.querySelector(`#humCircularValue${idSuffix}`);
+          const vSize = this._config.popup_value_font_size || 64;
+          const sz = isRange ? Math.round(vSize * 0.75) : vSize;
+
+          const updateFromVal = (val) => {
+            setOptimistic(val);
+            const pct = ((val - minHumidity) / range) * 100;
+            const arcLen = (pct / 100) * maxArc;
+            const sa = 135 * (Math.PI / 180);
+            const aa = (pct / 100) * 270 * (Math.PI / 180);
+            const tx = 140 + 100 * Math.cos(sa + aa);
+            const ty = 140 + 100 * Math.sin(sa + aa);
+            if (progress) progress.setAttribute('stroke-dasharray', `${arcLen} 628.32`);
+            if (thumb) { thumb.setAttribute('cx', tx); thumb.setAttribute('cy', ty); }
+            if (valDisplay) valDisplay.innerHTML = `${val}<span style="font-size:${sz/2}px;">%</span>`;
+          };
+
+          const getValFromPoint = (clientX, clientY) => {
+            const rect = svg.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            let angle = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
+            if (angle < 0) angle += 360;
+            let arcDeg = angle - 135;
+            if (arcDeg < 0) arcDeg += 360;
+            if (arcDeg > 270) arcDeg = arcDeg < 315 ? 270 : 0;
+            return clamp(minHumidity + (arcDeg / 270) * range, minHumidity, maxHumidity);
+          };
+
+          let dragging = false;
+          const onDown = (x, y) => { dragging = true; updateFromVal(getValFromPoint(x, y)); };
+          const onMove = (x, y) => { if (dragging) updateFromVal(getValFromPoint(x, y)); };
+          const onUp = () => {
+            if (!dragging) return;
+            dragging = false;
+            commitFn(getOptimistic());
+            document.removeEventListener('mousemove', mouseMove);
+            document.removeEventListener('mouseup', mouseUp);
+            document.removeEventListener('touchmove', touchMove);
+            document.removeEventListener('touchend', touchEnd);
+          };
+          const mouseMove = (e) => onMove(e.clientX, e.clientY);
+          const mouseUp = onUp;
+          const touchMove = (e) => onMove(e.touches[0].clientX, e.touches[0].clientY);
+          const touchEnd = onUp;
+
+          circEl.addEventListener('mousedown', (e) => { onDown(e.clientX, e.clientY); document.addEventListener('mousemove', mouseMove); document.addEventListener('mouseup', mouseUp); });
+          circEl.addEventListener('touchstart', (e) => { onDown(e.touches[0].clientX, e.touches[0].clientY); document.addEventListener('touchmove', touchMove, { passive: true }); document.addEventListener('touchend', touchEnd); }, { passive: true });
         };
 
-        const getValFromPoint = (clientX, clientY) => {
-          const rect = svg.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-          let angle = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
-          if (angle < 0) angle += 360;
-          let arcDeg = angle - 135;
-          if (arcDeg < 0) arcDeg += 360;
-          if (arcDeg > 270) arcDeg = arcDeg < 315 ? 270 : 0;
-          const raw = minHumidity + (arcDeg / 270) * range;
-          return Math.max(minHumidity, Math.min(maxHumidity, Math.round(raw / step) * step));
-        };
-
-        const commit = (val) => {
-          this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
-        };
-
-        // +/- buttons
-        portal.querySelectorAll('[data-hum-action]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const cur = this._optimisticHumidity ?? entity.attributes.humidity ?? minHumidity;
-            const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
-            const val = Math.max(minHumidity, Math.min(maxHumidity, Math.round((cur + dir * step) / step) * step));
-            updateFromVal(val);
-            commit(val);
+        if (isRange) {
+          setupCircle('Low',
+            () => this._optimisticHumidityLow ?? humLowAttr,
+            (v) => { this._optimisticHumidityLow = v; },
+            (v) => commitRange(v, this._optimisticHumidityHigh ?? humHighAttr)
+          );
+          setupCircle('High',
+            () => this._optimisticHumidityHigh ?? humHighAttr,
+            (v) => { this._optimisticHumidityHigh = v; },
+            (v) => commitRange(this._optimisticHumidityLow ?? humLowAttr, v)
+          );
+          // +/- buttons act on High in range mode
+          portal.querySelectorAll('[data-hum-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const action = btn.getAttribute('data-hum-action');
+              if (action === 'plus-high' || action === 'minus-high') {
+                const dir = action.startsWith('plus') ? 1 : -1;
+                const cur = this._optimisticHumidityHigh ?? humHighAttr;
+                const val = clamp(cur + dir * step, minHumidity, maxHumidity);
+                this._optimisticHumidityHigh = val;
+                commitRange(this._optimisticHumidityLow ?? humLowAttr, val);
+              }
+            });
           });
-        });
-
-        let dragging = false;
-        circEl.addEventListener('mousedown', (e) => { dragging = true; updateFromVal(getValFromPoint(e.clientX, e.clientY)); });
-        circEl.addEventListener('touchstart', (e) => { dragging = true; updateFromVal(getValFromPoint(e.touches[0].clientX, e.touches[0].clientY)); }, { passive: true });
-        const onMove = (e) => { if (dragging) updateFromVal(getValFromPoint(e.clientX, e.clientY)); };
-        const onTouchMove = (e) => { if (dragging) updateFromVal(getValFromPoint(e.touches[0].clientX, e.touches[0].clientY)); };
-        const onUp = () => {
-          if (!dragging) return;
-          dragging = false;
-          if (this._optimisticHumidity !== undefined) commit(this._optimisticHumidity);
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-          document.removeEventListener('touchmove', onTouchMove);
-          document.removeEventListener('touchend', onUp);
-        };
-        circEl.addEventListener('mousedown', () => { document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); });
-        circEl.addEventListener('touchstart', () => { document.addEventListener('touchmove', onTouchMove, { passive: true }); document.addEventListener('touchend', onUp); }, { passive: true });
+        } else {
+          setupCircle('',
+            () => this._optimisticHumidity ?? attrs.humidity,
+            (v) => { this._optimisticHumidity = v; },
+            (v) => this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: v })
+          );
+          portal.querySelectorAll('[data-hum-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const cur = this._optimisticHumidity ?? attrs.humidity ?? minHumidity;
+              const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
+              const val = clamp(cur + dir * step, minHumidity, maxHumidity);
+              this._optimisticHumidity = val;
+              this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
+            });
+          });
+        }
         return;
       }
 
-      // Vertical slider
-      const slider = portal.querySelector('#sliderHumidity');
+      // ── Vertical slider handlers ────────────────────────────────────────────
+      if (isRange) {
+        const setupVertical = (idSuffix, getOptimistic, setOptimistic, commitFn) => {
+          const slider = portal.querySelector(`#slider-${idSuffix}`);
+          if (!slider) return;
+          const update = (clientY) => {
+            const rect = slider.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (rect.bottom - clientY) / rect.height));
+            const val = clamp(minHumidity + pct * range, minHumidity, maxHumidity);
+            setOptimistic(val);
+            const display = portal.querySelector(`#display-${idSuffix}`);
+            const fill = slider.querySelector('.vertical-slider-fill');
+            const thumb = slider.querySelector('.vertical-slider-thumb');
+            if (display) display.innerHTML = `${val}<span>%</span>`;
+            const ap = ((val - minHumidity) / range) * 100;
+            if (fill) fill.style.height = `${ap}%`;
+            if (thumb) thumb.style.bottom = ap <= 0 ? '0px' : ap >= 100 ? 'calc(100% - 6px)' : `calc(${ap}% - 6px)`;
+            return val;
+          };
+          let isDragging = false;
+          slider.addEventListener('mousedown', (e) => { isDragging = true; update(e.clientY); });
+          document.addEventListener('mousemove', (e) => { if (isDragging) update(e.clientY); });
+          document.addEventListener('mouseup', (e) => { if (!isDragging) return; isDragging = false; commitFn(update(e.clientY)); });
+          slider.addEventListener('touchstart', (e) => { isDragging = true; update(e.touches[0].clientY); }, { passive: true });
+          document.addEventListener('touchmove', (e) => { if (isDragging) update(e.touches[0].clientY); }, { passive: true });
+          document.addEventListener('touchend', (e) => { if (isDragging && e.changedTouches.length > 0) { isDragging = false; commitFn(update(e.changedTouches[0].clientY)); } }, { passive: true });
+        };
+
+        setupVertical('humidity_low',
+          () => this._optimisticHumidityLow ?? humLowAttr,
+          (v) => { this._optimisticHumidityLow = v; },
+          (v) => commitRange(v, this._optimisticHumidityHigh ?? humHighAttr)
+        );
+        setupVertical('humidity_high',
+          () => this._optimisticHumidityHigh ?? humHighAttr,
+          (v) => { this._optimisticHumidityHigh = v; },
+          (v) => commitRange(this._optimisticHumidityLow ?? humLowAttr, v)
+        );
+
+        portal.querySelectorAll('[data-hum-action]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-hum-action');
+            if (action === 'plus-high' || action === 'minus-high') {
+              const dir = action.startsWith('plus') ? 1 : -1;
+              const cur = this._optimisticHumidityHigh ?? humHighAttr;
+              const val = clamp(cur + dir * step, minHumidity, maxHumidity);
+              this._optimisticHumidityHigh = val;
+              commitRange(this._optimisticHumidityLow ?? humLowAttr, val);
+            }
+          });
+        });
+        return;
+      }
+
+      // Single vertical slider
+      const slider = portal.querySelector('#slider-humidity');
       if (!slider) return;
 
       const updateHumidity = (clientY) => {
         const rect = slider.getBoundingClientRect();
         const pct = Math.max(0, Math.min(1, (rect.bottom - clientY) / rect.height));
-        const raw = minHumidity + pct * range;
-        const value = Math.max(minHumidity, Math.min(maxHumidity, Math.round(raw / step) * step));
-        const display = portal.querySelector('#displayHumidity');
+        const value = clamp(minHumidity + pct * range, minHumidity, maxHumidity);
+        const display = portal.querySelector('#display-humidity');
         const fill = slider.querySelector('.vertical-slider-fill');
         const thumb = slider.querySelector('.vertical-slider-thumb');
         if (display) display.innerHTML = `${value}<span>%</span>`;
         const actualPct = ((value - minHumidity) / range) * 100;
         if (fill) fill.style.height = `${actualPct}%`;
-        const thumbPos = actualPct <= 0 ? '0px' : actualPct >= 100 ? 'calc(100% - 6px)' : `calc(${actualPct}% - 6px)`;
-        if (thumb) thumb.style.bottom = thumbPos;
+        if (thumb) thumb.style.bottom = actualPct <= 0 ? '0px' : actualPct >= 100 ? 'calc(100% - 6px)' : `calc(${actualPct}% - 6px)`;
         return value;
       };
 
-      // +/- buttons for vertical
       portal.querySelectorAll('[data-hum-action]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const cur = entity.attributes.humidity ?? minHumidity;
+          const cur = attrs.humidity ?? minHumidity;
           const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
-          const val = Math.max(minHumidity, Math.min(maxHumidity, Math.round((cur + dir * step) / step) * step));
+          const val = clamp(cur + dir * step, minHumidity, maxHumidity);
           this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
         });
       });
