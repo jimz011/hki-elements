@@ -133,11 +133,3 @@ The popup options appear inline inside the action editor whenever `HKI Popup` is
 5. Use the **Popup Card** editor to configure the embedded card
 
 ---
-
-## Notes
-
-- Any installed custom card (HACS or manual) can be used, as long as it is registered as a custom element before the popup opens.
-- The card is re-created each time the popup is opened.
-- `popup_name` and `popup_state` are resolved as Jinja2 templates at the moment the popup opens, so they always reflect the current state.
-- Popup options are per-action. Different tap, hold, and double-tap actions on the same slot can open entirely different popups.
-- If `custom_popup_card` is absent or the `hki-button-card` element is not loaded, the action falls back silently.
