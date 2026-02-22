@@ -114,6 +114,9 @@ hki_popup:
   show_favorites: true
   show_presets: true
   show_effects: true
+  open_animation: scale
+  close_animation: scale
+  animation_duration: 300
   
   button:
     bg: ""
@@ -493,6 +496,31 @@ hki_popup:
   slider_radius: 12              # Slider border radius (px)
   time_format: auto              # Time format: auto, 12, 24
 ```
+
+#### Popup Animations
+
+```yaml
+hki_popup:
+  open_animation: scale          # Entrance animation (see values below)
+  close_animation: scale         # Exit animation (see values below)
+  animation_duration: 300        # Duration in milliseconds
+```
+
+| Value | Description |
+|-------|-------------|
+| `none` | Instant, no animation |
+| `fade` | Fade in / out |
+| `scale` *(default)* | Scale up from centre / scale down |
+| `slide-up` | Slides in from below / out downward |
+| `slide-down` | Slides in from above / out upward |
+| `slide-left` | Slides in from the right / out to the right |
+| `slide-right` | Slides in from the left / out to the left |
+| `flip` | Flip on Y axis |
+| `bounce` | Elastic bounce in / scale out |
+| `zoom` | Zoom in from large / zoom out |
+| `rotate` | Rotate and fade in / out |
+| `drop` | Drop in from above / drop out |
+| `swing` | Pendulum swing in / out |
 
 #### Popup Button Styling
 
