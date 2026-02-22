@@ -140,7 +140,7 @@ top_bar:
 ### Bottom Bar
 
 The bottom bar is a horizontal container at the bottom of the header with three slots (left, center, right).
-*It is recommended to turn off `fixed badges` before enabling this or better yet, remove badges from the default HA badges slot entirely and use the header slots for your badges instead*
+*It is recommended to remove badges from the default HA badges slot entirely and use the header slots for your badges instead. To give slightly more control over the content below the header you could use `fixed badges` settings to change the distance between the header and the content below it.*
 
 ```yaml
 bottom_bar:
