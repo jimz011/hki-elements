@@ -179,6 +179,20 @@ const DEFAULTS = Object.freeze({
   info_pill_border_width: 0,
   info_pill_border_color: "rgba(255,255,255,0.1)",
 
+  // Bottom Bar Global Info Styling (independent defaults for bottom bar slots)
+  bottom_info_size_px: 12,
+  bottom_info_weight: "medium",
+  bottom_info_color: "",
+  bottom_info_pill: true,
+  bottom_info_pill_background: "rgba(0,0,0,0.25)",
+  bottom_info_pill_padding_x: 12,
+  bottom_info_pill_padding_y: 8,
+  bottom_info_pill_radius: 999,
+  bottom_info_pill_blur: 0,
+  bottom_info_pill_border_style: "none",
+  bottom_info_pill_border_width: 0,
+  bottom_info_pill_border_color: "rgba(255,255,255,0.1)",
+
   // Defaults fallback if per-slot is missing
   weather_entity: "",
   weather_show_icon: true,
@@ -442,6 +456,22 @@ function flattenNestedFormat(nested) {
     if (nested.info.pill_border_style !== undefined) flat.info_pill_border_style = nested.info.pill_border_style;
     if (nested.info.pill_border_width !== undefined) flat.info_pill_border_width = nested.info.pill_border_width;
     if (nested.info.pill_border_color !== undefined) flat.info_pill_border_color = nested.info.pill_border_color;
+  }
+  
+  // Flatten bottom_info (bottom bar independent global styling)
+  if (nested.bottom_info) {
+    if (nested.bottom_info.size_px !== undefined) flat.bottom_info_size_px = nested.bottom_info.size_px;
+    if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
+    if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
+    if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
+    if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
+    if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
+    if (nested.bottom_info.pill_padding_y !== undefined) flat.bottom_info_pill_padding_y = nested.bottom_info.pill_padding_y;
+    if (nested.bottom_info.pill_radius !== undefined) flat.bottom_info_pill_radius = nested.bottom_info.pill_radius;
+    if (nested.bottom_info.pill_blur !== undefined) flat.bottom_info_pill_blur = nested.bottom_info.pill_blur;
+    if (nested.bottom_info.pill_border_style !== undefined) flat.bottom_info_pill_border_style = nested.bottom_info.pill_border_style;
+    if (nested.bottom_info.pill_border_width !== undefined) flat.bottom_info_pill_border_width = nested.bottom_info.pill_border_width;
+    if (nested.bottom_info.pill_border_color !== undefined) flat.bottom_info_pill_border_color = nested.bottom_info.pill_border_color;
   }
   
   // Flatten slots (top and bottom bar)
@@ -922,10 +952,6 @@ class HkiHeaderCard extends LitElement {
       .slot-align-start  { justify-content: flex-start !important; text-align: left !important; }
       .slot-align-center { justify-content: center !important;     text-align: center !important; }
       .slot-align-end    { justify-content: flex-end !important;   text-align: right !important; }
-      /* Stretch: slot consumes all remaining flex space; inner card fills it */
-      .slot-align-stretch { flex: 999 1 0% !important; justify-content: flex-start !important; }
-      .slot-align-stretch .info-item { width: 100%; min-width: unset; box-sizing: border-box; }
-      .slot-align-stretch .info-item > * { width: 100%; display: block; box-sizing: border-box; }
 
       /* BOTTOM BAR LAYOUT */
       .bottom-bar-container {
@@ -1420,7 +1446,7 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "label"] = m[prefix + "label"] || "";
       // Alignment default differs per slot
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
-      m[prefix + "align"] = ["start", "center", "end"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
     });
     ["left", "center", "right"].forEach(slot => {
       const prefix = `bottom_bar_${slot}_`;
@@ -1428,7 +1454,7 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "icon"] = m[prefix + "icon"] || "";
       m[prefix + "label"] = m[prefix + "label"] || "";
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
-      m[prefix + "align"] = ["start", "center", "end"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
       m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
       m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
@@ -2044,9 +2070,12 @@ class HkiHeaderCard extends LitElement {
   _getSlotStyle(slotName, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
+
+    // Pick the right set of global defaults depending on which bar this slot belongs to
+    const gp = bar === "bottom_bar" ? "bottom_info_" : "info_";
     
     // Generate cache key based on relevant config values
-    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg.info_size_px}:${cfg.info_weight}:${cfg.info_color}:${cfg.info_pill}:${cfg.font_family}:${cfg.font_style}`;
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "pill"]}:${cfg.font_family}:${cfg.font_style}`;
     
     const cached = this._slotStyleCache.get(cacheKey);
     if (cached) return cached;
@@ -2055,21 +2084,21 @@ class HkiHeaderCard extends LitElement {
     
     const fontFamily = this._resolveFontFamily();
     
-    // Get values, preferring per-slot if not using global, otherwise use global
-    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg.info_size_px;
-    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg.info_weight;
-    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg.info_color?.trim() || "var(--hki-header-text-color, #fff)");
+    // Get values, preferring per-slot if not using global, otherwise use bar-specific global
+    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg[gp + "size_px"];
+    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg[gp + "weight"];
+    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"]?.trim() || "var(--hki-header-text-color, #fff)");
     const iconSize = Math.round(sizePx * 2);
     
-    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg.info_pill;
-    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg.info_pill_background;
-    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg.info_pill_padding_x;
-    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg.info_pill_padding_y;
-    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg.info_pill_radius;
-    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg.info_pill_blur;
-    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg.info_pill_border_style;
-    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg.info_pill_border_width;
-    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg.info_pill_border_color;
+    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
+    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg[gp + "pill_background"];
+    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg[gp + "pill_padding_x"];
+    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg[gp + "pill_padding_y"];
+    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg[gp + "pill_radius"];
+    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg[gp + "pill_blur"];
+    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg[gp + "pill_border_style"];
+    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg[gp + "pill_border_width"];
+    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg[gp + "pill_border_color"];
     
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
@@ -2106,7 +2135,7 @@ class HkiHeaderCard extends LitElement {
     return result;
   }
 
-  _renderSlotContent(type, slotName, cardId = null, bar = "top_bar") {
+  _renderSlotContent(type, slotName, cardId = null, bar = "top_bar", stretch = false) {
       const cfg = this._config;
       const slotStyle = this._getSlotStyle(slotName, bar);
       // Unique key to persist hold/click state across re-renders for this slot
@@ -2117,7 +2146,7 @@ class HkiHeaderCard extends LitElement {
           case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey, bar);
           case "notifications":
           case "custom":
-          case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId, type);
+          case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId, type, stretch);
           case "spacer": return this._renderSpacerSlot(slotName, stateKey, bar);
           case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey, bar);
           default: return html``;
@@ -2531,17 +2560,20 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderCustomCardSlot(slotName, slotStyle, cardId = null, type = "notifications") {
+  _renderCustomCardSlot(slotName, slotStyle, cardId = null, type = "notifications", stretch = false) {
     const cardEl = this._customCards[cardId || slotName];
     if (!cardEl) return html``;
 
     // 'card' type is a bare arbitrary card — do not inject header global styling.
     // 'notifications'/'custom' are hki-notification-card which consume notifyVars via use_header_styling.
     const isNotificationSlot = type !== "card";
-    // When stretch is active the CSS takes care of width; keep min-width out of the way.
+
+    // When stretch is active the info-item fills the full slot width so the card can expand naturally.
+    const stretchStyle = stretch ? `width:100%;flex:1 1 auto;` : '';
+
     const combinedStyle = isNotificationSlot
-      ? `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`
-      : `min-width: 50px;`;
+      ? `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${stretchStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`
+      : `min-width: 50px; ${stretchStyle}`;
 
     return html`
       <div class="info-item" style="${combinedStyle}">
@@ -2593,11 +2625,32 @@ class HkiHeaderCard extends LitElement {
       const centerAlign = cfg.top_bar_center_align || 'center';
       const rightAlign = cfg.top_bar_right_align || 'end';
 
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`top_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.top_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.top_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.top_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.top_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.top_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.top_bar_right));
+      // Build per-slot flex-grow override (only when span > 1, i.e. absorbing neighbours)
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
       return html`
         <div class="top-bar-container" style="${topStyle}">
-            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${(leftOverflow || leftAlign === 'stretch') ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left", null, "top_bar")}</div>
-            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${(centerOverflow || centerAlign === 'stretch') ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center", null, "top_bar")}</div>
-            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${(rightOverflow || rightAlign === 'stretch') ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right", null, "top_bar")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.top_bar_left, "left", null, "top_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.top_bar_center, "center", null, "top_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.top_bar_right, "right", null, "top_bar", rightStretch)}</div>
         </div>
       `;
   }
@@ -2639,11 +2692,31 @@ class HkiHeaderCard extends LitElement {
       const centerAlign = cfg.bottom_bar_center_align || 'center';
       const rightAlign = cfg.bottom_bar_right_align || 'end';
 
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`bottom_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.bottom_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.bottom_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.bottom_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_right));
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
       return html`
         <div class="bottom-bar-container" style="${bottomStyle}">
-            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${(leftOverflow || leftAlign === 'stretch') ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left", "bottom_bar")}</div>
-            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${(centerOverflow || centerAlign === 'stretch') ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center", "bottom_bar")}</div>
-            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${(rightOverflow || rightAlign === 'stretch') ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right", "bottom_bar")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left", "bottom_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center", "bottom_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right", "bottom_bar", rightStretch)}</div>
         </div>
       `;
   }
@@ -3464,6 +3537,27 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_pill_border_width !== undefined) nested.info.pill_border_width = flat.info_pill_border_width;
       if (flat.info_pill_border_color !== undefined) nested.info.pill_border_color = flat.info_pill_border_color;
     }
+
+    // Nest bottom_info if any settings exist
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_pill', 'bottom_info_pill_background',
+                      'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
+                      'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
+    const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
+    if (hasBottomInfoConfig) {
+      nested.bottom_info = {};
+      if (flat.bottom_info_size_px !== undefined) nested.bottom_info.size_px = flat.bottom_info_size_px;
+      if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
+      if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
+      if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
+      if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
+      if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
+      if (flat.bottom_info_pill_padding_y !== undefined) nested.bottom_info.pill_padding_y = flat.bottom_info_pill_padding_y;
+      if (flat.bottom_info_pill_radius !== undefined) nested.bottom_info.pill_radius = flat.bottom_info_pill_radius;
+      if (flat.bottom_info_pill_blur !== undefined) nested.bottom_info.pill_blur = flat.bottom_info_pill_blur;
+      if (flat.bottom_info_pill_border_style !== undefined) nested.bottom_info.pill_border_style = flat.bottom_info_pill_border_style;
+      if (flat.bottom_info_pill_border_width !== undefined) nested.bottom_info.pill_border_width = flat.bottom_info_pill_border_width;
+      if (flat.bottom_info_pill_border_color !== undefined) nested.bottom_info.pill_border_color = flat.bottom_info_pill_border_color;
+    }
     
     // Nest slots - always include them even if "none" for clarity
     ['top_bar', 'bottom_bar'].forEach(bar => {
@@ -3816,7 +3910,7 @@ class HkiHeaderCardEditor extends LitElement {
           <mwc-list-item value="center">Center</mwc-list-item>
           <mwc-list-item value="end">End (right)</mwc-list-item>
           ${(type === "card" || type === "notifications" || type === "custom") ? html`
-            <mwc-list-item value="stretch">Stretch (full width)</mwc-list-item>
+            <mwc-list-item value="stretch">Stretch (fill available slots)</mwc-list-item>
           ` : ''}
         </ha-select>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
@@ -4976,6 +5070,45 @@ class HkiHeaderCardEditor extends LitElement {
                 <ha-textfield label="Y Offset (px)" type="number" .value=${String(this._config.bottom_bar_offset_y ?? 10)} data-field="bottom_bar_offset_y" @input=${this._changed}></ha-textfield>
                 <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_bar_padding_x ?? 0)} data-field="bottom_bar_padding_x" @input=${this._changed}></ha-textfield>
               </div>
+
+              <details class="box-section">
+                <summary>Global Styling (Defaults)</summary>
+                <div class="box-content">
+                  <div class="inline-fields-2">
+                    <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config.bottom_info_size_px || 12)} data-field="bottom_info_size_px" @input=${this._changed}></ha-textfield>
+                    <ha-select label="Font Weight" .value=${this._config.bottom_info_weight || "medium"} data-field="bottom_info_weight" @selected=${this._changed} @closed=${this._changed}>
+                      ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
+                    </ha-select>
+                  </div>
+                  <ha-textfield label="Text Color" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  
+                  <div class="switch-row">
+                    <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
+                    <span>Enable Pill Style</span>
+                  </div>
+                  ${this._config.bottom_info_pill ? html`
+                    <ha-textfield label="Pill Background" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Border Radius (px)" type="number" .value=${String(this._config.bottom_info_pill_radius ?? 999)} data-field="bottom_info_pill_radius" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Blur (px)" type="number" .value=${String(this._config.bottom_info_pill_blur ?? 0)} data-field="bottom_info_pill_blur" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-3">
+                      <ha-select label="Border Style" .value=${this._config.bottom_info_pill_border_style || "none"} data-field="bottom_info_pill_border_style" @selected=${this._changed} @closed=${this._changed}>
+                        <mwc-list-item value="none">None</mwc-list-item>
+                        <mwc-list-item value="solid">Solid</mwc-list-item>
+                        <mwc-list-item value="dashed">Dashed</mwc-list-item>
+                        <mwc-list-item value="dotted">Dotted</mwc-list-item>
+                      </ha-select>
+                      <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>
+                    </div>
+                  ` : ''}
+                </div>
+              </details>
 
               <details class="box-section">
                 <summary>Left Slot: ${this._getSlotLabel(this._config.bottom_bar_left)}</summary>
