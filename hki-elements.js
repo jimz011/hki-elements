@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.2 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-01 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5732,6 +5732,13 @@ class HkiButtonCard extends LitElement {
       ['climate_temp_step',         'climate','temp_step'],
       ['climate_temperature_name',  'climate','temperature_name'],
       ['climate_use_circular_slider','climate','use_circular_slider'],
+      ['climate_show_target_range',  'climate','show_target_range'],
+      // humidifier
+      ['humidifier_use_circular_slider','humidifier','use_circular_slider'],
+      ['humidifier_show_plus_minus',    'humidifier','show_plus_minus'],
+      ['humidifier_fan_entity',         'humidifier','fan_entity'],
+      ['humidifier_show_gradient',      'humidifier','show_gradient'],
+      ['humidifier_humidity_step',      'humidifier','humidity_step'],
       // hki_popup
       ['popup_border_radius',       'hki_popup','border_radius'],
       ['popup_button_bg',           'hki_popup','button','bg'],
@@ -5831,7 +5838,7 @@ class HkiButtonCard extends LitElement {
     // Also strips obsolete/unknown keys that are not in the valid set.
     static _migrateFlatConfig(config) {
       if (!config || typeof config !== 'object') return config;
-      const NESTED_SECTIONS = new Set(['styles','offsets','climate','hki_popup','lock','custom_popup']);
+      const NESTED_SECTIONS = new Set(['styles','offsets','climate','humidifier','hki_popup','lock','custom_popup']);
       const MAPPED_FLAT_KEYS = new Set(HkiButtonCard._CONFIG_MAP.map(([k]) => k));
       const flat = {};
       // 1. Copy root-level keys that are in the valid whitelist (strips obsolete flat keys)
@@ -9237,7 +9244,10 @@ _tileSliderClick(e) {
 
         if (view === 'main') {
           if (this._config.climate_use_circular_slider) {
-            this._setupCircularSliderHandlers(portal);
+            const ent2 = this._getEntity();
+            const a2 = ent2?.attributes || {};
+            const isR2 = (ent2?.state === 'heat_cool' || ent2?.state === 'auto') && a2.target_temp_high !== undefined && this._config.climate_show_target_range !== false;
+            if (isR2) this._setupDualCircularSliderHandlers(portal); else this._setupCircularSliderHandlers(portal);
           } else {
             this._setupClimatePopupSliders(portal);
             this._setupVerticalPlusMinusButtons(portal);
@@ -9275,7 +9285,10 @@ _tileSliderClick(e) {
 
       if (this._activeView === 'main') {
         if (this._config.climate_use_circular_slider) {
-          this._setupCircularSliderHandlers(portal);
+          const ent3 = this._getEntity();
+          const a3 = ent3?.attributes || {};
+          const isR3 = (ent3?.state === 'heat_cool' || ent3?.state === 'auto') && a3.target_temp_high !== undefined && this._config.climate_show_target_range !== false;
+          if (isR3) this._setupDualCircularSliderHandlers(portal); else this._setupCircularSliderHandlers(portal);
         } else {
           this._setupClimatePopupSliders(portal);
           this._setupVerticalPlusMinusButtons(portal);
@@ -9307,10 +9320,14 @@ _tileSliderClick(e) {
 
       // Use circular slider if enabled
       if (this._config.climate_use_circular_slider) {
+        const isRange = (mode === 'heat_cool' || mode === 'auto') && (attrs.target_temp_high !== undefined && attrs.target_temp_low !== undefined) && (this._config.climate_show_target_range !== false);
+        if (isRange) {
+          return this._renderDualCircularTemperatureControl(entity, mode, color);
+        }
         return this._renderCircularTemperatureControl(entity, mode, color);
       }
 
-      const isRange = (mode === 'heat_cool' || mode === 'auto') && (attrs.target_temp_high !== undefined && attrs.target_temp_low !== undefined);
+      const isRange = (mode === 'heat_cool' || mode === 'auto') && (attrs.target_temp_high !== undefined && attrs.target_temp_low !== undefined) && (this._config.climate_show_target_range !== false);
       const range = this._tempMax - this._tempMin;
       const unit = attrs.temperature_unit || this.hass?.config?.unit_system?.temperature || '°';
       const showButtons = this._config.climate_show_plus_minus === true;
@@ -9477,6 +9494,61 @@ _tileSliderClick(e) {
                 </button>
               </div>
             ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    _renderDualCircularTemperatureControl(entity, mode, color) {
+      const attrs = entity.attributes || {};
+      const unit = attrs.temperature_unit || this.hass?.config?.unit_system?.temperature || '°';
+      const range = this._tempMax - this._tempMin;
+      const showButtons = this._config.climate_show_plus_minus === true;
+      const valueSize = this._config.popup_value_font_size || 48;
+      const labelSize = this._config.popup_label_font_size || 11;
+      const valueWeight = this._config.popup_value_font_weight || 200;
+      const labelWeight = this._config.popup_label_font_weight || 500;
+
+      const renderMiniCircle = (id, value, label, accent) => {
+        const pct = Math.max(0, Math.min(100, ((value - this._tempMin) / range) * 100));
+        const maxArc = 628.32 * 0.75;
+        const arcLen = (pct / 100) * maxArc;
+        const startAngle = 135 * (Math.PI / 180);
+        const arcAngle = (pct / 100) * 270 * (Math.PI / 180);
+        const totalAngle = startAngle + arcAngle;
+        const tx = 110 + 78 * Math.cos(totalAngle);
+        const ty = 110 + 78 * Math.sin(totalAngle);
+        return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <div style="font-size:${labelSize}px;font-weight:${labelWeight};opacity:0.6;text-transform:uppercase;letter-spacing:1.5px;">${label}</div>
+            <div style="position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;cursor:pointer;" id="circularSlider_${id}">
+              <svg style="position:absolute;top:0;left:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));" viewBox="0 0 220 220" width="220" height="220">
+                <circle cx="110" cy="110" r="78" fill="none" stroke="var(--divider-color,rgba(255,255,255,0.05))" stroke-width="16" stroke-dasharray="${628.32*0.75}" transform="rotate(135 110 110)"/>
+                <circle cx="110" cy="110" r="78" fill="none" stroke="${accent}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${arcLen} 628.32" transform="rotate(135 110 110)" id="circularProgress_${id}"/>
+                <circle cx="${tx}" cy="${ty}" r="10" fill="white" stroke="var(--card-background-color,#1c1c1c)" stroke-width="3" id="circularThumb_${id}" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
+              </svg>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                <div id="circularTempValue_${id}" style="font-size:${valueSize}px;font-weight:${valueWeight};line-height:1;">${value !== null && value !== undefined ? value : '--'}<span style="font-size:${valueSize/2}px;opacity:0.7;">${unit}</span></div>
+              </div>
+            </div>
+            ${showButtons ? `
+              <div style="display:flex;gap:12px;">
+                <button class="circular-temp-btn minus" data-action="minus" data-slider="${id}" style="width:44px;height:44px;border-radius:50%;border:none;background:var(--secondary-background-color,rgba(255,255,255,0.1));color:var(--primary-text-color);cursor:pointer;display:flex;align-items:center;justify-content:center;"><ha-icon icon="mdi:minus"></ha-icon></button>
+                <button class="circular-temp-btn plus" data-action="plus" data-slider="${id}" style="width:44px;height:44px;border-radius:50%;border:none;background:var(--secondary-background-color,rgba(255,255,255,0.1));color:var(--primary-text-color);cursor:pointer;display:flex;align-items:center;justify-content:center;"><ha-icon icon="mdi:plus"></ha-icon></button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      };
+
+      const low = this._optimisticTempLow ?? attrs.target_temp_low;
+      const high = this._optimisticTempHigh ?? attrs.target_temp_high;
+
+      return `
+        <div class="climate-controls-view">
+          <div style="display:flex;gap:24px;justify-content:center;align-items:flex-start;width:100%;flex-wrap:wrap;">
+            ${renderMiniCircle('low', low, 'Cool to', '#1E90FF')}
+            ${renderMiniCircle('high', high, 'Heat to', 'darkorange')}
           </div>
         </div>
       `;
@@ -9982,6 +10054,101 @@ _tileSliderClick(e) {
       
       // Setup vertical +/- buttons if they exist
       this._setupVerticalPlusMinusButtons(portal);
+    }
+
+    _setupDualCircularSliderHandlers(portal) {
+      const step = this._getTempStep();
+
+      const setupOne = (slotId, attrLow, attrHigh, optimisticKey, serviceParam) => {
+        const el = portal.querySelector(`#circularSlider_${slotId}`);
+        if (!el) return;
+        const svg = el.querySelector('svg');
+        const progress = el.querySelector(`#circularProgress_${slotId}`);
+        const thumb = el.querySelector(`#circularThumb_${slotId}`);
+        const valueDisplay = el.querySelector(`#circularTempValue_${slotId}`);
+        const unit = this._getEntity()?.attributes?.temperature_unit || this.hass?.config?.unit_system?.temperature || '°';
+        const maxArc = 628.32 * 0.75;
+        const valueSize = this._config.popup_value_font_size || 48;
+
+        const applyValue = (val) => {
+          this[optimisticKey] = val;
+          const pct = ((val - this._tempMin) / (this._tempMax - this._tempMin)) * 100;
+          const arcLen = (pct / 100) * maxArc;
+          const startAngle = 135 * (Math.PI / 180);
+          const arcAngle = (pct / 100) * 270 * (Math.PI / 180);
+          const totalAngle = startAngle + arcAngle;
+          const tx = 110 + 78 * Math.cos(totalAngle);
+          const ty = 110 + 78 * Math.sin(totalAngle);
+          if (progress) progress.setAttribute('stroke-dasharray', `${arcLen} 628.32`);
+          if (thumb) { thumb.setAttribute('cx', tx); thumb.setAttribute('cy', ty); }
+          if (valueDisplay) valueDisplay.innerHTML = `${val}<span style="font-size:${valueSize/2}px;opacity:0.7;">${unit}</span>`;
+        };
+
+        const getFromPoint = (clientX, clientY) => {
+          const rect = svg.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+          let angle = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
+          if (angle < 0) angle += 360;
+          let arcDeg = angle - 135;
+          if (arcDeg < 0) arcDeg += 360;
+          if (arcDeg > 270) arcDeg = arcDeg < 315 ? 270 : 0;
+          let raw = this._tempMin + (arcDeg / 270) * (this._tempMax - this._tempMin);
+          return this._clampTemp(this._roundToStep(raw, step));
+        };
+
+        const commit = (val) => {
+          const ent = this._getEntity();
+          const attrs = ent?.attributes || {};
+          const lowVal = slotId === 'low' ? val : (this._optimisticTempLow ?? attrs.target_temp_low);
+          const highVal = slotId === 'high' ? val : (this._optimisticTempHigh ?? attrs.target_temp_high);
+          this.hass.callService('climate', 'set_temperature', {
+            entity_id: this._config.entity,
+            target_temp_low: lowVal,
+            target_temp_high: highVal,
+          });
+        };
+
+        // +/- buttons
+        portal.querySelectorAll(`.circular-temp-btn[data-slider="${slotId}"]`).forEach(btn => {
+          btn.addEventListener('click', () => {
+            const ent = this._getEntity();
+            const attrs = ent?.attributes || {};
+            const cur = this[optimisticKey] ?? attrs[attrLow] ?? attrs[attrHigh] ?? this._tempMin;
+            const dir = btn.dataset.action === 'plus' ? 1 : -1;
+            const val = this._clampTemp(this._roundToStep(cur + dir * step, step));
+            applyValue(val);
+            commit(val);
+          });
+        });
+
+        let dragging = false;
+        el.addEventListener('mousedown', (e) => { dragging = true; applyValue(getFromPoint(e.clientX, e.clientY)); });
+        el.addEventListener('touchstart', (e) => { dragging = true; applyValue(getFromPoint(e.touches[0].clientX, e.touches[0].clientY)); }, { passive: true });
+
+        const onMove = (e) => { if (dragging) applyValue(getFromPoint(e.clientX, e.clientY)); };
+        const onTouchMove = (e) => { if (dragging) applyValue(getFromPoint(e.touches[0].clientX, e.touches[0].clientY)); };
+        const onUp = (e) => {
+          if (!dragging) return;
+          dragging = false;
+          const val = this[optimisticKey];
+          if (val !== undefined) commit(val);
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.removeEventListener('touchmove', onTouchMove);
+          document.removeEventListener('touchend', onUp);
+        };
+        el.addEventListener('mousedown', () => {
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        el.addEventListener('touchstart', () => {
+          document.addEventListener('touchmove', onTouchMove, { passive: true });
+          document.addEventListener('touchend', onUp);
+        }, { passive: true });
+      };
+
+      setupOne('low', 'target_temp_low', 'target_temp_low', '_optimisticTempLow', 'target_temp_low');
+      setupOne('high', 'target_temp_high', 'target_temp_high', '_optimisticTempHigh', 'target_temp_high');
     }
 
     _setupVerticalPlusMinusButtons(portal) {
@@ -11244,25 +11411,31 @@ if (!this._popupPortal) {
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
-      const currentHumidity = attrs.current_humidity || 0;
-      const targetHumidity = attrs.humidity || 50;
-      const minHumidity = attrs.min_humidity || 0;
-      const maxHumidity = attrs.max_humidity || 100;
+      const currentHumidity = attrs.current_humidity ?? 0;
+      const targetHumidity = attrs.humidity ?? 50;
+      const minHumidity = attrs.min_humidity ?? 0;
+      const maxHumidity = attrs.max_humidity ?? 100;
       const modes = attrs.available_modes || [];
       const currentMode = attrs.mode || 'normal';
       
+      // Fan speed entity (configured separately)
+      const fanEntityId = this._config.humidifier_fan_entity || '';
+      const fanEntity = fanEntityId ? this.hass?.states?.[fanEntityId] : null;
+      const fanModes = fanEntity?.attributes?.options || fanEntity?.attributes?.fan_modes || [];
+      const currentFanMode = fanEntity?.state || '';
+      const hasFan = !!(fanEntityId && fanEntity && fanModes.length);
+
       const color = isOn ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)';
       const icon = this._getResolvedIcon(entity, isOn ? 'mdi:air-humidifier' : 'mdi:air-humidifier-off');
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
-
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
+      const useCircular = this._config.humidifier_use_circular_slider === true;
 
       const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
-      // Clear previous content when reusing.
       portal.innerHTML = '';
 
       portal.innerHTML = `
@@ -11293,12 +11466,10 @@ if (!this._popupPortal) {
             width: 40px; height: 40px; border-radius: 50%;
             background: var(--divider-color, rgba(255, 255, 255, 0.05)); border: none;
             color: var(--primary-text-color); cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
           }
           .header-btn:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size: 20px; }
-
           .hki-tabs {
             display: flex; gap: 8px; padding: 8px 20px;
             background: rgba(255, 255, 255, 0.02);
@@ -11313,91 +11484,60 @@ if (!this._popupPortal) {
             transition: all 0.2s; font-size: 14px; font-weight: 500;
           }
           .tab-btn:hover { background: var(--secondary-background-color, rgba(255,255,255,0.08)); }
-          .tab-btn.active { 
-            background: var(--primary-color, rgba(255,255,255,0.12)); 
-            color: var(--text-primary-color, var(--primary-text-color));
-          }
-
+          .tab-btn.active { background: var(--primary-color, rgba(255,255,255,0.12)); color: var(--text-primary-color, var(--primary-text-color)); }
           .hki-popup-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
-          
-          .slider-with-buttons {
-            display: flex; align-items: center; justify-content: center; width: 100%;
-            position: relative;
-          }
-          .humidifier-current-display {
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            position: absolute; right: 0px;
-          }
+          /* Vertical slider */
+          .slider-with-buttons { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
+          .humidifier-current-display { display: flex; flex-direction: column; align-items: center; gap: 8px; position: absolute; right: 0px; }
           .humidifier-current-label { font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
           .humidifier-current-value { font-size: 28px; font-weight: 300; }
-
           .humidifier-slider-group { display: flex; flex-direction: column; align-items: center; gap: 12px; height: 320px; width: 80px; }
           .value-display { font-size: ${valueSize}px; font-weight: ${valueWeight}; text-align: center; }
           .value-display span { font-size: ${Math.max(14, Math.round(valueSize/2))}px; opacity: 0.7; }
           .slider-label { font-size: 12px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
-
           .vertical-slider-track {
-            width: 100%; flex: 1; 
-            background: var(--secondary-background-color, rgba(255, 255, 255, 0.1));
-            border: 2px solid var(--divider-color, rgba(255, 255, 255, 0.1));
+            width: 100%; flex: 1; background: var(--secondary-background-color, rgba(255,255,255,0.1));
+            border: 2px solid var(--divider-color, rgba(255,255,255,0.1));
             border-radius: ${borderRadius}px; position: relative; overflow: hidden; cursor: pointer;
           }
-          .vertical-slider-fill {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: ${color}; transition: background 0.3s;
-            border-radius: 0 0 ${borderRadius}px ${borderRadius}px;
-          }
-          .vertical-slider-thumb {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            width: 90px; height: 6px; background: white;
-            border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            pointer-events: none;
-          }
-
-          .hki-popup-nav {
-            display: flex; justify-content: space-evenly; padding: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.05));
-            gap: 8px;
-            flex-shrink: 0;
-            min-height: 74px; /* keep consistent even when empty */
-            box-sizing: border-box;
-          }
-          .nav-btn {
-            flex: 1; height: 50px; border-radius: 12px;
-            border: none; background: transparent;
-            color: var(--primary-text-color); opacity: 0.5;
-            cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-            transition: all 0.2s; font-size: 11px;
-          }
-          .nav-btn:hover { opacity: 0.8; background: rgba(255, 255, 255, 0.05); }
-          .nav-btn.active { 
-            opacity: 1; 
-            background: var(--primary-color, rgba(255,255,255,0.1)); 
-            color: var(--text-primary-color, var(--primary-text-color));
-          }
+          .vertical-slider-fill { position: absolute; bottom: 0; left: 0; right: 0; transition: background 0.3s; border-radius: 0 0 ${borderRadius}px ${borderRadius}px; }
+          .vertical-slider-thumb { position: absolute; left: 50%; transform: translateX(-50%); width: 90px; height: 6px; background: white; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); pointer-events: none; }
+          /* +/- buttons */
+          .vertical-temp-buttons { display: flex; flex-direction: column; gap: 12px; position: absolute; right: 0px; top: 50%; transform: translateY(-50%); }
+          .vertical-temp-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: var(--secondary-background-color,rgba(255,255,255,0.1)); color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .vertical-temp-btn:hover { background: var(--primary-color,rgba(255,255,255,0.2)); transform: scale(1.1); }
+          .vertical-temp-btn:active { transform: scale(0.95); }
+          .vertical-temp-btn ha-icon { --mdc-icon-size: 24px; }
+          /* Circular slider */
+          .circular-slider-wrapper { display: flex; align-items: center; justify-content: center; gap: 24px; width: 100%; position: relative; }
+          .circular-slider-container { position: relative; width: 280px; height: 280px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; flex-shrink: 0; }
+          .circular-slider-svg { position: absolute; top: 0; left: 0; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); }
+          .circular-value-display { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; pointer-events: none; }
+          .circular-temp-label-top { opacity: 0.6; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+          .circular-temp-value { color: var(--primary-text-color); line-height: 1; }
+          .circular-temp-value span { opacity: 0.7; }
+          .circular-temp-buttons { display: flex; flex-direction: column; gap: 12px; position: absolute; right: 0px; }
+          .circular-temp-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: var(--secondary-background-color,rgba(255,255,255,0.1)); color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .circular-temp-btn:hover { background: var(--primary-color,rgba(255,255,255,0.2)); transform: scale(1.1); }
+          .circular-temp-btn:active { transform: scale(0.95); }
+          .circular-temp-btn ha-icon { --mdc-icon-size: 24px; }
+          /* Nav */
+          .hki-popup-nav { display: flex; justify-content: space-evenly; padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--divider-color,rgba(255,255,255,0.05)); gap: 8px; flex-shrink: 0; min-height: 74px; box-sizing: border-box; }
+          .nav-btn { flex: 1; height: 50px; border-radius: 12px; border: none; background: transparent; color: var(--primary-text-color); opacity: 0.5; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: all 0.2s; font-size: 11px; }
+          .nav-btn:hover { opacity: 0.8; background: rgba(255,255,255,0.05); }
+          .nav-btn.active { opacity: 1; background: var(--primary-color,rgba(255,255,255,0.1)); color: var(--text-primary-color,var(--primary-text-color)); }
           .nav-btn ha-icon { --mdc-icon-size: 24px; }
-
+          /* Mode / fan list */
           .mode-list { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-          .mode-item { 
-            padding: 14px; 
-            background: rgba(255,255,255,0.05); 
-            border-radius: 8px; 
-            cursor: pointer; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            transition: all 0.2s;
-          }
+          .mode-item { padding: 14px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
           .mode-item:hover { background: rgba(255,255,255,0.08); }
           .mode-item.active { background: ${color}; color: white; }
-
+          /* Timeline / history */
           .timeline-container { width: 100%; height: 100%; padding: 0 10px 10px 10px; box-sizing: border-box; overflow-y: auto; align-self: stretch; }
           .timeline-item { display: flex; gap: 16px; margin-bottom: 0; min-height: 40px; position: relative; }
           .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
-          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color, #FFD700); z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); margin-top: 3px; }
-          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.12)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color,#FFD700); z-index: 2; border: 2px solid var(--card-background-color,#1c1c1c); margin-top: 3px; }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color,rgba(255,255,255,0.12)); margin-top: -2px; margin-bottom: -4px; }
           .timeline-item:last-child .timeline-line { display: none; }
           .timeline-content { flex: 1; padding-bottom: 16px; font-size: 13px; color: var(--primary-text-color); }
           .timeline-detail { font-size: 11px; opacity: 0.6; display: block; margin-top: 4px; }
@@ -11422,12 +11562,13 @@ if (!this._popupPortal) {
           </div>
 
           <div class="hki-tabs">
-            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:water-percent"></ha-icon><span>Humidity</span></button>
+            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:water-percent"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Humidity</span>'}</button>
             ${modes.length > 0 ? `<button class="tab-btn ${this._activeView === 'modes' ? 'active' : ''}" id="tabModes" style="${this._activeView === 'modes' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Mode</span>'}</button>` : ''}
+            ${hasFan ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Fan</span>'}</button>` : ''}
           </div>
 
           <div class="hki-popup-content" id="humidifierContent">
-            ${this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius)}
+            ${this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius, hasFan, fanModes, currentFanMode)}
           </div>
 
           <div class="hki-popup-nav">
@@ -11445,10 +11586,7 @@ if (!this._popupPortal) {
       let isBackgroundClick = false;
       portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
       portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
-      portal.addEventListener('click', (e) => {
-        if (isBackgroundClick && e.target === portal) this._closePopup();
-        isBackgroundClick = false;
-      });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -11465,11 +11603,11 @@ if (!this._popupPortal) {
           this._activeView = this._activeView === 'history' ? 'main' : 'history';
           const content = portal.querySelector('#humidifierContent');
           if (content) {
-            content.innerHTML = this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius);
+            content.innerHTML = this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius, hasFan, fanModes, currentFanMode);
             if (this._activeView === 'history') {
               setTimeout(() => this._loadHistory(), 100);
             } else {
-              this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity);
+              this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity, fanEntity, fanEntityId);
             }
           }
         });
@@ -11482,82 +11620,133 @@ if (!this._popupPortal) {
         });
       }
 
+      const switchTab = (view) => {
+        this._activeView = view;
+        portal.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.style = this._getPopupButtonStyle(false); });
+        const id = 'tab' + view.charAt(0).toUpperCase() + view.slice(1);
+        const activeTab = portal.querySelector('#' + id);
+        if (activeTab) { activeTab.classList.add('active'); activeTab.style = this._getPopupButtonStyle(true); }
+        const content = portal.querySelector('#humidifierContent');
+        if (content) {
+          content.innerHTML = this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius, hasFan, fanModes, currentFanMode);
+          this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity, fanEntity, fanEntityId);
+        }
+      };
+
       const tabMain = portal.querySelector('#tabMain');
-      if (tabMain) {
-        tabMain.addEventListener('click', () => {
-          if (this._activeView === 'main') return;
-          this._activeView = 'main';
-          const content = portal.querySelector('#humidifierContent');
-          if (content) {
-            content.innerHTML = this._renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius);
-            this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity);
-          }
-          tabMain.classList.add('active');
-          tabMain.style = this._getPopupButtonStyle(true);
-          const tabModes = portal.querySelector('#tabModes');
-          if (tabModes) {
-            tabModes.classList.remove('active');
-            tabModes.style = this._getPopupButtonStyle(false);
-          }
-        });
-      }
-
+      if (tabMain) tabMain.addEventListener('click', () => { if (this._activeView !== 'main') switchTab('main'); });
       const tabModes = portal.querySelector('#tabModes');
-      if (tabModes) {
-        tabModes.addEventListener('click', () => {
-          if (this._activeView === 'modes') return;
-          this._activeView = 'modes';
-          const content = portal.querySelector('#humidifierContent');
-          if (content) {
-            content.innerHTML = this._renderHumidifierModesList(modes, currentMode, color);
-            this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity);
-          }
-          tabModes.classList.add('active');
-          tabModes.style = this._getPopupButtonStyle(true);
-          if (tabMain) {
-            tabMain.classList.remove('active');
-            tabMain.style = this._getPopupButtonStyle(false);
-          }
-        });
-      }
+      if (tabModes) tabModes.addEventListener('click', () => { if (this._activeView !== 'modes') switchTab('modes'); });
+      const tabFan = portal.querySelector('#tabFan');
+      if (tabFan) tabFan.addEventListener('click', () => { if (this._activeView !== 'fan') switchTab('fan'); });
 
-      this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity);
+      this._setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity, fanEntity, fanEntityId);
     }
 
-    _renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius) {
+    _renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius, hasFan, fanModes, currentFanMode) {
       if (this._activeView === 'history') {
         return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
       }
-
       if (this._activeView === 'modes') {
         const modes = entity.attributes.available_modes || [];
         const currentMode = entity.attributes.mode || 'normal';
         return this._renderHumidifierModesList(modes, currentMode, color);
       }
-
+      if (this._activeView === 'fan') {
+        return this._renderHumidifierFanList(fanModes || [], currentFanMode || '', color);
+      }
       if (entity.state === 'off') {
-        return `<div class="climate-controls-view"><div style="opacity: 0.5; font-size: 18px; font-weight: 500;">Humidifier is Off</div></div>`;
+        return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><div style="opacity:0.5;font-size:18px;font-weight:500;">Humidifier is Off</div></div>`;
       }
 
+      const useCircular = this._config.humidifier_use_circular_slider === true;
+      const showButtons = this._config.humidifier_show_plus_minus === true;
+      const labelSize = this._config.popup_label_font_size || 11;
+      const labelWeight = this._config.popup_label_font_weight || 500;
+      const vSize = this._config.popup_value_font_size || 64;
+      const vWeight = this._config.popup_value_font_weight || 200;
+
+      if (useCircular) {
+        const range = maxHumidity - minHumidity;
+        const pct = Math.max(0, Math.min(100, ((targetHumidity - minHumidity) / range) * 100));
+        const maxArcLength = 628.32 * 0.75;
+        const arcLength = (pct / 100) * maxArcLength;
+        const startAngle = 135 * (Math.PI / 180);
+        const arcAngle = (pct / 100) * 270 * (Math.PI / 180);
+        const totalAngle = startAngle + arcAngle;
+        const thumbX = 140 + 100 * Math.cos(totalAngle);
+        const thumbY = 140 + 100 * Math.sin(totalAngle);
+        const useGradient = this._config.humidifier_show_gradient !== false;
+        const strokeColor = useGradient ? 'url(#humGradient)' : color;
+        return `
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;">
+            <div class="circular-slider-wrapper">
+              <div class="circular-slider-container" id="circularSliderHum">
+                <svg class="circular-slider-svg" viewBox="0 0 280 280" width="280" height="280">
+                  ${useGradient ? `<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#29ABE2;stop-opacity:1"/><stop offset="100%" style="stop-color:#03a9f4;stop-opacity:1"/></linearGradient></defs>` : ''}
+                  <circle cx="140" cy="140" r="100" fill="none" stroke="var(--divider-color,rgba(255,255,255,0.05))" stroke-width="20" stroke-dasharray="${maxArcLength} 628.32" transform="rotate(135 140 140)"/>
+                  <circle cx="140" cy="140" r="100" fill="none" stroke="${strokeColor}" stroke-width="20" stroke-linecap="round" stroke-dasharray="${arcLength} 628.32" transform="rotate(135 140 140)" id="humCircularProgress"/>
+                  <circle cx="${thumbX}" cy="${thumbY}" r="12" fill="white" stroke="var(--card-background-color,#1c1c1c)" stroke-width="3" id="humCircularThumb" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));"/>
+                </svg>
+                <div class="circular-value-display">
+                  <div class="circular-temp-label-top" style="font-size:${labelSize}px;font-weight:${labelWeight};">TARGET</div>
+                  <div class="circular-temp-value" id="humCircularValue" style="font-size:${vSize}px;font-weight:${vWeight};">${targetHumidity}<span style="font-size:${vSize/2}px;">%</span></div>
+                </div>
+              </div>
+              ${showButtons ? `
+                <div class="circular-temp-buttons">
+                  <button class="circular-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
+                  <button class="circular-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
+                </div>
+              ` : ''}
+              <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-left:8px;">
+                <div style="font-size:10px;opacity:0.5;text-transform:uppercase;letter-spacing:1px;">Current</div>
+                <div style="font-size:28px;font-weight:300;">${currentHumidity}<span style="font-size:14px;opacity:0.7;">%</span></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Vertical slider
       const range = maxHumidity - minHumidity;
       const pct = ((targetHumidity - minHumidity) / range) * 100;
-      // Clamp thumb position so it's always visible (at 0% and 100%)
       const thumbPos = pct <= 0 ? '0px' : pct >= 100 ? 'calc(100% - 6px)' : `calc(${pct}% - 6px)`;
-
+      const background = color;
+      const sliderHtml = `
+        <div class="humidifier-slider-group">
+          <div class="value-display" id="displayHumidity">${targetHumidity}<span>%</span></div>
+          <div class="vertical-slider-track" id="sliderHumidity">
+            <div class="vertical-slider-fill" style="height:${pct}%;background:${background};"></div>
+            <div class="vertical-slider-thumb" style="bottom:${thumbPos}"></div>
+          </div>
+          <div class="slider-label">Target</div>
+        </div>
+      `;
+      const currentHtml = `
+        <div class="humidifier-current-display">
+          <div class="humidifier-current-label">Current</div>
+          <div class="humidifier-current-value">${currentHumidity}<span style="font-size:18px;opacity:0.7;">%</span></div>
+        </div>
+      `;
+      if (showButtons) {
+        return `
+          <div class="slider-with-buttons">
+            <div style="position:relative;">
+              ${sliderHtml}
+              <div class="vertical-temp-buttons">
+                <button class="vertical-temp-btn plus" data-hum-action="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
+                <button class="vertical-temp-btn minus" data-hum-action="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
+              </div>
+            </div>
+            ${currentHtml}
+          </div>
+        `;
+      }
       return `
         <div class="slider-with-buttons">
-          <div class="humidifier-slider-group">
-            <div class="value-display" id="displayHumidity">${targetHumidity}<span>%</span></div>
-            <div class="vertical-slider-track" id="sliderHumidity">
-              <div class="vertical-slider-fill" style="height: ${pct}%; background: ${color};"></div>
-              <div class="vertical-slider-thumb" style="bottom: ${thumbPos}"></div>
-            </div>
-            <div class="slider-label">Target</div>
-          </div>
-          <div class="humidifier-current-display">
-            <div class="humidifier-current-label">Current</div>
-            <div class="humidifier-current-value">${currentHumidity}<span style="font-size: 18px; opacity: 0.7;">%</span></div>
-          </div>
+          ${sliderHtml}
+          ${currentHtml}
         </div>
       `;
     }
@@ -11567,7 +11756,7 @@ if (!this._popupPortal) {
         <div class="mode-list">
           ${modes.map(mode => `
             <div class="mode-item ${mode === currentMode ? 'active' : ''}" data-mode="${mode}">
-              <span style="text-transform: capitalize;">${mode.replace(/_/g, ' ')}</span>
+              <span style="text-transform:capitalize;">${mode.replace(/_/g, ' ')}</span>
               ${mode === currentMode ? '<ha-icon icon="mdi:check"></ha-icon>' : ''}
             </div>
           `).join('')}
@@ -11575,81 +11764,168 @@ if (!this._popupPortal) {
       `;
     }
 
-    _setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity) {
+    _renderHumidifierFanList(fanModes, currentFanMode, color) {
+      if (!fanModes || !fanModes.length) return `<div style="opacity:0.6;padding:20px;">No fan modes available</div>`;
+      return `
+        <div class="mode-list">
+          ${fanModes.map(mode => `
+            <div class="mode-item ${mode === currentFanMode ? 'active' : ''}" data-fan-mode="${mode}">
+              <span style="text-transform:capitalize;">${mode.replace(/_/g, ' ')}</span>
+              ${mode === currentFanMode ? '<ha-icon icon="mdi:check"></ha-icon>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    _setupHumidifierContentHandlers(portal, entity, minHumidity, maxHumidity, fanEntity, fanEntityId) {
+      if (this._activeView === 'history') return;
+
       if (this._activeView === 'modes') {
-        const modeItems = portal.querySelectorAll('.mode-item');
-        modeItems.forEach(item => {
+        portal.querySelectorAll('.mode-item').forEach(item => {
           item.addEventListener('click', () => {
-            const mode = item.getAttribute('data-mode');
-            this.hass.callService('humidifier', 'set_mode', {
-              entity_id: this._config.entity,
-              mode: mode
-            });
+            this.hass.callService('humidifier', 'set_mode', { entity_id: this._config.entity, mode: item.getAttribute('data-mode') });
           });
         });
         return;
       }
 
-      if (this._activeView === 'history') {
+      if (this._activeView === 'fan') {
+        portal.querySelectorAll('[data-fan-mode]').forEach(item => {
+          item.addEventListener('click', () => {
+            if (!fanEntityId) return;
+            const mode = item.getAttribute('data-fan-mode');
+            // Try select entity first, then fan entity
+            const domainGuess = fanEntityId.split('.')[0];
+            if (domainGuess === 'select') {
+              this.hass.callService('select', 'select_option', { entity_id: fanEntityId, option: mode });
+            } else {
+              this.hass.callService('fan', 'set_preset_mode', { entity_id: fanEntityId, preset_mode: mode });
+            }
+          });
+        });
         return;
       }
 
+      const useCircular = this._config.humidifier_use_circular_slider === true;
+      const step = this._config.humidifier_humidity_step ? parseFloat(this._config.humidifier_humidity_step) : 1;
+      const range = maxHumidity - minHumidity;
+
+      if (useCircular) {
+        const circEl = portal.querySelector('#circularSliderHum');
+        if (!circEl) return;
+        const svg = circEl.querySelector('svg');
+        const progress = circEl.querySelector('#humCircularProgress');
+        const thumb = circEl.querySelector('#humCircularThumb');
+        const valDisplay = circEl.querySelector('#humCircularValue');
+        const maxArc = 628.32 * 0.75;
+
+        const updateFromVal = (val) => {
+          this._optimisticHumidity = val;
+          const pct = ((val - minHumidity) / range) * 100;
+          const arcLen = (pct / 100) * maxArc;
+          const sa = 135 * (Math.PI / 180);
+          const aa = (pct / 100) * 270 * (Math.PI / 180);
+          const ta = sa + aa;
+          const tx = 140 + 100 * Math.cos(ta);
+          const ty = 140 + 100 * Math.sin(ta);
+          if (progress) progress.setAttribute('stroke-dasharray', `${arcLen} 628.32`);
+          if (thumb) { thumb.setAttribute('cx', tx); thumb.setAttribute('cy', ty); }
+          if (valDisplay) valDisplay.innerHTML = `${val}<span style="font-size:${(this._config.popup_value_font_size||64)/2}px;">%</span>`;
+        };
+
+        const getValFromPoint = (clientX, clientY) => {
+          const rect = svg.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+          let angle = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
+          if (angle < 0) angle += 360;
+          let arcDeg = angle - 135;
+          if (arcDeg < 0) arcDeg += 360;
+          if (arcDeg > 270) arcDeg = arcDeg < 315 ? 270 : 0;
+          const raw = minHumidity + (arcDeg / 270) * range;
+          return Math.max(minHumidity, Math.min(maxHumidity, Math.round(raw / step) * step));
+        };
+
+        const commit = (val) => {
+          this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
+        };
+
+        // +/- buttons
+        portal.querySelectorAll('[data-hum-action]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const cur = this._optimisticHumidity ?? entity.attributes.humidity ?? minHumidity;
+            const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
+            const val = Math.max(minHumidity, Math.min(maxHumidity, Math.round((cur + dir * step) / step) * step));
+            updateFromVal(val);
+            commit(val);
+          });
+        });
+
+        let dragging = false;
+        circEl.addEventListener('mousedown', (e) => { dragging = true; updateFromVal(getValFromPoint(e.clientX, e.clientY)); });
+        circEl.addEventListener('touchstart', (e) => { dragging = true; updateFromVal(getValFromPoint(e.touches[0].clientX, e.touches[0].clientY)); }, { passive: true });
+        const onMove = (e) => { if (dragging) updateFromVal(getValFromPoint(e.clientX, e.clientY)); };
+        const onTouchMove = (e) => { if (dragging) updateFromVal(getValFromPoint(e.touches[0].clientX, e.touches[0].clientY)); };
+        const onUp = () => {
+          if (!dragging) return;
+          dragging = false;
+          if (this._optimisticHumidity !== undefined) commit(this._optimisticHumidity);
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.removeEventListener('touchmove', onTouchMove);
+          document.removeEventListener('touchend', onUp);
+        };
+        circEl.addEventListener('mousedown', () => { document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); });
+        circEl.addEventListener('touchstart', () => { document.addEventListener('touchmove', onTouchMove, { passive: true }); document.addEventListener('touchend', onUp); }, { passive: true });
+        return;
+      }
+
+      // Vertical slider
       const slider = portal.querySelector('#sliderHumidity');
       if (!slider) return;
 
-      const range = maxHumidity - minHumidity;
       const updateHumidity = (clientY) => {
         const rect = slider.getBoundingClientRect();
         const pct = Math.max(0, Math.min(1, (rect.bottom - clientY) / rect.height));
-        const value = Math.round(minHumidity + pct * range);
-        
+        const raw = minHumidity + pct * range;
+        const value = Math.max(minHumidity, Math.min(maxHumidity, Math.round(raw / step) * step));
         const display = portal.querySelector('#displayHumidity');
         const fill = slider.querySelector('.vertical-slider-fill');
         const thumb = slider.querySelector('.vertical-slider-thumb');
-        
         if (display) display.innerHTML = `${value}<span>%</span>`;
-        if (fill) fill.style.height = `${pct * 100}%`;
-        // Clamp thumb position so it stays visible at 0% and 100%
-        const thumbPct = pct * 100;
-        const thumbPos = thumbPct <= 0 ? '0px' : thumbPct >= 100 ? 'calc(100% - 6px)' : `calc(${thumbPct}% - 6px)`;
+        const actualPct = ((value - minHumidity) / range) * 100;
+        if (fill) fill.style.height = `${actualPct}%`;
+        const thumbPos = actualPct <= 0 ? '0px' : actualPct >= 100 ? 'calc(100% - 6px)' : `calc(${actualPct}% - 6px)`;
         if (thumb) thumb.style.bottom = thumbPos;
-        
         return value;
       };
 
-      let isDragging = false;
-      const handleMove = (clientY) => {
-        if (!isDragging) return;
-        updateHumidity(clientY);
-      };
+      // +/- buttons for vertical
+      portal.querySelectorAll('[data-hum-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cur = entity.attributes.humidity ?? minHumidity;
+          const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
+          const val = Math.max(minHumidity, Math.min(maxHumidity, Math.round((cur + dir * step) / step) * step));
+          this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
+        });
+      });
 
-      const handleEnd = (clientY) => {
+      let isDragging = false;
+      slider.addEventListener('mousedown', (e) => { isDragging = true; updateHumidity(e.clientY); });
+      document.addEventListener('mousemove', (e) => { if (isDragging) updateHumidity(e.clientY); });
+      document.addEventListener('mouseup', (e) => {
         if (!isDragging) return;
         isDragging = false;
-        const value = updateHumidity(clientY);
-        this.hass.callService('humidifier', 'set_humidity', {
-          entity_id: this._config.entity,
-          humidity: value
-        });
-      };
-
-      slider.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        updateHumidity(e.clientY);
+        const value = updateHumidity(e.clientY);
+        this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: value });
       });
-      document.addEventListener('mousemove', (e) => handleMove(e.clientY));
-      document.addEventListener('mouseup', (e) => handleEnd(e.clientY));
-
-      slider.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        updateHumidity(e.touches[0].clientY);
-      }, { passive: true });
-      document.addEventListener('touchmove', (e) => {
-        if (isDragging) handleMove(e.touches[0].clientY);
-      }, { passive: true });
+      slider.addEventListener('touchstart', (e) => { isDragging = true; updateHumidity(e.touches[0].clientY); }, { passive: true });
+      document.addEventListener('touchmove', (e) => { if (isDragging) updateHumidity(e.touches[0].clientY); }, { passive: true });
       document.addEventListener('touchend', (e) => {
         if (isDragging && e.changedTouches.length > 0) {
-          handleEnd(e.changedTouches[0].clientY);
+          isDragging = false;
+          const value = updateHumidity(e.changedTouches[0].clientY);
+          this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: value });
         }
       }, { passive: true });
     }
@@ -12549,6 +12825,19 @@ if (!this._popupPortal) {
             gap: 12px;
           }
 
+          /* Timeline history - consistent with other popups */
+          .timeline-container { width: 100%; height: 100%; padding: 0 10px 10px 10px; box-sizing: border-box; overflow-y: auto; align-self: stretch; }
+          .timeline-item { display: flex; gap: 16px; margin-bottom: 0; min-height: 40px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color, #FFD700); z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); margin-top: 3px; }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.12)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 16px; font-size: 13px; color: var(--primary-text-color); }
+          .timeline-detail { font-size: 11px; opacity: 0.6; display: block; margin-top: 4px; }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+
           .hki-popup-nav {
             padding: 12px 20px;
             background: rgba(255, 255, 255, 0.02);
@@ -12565,11 +12854,11 @@ if (!this._popupPortal) {
               <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${hasRealEntity && this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="historyBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              ${hasRealEntity ? `<button class="header-btn" id="historyBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>` : ''}
               <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
@@ -12634,9 +12923,14 @@ if (!this._popupPortal) {
       if (historyBtn) {
         historyBtn.addEventListener('click', () => {
           this._activeView = this._activeView === 'history' ? 'main' : 'history';
-          this._renderCustomPopupPortal(entity);
-          if (this._activeView === 'history') {
-            setTimeout(() => this._loadHistory(), 100);
+          const content = portal.querySelector('#customContent');
+          if (content) {
+            content.innerHTML = this._renderCustomPopupContent(entity);
+            if (this._activeView === 'history') {
+              setTimeout(() => this._loadHistory(), 100);
+            } else {
+              this._renderCustomCard();
+            }
           }
         });
       }
@@ -16713,6 +17007,7 @@ disconnectedCallback() {
       const selectedEntity = this.hass.states[this._config.entity];
       const isClimate = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'climate';
       const isLock = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'lock';
+      const isHumidifier = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'humidifier';
 
       // Custom Actions Dropdown List (Replaces Native Selector)
       const actionsList = [
@@ -17263,6 +17558,7 @@ disconnectedCallback() {
                 <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.climate_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "climate_use_circular_slider")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.climate_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "climate_show_plus_minus")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show Gradient"}><ha-switch .checked=${this._config.climate_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "climate_show_gradient")}></ha-switch></ha-formfield>
+                <ha-formfield .label=${"Show Min/Max Target Range (if supported)"}><ha-switch .checked=${this._config.climate_show_target_range !== false} @change=${(ev) => this._switchChanged(ev, "climate_show_target_range")}></ha-switch></ha-formfield>
                 
                 <div class="separator"></div>
                 <ha-formfield .label=${"Show Temperature Badge"}>
@@ -17316,6 +17612,37 @@ disconnectedCallback() {
                   </ha-select>
                   <ha-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></ha-textfield>
                 </div>
+            </div>
+          </div>
+          ` : ''}
+
+          ${isHumidifier ? html`
+          <div class="accordion-group ">
+            ${renderHeader("Humidifier Settings", "humidifier")}
+            <div class="accordion-content ${this._closedDetails['humidifier'] ? 'hidden' : ''}">
+                <strong>Fan Speed Entity</strong>
+                <p style="font-size:13px;opacity:0.7;margin:8px 0;">
+                  Connect a <code>select</code> or <code>fan</code> entity to control fan speed directly inside the humidifier popup.
+                </p>
+                <div class="side-by-side" style="align-items:center;">
+                  <ha-selector 
+                    .hass=${this.hass} 
+                    .selector=${{ entity: { domain: ['select', 'fan'] } }} 
+                    .value=${this._config.humidifier_fan_entity || ""} 
+                    .label=${"Fan Speed Entity (optional)"} 
+                    @value-changed=${(ev) => this._selectorChanged(ev, "humidifier_fan_entity")}
+                  ></ha-selector>
+                  <button class="hki-editor-clear" title="Clear" @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, humidifier_fan_entity: "" }); }}>
+                    <ha-icon icon="mdi:close"></ha-icon>
+                  </button>
+                </div>
+
+                <div class="separator"></div>
+                <strong>Popup Slider Settings</strong>
+                <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${this._config.humidifier_humidity_step ?? 1} @input=${(ev) => this._textChanged(ev, "humidifier_humidity_step")} placeholder="1"></ha-textfield>
+                <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.humidifier_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "humidifier_use_circular_slider")}></ha-switch></ha-formfield>
+                <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.humidifier_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "humidifier_show_plus_minus")}></ha-switch></ha-formfield>
+                <ha-formfield .label=${"Show Gradient (circular)"}><ha-switch .checked=${this._config.humidifier_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "humidifier_show_gradient")}></ha-switch></ha-formfield>
             </div>
           </div>
           ` : ''}
