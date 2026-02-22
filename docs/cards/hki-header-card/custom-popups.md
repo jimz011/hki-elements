@@ -24,12 +24,14 @@ tap_action:
   custom_popup_card:
     type: <card-type>
     # ... card config
-  popup_name: ""               # Optional header name (supports Jinja2)
-  popup_state: ""              # Optional header state text (supports Jinja2)
-  popup_border_radius: 16      # Border radius in px (default: 16)
-  popup_width: auto            # Width: auto or a px value e.g. 400px
-  popup_open_animation: scale  # Entrance animation (see values below)
-  popup_blur_enabled: true     # Blur the backdrop
+  popup_name: ""                 # Optional header name (supports Jinja2)
+  popup_state: ""                # Optional header state text (supports Jinja2)
+  popup_border_radius: 16        # Border radius in px (default: 16)
+  popup_width: auto              # Width: auto or a px value e.g. 400px
+  popup_open_animation: scale    # Entrance animation (see values below)
+  popup_close_animation: scale   # Exit animation (see values below)
+  popup_animation_duration: 500  # Animation duration in milliseconds
+  popup_blur_enabled: true       # Blur the backdrop
 ```
 
 | Key | Type | Default | Description |
