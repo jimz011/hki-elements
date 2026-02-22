@@ -213,6 +213,13 @@ Control the popup that shows all notifications:
 | `show_popup_timestamp` | boolean | true | Show timestamps in popup |
 | `time_format` | string | `auto` | Time format: `auto`, `12`, `24` |
 
+#### Popup Animations
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `popup_open_animation` | string | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
+| `popup_close_animation` | string | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
+| `popup_animation_duration` | number | 300 | Set the duration of the animation |
+
 #### Popup Appearance
 
 | Property | Type | Default | Description |
