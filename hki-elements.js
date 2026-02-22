@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.1-dev-36 ',
+  '%c HKI-ELEMENTS %c v1.1.1-dev-37 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -49,47 +49,62 @@ window.HKI.ensurePopupAnimations = window.HKI.ensurePopupAnimations || (() => {
       const s = document.createElement("style");
       s.id = "hki-popup-animations";
       s.textContent = `
-        @keyframes hki-anim-fade-in        { 
-          from { opacity: 0; } 
-          to { opacity: 1; }
-        }
-        @keyframes hki-anim-fade-out       { 
-          from { opacity: 1; } 
-          to { opacity: 0; }
-        }
-        @keyframes hki-anim-zoom-in        { 
-          from { transform: scale(.92); opacity: 0; } 
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes hki-anim-zoom-out       { 
-          from { transform: scale(1); opacity: 1; } 
-          to { transform: scale(.92); opacity: 0; }
-        }
-        @keyframes hki-anim-slide-up       { 
-          from { transform: translateY(14px); opacity: 0; } 
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes hki-anim-slide-down     { 
-          from { transform: translateY(0); opacity: 1; } 
-          to { transform: translateY(14px); opacity: 0; }
-        }
-        @keyframes hki-anim-slide-left     { 
-          from { transform: translateX(14px); opacity: 0; } 
-          to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes hki-anim-slide-right    { 
-          from { transform: translateX(0); opacity: 1; } 
-          to { transform: translateX(14px); opacity: 0; }
-        }
-        @keyframes hki-anim-rotate-in      { 
-          from { transform: rotate(-2deg) scale(.96); opacity: 0; } 
-          to { transform: rotate(0) scale(1); opacity: 1; }
-        }
-        @keyframes hki-anim-rotate-out     { 
-          from { transform: rotate(0) scale(1); opacity: 1; } 
-          to { transform: rotate(2deg) scale(.96); opacity: 0; }
-        }
-      `;
+@keyframes hki-anim-fade-in        { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hki-anim-fade-out       { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes hki-anim-scale-in       { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes hki-anim-scale-out      { from { transform: scale(1); opacity: 1; } to { transform: scale(.92); opacity: 0; } }
+
+@keyframes hki-anim-zoom-in        { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes hki-anim-zoom-out       { from { transform: scale(1); opacity: 1; } to { transform: scale(.92); opacity: 0; } }
+
+@keyframes hki-anim-slide-up       { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes hki-anim-slide-down     { from { transform: translateY(-14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes hki-anim-slide-left     { from { transform: translateX(14px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes hki-anim-slide-right    { from { transform: translateX(-14px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+@keyframes hki-anim-slide-out-up    { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-down  { from { transform: translateY(0); opacity: 1; } to { transform: translateY(14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-left  { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-right { from { transform: translateX(0); opacity: 1; } to { transform: translateX(14px); opacity: 0; } }
+
+@keyframes hki-anim-rotate-in      { from { transform: rotate(-2deg) scale(.96); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes hki-anim-rotate-out     { from { transform: rotate(0) scale(1); opacity: 1; } to { transform: rotate(2deg) scale(.96); opacity: 0; } }
+
+@keyframes hki-anim-drop-in        { from { transform: translateY(-18px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes hki-anim-drop-out       { from { transform: translateY(0) scale(1); opacity: 1; } to { transform: translateY(-18px) scale(.98); opacity: 0; } }
+
+@keyframes hki-anim-bounce-in {
+  0%   { transform: scale(.9); opacity: 0; }
+  60%  { transform: scale(1.03); opacity: 1; }
+  80%  { transform: scale(.985); }
+  100% { transform: scale(1); }
+}
+@keyframes hki-anim-bounce-out {
+  0%   { transform: scale(1); opacity: 1; }
+  20%  { transform: scale(1.02); }
+  100% { transform: scale(.9); opacity: 0; }
+}
+
+@keyframes hki-anim-flip-in {
+  0%   { transform: perspective(800px) rotateX(14deg) scale(.98); opacity: 0; }
+  100% { transform: perspective(800px) rotateX(0deg) scale(1); opacity: 1; }
+}
+@keyframes hki-anim-flip-out {
+  0%   { transform: perspective(800px) rotateX(0deg) scale(1); opacity: 1; }
+  100% { transform: perspective(800px) rotateX(-12deg) scale(.98); opacity: 0; }
+}
+
+@keyframes hki-anim-swing-in {
+  0%   { transform: translateY(8px) rotate(-2deg); opacity: 0; }
+  60%  { transform: translateY(0) rotate(1deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes hki-anim-swing-out {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(8px) rotate(2deg); opacity: 0; }
+}
+`;
       document.head.appendChild(s);
     } catch (e) {
       // no-op
