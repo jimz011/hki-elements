@@ -120,7 +120,7 @@ subtitle_size_px: 16
 
 ### Top Bar
 
-The top bar is a horizontal container with three slots (left, center, right).
+The top bar is a horizontal container at the top of the header with three slots (left, center, right).
 
 ```yaml
 top_bar:
@@ -134,6 +134,25 @@ top_bar:
 | `top_bar.enabled` | boolean | true | Show/hide entire top bar |
 | `top_bar.offset_y` | number | 15 | Vertical position (% from top) |
 | `top_bar.padding_x` | number | 0 | Horizontal padding in pixels |
+
+---
+
+### Bottom Bar
+
+The bottom bar is a horizontal container at the bottom of the header with three slots (left, center, right).
+
+```yaml
+bottom_bar:
+  enabled: true        # Show/hide entire bottom  bar
+  offset_y: 15         # Vertical position (% from top)
+  padding_x: 0         # Horizontal padding (px)
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `bottom_bar.enabled` | boolean | true | Show/hide entire top bar |
+| `bottom_bar.offset_y` | number | 15 | Vertical position (% from top) |
+| `bottom_bar.padding_x` | number | 0 | Horizontal padding in pixels |
 
 ---
 
@@ -220,6 +239,7 @@ top_bar_left:
 | `offset_y_mobile` | number | 0 | Mobile vertical offset in pixels |
 | `overflow` | string | `visible` | CSS overflow property |
 | `styling` | object | (uses global) | Override global `info` styling for this slot |
+| `align` | string | `center` | Options: `start`, `center`, `end`, `stretch` |
 
 ---
 
@@ -326,7 +346,7 @@ top_bar_left:
 Interactive button with icon and label.
 
 ```yaml
-top_bar_center:
+bottom_bar_center:
   type: button
   button:
     icon: mdi:lightbulb
