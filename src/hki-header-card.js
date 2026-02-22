@@ -2564,12 +2564,26 @@ class HkiHeaderCard extends LitElement {
     const cardEl = this._customCards[cardId || slotName];
     if (!cardEl) return html``;
 
+    // Force the card element itself to fill the slot when stretching.
+    // We set the style directly on the live DOM node so it takes effect regardless
+    // of how the card internally sizes itself.
+    if (stretch) {
+      cardEl.style.width = '100%';
+      cardEl.style.minWidth = '0';
+      cardEl.style.boxSizing = 'border-box';
+    } else {
+      cardEl.style.width = '';
+      cardEl.style.minWidth = '';
+      cardEl.style.boxSizing = '';
+    }
+
     // 'card' type is a bare arbitrary card — do not inject header global styling.
     // 'notifications'/'custom' are hki-notification-card which consume notifyVars via use_header_styling.
     const isNotificationSlot = type !== "card";
 
-    // When stretch is active the info-item fills the full slot width so the card can expand naturally.
-    const stretchStyle = stretch ? `width:100%;flex:1 1 auto;` : '';
+    // When stretch is active: switch from inline-flex (content-sized) to flex (fills parent),
+    // and make the wrapper fill the full slot width.
+    const stretchStyle = stretch ? `display:flex;width:100%;min-width:0;` : '';
 
     const combinedStyle = isNotificationSlot
       ? `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${stretchStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`
