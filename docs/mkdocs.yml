@@ -46,6 +46,7 @@ nav:
           - Features: cards/hki-header-card/overview.md
           - Basic Usage: cards/hki-header-card/basic-usage.md
           - Configuration: cards/hki-header-card/configuration.md
+          - Custom Popups: cards/hki-header-card/custom-popups.md
           - Tips & Tricks: cards/hki-header-card/tips.md
           - Examples: cards/hki-header-card/examples.md
           - Screenshots: cards/hki-header-card/screenshots.md
@@ -92,6 +93,7 @@ nav:
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
   - Migration: migration.md
+
 
 
 
