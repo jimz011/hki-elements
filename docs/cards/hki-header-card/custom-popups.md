@@ -42,6 +42,7 @@ tap_action:
 | `popup_width` | `string` | `auto` | Popup width — `auto` or a px value such as `400px` |
 | `popup_open_animation` | `string` | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
 | `popup_close_animation` | `string` | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
+| `popup_animation_duration` | `number` | 300 | Set the animation duration |
 | `popup_blur_enabled` | `boolean` | `true` | Blur the backdrop behind the popup |
 
 ---
