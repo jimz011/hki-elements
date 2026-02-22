@@ -524,29 +524,18 @@ _openPopup() {
   this._popupClosing = false;
   this._createPopupPortal();
 
-  // Animate in (same options as button-card/header-card)
-        try {
-          window.HKI?.ensurePopupAnimations?.();
-          const c = this._config || {};
-          const anim = c.popup_open_animation || "scale";
-          const dur = c.popup_animation_duration ?? 300;
-          if (anim !== "none" && this._popupPortal) {
-            const container = this._popupPortal.querySelector(".hki-popup-container");
-            if (container) {
-              // Ensure the browser has a layout tick so the animation reliably plays
-              container.style.animation = "none";
-              // force reflow
-              void container.offsetWidth;
-              requestAnimationFrame(() => {
-                try {
-                  container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
-                } catch (e2) {}
-              });
-            }
-          }
-        } catch (e) {
-          // no-op
-        }
+  window.HKI?.ensurePopupAnimations?.();
+  const c = this._config || {};
+  const anim = c.popup_open_animation || "scale";
+  const dur = c.popup_animation_duration ?? 300;
+  if (anim !== "none" && this._popupPortal) {
+    const container = this._popupPortal.querySelector(".hki-popup-container");
+    if (container) {
+      container.style.animation = "none";
+      void container.offsetWidth; // force reflow
+      container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+    }
+  }
 }
 
 _closePopup(e) {
@@ -563,7 +552,7 @@ _closePopup(e) {
   }
 
   const c = this._config || {};
-  const anim = c.popup_close_animation || (c.popup_open_animation || "scale");
+  const anim = c.popup_close_animation || c.popup_open_animation || "scale";
   const dur = c.popup_animation_duration ?? 300;
 
   const cleanup = () => {
@@ -584,15 +573,15 @@ _closePopup(e) {
     return;
   }
 
-  // Only animate the container — never the portal/backdrop.
-  // Animating the portal itself conflicts with the container animation for
-  // non-fade types (scale, slide, flip, etc.) producing a janky double-fade.
+  // Only animate the container — animating the portal (backdrop) simultaneously
+  // creates a double-fade conflict with non-fade animations (scale, slide, etc.).
+  container.style.animation = "none";
+  void container.offsetWidth; // force reflow so new animation fires cleanly
   container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
 
-  // Use animationend for exact cleanup instead of a setTimeout guess.
-  container.addEventListener('animationend', cleanup, { once: true });
-
-  // Safety fallback in case animationend never fires (e.g. display:none mid-flight)
+  // animationend gives pixel-perfect cleanup timing
+  container.addEventListener("animationend", cleanup, { once: true });
+  // Fallback in case animationend never fires (e.g. element hidden mid-flight)
   setTimeout(cleanup, dur + 100);
 }
   _removePopupPortal() {
@@ -600,6 +589,42 @@ _closePopup(e) {
       this._popupPortal.remove();
       this._popupPortal = null;
     }
+  }
+
+  _getOpenKeyframe(anim) {
+    const map = {
+      'fade':        'hki-anim-fade-in',
+      'scale':       'hki-anim-scale-in',
+      'slide-up':    'hki-anim-slide-up',
+      'slide-down':  'hki-anim-slide-down',
+      'slide-left':  'hki-anim-slide-left',
+      'slide-right': 'hki-anim-slide-right',
+      'flip':        'hki-anim-flip-in',
+      'bounce':      'hki-anim-bounce-in',
+      'zoom':        'hki-anim-zoom-in',
+      'rotate':      'hki-anim-rotate-in',
+      'drop':        'hki-anim-drop-in',
+      'swing':       'hki-anim-swing-in',
+    };
+    return map[anim] || 'hki-anim-fade-in';
+  }
+
+  _getCloseKeyframe(anim) {
+    const map = {
+      'fade':        'hki-anim-fade-out',
+      'scale':       'hki-anim-scale-out',
+      'slide-up':    'hki-anim-slide-out-down',
+      'slide-down':  'hki-anim-slide-out-up',
+      'slide-left':  'hki-anim-slide-out-right',
+      'slide-right': 'hki-anim-slide-out-left',
+      'flip':        'hki-anim-flip-out',
+      'bounce':      'hki-anim-scale-out',
+      'zoom':        'hki-anim-zoom-out',
+      'rotate':      'hki-anim-rotate-out',
+      'drop':        'hki-anim-drop-out',
+      'swing':       'hki-anim-swing-out',
+    };
+    return map[anim] || 'hki-anim-fade-out';
   }
 
   // ===== Confirmation (tap_action) overlay =====
@@ -2770,6 +2795,46 @@ class HkiNotificationCardEditor extends LitElement {
                 ></ha-textfield>
               </div>
 <div class="separator"></div>
+              <strong>Popup Animation</strong>
+              <div class="side-by-side">
+                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+              </div>
+              ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+
+              <div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
               <p class="helper-text">Button mode always opens the popup when clicked. When "Confirm Tap Actions" is enabled, a confirmation dialog appears before executing any tap action.</p>
             ` : html`
@@ -2853,6 +2918,46 @@ class HkiNotificationCardEditor extends LitElement {
                   @input=${(ev) => this._valueChanged(ev, "popup_card_opacity")}
                 ></ha-textfield>
               </div>
+
+              <div class="separator"></div>
+              <strong>Popup Animation</strong>
+              <div class="side-by-side">
+                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+              </div>
+              ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
 
               <div class="separator"></div>
               ${this._renderSwitch("Tap Actions in Popup Only", "tap_action_popup_only", this._config.tap_action_popup_only)}
@@ -3002,47 +3107,6 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
             </div>
             
-
-<div class="separator"></div>
-<strong>Popup Animation</strong>
-<div class="side-by-side">
-  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
-    @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
-    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-    <mwc-list-item value="none">None</mwc-list-item>
-    <mwc-list-item value="fade">Fade</mwc-list-item>
-    <mwc-list-item value="scale">Scale</mwc-list-item>
-    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-    <mwc-list-item value="flip">Flip</mwc-list-item>
-    <mwc-list-item value="bounce">Bounce</mwc-list-item>
-    <mwc-list-item value="zoom">Zoom</mwc-list-item>
-    <mwc-list-item value="rotate">Rotate</mwc-list-item>
-    <mwc-list-item value="drop">Drop</mwc-list-item>
-    <mwc-list-item value="swing">Swing</mwc-list-item>
-  </ha-select>
-
-  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
-    @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
-    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-    <mwc-list-item value="none">None</mwc-list-item>
-    <mwc-list-item value="fade">Fade</mwc-list-item>
-    <mwc-list-item value="scale">Scale</mwc-list-item>
-    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-    <mwc-list-item value="flip">Flip</mwc-list-item>
-    <mwc-list-item value="bounce">Bounce</mwc-list-item>
-    <mwc-list-item value="zoom">Zoom</mwc-list-item>
-    <mwc-list-item value="rotate">Rotate</mwc-list-item>
-    <mwc-list-item value="drop">Drop</mwc-list-item>
-    <mwc-list-item value="swing">Swing</mwc-list-item>
-  </ha-select>
-</div>
-${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
 <ha-select label="Font Family" .value=${fontFamily} @selected=${(e) => this._valueChanged(e, "font_family")} @closed=${(e) => e.stopPropagation()}>
               ${FONTS.map(f => html`<mwc-list-item .value=${f}>${f === "Custom" ? "Custom..." : f.split(',')[0]}</mwc-list-item>`)}
             </ha-select>
