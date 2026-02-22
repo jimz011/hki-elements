@@ -90,6 +90,7 @@ class HkiNotificationCard extends LitElement {
     this._cssDragOffset = 0;
     // Popup portal container
     this._popupPortal = null;
+    this._popupClosing = false;
   }
 
   setConfig(config) {
@@ -132,6 +133,9 @@ class HkiNotificationCard extends LitElement {
       custom_font_family: "",
       popup_title: "Notifications",
       popup_enabled: true,
+      popup_open_animation: "scale",
+      popup_close_animation: "scale",
+      popup_animation_duration: 300,
       tap_action_popup_only: false,
       confirm_tap_action: false,
       // Popup Backdrop & Card Styling (match hki-button-card defaults)
@@ -514,17 +518,69 @@ class HkiNotificationCard extends LitElement {
     }
   }
 
-  _openPopup() {
-    this._popupOpen = true;
-    this._createPopupPortal();
-  }
+_openPopup() {
+  if (this._popupOpen) return;
+  this._popupOpen = true;
+  this._popupClosing = false;
+  this._createPopupPortal();
 
-  _closePopup(e) {
-    if (e) e.stopPropagation();
+  // Animate in (same options as button-card/header-card)
+  try {
+    const c = this._config || {};
+    const anim = c.popup_open_animation || "scale";
+    const dur = c.popup_animation_duration ?? 300;
+    if (anim !== "none" && this._popupPortal) {
+      const container = this._popupPortal.querySelector(".hki-popup-container");
+      if (container) {
+        container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+      }
+    }
+  } catch (e) {
+    // no-op
+  }
+}
+
+_closePopup(e) {
+  if (e) e.stopPropagation();
+  if (!this._popupOpen) return;
+  if (this._popupClosing) return;
+  this._popupClosing = true;
+
+  const portal = this._popupPortal;
+  if (!portal) {
     this._popupOpen = false;
-    this._removePopupPortal();
+    this._popupClosing = false;
+    return;
   }
 
+  const c = this._config || {};
+  const anim = c.popup_close_animation || (c.popup_open_animation || "scale");
+  const dur = c.popup_animation_duration ?? 300;
+
+  if (anim === "none") {
+    this._popupOpen = false;
+    this._popupClosing = false;
+    this._removePopupPortal();
+    return;
+  }
+
+  try {
+    const container = portal.querySelector(".hki-popup-container");
+    if (container) {
+      container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
+    }
+    // Fade the backdrop too (nice touch)
+    portal.style.animation = `hki-anim-fade-out ${dur}ms ease forwards`;
+  } catch (e2) {
+    // ignore
+  }
+
+  setTimeout(() => {
+    this._popupOpen = false;
+    this._popupClosing = false;
+    this._removePopupPortal();
+  }, dur);
+}
   _removePopupPortal() {
     if (this._popupPortal) {
       this._popupPortal.remove();
@@ -806,7 +862,10 @@ class HkiNotificationCard extends LitElement {
   _createPopupPortal() {
     this._removePopupPortal();
     
-    const messages = this._getMessages();
+    
+    // Ensure popup animations are available (shared in _bundle-header.js)
+    window.HKI?.ensurePopupAnimations?.();
+const messages = this._getMessages();
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
     const c = this._config;
@@ -2697,7 +2756,49 @@ class HkiNotificationCardEditor extends LitElement {
                 ></ha-textfield>
               </div>
 
-              <div class="separator"></div>
+              
+
+<div class="separator"></div>
+<strong>Popup Animation</strong>
+<div class="side-by-side">
+  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+    @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+    <mwc-list-item value="none">None</mwc-list-item>
+    <mwc-list-item value="fade">Fade</mwc-list-item>
+    <mwc-list-item value="scale">Scale</mwc-list-item>
+    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+    <mwc-list-item value="flip">Flip</mwc-list-item>
+    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+    <mwc-list-item value="zoom">Zoom</mwc-list-item>
+    <mwc-list-item value="rotate">Rotate</mwc-list-item>
+    <mwc-list-item value="drop">Drop</mwc-list-item>
+    <mwc-list-item value="swing">Swing</mwc-list-item>
+  </ha-select>
+
+  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+    @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+    <mwc-list-item value="none">None</mwc-list-item>
+    <mwc-list-item value="fade">Fade</mwc-list-item>
+    <mwc-list-item value="scale">Scale</mwc-list-item>
+    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+    <mwc-list-item value="flip">Flip</mwc-list-item>
+    <mwc-list-item value="bounce">Bounce</mwc-list-item>
+    <mwc-list-item value="zoom">Zoom</mwc-list-item>
+    <mwc-list-item value="rotate">Rotate</mwc-list-item>
+    <mwc-list-item value="drop">Drop</mwc-list-item>
+    <mwc-list-item value="swing">Swing</mwc-list-item>
+  </ha-select>
+</div>
+${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+<div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
               <p class="helper-text">Button mode always opens the popup when clicked. When "Confirm Tap Actions" is enabled, a confirmation dialog appears before executing any tap action.</p>
             ` : html`
