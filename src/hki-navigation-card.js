@@ -1,22 +1,6 @@
 // HKI Navigation Card
 
-// Global Cache for LitElement to avoid repeated lookups
-let _litCache = null;
-const _getLit = () => {
-  if (_litCache) return _litCache;
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  _litCache = { LitElement, html, css };
-  return _litCache;
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-navigation-card";
 const VERSION = "1.2.1"; // Fixed: Real-time template updates + unresponsive buttons after idle/navigation
 

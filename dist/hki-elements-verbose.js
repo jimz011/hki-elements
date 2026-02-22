@@ -1,9 +1,8 @@
 // HKI Elements Bundle
-// A collection of custom Home Assistant cards by Jimmy
-// Version: 1.0.0
+// A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.0.3 ',
+  '%c HKI-ELEMENTS %c v1.1.0 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -18,14 +17,156 @@ if (!window.LitElement) {
   window.css = css;
 }
 
+// HKI shared helpers (load once, reuse across cards)
+window.HKI = window.HKI || {};
+
+// Resolve LitElement/html/css from HA's base elements when possible (better compatibility),
+// and cache the result to avoid repeated lookups.
+window.HKI.getLit = window.HKI.getLit || (() => {
+  let cache = null;
+  return () => {
+    if (cache) return cache;
+    const base =
+      customElements.get("hui-masonry-view") ||
+      customElements.get("ha-panel-lovelace") ||
+      customElements.get("ha-app");
+    const LitElementRef = base ? Object.getPrototypeOf(base) : window.LitElement;
+    const htmlRef = LitElementRef?.prototype?.html || window.html;
+    const cssRef = LitElementRef?.prototype?.css || window.css;
+    cache = { LitElement: LitElementRef, html: htmlRef, css: cssRef };
+    return cache;
+  };
+})();
+
+// Inject popup animation keyframes once into the document
+window.HKI.ensurePopupAnimations = window.HKI.ensurePopupAnimations || (() => {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    try {
+      if (document.getElementById("hki-popup-animations")) return;
+      const s = document.createElement("style");
+      s.id = "hki-popup-animations";
+      s.textContent = `
+@keyframes hki-anim-fade-in        { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hki-anim-fade-out       { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes hki-anim-scale-in       { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes hki-anim-scale-out      { from { transform: scale(1); opacity: 1; } to { transform: scale(.92); opacity: 0; } }
+
+@keyframes hki-anim-zoom-in        { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes hki-anim-zoom-out       { from { transform: scale(1); opacity: 1; } to { transform: scale(.92); opacity: 0; } }
+
+@keyframes hki-anim-slide-up       { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes hki-anim-slide-down     { from { transform: translateY(-14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes hki-anim-slide-left     { from { transform: translateX(14px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes hki-anim-slide-right    { from { transform: translateX(-14px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+@keyframes hki-anim-slide-out-up    { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-down  { from { transform: translateY(0); opacity: 1; } to { transform: translateY(14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-left  { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-14px); opacity: 0; } }
+@keyframes hki-anim-slide-out-right { from { transform: translateX(0); opacity: 1; } to { transform: translateX(14px); opacity: 0; } }
+
+@keyframes hki-anim-rotate-in      { from { transform: rotate(-2deg) scale(.96); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes hki-anim-rotate-out     { from { transform: rotate(0) scale(1); opacity: 1; } to { transform: rotate(2deg) scale(.96); opacity: 0; } }
+
+@keyframes hki-anim-drop-in        { from { transform: translateY(-18px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes hki-anim-drop-out       { from { transform: translateY(0) scale(1); opacity: 1; } to { transform: translateY(-18px) scale(.98); opacity: 0; } }
+
+@keyframes hki-anim-bounce-in {
+  0%   { transform: scale(.9); opacity: 0; }
+  60%  { transform: scale(1.03); opacity: 1; }
+  80%  { transform: scale(.985); }
+  100% { transform: scale(1); }
+}
+@keyframes hki-anim-bounce-out {
+  0%   { transform: scale(1); opacity: 1; }
+  20%  { transform: scale(1.02); }
+  100% { transform: scale(.9); opacity: 0; }
+}
+
+@keyframes hki-anim-flip-in {
+  0%   { transform: perspective(800px) rotateX(14deg) scale(.98); opacity: 0; }
+  100% { transform: perspective(800px) rotateX(0deg) scale(1); opacity: 1; }
+}
+@keyframes hki-anim-flip-out {
+  0%   { transform: perspective(800px) rotateX(0deg) scale(1); opacity: 1; }
+  100% { transform: perspective(800px) rotateX(-12deg) scale(.98); opacity: 0; }
+}
+
+@keyframes hki-anim-swing-in {
+  0%   { transform: translateY(8px) rotate(-2deg); opacity: 0; }
+  60%  { transform: translateY(0) rotate(1deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes hki-anim-swing-out {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(8px) rotate(2deg); opacity: 0; }
+}
+`;
+      document.head.appendChild(s);
+    } catch (e) {
+      // no-op
+    }
+  };
+})();
+
+// Global scroll lock helpers (shared across cards)
+window.HKI._scrollState = window.HKI._scrollState || {
+  prevOverflow: null,
+  prevPosition: null,
+  prevTop: null,
+  scrollY: 0,
+};
+
+window.HKI.lockScroll = window.HKI.lockScroll || (() => {
+  const st = window.HKI._scrollState;
+  return () => {
+    try {
+      if (st.prevOverflow !== null) return; // already locked
+      st.scrollY = window.scrollY || window.pageYOffset || 0;
+      st.prevOverflow = document.body.style.overflow;
+      st.prevPosition = document.body.style.position;
+      st.prevTop = document.body.style.top;
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${st.scrollY}px`;
+      document.body.style.width = "100%";
+    } catch (e) {
+      // no-op
+    }
+  };
+})();
+
+window.HKI.unlockScroll = window.HKI.unlockScroll || (() => {
+  const st = window.HKI._scrollState;
+  return () => {
+    try {
+      if (st.prevOverflow === null) return;
+      document.body.style.overflow = st.prevOverflow || "";
+      document.body.style.position = st.prevPosition || "";
+      document.body.style.top = st.prevTop || "";
+      document.body.style.width = "";
+      window.scrollTo(0, st.scrollY || 0);
+    } catch (e) {
+      // no-op
+    } finally {
+      st.prevOverflow = null;
+      st.prevPosition = null;
+      st.prevTop = null;
+      st.scrollY = 0;
+    }
+  };
+})();
+
 // ============================================================
 // hki-header-card
 // ============================================================
 
 (() => {
 // HKI Header Card
-
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_NAME = "hki-header-card";
 
 const clamp = (n, min, max) => (Number.isFinite(n) ? Math.min(Math.max(n, min), max) : min);
@@ -164,15 +305,32 @@ const DEFAULTS = Object.freeze({
   top_bar_offset_y: 15,
   top_bar_padding_x: 0,
   
-  // Slot types: "none", "spacer", "weather", "datetime", "custom", "button"
+  // Slot types: "none", "spacer", "weather", "datetime", "notifications", "card", "button"
   top_bar_left: "none",
   top_bar_center: "none",
   top_bar_right: "none",
+  top_bar_left_align: "start",
+  top_bar_center_align: "center",
+  top_bar_right_align: "end",
   
-  // Default custom cards for slots
-  top_bar_left_card: { type: "custom:hki-notification-card" },
-  top_bar_center_card: { type: "custom:hki-notification-card" },
-  top_bar_right_card: { type: "custom:hki-notification-card" },
+  // Default custom cards for slots (no default for "card" type - shows picker)
+  top_bar_left_card: null,
+  top_bar_center_card: null,
+  top_bar_right_card: null,
+
+  // Bottom Bar Layout
+  bottom_bar_enabled: false,
+  bottom_bar_offset_y: 10,
+  bottom_bar_padding_x: 0,
+  bottom_bar_left: "none",
+  bottom_bar_center: "none",
+  bottom_bar_right: "none",
+  bottom_bar_left_align: "start",
+  bottom_bar_center_align: "center",
+  bottom_bar_right_align: "end",
+  bottom_bar_left_card: null,
+  bottom_bar_center_card: null,
+  bottom_bar_right_card: null,
 
   // Global Info Styling (defaults for all slots)
   info_size_px: 12,
@@ -187,6 +345,20 @@ const DEFAULTS = Object.freeze({
   info_pill_border_style: "none",
   info_pill_border_width: 0,
   info_pill_border_color: "rgba(255,255,255,0.1)",
+
+  // Bottom Bar Global Info Styling (independent defaults for bottom bar slots)
+  bottom_info_size_px: 12,
+  bottom_info_weight: "medium",
+  bottom_info_color: "",
+  bottom_info_pill: true,
+  bottom_info_pill_background: "rgba(0,0,0,0.25)",
+  bottom_info_pill_padding_x: 12,
+  bottom_info_pill_padding_y: 8,
+  bottom_info_pill_radius: 999,
+  bottom_info_pill_blur: 0,
+  bottom_info_pill_border_style: "none",
+  bottom_info_pill_border_width: 0,
+  bottom_info_pill_border_color: "rgba(255,255,255,0.1)",
 
   // Defaults fallback if per-slot is missing
   weather_entity: "",
@@ -284,12 +456,13 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_pill_border_color !== undefined) newConfig.info.pill_border_color = oldConfig.info_pill_border_color;
   }
   
-  // Migrate each slot (left, center, right)
+  // Migrate each slot (left, center, right) for both bars
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotType = oldConfig[`top_bar_${slot}`] || "none";
+    const slotType = oldConfig[`${bar}_${slot}`] || "none";
     if (slotType === "none") return;
     
-    const prefix = `top_bar_${slot}_`;
+    const prefix = `${bar}_${slot}_`;
     const slotConfig = { type: slotType };
     
     // Common slot properties
@@ -349,7 +522,12 @@ function migrateToNestedFormat(oldConfig) {
         icon: oldConfig[prefix + "icon"],
         label: oldConfig[prefix + "label"]
       };
-    } else if (slotType === "custom") {
+    } else if (slotType === "custom" || slotType === "notifications") {
+      slotConfig.custom = {
+        card: oldConfig[prefix + "card"]
+      };
+      if (slotType === "custom") slotConfig.type = "notifications"; // migrate legacy value
+    } else if (slotType === "card") {
       slotConfig.custom = {
         card: oldConfig[prefix + "card"]
       };
@@ -362,8 +540,9 @@ function migrateToNestedFormat(oldConfig) {
       double_tap_action: oldConfig[prefix + "double_tap_action"]
     };
     
-    newConfig[`top_bar_${slot}`] = slotConfig;
+    newConfig[`${bar}_${slot}`] = slotConfig;
   });
+  }); // end bar loop
   
   // Migrate persons
   if (oldConfig.persons_enabled || oldConfig.persons_entities) {
@@ -422,6 +601,13 @@ function flattenNestedFormat(nested) {
     if (nested.top_bar.offset_y !== undefined) flat.top_bar_offset_y = nested.top_bar.offset_y;
     if (nested.top_bar.padding_x !== undefined) flat.top_bar_padding_x = nested.top_bar.padding_x;
   }
+
+  // Flatten bottom_bar
+  if (nested.bottom_bar && typeof nested.bottom_bar === 'object') {
+    if (nested.bottom_bar.enabled !== undefined) flat.bottom_bar_enabled = nested.bottom_bar.enabled;
+    if (nested.bottom_bar.offset_y !== undefined) flat.bottom_bar_offset_y = nested.bottom_bar.offset_y;
+    if (nested.bottom_bar.padding_x !== undefined) flat.bottom_bar_padding_x = nested.bottom_bar.padding_x;
+  }
   
   // Flatten info
   if (nested.info) {
@@ -439,13 +625,30 @@ function flattenNestedFormat(nested) {
     if (nested.info.pill_border_color !== undefined) flat.info_pill_border_color = nested.info.pill_border_color;
   }
   
-  // Flatten slots
+  // Flatten bottom_info (bottom bar independent global styling)
+  if (nested.bottom_info) {
+    if (nested.bottom_info.size_px !== undefined) flat.bottom_info_size_px = nested.bottom_info.size_px;
+    if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
+    if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
+    if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
+    if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
+    if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
+    if (nested.bottom_info.pill_padding_y !== undefined) flat.bottom_info_pill_padding_y = nested.bottom_info.pill_padding_y;
+    if (nested.bottom_info.pill_radius !== undefined) flat.bottom_info_pill_radius = nested.bottom_info.pill_radius;
+    if (nested.bottom_info.pill_blur !== undefined) flat.bottom_info_pill_blur = nested.bottom_info.pill_blur;
+    if (nested.bottom_info.pill_border_style !== undefined) flat.bottom_info_pill_border_style = nested.bottom_info.pill_border_style;
+    if (nested.bottom_info.pill_border_width !== undefined) flat.bottom_info_pill_border_width = nested.bottom_info.pill_border_width;
+    if (nested.bottom_info.pill_border_color !== undefined) flat.bottom_info_pill_border_color = nested.bottom_info.pill_border_color;
+  }
+  
+  // Flatten slots (top and bottom bar)
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotConfig = nested[`top_bar_${slot}`];
+    const slotConfig = nested[`${bar}_${slot}`];
     if (!slotConfig) return;
     
-    const prefix = `top_bar_${slot}_`;
-    flat[`top_bar_${slot}`] = slotConfig.type || "none";
+    const prefix = `${bar}_${slot}_`;
+    flat[`${bar}_${slot}`] = slotConfig.type || "none";
     
     // Only process additional properties if slot type is not "none"
     if (slotConfig.type === "none") return;
@@ -505,6 +708,8 @@ function flattenNestedFormat(nested) {
       flat[prefix + "card"] = slotConfig.custom.card;
     }
     
+    if (slotConfig.align !== undefined) flat[prefix + "align"] = slotConfig.align;
+    
     // Actions
     if (slotConfig.actions) {
       if (slotConfig.actions.tap_action) flat[prefix + "tap_action"] = slotConfig.actions.tap_action;
@@ -512,6 +717,7 @@ function flattenNestedFormat(nested) {
       if (slotConfig.actions.double_tap_action) flat[prefix + "double_tap_action"] = slotConfig.actions.double_tap_action;
     }
   });
+  }); // end bar loop
   
   // Flatten persons
   if (nested.persons) {
@@ -640,7 +846,7 @@ class HkiHeaderCard extends LitElement {
     this._renderedTitle = "";
     this._renderedSubtitle = "";
     this._currentTime = Date.now();
-    this._customCards = { left: null, center: null, right: null };
+    this._customCards = { left: null, center: null, right: null, bottom_left: null, bottom_center: null, bottom_right: null };
 
     // Handlers & observers
     this._resizeHandler = null;
@@ -880,7 +1086,7 @@ class HkiHeaderCard extends LitElement {
         right: 0;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         z-index: 3;
         box-sizing: border-box;
       }
@@ -909,6 +1115,23 @@ class HkiHeaderCard extends LitElement {
       .slot-right {
         justify-content: flex-end;
         text-align: right;
+      }
+      .slot-align-start  { justify-content: flex-start !important; text-align: left !important; }
+      .slot-align-center { justify-content: center !important;     text-align: center !important; }
+      .slot-align-end    { justify-content: flex-end !important;   text-align: right !important; }
+
+      /* BOTTOM BAR LAYOUT */
+      .bottom-bar-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        z-index: 3;
+        box-sizing: border-box;
+        overflow: visible;
       }
       
       /* Empty slots collapse to allow more space for occupied slots */
@@ -1364,7 +1587,20 @@ class HkiHeaderCard extends LitElement {
     m.top_bar_offset_y = toNum(m.top_bar_offset_y, 10);
     m.top_bar_padding_x = toNum(m.top_bar_padding_x, 5);
     
-    const validSlotTypes = ["none", "spacer", "weather", "datetime", "custom", "button"];
+    const validSlotTypes = ["none", "spacer", "weather", "datetime", "notifications", "custom", "card", "button"];
+    // Migrate legacy "custom" value to "notifications"
+    if (m.top_bar_left === "custom") m.top_bar_left = "notifications";
+    if (m.top_bar_center === "custom") m.top_bar_center = "notifications";
+    if (m.top_bar_right === "custom") m.top_bar_right = "notifications";
+    // Read bottom_bar settings from nested format
+    if (m.bottom_bar && typeof m.bottom_bar === 'object') {
+      if (m.bottom_bar.enabled !== undefined) m.bottom_bar_enabled = m.bottom_bar.enabled;
+      if (m.bottom_bar.offset_y !== undefined) m.bottom_bar_offset_y = m.bottom_bar.offset_y;
+      if (m.bottom_bar.padding_x !== undefined) m.bottom_bar_padding_x = m.bottom_bar.padding_x;
+    }
+    m.bottom_bar_left = validSlotTypes.includes(m.bottom_bar_left) ? m.bottom_bar_left : "none";
+    m.bottom_bar_center = validSlotTypes.includes(m.bottom_bar_center) ? m.bottom_bar_center : "none";
+    m.bottom_bar_right = validSlotTypes.includes(m.bottom_bar_right) ? m.bottom_bar_right : "none";
     m.top_bar_left = validSlotTypes.includes(m.top_bar_left) ? m.top_bar_left : "none";
     m.top_bar_center = validSlotTypes.includes(m.top_bar_center) ? m.top_bar_center : "none";
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
@@ -1375,6 +1611,20 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
       m[prefix + "icon"] = m[prefix + "icon"] || "";
       m[prefix + "label"] = m[prefix + "label"] || "";
+      // Alignment default differs per slot
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+    });
+    ["left", "center", "right"].forEach(slot => {
+      const prefix = `bottom_bar_${slot}_`;
+      m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
+      m[prefix + "icon"] = m[prefix + "icon"] || "";
+      m[prefix + "label"] = m[prefix + "label"] || "";
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+      m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
+      m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
+      m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
       m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
       m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
@@ -1501,6 +1751,16 @@ class HkiHeaderCard extends LitElement {
         if (action.perform_action) cleaned.perform_action = action.perform_action;
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
+        break;
+      case "hki-more-info":
+        // Preserve popup card config and all appearance settings
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -1843,6 +2103,48 @@ class HkiHeaderCard extends LitElement {
         if (entity) this.dispatchEvent(new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: entity } }));
         break;
       }
+      case "hki-more-info": {
+        const popupCard = finalAction.custom_popup_card;
+        if (popupCard && customElements.get('hki-button-card')) {
+          // Resolve name/state templates if needed, then open popup
+          const resolveTemplate = async (str) => {
+            if (!str) return str;
+            if (!(str.includes('{{') || str.includes('{%'))) return str;
+            try {
+              const res = await this.hass.callWS({
+                type: 'render_template',
+                template: str,
+                variables: { config: this._config ?? {}, user: this.hass?.user?.name || '' },
+                strict: false,
+              });
+              return res?.result != null ? String(res.result) : str;
+            } catch (_) { return str; }
+          };
+          Promise.all([
+            resolveTemplate(finalAction.popup_name),
+            resolveTemplate(finalAction.popup_state),
+          ]).then(([resolvedName, resolvedState]) => {
+            try {
+              const btn = document.createElement('hki-button-card');
+              btn.hass = this.hass;
+              btn.setConfig({
+                type: 'custom:hki-button-card',
+                custom_popup: { enabled: true, card: popupCard },
+                ...(resolvedName ? { name: resolvedName } : {}),
+                ...(resolvedState ? { state_label: resolvedState } : {}),
+                ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+                ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+                ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+                ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+              });
+              btn._openPopup();
+            } catch (err) {
+              console.error('[hki-header-card] Failed to open popup:', err);
+            }
+          }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
+        }
+        break;
+      }
       case "toggle": {
         const toggleEntity = finalAction.entity;
         if (toggleEntity) this.hass.callService("homeassistant", "toggle", { entity_id: toggleEntity });
@@ -1869,44 +2171,61 @@ class HkiHeaderCard extends LitElement {
   async _updateCustomCards() {
     if (!window.loadCardHelpers) return;
     
-    const slots = ['left', 'center', 'right'];
+    const slots = [
+      { key: 'left', bar: 'top_bar' },
+      { key: 'center', bar: 'top_bar' },
+      { key: 'right', bar: 'top_bar' },
+      { key: 'left', bar: 'bottom_bar', cacheId: 'bottom_left' },
+      { key: 'center', bar: 'bottom_bar', cacheId: 'bottom_center' },
+      { key: 'right', bar: 'bottom_bar', cacheId: 'bottom_right' },
+    ];
     let helpersLoaded = null;
     let needsUpdate = false;
     
-    for (const slot of slots) {
-        const type = this._config[`top_bar_${slot}`];
-        const cardConfigKey = `top_bar_${slot}_card`;
+    for (const slotDef of slots) {
+        const slot = typeof slotDef === 'string' ? slotDef : slotDef.key;
+        const bar = typeof slotDef === 'string' ? 'top_bar' : slotDef.bar;
+        const cardId = (slotDef.cacheId) ? slotDef.cacheId : slot;
+        const type = this._config[`${bar}_${slot}`];
+        const cardConfigKey = `${bar}_${slot}_card`;
         const cardConfig = this._config[cardConfigKey];
         
         // Generate a simple hash to detect config changes
-        const configHash = type === 'custom' ? JSON.stringify(cardConfig || {}) : '';
-        const cacheKey = `_customCardHash_${slot}`;
+        const isCardSlot = type === 'notifications' || type === 'custom' || type === 'card';
+        const configHash = isCardSlot ? JSON.stringify(cardConfig || {}) : '';
+        const cacheKey = `_customCardHash_${cardId}`;
         
-        if (type === 'custom') {
+        if (isCardSlot) {
             // Only recreate if config has changed
             if (this[cacheKey] !== configHash || !this._customCards[slot]) {
                 if (!helpersLoaded) helpersLoaded = await window.loadCardHelpers();
                 
-                let finalConfig = { 
-                    use_header_styling: true, 
-                    show_background: false,
-                    show_empty: true,
-                    ...(cardConfig || { type: "custom:hki-notification-card" })
-                };
+                // notifications type injects header-styling helpers; card type is bare
+                let finalConfig;
+                if (type === 'card') {
+                    finalConfig = { ...(cardConfig || {}) };
+                } else {
+                    finalConfig = { 
+                        use_header_styling: true, 
+                        show_background: false,
+                        show_empty: true,
+                        ...(cardConfig || { type: "custom:hki-notification-card" })
+                    };
+                }
 
                 try {
                     const element = await helpersLoaded.createCardElement(finalConfig);
                     if (this.hass) element.hass = this.hass;
                     element.style.display = "block";
-                    this._customCards[slot] = element;
+                    this._customCards[cardId] = element;
                     this[cacheKey] = configHash;
                     needsUpdate = true;
                 } catch (e) {
                     console.error(`Failed to create custom card for ${slot}`, e);
                 }
             }
-        } else if (this._customCards[slot]) {
-            this._customCards[slot] = null;
+        } else if (this._customCards[cardId]) {
+            this._customCards[cardId] = null;
             this[cacheKey] = '';
             needsUpdate = true;
         }
@@ -1915,12 +2234,15 @@ class HkiHeaderCard extends LitElement {
     if (needsUpdate) this.requestUpdate();
   }
 
-  _getSlotStyle(slotName) {
+  _getSlotStyle(slotName, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
+
+    // Pick the right set of global defaults depending on which bar this slot belongs to
+    const gp = bar === "bottom_bar" ? "bottom_info_" : "info_";
     
     // Generate cache key based on relevant config values
-    const cacheKey = `${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg.info_size_px}:${cfg.info_weight}:${cfg.info_color}:${cfg.info_pill}:${cfg.font_family}:${cfg.font_style}`;
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "pill"]}:${cfg.font_family}:${cfg.font_style}`;
     
     const cached = this._slotStyleCache.get(cacheKey);
     if (cached) return cached;
@@ -1929,21 +2251,21 @@ class HkiHeaderCard extends LitElement {
     
     const fontFamily = this._resolveFontFamily();
     
-    // Get values, preferring per-slot if not using global, otherwise use global
-    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg.info_size_px;
-    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg.info_weight;
-    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg.info_color?.trim() || "var(--hki-header-text-color, #fff)");
+    // Get values, preferring per-slot if not using global, otherwise use bar-specific global
+    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg[gp + "size_px"];
+    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg[gp + "weight"];
+    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"]?.trim() || "var(--hki-header-text-color, #fff)");
     const iconSize = Math.round(sizePx * 2);
     
-    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg.info_pill;
-    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg.info_pill_background;
-    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg.info_pill_padding_x;
-    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg.info_pill_padding_y;
-    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg.info_pill_radius;
-    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg.info_pill_blur;
-    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg.info_pill_border_style;
-    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg.info_pill_border_width;
-    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg.info_pill_border_color;
+    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
+    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg[gp + "pill_background"];
+    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg[gp + "pill_padding_x"];
+    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg[gp + "pill_padding_y"];
+    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg[gp + "pill_radius"];
+    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg[gp + "pill_blur"];
+    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg[gp + "pill_border_style"];
+    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg[gp + "pill_border_width"];
+    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg[gp + "pill_border_color"];
     
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
@@ -1980,23 +2302,89 @@ class HkiHeaderCard extends LitElement {
     return result;
   }
 
-  _renderSlotContent(type, slotName) {
+  _renderSlotContent(type, slotName, cardId = null, bar = "top_bar", stretch = false) {
       const cfg = this._config;
-      const slotStyle = this._getSlotStyle(slotName);
+      const slotStyle = this._getSlotStyle(slotName, bar);
+      // Unique key to persist hold/click state across re-renders for this slot
+      const stateKey = cardId || slotName;
       
       switch (type) {
-          case "weather": return this._renderWeatherSlot(slotName, slotStyle);
-          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle);
-          case "custom": return this._renderCustomCardSlot(slotName, slotStyle);
-          case "spacer": return html`<div class="slot-spacer"></div>`;
-          case "button": return this._renderButtonSlot(slotName, slotStyle);
+          case "weather": return this._renderWeatherSlot(slotName, slotStyle, stateKey, bar);
+          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey, bar);
+          case "notifications":
+          case "custom":
+          case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId, type, stretch);
+          case "spacer": return this._renderSpacerSlot(slotName, stateKey, bar);
+          case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey, bar);
           default: return html``;
       }
   }
 
-  _renderButtonSlot(slotName, slotStyle) {
+  _renderSpacerSlot(slotName, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
+    const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
+    const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
+    const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+
+    const hasAnyAction = tapAction.action !== "none" || holdAction.action !== "none" || doubleTapAction.action !== "none";
+    if (!hasAnyAction) return html`<div class="slot-spacer"></div>`;
+
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
+
+    const startHold = () => {
+      state.holdActive = false;
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction.action !== "none") this._handleSlotTapAction(holdAction, slotName);
+      }, 500);
+    };
+    const endHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) this._handleSlotTapAction(tapAction, slotName);
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
+      }
+      state.holdActive = false;
+    };
+    const cancelHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      state.holdActive = false;
+    };
+
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
+    return html`
+      <div class="slot-spacer"
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
+        @contextmenu=${(e) => e.preventDefault()}
+        style="cursor:pointer;"
+      ></div>
+    `;
+  }
+
+  _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
+    const cfg = this._config;
+    const prefix = `${bar}_${slotName}_`;
     const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
     const label = cfg[prefix + "label"] || "";
     const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
@@ -2010,63 +2398,70 @@ class HkiHeaderCard extends LitElement {
     const buttonPillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${buttonPaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${buttonPillStyle}`;
     
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
-    let clickTimer = null;
-    let clickCount = 0;
+    // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
+    // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      state.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
+      if (!state.holdActive) {
         // Use click debouncing for double-tap detection
-        clickCount++;
-        if (clickCount === 1) {
-          clickTimer = setTimeout(() => {
-            if (clickCount === 1) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
               this._handleSlotTapAction(tapAction, slotName);
             }
-            clickCount = 0;
+            state.clickCount = 0;
           }, 250);
-        } else if (clickCount === 2) {
-          clearTimeout(clickTimer);
-          clickCount = 0;
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
           this._handleSlotTapAction(doubleTapAction, slotName);
         }
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
+    
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
     
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon} style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
@@ -2080,9 +2475,9 @@ class HkiHeaderCard extends LitElement {
     this._handleAction(action, entityId);
   }
 
-  _renderWeatherSlot(slotName, slotStyle) {
+  _renderWeatherSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     
     // Fallback to global if local is not set
     const entityId = cfg[prefix + "weather_entity"] || cfg.weather_entity;
@@ -2141,53 +2536,68 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const holdState = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      holdState.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      holdState.holdTimer = setTimeout(() => {
+        holdState.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName, entityId);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName, entityId);
+      if (!holdState.holdActive) {
+        holdState.clickCount++;
+        if (holdState.clickCount === 1) {
+          holdState.clickTimer = setTimeout(() => {
+            if (holdState.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName, entityId);
+            }
+            holdState.clickCount = 0;
+          }, 250);
+        } else if (holdState.clickCount === 2) {
+          clearTimeout(holdState.clickTimer);
+          holdState.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
+        }
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
+
+    const handleTouchStart = () => { holdState.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { holdState.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (holdState.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (holdState.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!holdState.touchHandled) cancelHold(); };
 
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
-        }}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${showIcon ? (useSvg 
@@ -2204,9 +2614,9 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderDatetimeSlot(slotName, slotStyle) {
+  _renderDatetimeSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     const locale = this.hass?.language || 'en';
     
     const now = new Date(this._currentTime);
@@ -2244,53 +2654,68 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      state.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName);
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName);
+            }
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
+
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
 
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName);
-        }}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${icon ? html`
@@ -2302,11 +2727,34 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderCustomCardSlot(slotName, slotStyle) {
-    const cardEl = this._customCards[slotName];
+  _renderCustomCardSlot(slotName, slotStyle, cardId = null, type = "notifications", stretch = false) {
+    const cardEl = this._customCards[cardId || slotName];
     if (!cardEl) return html``;
-    
-    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
+
+    // Force the card element itself to fill the slot when stretching.
+    // We set the style directly on the live DOM node so it takes effect regardless
+    // of how the card internally sizes itself.
+    if (stretch) {
+      cardEl.style.width = '100%';
+      cardEl.style.minWidth = '0';
+      cardEl.style.boxSizing = 'border-box';
+    } else {
+      cardEl.style.width = '';
+      cardEl.style.minWidth = '';
+      cardEl.style.boxSizing = '';
+    }
+
+    // 'card' type is a bare arbitrary card — do not inject header global styling.
+    // 'notifications'/'custom' are hki-notification-card which consume notifyVars via use_header_styling.
+    const isNotificationSlot = type !== "card";
+
+    // When stretch is active: switch from inline-flex (content-sized) to flex (fills parent),
+    // and make the wrapper fill the full slot width.
+    const stretchStyle = stretch ? `display:flex;width:100%;min-width:0;` : '';
+
+    const combinedStyle = isNotificationSlot
+      ? `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${stretchStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`
+      : `min-width: 50px; ${stretchStyle}`;
 
     return html`
       <div class="info-item" style="${combinedStyle}">
@@ -2354,11 +2802,102 @@ class HkiHeaderCard extends LitElement {
       const centerOverflow = !!cfg.top_bar_center_overflow;
       const rightOverflow = !!cfg.top_bar_right_overflow;
 
+      const leftAlign = cfg.top_bar_left_align || 'start';
+      const centerAlign = cfg.top_bar_center_align || 'center';
+      const rightAlign = cfg.top_bar_right_align || 'end';
+
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`top_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.top_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.top_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.top_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.top_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.top_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.top_bar_right));
+      // Build per-slot flex-grow override (only when span > 1, i.e. absorbing neighbours)
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
       return html`
         <div class="top-bar-container" style="${topStyle}">
-            <div class="slot slot-left ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
-            <div class="slot slot-center ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
-            <div class="slot slot-right ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.top_bar_left, "left", null, "top_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.top_bar_center, "center", null, "top_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.top_bar_right, "right", null, "top_bar", rightStretch)}</div>
+        </div>
+      `;
+  }
+
+  _renderBottomBar() {
+      if (!this._config.bottom_bar_enabled) return html``;
+
+      const cfg = this._config;
+      const offsetY = cfg.bottom_bar_offset_y !== undefined ? cfg.bottom_bar_offset_y : 10;
+      const paddingX = cfg.bottom_bar_padding_x !== undefined ? cfg.bottom_bar_padding_x : 5;
+      const bottomStyle = `bottom: ${offsetY}px; padding: 0 ${paddingX}px;`;
+
+      const isMobile = this._viewportWidth > 0 && this._viewportWidth <= (cfg.mobile_breakpoint || 768);
+      const getOffset = (base, mobile) => {
+         if (isMobile && typeof mobile === 'number' && Number.isFinite(mobile)) return mobile;
+         return base || 0;
+      };
+
+      const leftX = getOffset(cfg.bottom_bar_left_offset_x, cfg.bottom_bar_left_offset_x_mobile);
+      const leftY = getOffset(cfg.bottom_bar_left_offset_y, cfg.bottom_bar_left_offset_y_mobile);
+      const centerX = getOffset(cfg.bottom_bar_center_offset_x, cfg.bottom_bar_center_offset_x_mobile);
+      const centerY = getOffset(cfg.bottom_bar_center_offset_y, cfg.bottom_bar_center_offset_y_mobile);
+      const rightX = getOffset(cfg.bottom_bar_right_offset_x, cfg.bottom_bar_right_offset_x_mobile);
+      const rightY = getOffset(cfg.bottom_bar_right_offset_y, cfg.bottom_bar_right_offset_y_mobile);
+
+      const leftStyle = (leftX || leftY) ? `transform: translate(${leftX}px, ${leftY}px);` : "";
+      const centerStyle = (centerX || centerY) ? `transform: translate(${centerX}px, ${centerY}px);` : "";
+      const rightStyle = (rightX || rightY) ? `transform: translate(${rightX}px, ${rightY}px);` : "";
+
+      const leftEmpty = cfg.bottom_bar_left === "none";
+      const centerEmpty = cfg.bottom_bar_center === "none";
+      const rightEmpty = cfg.bottom_bar_right === "none";
+
+      const leftOverflow = !!cfg.bottom_bar_left_overflow;
+      const centerOverflow = !!cfg.bottom_bar_center_overflow;
+      const rightOverflow = !!cfg.bottom_bar_right_overflow;
+
+      const leftAlign = cfg.bottom_bar_left_align || 'start';
+      const centerAlign = cfg.bottom_bar_center_align || 'center';
+      const rightAlign = cfg.bottom_bar_right_align || 'end';
+
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`bottom_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.bottom_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.bottom_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.bottom_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_right));
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
+      return html`
+        <div class="bottom-bar-container" style="${bottomStyle}">
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left", "bottom_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center", "bottom_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right", "bottom_bar", rightStretch)}</div>
         </div>
       `;
   }
@@ -2528,64 +3067,69 @@ class HkiHeaderCard extends LitElement {
           // Apply grayscale filter to image/icon only, not the container
           const contentFilter = (!isHome && grayscaleAway) ? "filter:grayscale(100%);" : "";
 
-          // Hold timer and state (like button slot)
-          let holdTimer = null;
-          let holdActive = false;
+          // Hold state lives on the instance (keyed by entity) so it survives re-renders
+          if (!this._slotHoldState) this._slotHoldState = {};
+          if (!this._slotHoldState[entityId]) this._slotHoldState[entityId] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+          const state = this._slotHoldState[entityId];
 
           const startHold = (e) => {
-            holdActive = false;
-            if (holdAction && holdAction.action !== "none") {
-              holdTimer = setTimeout(() => {
-                holdActive = true;
+            state.holdActive = false;
+            // Always set timer so a long-press is recognized even when holdAction is "none"
+            state.holdTimer = setTimeout(() => {
+              state.holdActive = true;
+              if (holdAction && holdAction.action !== "none") {
                 this._handleAction(holdAction, entityId);
-              }, 500);
-            }
+              }
+            }, 500);
           };
 
           const endHold = (e) => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            if (!holdActive && tapAction) {
-              this._handleAction(tapAction, entityId);
+            if (!state.holdActive) {
+              state.clickCount++;
+              if (state.clickCount === 1) {
+                state.clickTimer = setTimeout(() => {
+                  if (state.clickCount === 1) {
+                    this._handleAction(tapAction, entityId);
+                  }
+                  state.clickCount = 0;
+                }, 250);
+              } else if (state.clickCount === 2) {
+                clearTimeout(state.clickTimer);
+                state.clickCount = 0;
+                this._handleAction(doubleTapAction, entityId);
+              }
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
           const cancelHold = () => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
-          const handleTouchStart = (e) => {
-            e.preventDefault();
-            startHold(e);
-          };
-
-          const handleTouchEnd = (e) => {
-            e.preventDefault();
-            endHold(e);
-          };
+          const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+          const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+          const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+          const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+          const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
 
           return html`
             <div 
               class="person-avatar" 
               style="${avatarStyle}"
-              @mousedown=${startHold}
-              @mouseup=${endHold}
-              @mouseleave=${cancelHold}
+              @mousedown=${handleMouseDown}
+              @mouseup=${handleMouseUp}
+              @mouseleave=${handleMouseLeave}
               @touchstart=${handleTouchStart}
               @touchend=${handleTouchEnd}
               @touchcancel=${cancelHold}
-              @dblclick=${(e) => {
-                e.preventDefault();
-                cancelHold();
-                this._handleAction(doubleTapAction, entityId);
-              }}
               @contextmenu=${(e) => e.preventDefault()}
             >
               ${showPicture 
@@ -2715,8 +3259,9 @@ class HkiHeaderCard extends LitElement {
       borderRadius ? `border-radius:${borderRadius}` : "",
       cfg.card_box_shadow ? `box-shadow:${cfg.card_box_shadow}` : "box-shadow:none",
       borderStyle,
-      // Only apply overflow:hidden when not fixed to allow box-shadow to show through wrapper
-      !effectiveFixed ? "overflow:hidden" : ""
+      // Only apply overflow:hidden when not fixed and no bottom bar slot has overflow enabled
+      // (bottom bar overflow:visible needs the card to not clip its content)
+      !effectiveFixed && !(cfg.bottom_bar_left_overflow || cfg.bottom_bar_center_overflow || cfg.bottom_bar_right_overflow) ? "overflow:hidden" : ""
     ].filter(Boolean).join(";");
 
     // Only show overlay gradient if blend is enabled
@@ -2764,6 +3309,7 @@ class HkiHeaderCard extends LitElement {
         <div class="overlay" style=${overlayStyle}></div>
         <div class="content" style=${contentStyle}>
           ${this._renderTopBar()}
+          ${this._renderBottomBar()}
           <div class="title-block" style=${titleBlockStyle}>
             <div class="title" style=${titleInline} role="heading" aria-level="1">${titleText}</div>
             ${subtitleVisible ? html`<div class="subtitle" style="${subtitleInline}${subtitleTransform}">${subtitleText}</div>` : html``}
@@ -2834,7 +3380,8 @@ class HkiHeaderCardEditor extends LitElement {
     "top_bar_right_pill_padding_x", "top_bar_right_pill_padding_y", "top_bar_right_pill_radius", "top_bar_right_pill_blur",
     "info_pill_border_width", "top_bar_left_pill_border_width", "top_bar_center_pill_border_width", "top_bar_right_pill_border_width",
     "card_border_width",
-    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width"
+    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width",
+    "bottom_bar_offset_y", "bottom_bar_padding_x"
   ]);
 
   static _nullableNumericFields = new Set([
@@ -2850,6 +3397,7 @@ class HkiHeaderCardEditor extends LitElement {
     "weather_show_pressure", "weather_colored_icons", "info_pill",
     "datetime_show_time", "datetime_show_date", "datetime_show_day", "top_bar_enabled",
     "blend_enabled", "persons_enabled", "persons_use_entity_picture", "persons_grayscale_away", "persons_dynamic_order", "persons_hide_away",
+    "bottom_bar_enabled",
     "top_bar_left_use_global", "top_bar_left_pill", "top_bar_left_overflow", "top_bar_left_show_icon", "top_bar_left_show_condition", "top_bar_left_show_temperature", "top_bar_left_show_humidity", "top_bar_left_show_wind", "top_bar_left_show_pressure", "top_bar_left_weather_colored_icons", "top_bar_left_show_day", "top_bar_left_show_date", "top_bar_left_show_time",
     "top_bar_center_use_global", "top_bar_center_pill", "top_bar_center_overflow", "top_bar_center_show_icon", "top_bar_center_show_condition", "top_bar_center_show_temperature", "top_bar_center_show_humidity", "top_bar_center_show_wind", "top_bar_center_show_pressure", "top_bar_center_weather_colored_icons", "top_bar_center_show_day", "top_bar_center_show_date", "top_bar_center_show_time",
     "top_bar_right_use_global", "top_bar_right_pill", "top_bar_right_overflow", "top_bar_right_show_icon", "top_bar_right_show_condition", "top_bar_right_show_temperature", "top_bar_right_show_humidity", "top_bar_right_show_wind", "top_bar_right_show_pressure", "top_bar_right_weather_colored_icons", "top_bar_right_show_day", "top_bar_right_show_date", "top_bar_right_show_time"
@@ -2860,6 +3408,16 @@ class HkiHeaderCardEditor extends LitElement {
     this._config = {}; // Will be populated by setConfig
     // Cache for domain selection when ha-service-picker isn't available
     this._paDomainCache = {};
+  }
+
+  _getLovelace() {
+    if (this.lovelace) return this.lovelace;
+    try {
+      const root = document.querySelector('home-assistant')?.shadowRoot
+        ?.querySelector('ha-panel-lovelace')?.shadowRoot
+        ?.querySelector('hui-root');
+      return root?.lovelace || root?.__lovelace || null;
+    } catch (e) { return null; }
   }
 
   _renderNavigationPathPicker(label, value, onChange) {
@@ -2954,6 +3512,15 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
         break;
+      case "hki-more-info":
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
+        break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
         Object.keys(action).forEach(key => {
@@ -2974,11 +3541,10 @@ class HkiHeaderCardEditor extends LitElement {
 
   _stripDefaults(config) {
     // Create a clean config object with essential fields always present
-    const stripped = { 
-      type: config.type,
-      title: config.title !== undefined ? config.title : "Header",
-      subtitle: config.subtitle !== undefined ? config.subtitle : ""
-    };
+    const stripped = { type: config.type };
+    // Only write title/subtitle when they differ from defaults (avoids noise in YAML)
+    if (config.title && config.title !== "Header") stripped.title = config.title;
+    if (config.subtitle) stripped.subtitle = config.subtitle;
     
     // Always include these essential fields even if they match defaults
     // This ensures Home Assistant recognizes this as a valid header card
@@ -3122,6 +3688,15 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.top_bar_offset_y !== undefined) nested.top_bar.offset_y = flat.top_bar_offset_y;
       if (flat.top_bar_padding_x !== undefined) nested.top_bar.padding_x = flat.top_bar_padding_x;
     }
+
+    // Nest bottom_bar if any settings exist
+    const hasBottomBarConfig = flat.bottom_bar_enabled !== undefined || flat.bottom_bar_offset_y !== undefined || flat.bottom_bar_padding_x !== undefined;
+    if (hasBottomBarConfig) {
+      nested.bottom_bar = nested.bottom_bar || {};
+      if (flat.bottom_bar_enabled !== undefined) nested.bottom_bar.enabled = flat.bottom_bar_enabled;
+      if (flat.bottom_bar_offset_y !== undefined) nested.bottom_bar.offset_y = flat.bottom_bar_offset_y;
+      if (flat.bottom_bar_padding_x !== undefined) nested.bottom_bar.padding_x = flat.bottom_bar_padding_x;
+    }
     
     // Nest info if any settings exist
     const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
@@ -3143,18 +3718,40 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_pill_border_width !== undefined) nested.info.pill_border_width = flat.info_pill_border_width;
       if (flat.info_pill_border_color !== undefined) nested.info.pill_border_color = flat.info_pill_border_color;
     }
+
+    // Nest bottom_info if any settings exist
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_pill', 'bottom_info_pill_background',
+                      'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
+                      'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
+    const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
+    if (hasBottomInfoConfig) {
+      nested.bottom_info = {};
+      if (flat.bottom_info_size_px !== undefined) nested.bottom_info.size_px = flat.bottom_info_size_px;
+      if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
+      if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
+      if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
+      if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
+      if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
+      if (flat.bottom_info_pill_padding_y !== undefined) nested.bottom_info.pill_padding_y = flat.bottom_info_pill_padding_y;
+      if (flat.bottom_info_pill_radius !== undefined) nested.bottom_info.pill_radius = flat.bottom_info_pill_radius;
+      if (flat.bottom_info_pill_blur !== undefined) nested.bottom_info.pill_blur = flat.bottom_info_pill_blur;
+      if (flat.bottom_info_pill_border_style !== undefined) nested.bottom_info.pill_border_style = flat.bottom_info_pill_border_style;
+      if (flat.bottom_info_pill_border_width !== undefined) nested.bottom_info.pill_border_width = flat.bottom_info_pill_border_width;
+      if (flat.bottom_info_pill_border_color !== undefined) nested.bottom_info.pill_border_color = flat.bottom_info_pill_border_color;
+    }
     
     // Nest slots - always include them even if "none" for clarity
+    ['top_bar', 'bottom_bar'].forEach(bar => {
     ['left', 'center', 'right'].forEach(slot => {
-      const slotType = flat[`top_bar_${slot}`];
+      const slotType = flat[`${bar}_${slot}`];
       
       // If slot is "none" or undefined, just set type: "none"
       if (!slotType || slotType === "none") {
-        nested[`top_bar_${slot}`] = { type: "none" };
+        nested[`${bar}_${slot}`] = { type: "none" };
         return;
       }
       
-      const prefix = `top_bar_${slot}_`;
+      const prefix = `${bar}_${slot}_`;
       const slotConfig = { type: slotType };
       
       // Common properties
@@ -3163,6 +3760,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat[prefix + "offset_x_mobile"] !== undefined) slotConfig.offset_x_mobile = flat[prefix + "offset_x_mobile"];
       if (flat[prefix + "offset_y_mobile"] !== undefined) slotConfig.offset_y_mobile = flat[prefix + "offset_y_mobile"];
       if (flat[prefix + "overflow"] !== undefined) slotConfig.overflow = flat[prefix + "overflow"];
+      if (flat[prefix + "align"] !== undefined) slotConfig.align = flat[prefix + "align"];
       
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
@@ -3221,7 +3819,7 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
           if (flat[prefix + "label"] !== undefined) slotConfig.button.label = flat[prefix + "label"];
         }
-      } else if (slotType === "custom") {
+      } else if (slotType === "notifications" || slotType === "custom" || slotType === "card") {
         if (flat[prefix + "card"] !== undefined) {
           slotConfig.custom = { card: flat[prefix + "card"] };
         }
@@ -3236,8 +3834,9 @@ class HkiHeaderCardEditor extends LitElement {
         if (flat[prefix + "double_tap_action"]) slotConfig.actions.double_tap_action = flat[prefix + "double_tap_action"];
       }
       
-      nested[`top_bar_${slot}`] = slotConfig;
+      nested[`${bar}_${slot}`] = slotConfig;
     });
+    }); // end bar loop
     
     // Nest persons
     const personsKeys = ['persons_enabled', 'persons_align', 'persons_offset_x', 'persons_offset_y',
@@ -3314,11 +3913,11 @@ class HkiHeaderCardEditor extends LitElement {
     return ev.detail?.value ?? ev.target?.value;
   }
 
-  _handleCustomCardChange(ev, slot) {
+  _handleCustomCardChange(ev, slot, bar = "top_bar") {
     ev.stopPropagation();
     if (!this._config) return;
     const newCardConfig = ev.detail.config;
-    const field = `top_bar_${slot}_card`;
+    const field = `${bar}_${slot}_card`;
     this._config = { ...this._config, [field]: newCardConfig };
     const strippedConfig = this._stripDefaults(this._config);
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
@@ -3425,7 +4024,9 @@ class HkiHeaderCardEditor extends LitElement {
   }
 
   _renderTemplateEditor(label, field, options = {}) {
-    const value = this._config?.[field] ?? "";
+    // options.value / options.onchange allow standalone use outside of this._config
+    const hasCustomBinding = options.onchange !== undefined;
+    const value = hasCustomBinding ? (options.value ?? "") : (this._config?.[field] ?? "");
     return html`
       <div class="section">${label}</div>
       <ha-code-editor
@@ -3435,9 +4036,12 @@ class HkiHeaderCardEditor extends LitElement {
         autocomplete-entities
         @value-changed=${(ev) => {
           ev.stopPropagation();
-          const newValue = ev.detail?.value;
-          if (newValue !== value) {
-            this._config = { ...this._config, [field]: (newValue ?? "") };
+          const newValue = ev.detail?.value ?? "";
+          if (newValue === value) return;
+          if (hasCustomBinding) {
+            options.onchange(newValue);
+          } else {
+            this._config = { ...this._config, [field]: newValue };
             const strippedConfig = this._stripDefaults(this._config);
             this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: strippedConfig }, bubbles: true, composed: true }));
           }
@@ -3455,28 +4059,41 @@ class HkiHeaderCardEditor extends LitElement {
       spacer: "Spacer",
       weather: "Weather",
       datetime: "Date/Time",
+      notifications: "Notifications",
       custom: "Notifications",
+      card: "Custom Card",
       button: "Button"
     };
     return labels[type] || "Empty";
   }
 
-  _renderSlotEditor(slotName) {
-    const prefix = `top_bar_${slotName}_`;
-    const type = this._config[`top_bar_${slotName}`] || "none";
+  _renderSlotEditor(slotName, bar = "top_bar") {
+    const prefix = `${bar}_${slotName}_`;
+    const type = this._config[`${bar}_${slotName}`] || "none";
     const useGlobal = this._config[prefix + "use_global"] !== false;
     
+    const displayType = (type === "custom") ? "notifications" : type;
     return html`
-      <ha-select label="Content Type" .value=${type} data-field="top_bar_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+      <ha-select label="Content Type" .value=${displayType} data-field="${bar}_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
         <mwc-list-item value="none">None</mwc-list-item>
         <mwc-list-item value="spacer">Spacer</mwc-list-item>
         <mwc-list-item value="weather">Weather</mwc-list-item>
         <mwc-list-item value="datetime">Date/Time</mwc-list-item>
-        <mwc-list-item value="custom">Notifications</mwc-list-item>
+        <mwc-list-item value="notifications">Notifications</mwc-list-item>
+        <mwc-list-item value="card">Custom Card</mwc-list-item>
         <mwc-list-item value="button">Button</mwc-list-item>
       </ha-select>
       
       ${type !== "none" && type !== "spacer" ? html`
+        <div class="section" style="margin-top: 12px;">Alignment</div>
+        <ha-select label="Content Alignment" .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")} data-field="${prefix}align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+          <mwc-list-item value="start">Start (left)</mwc-list-item>
+          <mwc-list-item value="center">Center</mwc-list-item>
+          <mwc-list-item value="end">End (right)</mwc-list-item>
+          ${(type === "card" || type === "notifications" || type === "custom") ? html`
+            <mwc-list-item value="stretch">Stretch (fill available slots)</mwc-list-item>
+          ` : ''}
+        </ha-select>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -3558,23 +4175,34 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="Label (optional)" .value=${this._config[prefix + "label"] || ""} data-field="${prefix}label" @input=${this._changed}></ha-textfield>
       ` : ''}
       
-      ${type === "custom" ? html`
-          <ha-alert alert-type="warning" style="margin-bottom: 8px;">
+      ${(type === "notifications" || type === "custom") ? html`
+          <ha-alert alert-type="info" style="margin-bottom: 8px;">
             This requires the <b>hki-notify</b> integration and the <b>custom:hki-notification-card</b> resource.
           </ha-alert>
           <p style="opacity: 0.7; font-size: 0.9em; margin-top: 8px;">Enable "Use Header Styling" in the notification card below to inherit styling from the Global Styling (Defaults) settings.</p>
           <div class="card-config">
             <hui-card-element-editor
               .hass=${this.hass}
-              .lovelace=${this.lovelace}
+              .lovelace=${this._getLovelace()}
               .value=${{ 
                 type: "custom:hki-notification-card", 
                 use_header_styling: true, 
                 show_background: false,
                 show_empty: true,
-                ...(this._config[`top_bar_${slotName}_card`] || {})
+                ...(this._config[`${bar}_${slotName}_card`] || {})
               }}
-              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
+            ></hui-card-element-editor>
+          </div>
+      ` : ''}
+      
+      ${type === "card" ? html`
+          <div class="card-config">
+            <hui-card-element-editor
+              .hass=${this.hass}
+              .lovelace=${this._getLovelace()}
+              .value=${this._config[`${bar}_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
             ></hui-card-element-editor>
           </div>
       ` : ''}
@@ -3593,7 +4221,7 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
       ` : ''}
       
-      ${type !== "none" && type !== "custom" && type !== "spacer" ? html`
+      ${type !== "none" && type !== "notifications" && type !== "custom" && type !== "card" && type !== "spacer" ? html`
         <div class="section" style="margin-top: 12px;">Styling</div>
         <div class="switch-row">
           <ha-switch .checked=${useGlobal} data-field="${prefix}use_global" @change=${this._changed}></ha-switch>
@@ -3636,13 +4264,15 @@ class HkiHeaderCardEditor extends LitElement {
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
+      const strippedConfig = this._stripDefaults(this._config);
       this.dispatchEvent(
         new CustomEvent("config-changed", {
-          detail: { config: this._config },
+          detail: { config: strippedConfig },
           bubbles: true,
           composed: true,
         })
       );
+      this.requestUpdate();
     };
 
     const patchAction = (patch) => {
@@ -3658,6 +4288,7 @@ class HkiHeaderCardEditor extends LitElement {
         <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
         <mwc-list-item value="url">Open URL</mwc-list-item>
         <mwc-list-item value="more-info">More Info</mwc-list-item>
+        <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
         <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
         <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
       </ha-select>
@@ -3669,6 +4300,45 @@ class HkiHeaderCardEditor extends LitElement {
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+      ` : ''}
+      ${actionType === "hki-more-info" ? html`
+        <div class="section" style="margin-top: 12px;">Popup Header</div>
+        ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + field, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+        ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + field, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+        <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+        <div class="inline-fields-2">
+          <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+          <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+        </div>
+        <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="none">None</mwc-list-item>
+          <mwc-list-item value="fade">Fade</mwc-list-item>
+          <mwc-list-item value="scale">Scale</mwc-list-item>
+          <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+          <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+        </ha-select>
+        <div class="switch-row" style="margin-top: 8px;">
+          <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+          <span>Background blur</span>
+        </div>
+        <div class="section" style="margin-top: 12px;">Popup Card</div>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+        <div class="card-config">
+          <hui-card-element-editor
+            .hass=${this.hass}
+            .lovelace=${this._getLovelace()}
+            .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+            @config-changed=${(ev) => {
+              ev.stopPropagation();
+              const newCard = ev.detail?.config;
+              if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                patchAction({ custom_popup_card: newCard });
+              }
+            }}
+          ></hui-card-element-editor>
+        </div>
       ` : ''}
       ${actionType === "perform-action" ? html`
         ${customElements.get("ha-service-picker") ? html`
@@ -3812,6 +4482,7 @@ class HkiHeaderCardEditor extends LitElement {
             <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
             <mwc-list-item value="url">Open URL</mwc-list-item>
             <mwc-list-item value="more-info">More Info</mwc-list-item>
+            <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
             <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
             <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
           </ha-select>
@@ -3823,6 +4494,45 @@ class HkiHeaderCardEditor extends LitElement {
           ` : ''}
           ${actionValue === "more-info" || actionValue === "toggle" ? html`
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
+          ` : ''}
+          ${actionValue === "hki-more-info" ? html`
+            <div class="section" style="margin-top: 12px;">Popup Header</div>
+            ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex + "_" + actionType, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+            ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex + "_" + actionType, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+            <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+            </div>
+            <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="none">None</mwc-list-item>
+              <mwc-list-item value="fade">Fade</mwc-list-item>
+              <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+              <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+            </ha-select>
+            <div class="switch-row" style="margin-top: 8px;">
+              <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+              <span>Background blur</span>
+            </div>
+            <div class="section" style="margin-top: 12px;">Popup Card</div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+            <div class="card-config">
+              <hui-card-element-editor
+                .hass=${this.hass}
+                .lovelace=${this._getLovelace()}
+                .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+                @config-changed=${(ev) => {
+                  ev.stopPropagation();
+                  const newCard = ev.detail?.config;
+                  if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                    patchAction({ custom_popup_card: newCard });
+                  }
+                }}
+              ></hui-card-element-editor>
+            </div>
           ` : ''}
           ${actionValue === "perform-action" ? html`
             ${customElements.get("ha-service-picker") ? html`
@@ -4508,23 +5218,99 @@ class HkiHeaderCardEditor extends LitElement {
                 <details class="box-section">
                   <summary>Left Slot: ${this._getSlotLabel(this._config.top_bar_left)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('left')}
+                    ${this._renderSlotEditor('left', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Center Slot: ${this._getSlotLabel(this._config.top_bar_center)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('center')}
+                    ${this._renderSlotEditor('center', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Right Slot: ${this._getSlotLabel(this._config.top_bar_right)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('right')}
+                    ${this._renderSlotEditor('right', 'top_bar')}
                   </div>
                 </details>
+            ` : ''}
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Bottom Bar</summary>
+          <div class="box-content">
+            <div class="switch-row">
+              <ha-switch .checked=${!!this._config.bottom_bar_enabled} data-field="bottom_bar_enabled" @change=${this._changed}></ha-switch>
+              <span>Enable Bottom Bar</span>
+            </div>
+            ${this._config.bottom_bar_enabled ? html`
+              <div class="inline-fields-2" style="margin-top: 8px;">
+                <ha-textfield label="Y Offset (px)" type="number" .value=${String(this._config.bottom_bar_offset_y ?? 10)} data-field="bottom_bar_offset_y" @input=${this._changed}></ha-textfield>
+                <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_bar_padding_x ?? 0)} data-field="bottom_bar_padding_x" @input=${this._changed}></ha-textfield>
+              </div>
+
+              <details class="box-section">
+                <summary>Global Styling (Defaults)</summary>
+                <div class="box-content">
+                  <div class="inline-fields-2">
+                    <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config.bottom_info_size_px || 12)} data-field="bottom_info_size_px" @input=${this._changed}></ha-textfield>
+                    <ha-select label="Font Weight" .value=${this._config.bottom_info_weight || "medium"} data-field="bottom_info_weight" @selected=${this._changed} @closed=${this._changed}>
+                      ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
+                    </ha-select>
+                  </div>
+                  <ha-textfield label="Text Color" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  
+                  <div class="switch-row">
+                    <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
+                    <span>Enable Pill Style</span>
+                  </div>
+                  ${this._config.bottom_info_pill ? html`
+                    <ha-textfield label="Pill Background" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Border Radius (px)" type="number" .value=${String(this._config.bottom_info_pill_radius ?? 999)} data-field="bottom_info_pill_radius" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Blur (px)" type="number" .value=${String(this._config.bottom_info_pill_blur ?? 0)} data-field="bottom_info_pill_blur" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-3">
+                      <ha-select label="Border Style" .value=${this._config.bottom_info_pill_border_style || "none"} data-field="bottom_info_pill_border_style" @selected=${this._changed} @closed=${this._changed}>
+                        <mwc-list-item value="none">None</mwc-list-item>
+                        <mwc-list-item value="solid">Solid</mwc-list-item>
+                        <mwc-list-item value="dashed">Dashed</mwc-list-item>
+                        <mwc-list-item value="dotted">Dotted</mwc-list-item>
+                      </ha-select>
+                      <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>
+                    </div>
+                  ` : ''}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Left Slot: ${this._getSlotLabel(this._config.bottom_bar_left)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('left', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Center Slot: ${this._getSlotLabel(this._config.bottom_bar_center)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('center', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Right Slot: ${this._getSlotLabel(this._config.bottom_bar_right)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('right', 'bottom_bar')}
+                </div>
+              </details>
             ` : ''}
           </div>
         </details>
@@ -4655,7 +5441,6 @@ window.customCards.push({
   preview: false,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
-
 })();
 
 // ============================================================
@@ -4666,19 +5451,7 @@ window.customCards.push({
 // HKI Button Card
 
 (function() {
-  const _getLit = () => {
-    const base =
-      customElements.get("hui-masonry-view") ||
-      customElements.get("ha-panel-lovelace") ||
-      customElements.get("ha-app");
-    const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-    const html = LitElement?.prototype?.html || window.html;
-    const css = LitElement?.prototype?.css || window.css;
-    return { LitElement, html, css };
-  };
-
-  const { LitElement, html, css } = _getLit();
-
+  const { LitElement, html, css } = window.HKI.getLit();
   const CARD_TYPE = "hki-button-card";
   const EDITOR_TAG = "hki-button-card-editor";
 
@@ -4763,70 +5536,13 @@ window.customCards.push({
   });
 
 
-  // Inject popup animation keyframes once into the document
-  if (!document.getElementById('hki-popup-animations')) {
-    const s = document.createElement('style');
-    s.id = 'hki-popup-animations';
-    s.textContent = `
-      @keyframes hki-anim-fade-in        { from { opacity:0 }                           to { opacity:1 } }
-      @keyframes hki-anim-fade-out       { from { opacity:1 }                           to { opacity:0 } }
-      @keyframes hki-anim-scale-in       { from { opacity:0; transform:scale(.85) }     to { opacity:1; transform:scale(1) } }
-      @keyframes hki-anim-scale-out      { from { opacity:1; transform:scale(1) }       to { opacity:0; transform:scale(.85) } }
-      @keyframes hki-anim-slide-up       { from { opacity:0; transform:translateY(40px) }  to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-down { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(40px) } }
-      @keyframes hki-anim-slide-down     { from { opacity:0; transform:translateY(-40px) } to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-up   { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(-40px) } }
-      @keyframes hki-anim-slide-left     { from { opacity:0; transform:translateX(40px) }  to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-right{ from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(40px) } }
-      @keyframes hki-anim-slide-right    { from { opacity:0; transform:translateX(-40px) } to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-left { from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(-40px) } }
-      @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
-      @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
-      @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
-      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
-      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
-      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
-      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
-      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
-      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
-      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
-      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
-    `;
-    document.head.appendChild(s);
-  }
+  // Ensure popup animation keyframes are injected once (shared across HKI cards)
+  window.HKI?.ensurePopupAnimations?.();
 
   // Prevent background page scroll when any popup is open
-  let __hkiPrevBodyScroll = null;
-  let __hkiPrevBodyPosition = null;
-  let __hkiPrevBodyTop = null;
-  let __hkiScrollY = 0;
-  const __hkiLockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll !== null) return;
-      __hkiScrollY = window.scrollY || window.pageYOffset || 0;
-      __hkiPrevBodyScroll = document.body.style.overflow;
-      __hkiPrevBodyPosition = document.body.style.position;
-      __hkiPrevBodyTop = document.body.style.top;
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${__hkiScrollY}px`;
-      document.body.style.width = '100%';
-    } catch (e) {}
-  };
-  const __hkiUnlockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll === null) return;
-      document.body.style.overflow = __hkiPrevBodyScroll || '';
-      document.body.style.position = __hkiPrevBodyPosition || '';
-      document.body.style.top = __hkiPrevBodyTop || '';
-      document.body.style.width = '';
-      window.scrollTo(0, __hkiScrollY || 0);
-    } catch (e) {}
-    __hkiPrevBodyScroll = null;
-    __hkiPrevBodyPosition = null;
-    __hkiPrevBodyTop = null;
-    __hkiScrollY = 0;
-  };
+    // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
+  const __hkiLockScroll = () => window.HKI?.lockScroll?.();
+  const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
 
   
 
@@ -5281,6 +5997,7 @@ class HkiButtonCard extends LitElement {
         // Badge does not support label/info display fields
         this._config.show_label = false;
         this._config.show_brightness = false;
+        this._config.show_info_display = false;
       }
 
 
@@ -5352,7 +6069,11 @@ class HkiButtonCard extends LitElement {
       }
       
       this.requestUpdate();
-    }
+    
+
+      // Ensure badge layout sizes to content inside HA stacks (avoids large gaps)
+      this._applyHostLayoutSizing();
+}
 
     connectedCallback() {
       super.connectedCallback();
@@ -5389,6 +6110,9 @@ class HkiButtonCard extends LitElement {
     }
 
     updated(changedProps) {
+
+      // Keep host sizing in sync with layout (important for badge layout in stacks)
+      this._applyHostLayoutSizing();
 
       // Ensure we have accurate stage dimensions for stable grid placement (especially inside parent type: grid cards).
       // We observe the ha-card (actual visible box) rather than the host element to avoid padding/overflow clipping issues.
@@ -5604,6 +6328,30 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
 
     /* --- HELPER METHODS --- */
+
+
+    _applyHostLayoutSizing() {
+      try {
+        const layout = (this._config?.card_layout || 'square');
+        // In HA stacks (e.g. horizontal-stack), children are flex: 1 by default, which makes
+        // "badge" layout leave large gaps. Force the host itself to size to content for badges.
+        if (layout === 'badge') {
+          this.style.setProperty('flex', '0 0 auto', 'important');
+          this.style.setProperty('width', 'fit-content');
+          this.style.setProperty('max-width', '100%');
+          // Avoid unintended stretching from min-width constraints
+          this.style.setProperty('min-width', '0');
+        } else {
+          // Reset so other layouts behave normally
+          this.style.removeProperty('flex');
+          this.style.removeProperty('width');
+          this.style.removeProperty('max-width');
+          this.style.removeProperty('min-width');
+        }
+      } catch (_) {}
+    }
+
+
     _getTempGradient() {
       return 'linear-gradient(to top, #00D9FF 0%, #00E5A0 25%, #DFFF00 50%, #FFB800 75%, #FF8C00 100%)';
     }
@@ -5730,9 +6478,9 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     _updateHeaderIcon() {
       if (!this._popupPortal) return;
-      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon');
+      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon, .hki-light-popup-title ha-state-icon');
       if (headerIcon) {
-        headerIcon.style.color = this._getCurrentColor();
+        headerIcon.style.color = this._getPopupIconColor(this._getCurrentColor());
       }
       const stateEl = this._popupPortal.querySelector('.hki-light-popup-state');
       if (stateEl) {
@@ -5741,7 +6489,7 @@ if (!shouldUpdate && oldEntity && newEntity &&
 	        const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
 	        const isOnEffective = isUnavailable ? false : isOn;
         const brightness = this._getBrightness();
-	        stateEl.textContent = isOnEffective ? brightness + '%' : 'Off';
+	        stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
       }
     }
 
@@ -5811,6 +6559,46 @@ if (!shouldUpdate && oldEntity && newEntity &&
         ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
         : '';
       return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
+    }
+
+    /**
+     * Returns the display name for popup headers.
+     * Priority: config name (template-resolved) → entity friendly_name → entity id
+     */
+    _getPopupName(entity) {
+      if (this._config.name) {
+        return this._isTemplate(this._config.name)
+          ? (this._renderedName || entity?.attributes?.friendly_name || this._config.entity || '')
+          : this._config.name;
+      }
+      return entity?.attributes?.friendly_name || this._config.entity || '';
+    }
+
+    /**
+     * Returns the state string for popup headers.
+     * If state_label is explicitly configured, it takes priority over the
+     * domain-specific state string (e.g. brightness %, mode name, etc.).
+     */
+    _getPopupHeaderState(domainSpecificState) {
+      if (this._config.state_label !== undefined && this._config.state_label !== '') {
+        return this._isTemplate(this._config.state_label)
+          ? (this._renderedState || domainSpecificState)
+          : this._config.state_label;
+      }
+      return domainSpecificState;
+    }
+
+    /**
+     * Returns the icon color to use in popup headers.
+     * If icon_color is set in config it takes priority (template-aware).
+     * Otherwise the domain-specific color (brightness-derived, state-based, etc.) is used.
+     */
+    _getPopupIconColor(domainColor) {
+      if (this._config.icon_color) {
+        const rendered = this.renderTemplate('iconColor', this._config.icon_color);
+        if (rendered && rendered !== '[object Object]') return rendered;
+      }
+      return domainColor;
     }
 
     // Returns the best color for a climate entity by checking hvac_action first,
@@ -6922,7 +7710,7 @@ _tileSliderClick(e) {
       const portal = this._popupPortal;
       if (!portal) return;
 
-      const anim = this._config.popup_close_animation || 'none';
+      const anim = this._config.popup_close_animation || 'scale';
       const dur = this._config.popup_animation_duration ?? 300;
 
       if (anim === 'none') {
@@ -6957,7 +7745,7 @@ _tileSliderClick(e) {
     }
 
     _applyOpenAnimation(portal) {
-      const anim = this._config.popup_open_animation || 'none';
+      const anim = this._config.popup_open_animation || 'scale';
       if (anim === 'none') return;
       const dur = this._config.popup_animation_duration ?? 300;
       const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
@@ -7471,12 +8259,9 @@ _tileSliderClick(e) {
 
 
     _renderPopupPortal() {
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
+      // Reuse existing portal to avoid flicker on hass updates.
       const entity = this._getEntity();
-      const entityName = this._config.name || ((entity ? entity?.attributes?.friendly_name || '' : '') || this._config.entity);
+      const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
       const isOnEffective = isUnavailable ? false : isOn;
@@ -7506,8 +8291,10 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
       
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -7913,7 +8700,7 @@ _tileSliderClick(e) {
               <span id="hkiHeaderIconSlot"></span>
               <span class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off'))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </span>
             </span>
             <div class="hki-light-popup-header-controls">
@@ -7997,8 +8784,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       // Populate header icon (avoid rendering lit-html objects into innerHTML)
@@ -8018,6 +8807,12 @@ _tileSliderClick(e) {
             if (cfgIcon) {
               // Allow custom icon, but keep entity state/color behavior
               el.icon = cfgIcon;
+            }
+
+            // Apply custom icon_color if configured, else actual light/entity color
+            const _slotIconColor = this._getPopupIconColor(this._getCurrentColor());
+            if (_slotIconColor) {
+              el.style.color = _slotIconColor;
             }
 
             slot.appendChild(el);
@@ -8045,9 +8840,9 @@ _tileSliderClick(e) {
     }
 
     _renderClimatePopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const mode = entity.state;
       const unit = '°';
@@ -8067,8 +8862,10 @@ _tileSliderClick(e) {
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const renderStateLine = () => {
         const cur = this._getClimateBadgeTemperature(entity);
@@ -8290,10 +9087,10 @@ _tileSliderClick(e) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${renderStateLine()}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -8330,8 +9127,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -9422,13 +10221,9 @@ _tileSliderClick(e) {
 
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
+      // Reuse existing portal to avoid flicker on hass updates.
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const pos = this._getCoverPosition(entity);
 
       // Check default view configuration for groups
@@ -9448,8 +10243,10 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -9706,10 +10503,10 @@ _tileSliderClick(e) {
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${controlsIcon}" style="color: rgba(33,150,243,0.95)"></ha-icon>
+              <ha-icon icon="${controlsIcon}" style="color: ${this._getPopupIconColor('rgba(33,150,243,0.95)')}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${pos}%${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(pos + '%')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -9757,8 +10554,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
 
@@ -10066,10 +10865,9 @@ document.body.appendChild(portal);
      * ------------------------------------------------------------------ */
     _renderAlarmPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const state = entity.state || 'unknown';
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -10077,8 +10875,10 @@ document.body.appendChild(portal);
       const icon = this._getResolvedIcon(entity, (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock');
       const iconColor = (state === 'disarmed') ? '#4CAF50' : '#F44336';
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -10210,10 +11010,10 @@ document.body.appendChild(portal);
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${icon}" style="color:${iconColor}"></ha-icon>
+              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(iconColor)}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${String(state).replace(/_/g,' ')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(String(state).replace(/_/g,' '))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -10243,8 +11043,10 @@ document.body.appendChild(portal);
         </div>
       `;
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
       this._setupAlarmPopupHandlers(portal);
 
@@ -10375,9 +11177,9 @@ document.body.appendChild(portal);
      * Humidifier Popup
      */
     _renderHumidifierPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -10397,8 +11199,10 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -10544,10 +11348,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -10585,8 +11389,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -10792,9 +11598,9 @@ document.body.appendChild(portal);
      * Fan Popup
      */
     _renderFanPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -10815,8 +11621,10 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -10954,10 +11762,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? speed + '%' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11007,8 +11815,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11260,7 +12070,7 @@ document.body.appendChild(portal);
      */
 
     _renderSwitchPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
       this._popupType = 'switch';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
@@ -11277,7 +12087,7 @@ document.body.appendChild(portal);
       const domain = (entity.entity_id || this._config.entity || '').split('.')[0] || this._getDomain();
       const serviceDomain = domain === 'group' ? 'homeassistant' : (domain === 'input_boolean' ? 'input_boolean' : 'switch');
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isOn = state === 'on';
 
@@ -11310,8 +12120,10 @@ document.body.appendChild(portal);
         </button>
       ` : '';
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -11477,10 +12289,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11509,8 +12321,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11582,7 +12396,7 @@ document.body.appendChild(portal);
     }
 
     _renderCustomPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
       this._popupType = 'custom';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
@@ -11596,7 +12410,7 @@ document.body.appendChild(portal);
       }
 
 
-      const name = entity?.attributes?.friendly_name || this._config?.name || this._config?.entity || 'Popup';
+      const name = this._getPopupName(entity) || 'Popup';
       const state = entity?.state || '';
       const domain = entity ? this._getDomain() : '';
       const icon = entity ? this._getResolvedIcon(entity, this._getDomainIcon(domain)) : (this._config?.icon || 'mdi:information');
@@ -11619,8 +12433,10 @@ document.body.appendChild(portal);
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -11685,10 +12501,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getLocalizedState(state, domain)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -11744,8 +12560,10 @@ document.body.appendChild(portal);
         });
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -11889,9 +12707,9 @@ document.body.appendChild(portal);
       });
     }
     _renderLockPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isLocked = state === 'locked';
       const isUnlocked = state === 'unlocked';
@@ -11926,8 +12744,10 @@ document.body.appendChild(portal);
       // Supported features: bit 0 (1) indicates "open" support for locks in Home Assistant
       const canOpenDoor = ((Number(entity?.attributes?.supported_features) || 0) & 1) === 1;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       // Calculate slider position (locked = top/100%, unlocked = bottom/0%)
       // Use actual state for slider position, not transition states
@@ -12078,10 +12898,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${stateText}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(stateText)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -12116,8 +12936,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -13617,7 +14439,7 @@ const iconAlign = this._config.icon_align || 'left';
               const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
               
               const renderInfoDisplay = () => {
-                  if (this._config.show_brightness === false) return '';
+                  if (this._config.show_info_display === false) return '';
                   
                   let bottomValue = '';
                   
@@ -14197,7 +15019,7 @@ const iconAlign = this._config.icon_align || 'left';
                 const _name = (this._config.show_name !== false) ? elements.name?.() : '';
                 const _label = (this._config.show_label && labelText) ? elements.label?.() : '';
                 const _state = (this._config.show_state !== false) ? elements.state?.() : '';
-                const _info  = (this._config.show_brightness !== false) ? elements.info?.() : '';
+                const _info  = (this._config.show_info_display !== false) ? elements.info?.() : '';
                 const _temp  = (this._config.show_temp_badge !== false) ? elements.temp_badge?.() : '';
 
                 return html`
@@ -15440,7 +16262,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -15767,35 +16589,15 @@ setConfig(config) {
       if (!this._customPopupYamlFocused) {
         this._customPopupYamlDraft = null;
       }
-
-      // Auto-convert: if the incoming YAML differs from its normalized form,
-      // immediately fire config-changed so HA saves the clean nested format.
-      // This handles: old flat keys, obsolete/invalid keys, and nested drift.
-      const normalizedOutput = HkiButtonCard._serializeToNested(flat);
-      if (JSON.stringify(normalizedOutput) !== JSON.stringify(config)) {
-        Promise.resolve().then(() => {
-          this.dispatchEvent(new CustomEvent('config-changed', {
-            detail: { config: normalizedOutput },
-            bubbles: true,
-            composed: true,
-          }));
-        });
-      }
+      // NOTE: Do NOT fire config-changed here. Doing so causes an infinite crash loop when this
+      // editor is embedded inside hui-card-element-editor (e.g. as a slot card in hki-header-card):
+      // setConfig -> config-changed -> parent saves -> HA calls setConfig again -> repeat.
+      // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    disconnectedCallback() {
+disconnectedCallback() {
       super.disconnectedCallback?.();
-      // HA's save button removes the editor from DOM without calling any save method.
-      // Flush any unsaved yaml editor content before we're destroyed.
-      const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-      if (!yamlEditor) return;
-      const raw = yamlEditor.value ?? '';
-      const obj = this._yamlStrToObj(raw);
-      if (!obj) return;
-      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-      if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-        this._fireChanged({ ...this._config, custom_popup_card: obj });
-      }
+      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
     
     shouldUpdate(changedProps) {
@@ -15835,6 +16637,7 @@ setConfig(config) {
     
     render() {
       if (!this.hass || !this._config) return html``;
+      this._ensureCardEditorLoaded();
       
       const fonts = ["system", "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Raleway", "custom"];
       // Weights as Names
@@ -16963,50 +17766,66 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
-                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
-                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-code-editor
-                    class="custom-popup-yaml-editor"
-                    .hass=${this.hass}
-                    mode="yaml"
-                    autocomplete-entities
-                    autocomplete-icons
-                    .autocompleteEntities=${true}
-                    .autocompleteIcons=${true}
-                    .label=${"Card Config"}
-                    .value=${this._customPopupYamlDraft ?? this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
-                    @focus=${() => { this._customPopupYamlFocused = true; }}
-                    @blur=${() => { this._customPopupYamlFocused = false; }}
-                    @value-changed=${(ev) => {
-                      ev.stopPropagation();
-                      const raw = ev.detail?.value ?? "";
-                      // Keep what the user typed; don't re-serialize YAML while typing (prevents cursor jumps / spacing issues)
-                      this._customPopupYamlDraft = raw;
-
-                      clearTimeout(this._customPopupYamlDebounce);
-                      this._customPopupYamlDebounce = setTimeout(() => {
-                        const obj = this._yamlStrToObj(raw);
-                        if (!obj) return; // invalid YAML: keep draft, don't overwrite config
-
+                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
+                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
+                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
+                  <div class="card-config">
+                    ${customElements.get('hui-card-element-editor')
+                      ? html`<hui-card-element-editor
+                      .hass=${this.hass}
+                      .lovelace=${this._getLovelace()}
+                      .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                      @config-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const newCard = ev.detail?.config;
+                        if (!newCard) return;
                         const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                        if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-                          this._fireChanged({ ...this._config, custom_popup_card: obj });
+                        if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: newCard });
                         }
-                      }, 300);
-                    }}
-                    @click=${(e) => e.stopPropagation()}
-                  ></ha-code-editor>
-<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
-                    <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
-                    The popup will maintain its header (icon, name, timestamp), history button, and close button.
-                  </p>
-                </div>
+                      }}
+                    ></hui-card-element-editor>`
+                      : customElements.get('hui-card-picker')
+                        ? html`
+                          <hui-card-picker
+                            .hass=${this.hass}
+                            .lovelace=${this._getLovelace()}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @config-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const picked = ev.detail?.config;
+                              if (!picked) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(picked) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: picked });
+                              }
+                            }}
+                          ></hui-card-picker>
+
+                          <ha-yaml-editor
+                            .hass=${this.hass}
+                            .label=${"Popup Card (YAML)"}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @value-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const newCard = ev.detail?.value;
+                              if (!newCard) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                              }
+                            }}
+                            @click=${(e) => e.stopPropagation()}
+                          ></ha-yaml-editor>
+                        `
+                        : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
+                  </div>
+                ` : ''}
                 
                 <div class="separator"></div>
                 <strong>Popup Animation</strong>
                 <div class="side-by-side">
-                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
+                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
@@ -17023,7 +17842,7 @@ ${isGoogleLayout ? '' : html`
                      <mwc-list-item value="drop">Drop</mwc-list-item>
                      <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
-                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
+                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
@@ -17594,6 +18413,67 @@ ${isGoogleLayout ? '' : html`
     }
 
     // For Switches (ha-switch)
+    _getLovelace() {
+      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
+      if (this.lovelace) return this.lovelace;
+      try {
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        const huiRoot = root || document.querySelector('hui-root');
+        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
+        if (lv) return lv;
+        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
+        const existingEditor = document.querySelector('hui-card-element-editor');
+        if (existingEditor?.lovelace) return existingEditor.lovelace;
+        return null;
+      } catch (_) { return null; }
+    }
+
+    _ensureCardEditorLoaded() {
+      // Proactively load the built-in Lovelace card editor. HA lazy-loads this,
+      // which can cause the card picker to be missing unless it was opened elsewhere first.
+      //
+      // APPROACH: Call getConfigElement() on already-registered HA cards. This is the
+      // same trick used by simple-swipe-card and triggers HA's own lazy-loader to
+      // register hui-card-picker and hui-card-element-editor as a side effect.
+      // This is far more reliable than trying to import() hardcoded/hashed JS paths.
+      if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) return;
+
+      if (this._waitingForCardEditor) return;
+      this._waitingForCardEditor = true;
+
+      const triggers = [
+        () => customElements.get('hui-entities-card')?.getConfigElement?.(),
+        () => customElements.get('hui-conditional-card')?.getConfigElement?.(),
+        () => customElements.get('hui-vertical-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-horizontal-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-glance-card')?.getConfigElement?.(),
+        () => customElements.get('hui-picture-elements-card')?.getConfigElement?.(),
+        () => customElements.get('hui-button-card')?.getConfigElement?.(),
+      ];
+
+      const tryTriggers = async () => {
+        for (const trigger of triggers) {
+          try {
+            await trigger();
+            if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) break;
+          } catch (_) {}
+        }
+        // Regardless of whether any trigger succeeded, wait for the element to be defined.
+        Promise.race([
+          customElements.whenDefined('hui-card-element-editor'),
+          customElements.whenDefined('hui-card-picker'),
+          new Promise((res) => setTimeout(res, 3000)),
+        ]).then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+};
+
+      tryTriggers();
+    }
+
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
@@ -18049,23 +18929,7 @@ mwc-button.reset-defaults{
 (() => {
 // HKI Navigation Card
 
-// Global Cache for LitElement to avoid repeated lookups
-let _litCache = null;
-const _getLit = () => {
-  if (_litCache) return _litCache;
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  _litCache = { LitElement, html, css };
-  return _litCache;
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-navigation-card";
 const VERSION = "1.2.1"; // Fixed: Real-time template updates + unresponsive buttons after idle/navigation
 
@@ -20852,19 +21716,7 @@ window.customCards.push({
 
 const CARD_NAME = "hki-notification-card";
 
-const _getLit = () => {
-  const base =
-    customElements.get("hui-masonry-view") ||
-    customElements.get("ha-panel-lovelace") ||
-    customElements.get("ha-app");
-  const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-  const html = LitElement?.prototype?.html || window.html;
-  const css = LitElement?.prototype?.css || window.css;
-  return { LitElement, html, css };
-};
-
-const { LitElement, html, css } = _getLit();
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_TYPE = "hki-notification-card";
 const EDITOR_TAG = "hki-notification-card-editor";
 
@@ -20952,6 +21804,7 @@ class HkiNotificationCard extends LitElement {
     this._cssDragOffset = 0;
     // Popup portal container
     this._popupPortal = null;
+    this._popupClosing = false;
   }
 
   setConfig(config) {
@@ -20994,6 +21847,9 @@ class HkiNotificationCard extends LitElement {
       custom_font_family: "",
       popup_title: "Notifications",
       popup_enabled: true,
+      popup_open_animation: "scale",
+      popup_close_animation: "scale",
+      popup_animation_duration: 300,
       tap_action_popup_only: false,
       confirm_tap_action: false,
       // Popup Backdrop & Card Styling (match hki-button-card defaults)
@@ -21376,22 +22232,113 @@ class HkiNotificationCard extends LitElement {
     }
   }
 
-  _openPopup() {
-    this._popupOpen = true;
-    this._createPopupPortal();
-  }
+_openPopup() {
+  if (this._popupOpen) return;
+  this._popupOpen = true;
+  this._popupClosing = false;
+  this._createPopupPortal();
 
-  _closePopup(e) {
-    if (e) e.stopPropagation();
+  window.HKI?.ensurePopupAnimations?.();
+  const c = this._config || {};
+  const anim = c.popup_open_animation || "scale";
+  const dur = c.popup_animation_duration ?? 300;
+  if (anim !== "none" && this._popupPortal) {
+    const container = this._popupPortal.querySelector(".hki-popup-container");
+    if (container) {
+      container.style.animation = "none";
+      void container.offsetWidth; // force reflow
+      container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+    }
+  }
+}
+
+_closePopup(e) {
+  if (e) e.stopPropagation();
+  if (!this._popupOpen) return;
+  if (this._popupClosing) return;
+  this._popupClosing = true;
+
+  const portal = this._popupPortal;
+  if (!portal) {
     this._popupOpen = false;
-    this._removePopupPortal();
+    this._popupClosing = false;
+    return;
   }
 
+  const c = this._config || {};
+  const anim = c.popup_close_animation || c.popup_open_animation || "scale";
+  const dur = c.popup_animation_duration ?? 300;
+
+  const cleanup = () => {
+    this._popupOpen = false;
+    this._popupClosing = false;
+    this._removePopupPortal();
+  };
+
+  if (anim === "none") {
+    cleanup();
+    return;
+  }
+
+  window.HKI?.ensurePopupAnimations?.();
+  const container = portal.querySelector(".hki-popup-container");
+  if (!container) {
+    cleanup();
+    return;
+  }
+
+  // Only animate the container — animating the portal (backdrop) simultaneously
+  // creates a double-fade conflict with non-fade animations (scale, slide, etc.).
+  container.style.animation = "none";
+  void container.offsetWidth; // force reflow so new animation fires cleanly
+  container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
+
+  // animationend gives pixel-perfect cleanup timing
+  container.addEventListener("animationend", cleanup, { once: true });
+  // Fallback in case animationend never fires (e.g. element hidden mid-flight)
+  setTimeout(cleanup, dur + 100);
+}
   _removePopupPortal() {
     if (this._popupPortal) {
       this._popupPortal.remove();
       this._popupPortal = null;
     }
+  }
+
+  _getOpenKeyframe(anim) {
+    const map = {
+      'fade':        'hki-anim-fade-in',
+      'scale':       'hki-anim-scale-in',
+      'slide-up':    'hki-anim-slide-up',
+      'slide-down':  'hki-anim-slide-down',
+      'slide-left':  'hki-anim-slide-left',
+      'slide-right': 'hki-anim-slide-right',
+      'flip':        'hki-anim-flip-in',
+      'bounce':      'hki-anim-bounce-in',
+      'zoom':        'hki-anim-zoom-in',
+      'rotate':      'hki-anim-rotate-in',
+      'drop':        'hki-anim-drop-in',
+      'swing':       'hki-anim-swing-in',
+    };
+    return map[anim] || 'hki-anim-fade-in';
+  }
+
+  _getCloseKeyframe(anim) {
+    const map = {
+      'fade':        'hki-anim-fade-out',
+      'scale':       'hki-anim-scale-out',
+      'slide-up':    'hki-anim-slide-out-down',
+      'slide-down':  'hki-anim-slide-out-up',
+      'slide-left':  'hki-anim-slide-out-right',
+      'slide-right': 'hki-anim-slide-out-left',
+      'flip':        'hki-anim-flip-out',
+      'bounce':      'hki-anim-scale-out',
+      'zoom':        'hki-anim-zoom-out',
+      'rotate':      'hki-anim-rotate-out',
+      'drop':        'hki-anim-drop-out',
+      'swing':       'hki-anim-swing-out',
+    };
+    return map[anim] || 'hki-anim-fade-out';
   }
 
   // ===== Confirmation (tap_action) overlay =====
@@ -21668,7 +22615,10 @@ class HkiNotificationCard extends LitElement {
   _createPopupPortal() {
     this._removePopupPortal();
     
-    const messages = this._getMessages();
+    
+    // Ensure popup animations are available (shared in _bundle-header.js)
+    window.HKI?.ensurePopupAnimations?.();
+const messages = this._getMessages();
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
     const c = this._config;
@@ -23558,6 +24508,45 @@ class HkiNotificationCardEditor extends LitElement {
                   @input=${(ev) => this._valueChanged(ev, "popup_card_opacity")}
                 ></ha-textfield>
               </div>
+<div class="separator"></div>
+              <strong>Popup Animation</strong>
+              <div class="side-by-side">
+                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+              </div>
+              ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
 
               <div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
@@ -23643,6 +24632,46 @@ class HkiNotificationCardEditor extends LitElement {
                   @input=${(ev) => this._valueChanged(ev, "popup_card_opacity")}
                 ></ha-textfield>
               </div>
+
+              <div class="separator"></div>
+              <strong>Popup Animation</strong>
+              <div class="side-by-side">
+                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="none">None</mwc-list-item>
+                  <mwc-list-item value="fade">Fade</mwc-list-item>
+                  <mwc-list-item value="scale">Scale</mwc-list-item>
+                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                  <mwc-list-item value="flip">Flip</mwc-list-item>
+                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                  <mwc-list-item value="drop">Drop</mwc-list-item>
+                  <mwc-list-item value="swing">Swing</mwc-list-item>
+                </ha-select>
+              </div>
+              ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
 
               <div class="separator"></div>
               ${this._renderSwitch("Tap Actions in Popup Only", "tap_action_popup_only", this._config.tap_action_popup_only)}
@@ -23791,7 +24820,8 @@ class HkiNotificationCardEditor extends LitElement {
                   ${["Light","Regular","Medium","Semi Bold","Bold","Extra Bold"].map(w => html`<mwc-list-item .value=${w}>${w}</mwc-list-item>`)}
                 </ha-select>
             </div>
-            <ha-select label="Font Family" .value=${fontFamily} @selected=${(e) => this._valueChanged(e, "font_family")} @closed=${(e) => e.stopPropagation()}>
+            
+<ha-select label="Font Family" .value=${fontFamily} @selected=${(e) => this._valueChanged(e, "font_family")} @closed=${(e) => e.stopPropagation()}>
               ${FONTS.map(f => html`<mwc-list-item .value=${f}>${f === "Custom" ? "Custom..." : f.split(',')[0]}</mwc-list-item>`)}
             </ha-select>
             ${showCustomFont ? html`
@@ -23957,7 +24987,6 @@ customElements.define(CARD_TYPE, HkiNotificationCard);
 customElements.define(EDITOR_TAG, HkiNotificationCardEditor);
 window.customCards = window.customCards || [];
 window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", description: "Animated notification ticker.", preview: true });
-
 })();
 
 // ============================================================
@@ -23966,9 +24995,8 @@ window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", descri
 
 (() => {
 // HKI PostNL Card
-
-
-const CARD_VERSION = '1.0.1';
+const { LitElement, html, css } = window.HKI.getLit();
+const CARD_VERSION = '1.0.2';
 
 // Default External Assets
 const DEFAULT_LOGO = "https://github.com/jimz011/hki-postnl-card/blob/main/images/postnl-logo.png?raw=true";
@@ -24626,7 +25654,7 @@ class HKIPostNLCard extends HTMLElement {
                 const dateLabel = this.formatDate(item.delivery_date || item.planned_date || item.planned_to);
                 
                 return `
-                <div class="parcel">
+                <div class="parcel" data-key="${item.key}">
                     <div class="parcel-header" data-key="${item.key}">
                         <div class="ph-left">
                             <span class="ph-name">${item.name || 'Onbekend'}</span>

@@ -1,7 +1,5 @@
 // HKI Header Card
-
-import { LitElement, html, css } from "https://unpkg.com/lit@2.8.0/index.js?module";
-
+const { LitElement, html, css } = window.HKI.getLit();
 const CARD_NAME = "hki-header-card";
 
 const clamp = (n, min, max) => (Number.isFinite(n) ? Math.min(Math.max(n, min), max) : min);
@@ -140,15 +138,32 @@ const DEFAULTS = Object.freeze({
   top_bar_offset_y: 15,
   top_bar_padding_x: 0,
   
-  // Slot types: "none", "spacer", "weather", "datetime", "custom", "button"
+  // Slot types: "none", "spacer", "weather", "datetime", "notifications", "card", "button"
   top_bar_left: "none",
   top_bar_center: "none",
   top_bar_right: "none",
+  top_bar_left_align: "start",
+  top_bar_center_align: "center",
+  top_bar_right_align: "end",
   
-  // Default custom cards for slots
-  top_bar_left_card: { type: "custom:hki-notification-card" },
-  top_bar_center_card: { type: "custom:hki-notification-card" },
-  top_bar_right_card: { type: "custom:hki-notification-card" },
+  // Default custom cards for slots (no default for "card" type - shows picker)
+  top_bar_left_card: null,
+  top_bar_center_card: null,
+  top_bar_right_card: null,
+
+  // Bottom Bar Layout
+  bottom_bar_enabled: false,
+  bottom_bar_offset_y: 10,
+  bottom_bar_padding_x: 0,
+  bottom_bar_left: "none",
+  bottom_bar_center: "none",
+  bottom_bar_right: "none",
+  bottom_bar_left_align: "start",
+  bottom_bar_center_align: "center",
+  bottom_bar_right_align: "end",
+  bottom_bar_left_card: null,
+  bottom_bar_center_card: null,
+  bottom_bar_right_card: null,
 
   // Global Info Styling (defaults for all slots)
   info_size_px: 12,
@@ -163,6 +178,20 @@ const DEFAULTS = Object.freeze({
   info_pill_border_style: "none",
   info_pill_border_width: 0,
   info_pill_border_color: "rgba(255,255,255,0.1)",
+
+  // Bottom Bar Global Info Styling (independent defaults for bottom bar slots)
+  bottom_info_size_px: 12,
+  bottom_info_weight: "medium",
+  bottom_info_color: "",
+  bottom_info_pill: true,
+  bottom_info_pill_background: "rgba(0,0,0,0.25)",
+  bottom_info_pill_padding_x: 12,
+  bottom_info_pill_padding_y: 8,
+  bottom_info_pill_radius: 999,
+  bottom_info_pill_blur: 0,
+  bottom_info_pill_border_style: "none",
+  bottom_info_pill_border_width: 0,
+  bottom_info_pill_border_color: "rgba(255,255,255,0.1)",
 
   // Defaults fallback if per-slot is missing
   weather_entity: "",
@@ -260,12 +289,13 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_pill_border_color !== undefined) newConfig.info.pill_border_color = oldConfig.info_pill_border_color;
   }
   
-  // Migrate each slot (left, center, right)
+  // Migrate each slot (left, center, right) for both bars
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotType = oldConfig[`top_bar_${slot}`] || "none";
+    const slotType = oldConfig[`${bar}_${slot}`] || "none";
     if (slotType === "none") return;
     
-    const prefix = `top_bar_${slot}_`;
+    const prefix = `${bar}_${slot}_`;
     const slotConfig = { type: slotType };
     
     // Common slot properties
@@ -325,7 +355,12 @@ function migrateToNestedFormat(oldConfig) {
         icon: oldConfig[prefix + "icon"],
         label: oldConfig[prefix + "label"]
       };
-    } else if (slotType === "custom") {
+    } else if (slotType === "custom" || slotType === "notifications") {
+      slotConfig.custom = {
+        card: oldConfig[prefix + "card"]
+      };
+      if (slotType === "custom") slotConfig.type = "notifications"; // migrate legacy value
+    } else if (slotType === "card") {
       slotConfig.custom = {
         card: oldConfig[prefix + "card"]
       };
@@ -338,8 +373,9 @@ function migrateToNestedFormat(oldConfig) {
       double_tap_action: oldConfig[prefix + "double_tap_action"]
     };
     
-    newConfig[`top_bar_${slot}`] = slotConfig;
+    newConfig[`${bar}_${slot}`] = slotConfig;
   });
+  }); // end bar loop
   
   // Migrate persons
   if (oldConfig.persons_enabled || oldConfig.persons_entities) {
@@ -398,6 +434,13 @@ function flattenNestedFormat(nested) {
     if (nested.top_bar.offset_y !== undefined) flat.top_bar_offset_y = nested.top_bar.offset_y;
     if (nested.top_bar.padding_x !== undefined) flat.top_bar_padding_x = nested.top_bar.padding_x;
   }
+
+  // Flatten bottom_bar
+  if (nested.bottom_bar && typeof nested.bottom_bar === 'object') {
+    if (nested.bottom_bar.enabled !== undefined) flat.bottom_bar_enabled = nested.bottom_bar.enabled;
+    if (nested.bottom_bar.offset_y !== undefined) flat.bottom_bar_offset_y = nested.bottom_bar.offset_y;
+    if (nested.bottom_bar.padding_x !== undefined) flat.bottom_bar_padding_x = nested.bottom_bar.padding_x;
+  }
   
   // Flatten info
   if (nested.info) {
@@ -415,13 +458,30 @@ function flattenNestedFormat(nested) {
     if (nested.info.pill_border_color !== undefined) flat.info_pill_border_color = nested.info.pill_border_color;
   }
   
-  // Flatten slots
+  // Flatten bottom_info (bottom bar independent global styling)
+  if (nested.bottom_info) {
+    if (nested.bottom_info.size_px !== undefined) flat.bottom_info_size_px = nested.bottom_info.size_px;
+    if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
+    if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
+    if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
+    if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
+    if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
+    if (nested.bottom_info.pill_padding_y !== undefined) flat.bottom_info_pill_padding_y = nested.bottom_info.pill_padding_y;
+    if (nested.bottom_info.pill_radius !== undefined) flat.bottom_info_pill_radius = nested.bottom_info.pill_radius;
+    if (nested.bottom_info.pill_blur !== undefined) flat.bottom_info_pill_blur = nested.bottom_info.pill_blur;
+    if (nested.bottom_info.pill_border_style !== undefined) flat.bottom_info_pill_border_style = nested.bottom_info.pill_border_style;
+    if (nested.bottom_info.pill_border_width !== undefined) flat.bottom_info_pill_border_width = nested.bottom_info.pill_border_width;
+    if (nested.bottom_info.pill_border_color !== undefined) flat.bottom_info_pill_border_color = nested.bottom_info.pill_border_color;
+  }
+  
+  // Flatten slots (top and bottom bar)
+  ['top_bar', 'bottom_bar'].forEach(bar => {
   ['left', 'center', 'right'].forEach(slot => {
-    const slotConfig = nested[`top_bar_${slot}`];
+    const slotConfig = nested[`${bar}_${slot}`];
     if (!slotConfig) return;
     
-    const prefix = `top_bar_${slot}_`;
-    flat[`top_bar_${slot}`] = slotConfig.type || "none";
+    const prefix = `${bar}_${slot}_`;
+    flat[`${bar}_${slot}`] = slotConfig.type || "none";
     
     // Only process additional properties if slot type is not "none"
     if (slotConfig.type === "none") return;
@@ -481,6 +541,8 @@ function flattenNestedFormat(nested) {
       flat[prefix + "card"] = slotConfig.custom.card;
     }
     
+    if (slotConfig.align !== undefined) flat[prefix + "align"] = slotConfig.align;
+    
     // Actions
     if (slotConfig.actions) {
       if (slotConfig.actions.tap_action) flat[prefix + "tap_action"] = slotConfig.actions.tap_action;
@@ -488,6 +550,7 @@ function flattenNestedFormat(nested) {
       if (slotConfig.actions.double_tap_action) flat[prefix + "double_tap_action"] = slotConfig.actions.double_tap_action;
     }
   });
+  }); // end bar loop
   
   // Flatten persons
   if (nested.persons) {
@@ -616,7 +679,7 @@ class HkiHeaderCard extends LitElement {
     this._renderedTitle = "";
     this._renderedSubtitle = "";
     this._currentTime = Date.now();
-    this._customCards = { left: null, center: null, right: null };
+    this._customCards = { left: null, center: null, right: null, bottom_left: null, bottom_center: null, bottom_right: null };
 
     // Handlers & observers
     this._resizeHandler = null;
@@ -856,7 +919,7 @@ class HkiHeaderCard extends LitElement {
         right: 0;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         z-index: 3;
         box-sizing: border-box;
       }
@@ -885,6 +948,23 @@ class HkiHeaderCard extends LitElement {
       .slot-right {
         justify-content: flex-end;
         text-align: right;
+      }
+      .slot-align-start  { justify-content: flex-start !important; text-align: left !important; }
+      .slot-align-center { justify-content: center !important;     text-align: center !important; }
+      .slot-align-end    { justify-content: flex-end !important;   text-align: right !important; }
+
+      /* BOTTOM BAR LAYOUT */
+      .bottom-bar-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        z-index: 3;
+        box-sizing: border-box;
+        overflow: visible;
       }
       
       /* Empty slots collapse to allow more space for occupied slots */
@@ -1340,7 +1420,20 @@ class HkiHeaderCard extends LitElement {
     m.top_bar_offset_y = toNum(m.top_bar_offset_y, 10);
     m.top_bar_padding_x = toNum(m.top_bar_padding_x, 5);
     
-    const validSlotTypes = ["none", "spacer", "weather", "datetime", "custom", "button"];
+    const validSlotTypes = ["none", "spacer", "weather", "datetime", "notifications", "custom", "card", "button"];
+    // Migrate legacy "custom" value to "notifications"
+    if (m.top_bar_left === "custom") m.top_bar_left = "notifications";
+    if (m.top_bar_center === "custom") m.top_bar_center = "notifications";
+    if (m.top_bar_right === "custom") m.top_bar_right = "notifications";
+    // Read bottom_bar settings from nested format
+    if (m.bottom_bar && typeof m.bottom_bar === 'object') {
+      if (m.bottom_bar.enabled !== undefined) m.bottom_bar_enabled = m.bottom_bar.enabled;
+      if (m.bottom_bar.offset_y !== undefined) m.bottom_bar_offset_y = m.bottom_bar.offset_y;
+      if (m.bottom_bar.padding_x !== undefined) m.bottom_bar_padding_x = m.bottom_bar.padding_x;
+    }
+    m.bottom_bar_left = validSlotTypes.includes(m.bottom_bar_left) ? m.bottom_bar_left : "none";
+    m.bottom_bar_center = validSlotTypes.includes(m.bottom_bar_center) ? m.bottom_bar_center : "none";
+    m.bottom_bar_right = validSlotTypes.includes(m.bottom_bar_right) ? m.bottom_bar_right : "none";
     m.top_bar_left = validSlotTypes.includes(m.top_bar_left) ? m.top_bar_left : "none";
     m.top_bar_center = validSlotTypes.includes(m.top_bar_center) ? m.top_bar_center : "none";
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
@@ -1351,6 +1444,20 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
       m[prefix + "icon"] = m[prefix + "icon"] || "";
       m[prefix + "label"] = m[prefix + "label"] || "";
+      // Alignment default differs per slot
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+    });
+    ["left", "center", "right"].forEach(slot => {
+      const prefix = `bottom_bar_${slot}_`;
+      m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
+      m[prefix + "icon"] = m[prefix + "icon"] || "";
+      m[prefix + "label"] = m[prefix + "label"] || "";
+      const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
+      m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
+      m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
+      m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
+      m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
       m[prefix + "hold_action"] = m[prefix + "hold_action"] || { action: "none" };
       m[prefix + "double_tap_action"] = m[prefix + "double_tap_action"] || { action: "none" };
@@ -1477,6 +1584,16 @@ class HkiHeaderCard extends LitElement {
         if (action.perform_action) cleaned.perform_action = action.perform_action;
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
+        break;
+      case "hki-more-info":
+        // Preserve popup card config and all appearance settings
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -1819,6 +1936,48 @@ class HkiHeaderCard extends LitElement {
         if (entity) this.dispatchEvent(new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: entity } }));
         break;
       }
+      case "hki-more-info": {
+        const popupCard = finalAction.custom_popup_card;
+        if (popupCard && customElements.get('hki-button-card')) {
+          // Resolve name/state templates if needed, then open popup
+          const resolveTemplate = async (str) => {
+            if (!str) return str;
+            if (!(str.includes('{{') || str.includes('{%'))) return str;
+            try {
+              const res = await this.hass.callWS({
+                type: 'render_template',
+                template: str,
+                variables: { config: this._config ?? {}, user: this.hass?.user?.name || '' },
+                strict: false,
+              });
+              return res?.result != null ? String(res.result) : str;
+            } catch (_) { return str; }
+          };
+          Promise.all([
+            resolveTemplate(finalAction.popup_name),
+            resolveTemplate(finalAction.popup_state),
+          ]).then(([resolvedName, resolvedState]) => {
+            try {
+              const btn = document.createElement('hki-button-card');
+              btn.hass = this.hass;
+              btn.setConfig({
+                type: 'custom:hki-button-card',
+                custom_popup: { enabled: true, card: popupCard },
+                ...(resolvedName ? { name: resolvedName } : {}),
+                ...(resolvedState ? { state_label: resolvedState } : {}),
+                ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
+                ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+                ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
+                ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
+              });
+              btn._openPopup();
+            } catch (err) {
+              console.error('[hki-header-card] Failed to open popup:', err);
+            }
+          }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
+        }
+        break;
+      }
       case "toggle": {
         const toggleEntity = finalAction.entity;
         if (toggleEntity) this.hass.callService("homeassistant", "toggle", { entity_id: toggleEntity });
@@ -1845,44 +2004,61 @@ class HkiHeaderCard extends LitElement {
   async _updateCustomCards() {
     if (!window.loadCardHelpers) return;
     
-    const slots = ['left', 'center', 'right'];
+    const slots = [
+      { key: 'left', bar: 'top_bar' },
+      { key: 'center', bar: 'top_bar' },
+      { key: 'right', bar: 'top_bar' },
+      { key: 'left', bar: 'bottom_bar', cacheId: 'bottom_left' },
+      { key: 'center', bar: 'bottom_bar', cacheId: 'bottom_center' },
+      { key: 'right', bar: 'bottom_bar', cacheId: 'bottom_right' },
+    ];
     let helpersLoaded = null;
     let needsUpdate = false;
     
-    for (const slot of slots) {
-        const type = this._config[`top_bar_${slot}`];
-        const cardConfigKey = `top_bar_${slot}_card`;
+    for (const slotDef of slots) {
+        const slot = typeof slotDef === 'string' ? slotDef : slotDef.key;
+        const bar = typeof slotDef === 'string' ? 'top_bar' : slotDef.bar;
+        const cardId = (slotDef.cacheId) ? slotDef.cacheId : slot;
+        const type = this._config[`${bar}_${slot}`];
+        const cardConfigKey = `${bar}_${slot}_card`;
         const cardConfig = this._config[cardConfigKey];
         
         // Generate a simple hash to detect config changes
-        const configHash = type === 'custom' ? JSON.stringify(cardConfig || {}) : '';
-        const cacheKey = `_customCardHash_${slot}`;
+        const isCardSlot = type === 'notifications' || type === 'custom' || type === 'card';
+        const configHash = isCardSlot ? JSON.stringify(cardConfig || {}) : '';
+        const cacheKey = `_customCardHash_${cardId}`;
         
-        if (type === 'custom') {
+        if (isCardSlot) {
             // Only recreate if config has changed
             if (this[cacheKey] !== configHash || !this._customCards[slot]) {
                 if (!helpersLoaded) helpersLoaded = await window.loadCardHelpers();
                 
-                let finalConfig = { 
-                    use_header_styling: true, 
-                    show_background: false,
-                    show_empty: true,
-                    ...(cardConfig || { type: "custom:hki-notification-card" })
-                };
+                // notifications type injects header-styling helpers; card type is bare
+                let finalConfig;
+                if (type === 'card') {
+                    finalConfig = { ...(cardConfig || {}) };
+                } else {
+                    finalConfig = { 
+                        use_header_styling: true, 
+                        show_background: false,
+                        show_empty: true,
+                        ...(cardConfig || { type: "custom:hki-notification-card" })
+                    };
+                }
 
                 try {
                     const element = await helpersLoaded.createCardElement(finalConfig);
                     if (this.hass) element.hass = this.hass;
                     element.style.display = "block";
-                    this._customCards[slot] = element;
+                    this._customCards[cardId] = element;
                     this[cacheKey] = configHash;
                     needsUpdate = true;
                 } catch (e) {
                     console.error(`Failed to create custom card for ${slot}`, e);
                 }
             }
-        } else if (this._customCards[slot]) {
-            this._customCards[slot] = null;
+        } else if (this._customCards[cardId]) {
+            this._customCards[cardId] = null;
             this[cacheKey] = '';
             needsUpdate = true;
         }
@@ -1891,12 +2067,15 @@ class HkiHeaderCard extends LitElement {
     if (needsUpdate) this.requestUpdate();
   }
 
-  _getSlotStyle(slotName) {
+  _getSlotStyle(slotName, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
+
+    // Pick the right set of global defaults depending on which bar this slot belongs to
+    const gp = bar === "bottom_bar" ? "bottom_info_" : "info_";
     
     // Generate cache key based on relevant config values
-    const cacheKey = `${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg.info_size_px}:${cfg.info_weight}:${cfg.info_color}:${cfg.info_pill}:${cfg.font_family}:${cfg.font_style}`;
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "pill"]}:${cfg.font_family}:${cfg.font_style}`;
     
     const cached = this._slotStyleCache.get(cacheKey);
     if (cached) return cached;
@@ -1905,21 +2084,21 @@ class HkiHeaderCard extends LitElement {
     
     const fontFamily = this._resolveFontFamily();
     
-    // Get values, preferring per-slot if not using global, otherwise use global
-    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg.info_size_px;
-    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg.info_weight;
-    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg.info_color?.trim() || "var(--hki-header-text-color, #fff)");
+    // Get values, preferring per-slot if not using global, otherwise use bar-specific global
+    const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg[gp + "size_px"];
+    const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg[gp + "weight"];
+    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"]?.trim() || "var(--hki-header-text-color, #fff)");
     const iconSize = Math.round(sizePx * 2);
     
-    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg.info_pill;
-    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg.info_pill_background;
-    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg.info_pill_padding_x;
-    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg.info_pill_padding_y;
-    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg.info_pill_radius;
-    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg.info_pill_blur;
-    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg.info_pill_border_style;
-    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg.info_pill_border_width;
-    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg.info_pill_border_color;
+    const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
+    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg[gp + "pill_background"];
+    const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg[gp + "pill_padding_x"];
+    const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg[gp + "pill_padding_y"];
+    const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg[gp + "pill_radius"];
+    const pillBlur = (!useGlobal && cfg[prefix + "pill_blur"] != null) ? cfg[prefix + "pill_blur"] : cfg[gp + "pill_blur"];
+    const pillBorderStyle = (!useGlobal && cfg[prefix + "pill_border_style"]) ? cfg[prefix + "pill_border_style"] : cfg[gp + "pill_border_style"];
+    const pillBorderWidth = (!useGlobal && cfg[prefix + "pill_border_width"] != null) ? cfg[prefix + "pill_border_width"] : cfg[gp + "pill_border_width"];
+    const pillBorderColor = (!useGlobal && cfg[prefix + "pill_border_color"]) ? cfg[prefix + "pill_border_color"] : cfg[gp + "pill_border_color"];
     
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
@@ -1956,23 +2135,89 @@ class HkiHeaderCard extends LitElement {
     return result;
   }
 
-  _renderSlotContent(type, slotName) {
+  _renderSlotContent(type, slotName, cardId = null, bar = "top_bar", stretch = false) {
       const cfg = this._config;
-      const slotStyle = this._getSlotStyle(slotName);
+      const slotStyle = this._getSlotStyle(slotName, bar);
+      // Unique key to persist hold/click state across re-renders for this slot
+      const stateKey = cardId || slotName;
       
       switch (type) {
-          case "weather": return this._renderWeatherSlot(slotName, slotStyle);
-          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle);
-          case "custom": return this._renderCustomCardSlot(slotName, slotStyle);
-          case "spacer": return html`<div class="slot-spacer"></div>`;
-          case "button": return this._renderButtonSlot(slotName, slotStyle);
+          case "weather": return this._renderWeatherSlot(slotName, slotStyle, stateKey, bar);
+          case "datetime": return this._renderDatetimeSlot(slotName, slotStyle, stateKey, bar);
+          case "notifications":
+          case "custom":
+          case "card": return this._renderCustomCardSlot(slotName, slotStyle, cardId, type, stretch);
+          case "spacer": return this._renderSpacerSlot(slotName, stateKey, bar);
+          case "button": return this._renderButtonSlot(slotName, slotStyle, stateKey, bar);
           default: return html``;
       }
   }
 
-  _renderButtonSlot(slotName, slotStyle) {
+  _renderSpacerSlot(slotName, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
+    const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
+    const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
+    const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+
+    const hasAnyAction = tapAction.action !== "none" || holdAction.action !== "none" || doubleTapAction.action !== "none";
+    if (!hasAnyAction) return html`<div class="slot-spacer"></div>`;
+
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
+
+    const startHold = () => {
+      state.holdActive = false;
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction.action !== "none") this._handleSlotTapAction(holdAction, slotName);
+      }, 500);
+    };
+    const endHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) this._handleSlotTapAction(tapAction, slotName);
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
+      }
+      state.holdActive = false;
+    };
+    const cancelHold = () => {
+      if (state.holdTimer) { clearTimeout(state.holdTimer); state.holdTimer = null; }
+      state.holdActive = false;
+    };
+
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
+    return html`
+      <div class="slot-spacer"
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
+        @contextmenu=${(e) => e.preventDefault()}
+        style="cursor:pointer;"
+      ></div>
+    `;
+  }
+
+  _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
+    const cfg = this._config;
+    const prefix = `${bar}_${slotName}_`;
     const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
     const label = cfg[prefix + "label"] || "";
     const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
@@ -1986,63 +2231,70 @@ class HkiHeaderCard extends LitElement {
     const buttonPillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${buttonPaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${buttonPillStyle}`;
     
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
-    let clickTimer = null;
-    let clickCount = 0;
+    // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
+    // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      state.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
+      if (!state.holdActive) {
         // Use click debouncing for double-tap detection
-        clickCount++;
-        if (clickCount === 1) {
-          clickTimer = setTimeout(() => {
-            if (clickCount === 1) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
               this._handleSlotTapAction(tapAction, slotName);
             }
-            clickCount = 0;
+            state.clickCount = 0;
           }, 250);
-        } else if (clickCount === 2) {
-          clearTimeout(clickTimer);
-          clickCount = 0;
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
           this._handleSlotTapAction(doubleTapAction, slotName);
         }
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
+    
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
     
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon} style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
@@ -2056,9 +2308,9 @@ class HkiHeaderCard extends LitElement {
     this._handleAction(action, entityId);
   }
 
-  _renderWeatherSlot(slotName, slotStyle) {
+  _renderWeatherSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     
     // Fallback to global if local is not set
     const entityId = cfg[prefix + "weather_entity"] || cfg.weather_entity;
@@ -2117,53 +2369,68 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const holdState = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      holdState.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      holdState.holdTimer = setTimeout(() => {
+        holdState.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName, entityId);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName, entityId);
+      if (!holdState.holdActive) {
+        holdState.clickCount++;
+        if (holdState.clickCount === 1) {
+          holdState.clickTimer = setTimeout(() => {
+            if (holdState.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName, entityId);
+            }
+            holdState.clickCount = 0;
+          }, 250);
+        } else if (holdState.clickCount === 2) {
+          clearTimeout(holdState.clickTimer);
+          holdState.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
+        }
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (holdState.holdTimer) {
+        clearTimeout(holdState.holdTimer);
+        holdState.holdTimer = null;
       }
-      holdActive = false;
+      holdState.holdActive = false;
     };
+
+    const handleTouchStart = () => { holdState.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { holdState.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (holdState.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (holdState.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!holdState.touchHandled) cancelHold(); };
 
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName, entityId);
-        }}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${showIcon ? (useSvg 
@@ -2180,9 +2447,9 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderDatetimeSlot(slotName, slotStyle) {
+  _renderDatetimeSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
-    const prefix = `top_bar_${slotName}_`;
+    const prefix = `${bar}_${slotName}_`;
     const locale = this.hass?.language || 'en';
     
     const now = new Date(this._currentTime);
@@ -2220,53 +2487,68 @@ class HkiHeaderCard extends LitElement {
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
 
-    // Hold timer and state
-    let holdTimer = null;
-    let holdActive = false;
+    // Hold state lives on the instance (keyed by slot) so it survives re-renders
+    if (!this._slotHoldState) this._slotHoldState = {};
+    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+    const state = this._slotHoldState[stateKey];
 
     const startHold = () => {
-      holdActive = false;
-      if (holdAction && holdAction.action !== "none") {
-        holdTimer = setTimeout(() => {
-          holdActive = true;
+      state.holdActive = false;
+      // Always set timer so a long-press is recognized even when holdAction is "none"
+      state.holdTimer = setTimeout(() => {
+        state.holdActive = true;
+        if (holdAction && holdAction.action !== "none") {
           this._handleSlotTapAction(holdAction, slotName);
-        }, 500);
-      }
+        }
+      }, 500);
     };
 
     const endHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      if (!holdActive && tapAction) {
-        this._handleSlotTapAction(tapAction, slotName);
+      if (!state.holdActive) {
+        state.clickCount++;
+        if (state.clickCount === 1) {
+          state.clickTimer = setTimeout(() => {
+            if (state.clickCount === 1) {
+              this._handleSlotTapAction(tapAction, slotName);
+            }
+            state.clickCount = 0;
+          }, 250);
+        } else if (state.clickCount === 2) {
+          clearTimeout(state.clickTimer);
+          state.clickCount = 0;
+          this._handleSlotTapAction(doubleTapAction, slotName);
+        }
       }
-      holdActive = false;
+      state.holdActive = false;
     };
 
     const cancelHold = () => {
-      if (holdTimer) {
-        clearTimeout(holdTimer);
-        holdTimer = null;
+      if (state.holdTimer) {
+        clearTimeout(state.holdTimer);
+        state.holdTimer = null;
       }
-      holdActive = false;
+      state.holdActive = false;
     };
+
+    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
 
     return html`
       <div 
         class="info-item ${pillClass}" 
         style="${combinedStyle}"
-        @mousedown=${startHold}
-        @mouseup=${endHold}
-        @mouseleave=${cancelHold}
-        @touchstart=${startHold}
-        @touchend=${endHold}
-        @dblclick=${(e) => {
-          e.preventDefault();
-          cancelHold();
-          this._handleSlotTapAction(doubleTapAction, slotName);
-        }}
+        @mousedown=${handleMouseDown}
+        @mouseup=${handleMouseUp}
+        @mouseleave=${handleMouseLeave}
+        @touchstart=${handleTouchStart}
+        @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${icon ? html`
@@ -2278,11 +2560,34 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
-  _renderCustomCardSlot(slotName, slotStyle) {
-    const cardEl = this._customCards[slotName];
+  _renderCustomCardSlot(slotName, slotStyle, cardId = null, type = "notifications", stretch = false) {
+    const cardEl = this._customCards[cardId || slotName];
     if (!cardEl) return html``;
-    
-    const combinedStyle = `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`;
+
+    // Force the card element itself to fill the slot when stretching.
+    // We set the style directly on the live DOM node so it takes effect regardless
+    // of how the card internally sizes itself.
+    if (stretch) {
+      cardEl.style.width = '100%';
+      cardEl.style.minWidth = '0';
+      cardEl.style.boxSizing = 'border-box';
+    } else {
+      cardEl.style.width = '';
+      cardEl.style.minWidth = '';
+      cardEl.style.boxSizing = '';
+    }
+
+    // 'card' type is a bare arbitrary card — do not inject header global styling.
+    // 'notifications'/'custom' are hki-notification-card which consume notifyVars via use_header_styling.
+    const isNotificationSlot = type !== "card";
+
+    // When stretch is active: switch from inline-flex (content-sized) to flex (fills parent),
+    // and make the wrapper fill the full slot width.
+    const stretchStyle = stretch ? `display:flex;width:100%;min-width:0;` : '';
+
+    const combinedStyle = isNotificationSlot
+      ? `${slotStyle.inlineStyle} ${slotStyle.notifyVars}; min-width: 50px; ${stretchStyle}${slotStyle.pill ? `overflow: hidden; border-radius: ${slotStyle.pillRadius}px;` : ''}`
+      : `min-width: 50px; ${stretchStyle}`;
 
     return html`
       <div class="info-item" style="${combinedStyle}">
@@ -2330,11 +2635,102 @@ class HkiHeaderCard extends LitElement {
       const centerOverflow = !!cfg.top_bar_center_overflow;
       const rightOverflow = !!cfg.top_bar_right_overflow;
 
+      const leftAlign = cfg.top_bar_left_align || 'start';
+      const centerAlign = cfg.top_bar_center_align || 'center';
+      const rightAlign = cfg.top_bar_right_align || 'end';
+
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`top_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.top_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.top_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.top_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.top_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.top_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.top_bar_right));
+      // Build per-slot flex-grow override (only when span > 1, i.e. absorbing neighbours)
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
       return html`
         <div class="top-bar-container" style="${topStyle}">
-            <div class="slot slot-left ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}">${this._renderSlotContent(cfg.top_bar_left, "left")}</div>
-            <div class="slot slot-center ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}">${this._renderSlotContent(cfg.top_bar_center, "center")}</div>
-            <div class="slot slot-right ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}">${this._renderSlotContent(cfg.top_bar_right, "right")}</div>
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.top_bar_left, "left", null, "top_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.top_bar_center, "center", null, "top_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.top_bar_right, "right", null, "top_bar", rightStretch)}</div>
+        </div>
+      `;
+  }
+
+  _renderBottomBar() {
+      if (!this._config.bottom_bar_enabled) return html``;
+
+      const cfg = this._config;
+      const offsetY = cfg.bottom_bar_offset_y !== undefined ? cfg.bottom_bar_offset_y : 10;
+      const paddingX = cfg.bottom_bar_padding_x !== undefined ? cfg.bottom_bar_padding_x : 5;
+      const bottomStyle = `bottom: ${offsetY}px; padding: 0 ${paddingX}px;`;
+
+      const isMobile = this._viewportWidth > 0 && this._viewportWidth <= (cfg.mobile_breakpoint || 768);
+      const getOffset = (base, mobile) => {
+         if (isMobile && typeof mobile === 'number' && Number.isFinite(mobile)) return mobile;
+         return base || 0;
+      };
+
+      const leftX = getOffset(cfg.bottom_bar_left_offset_x, cfg.bottom_bar_left_offset_x_mobile);
+      const leftY = getOffset(cfg.bottom_bar_left_offset_y, cfg.bottom_bar_left_offset_y_mobile);
+      const centerX = getOffset(cfg.bottom_bar_center_offset_x, cfg.bottom_bar_center_offset_x_mobile);
+      const centerY = getOffset(cfg.bottom_bar_center_offset_y, cfg.bottom_bar_center_offset_y_mobile);
+      const rightX = getOffset(cfg.bottom_bar_right_offset_x, cfg.bottom_bar_right_offset_x_mobile);
+      const rightY = getOffset(cfg.bottom_bar_right_offset_y, cfg.bottom_bar_right_offset_y_mobile);
+
+      const leftStyle = (leftX || leftY) ? `transform: translate(${leftX}px, ${leftY}px);` : "";
+      const centerStyle = (centerX || centerY) ? `transform: translate(${centerX}px, ${centerY}px);` : "";
+      const rightStyle = (rightX || rightY) ? `transform: translate(${rightX}px, ${rightY}px);` : "";
+
+      const leftEmpty = cfg.bottom_bar_left === "none";
+      const centerEmpty = cfg.bottom_bar_center === "none";
+      const rightEmpty = cfg.bottom_bar_right === "none";
+
+      const leftOverflow = !!cfg.bottom_bar_left_overflow;
+      const centerOverflow = !!cfg.bottom_bar_center_overflow;
+      const rightOverflow = !!cfg.bottom_bar_right_overflow;
+
+      const leftAlign = cfg.bottom_bar_left_align || 'start';
+      const centerAlign = cfg.bottom_bar_center_align || 'center';
+      const rightAlign = cfg.bottom_bar_right_align || 'end';
+
+      // ── Stretch: custom-card slots can absorb adjacent empty slots ──────────
+      const CARD_TYPES = ['card', 'custom', 'notifications'];
+      const calcStretchSpan = (slot, slotType) => {
+        if (!CARD_TYPES.includes(slotType)) return 1;
+        const align = cfg[`bottom_bar_${slot}_align`];
+        if (align !== 'stretch') return 1;
+        if (slot === 'left')   { let s = 1; if (centerEmpty) { s++; if (rightEmpty)  s++; } return s; }
+        if (slot === 'right')  { let s = 1; if (centerEmpty) { s++; if (leftEmpty)   s++; } return s; }
+        /* center */             let s = 1; if (leftEmpty) s++;   if (rightEmpty) s++;   return s;
+      };
+      const leftSpan   = calcStretchSpan('left',   cfg.bottom_bar_left);
+      const centerSpan = calcStretchSpan('center', cfg.bottom_bar_center);
+      const rightSpan  = calcStretchSpan('right',  cfg.bottom_bar_right);
+      const leftStretch   = leftSpan   > 1 || (leftAlign   === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_left));
+      const centerStretch = centerSpan > 1 || (centerAlign === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_center));
+      const rightStretch  = rightSpan  > 1 || (rightAlign  === 'stretch' && CARD_TYPES.includes(cfg.bottom_bar_right));
+      const leftFlexExtra   = leftSpan   > 1 ? `flex-grow:${leftSpan};`   : '';
+      const centerFlexExtra = centerSpan > 1 ? `flex-grow:${centerSpan};` : '';
+      const rightFlexExtra  = rightSpan  > 1 ? `flex-grow:${rightSpan};`  : '';
+
+      return html`
+        <div class="bottom-bar-container" style="${bottomStyle}">
+            <div class="slot slot-left slot-align-${leftAlign} ${leftEmpty ? 'slot-empty' : ''} ${leftOverflow ? 'slot-visible' : ''}" style="${leftStyle}${leftFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_left, "left", "bottom_left", "bottom_bar", leftStretch)}</div>
+            <div class="slot slot-center slot-align-${centerAlign} ${centerEmpty ? 'slot-empty' : ''} ${centerOverflow ? 'slot-visible' : ''}" style="${centerStyle}${centerFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_center, "center", "bottom_center", "bottom_bar", centerStretch)}</div>
+            <div class="slot slot-right slot-align-${rightAlign} ${rightEmpty ? 'slot-empty' : ''} ${rightOverflow ? 'slot-visible' : ''}" style="${rightStyle}${rightFlexExtra}">${this._renderSlotContent(cfg.bottom_bar_right, "right", "bottom_right", "bottom_bar", rightStretch)}</div>
         </div>
       `;
   }
@@ -2504,64 +2900,69 @@ class HkiHeaderCard extends LitElement {
           // Apply grayscale filter to image/icon only, not the container
           const contentFilter = (!isHome && grayscaleAway) ? "filter:grayscale(100%);" : "";
 
-          // Hold timer and state (like button slot)
-          let holdTimer = null;
-          let holdActive = false;
+          // Hold state lives on the instance (keyed by entity) so it survives re-renders
+          if (!this._slotHoldState) this._slotHoldState = {};
+          if (!this._slotHoldState[entityId]) this._slotHoldState[entityId] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+          const state = this._slotHoldState[entityId];
 
           const startHold = (e) => {
-            holdActive = false;
-            if (holdAction && holdAction.action !== "none") {
-              holdTimer = setTimeout(() => {
-                holdActive = true;
+            state.holdActive = false;
+            // Always set timer so a long-press is recognized even when holdAction is "none"
+            state.holdTimer = setTimeout(() => {
+              state.holdActive = true;
+              if (holdAction && holdAction.action !== "none") {
                 this._handleAction(holdAction, entityId);
-              }, 500);
-            }
+              }
+            }, 500);
           };
 
           const endHold = (e) => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            if (!holdActive && tapAction) {
-              this._handleAction(tapAction, entityId);
+            if (!state.holdActive) {
+              state.clickCount++;
+              if (state.clickCount === 1) {
+                state.clickTimer = setTimeout(() => {
+                  if (state.clickCount === 1) {
+                    this._handleAction(tapAction, entityId);
+                  }
+                  state.clickCount = 0;
+                }, 250);
+              } else if (state.clickCount === 2) {
+                clearTimeout(state.clickTimer);
+                state.clickCount = 0;
+                this._handleAction(doubleTapAction, entityId);
+              }
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
           const cancelHold = () => {
-            if (holdTimer) {
-              clearTimeout(holdTimer);
-              holdTimer = null;
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
             }
-            holdActive = false;
+            state.holdActive = false;
           };
 
-          const handleTouchStart = (e) => {
-            e.preventDefault();
-            startHold(e);
-          };
-
-          const handleTouchEnd = (e) => {
-            e.preventDefault();
-            endHold(e);
-          };
+          const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+          const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+          const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+          const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+          const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
 
           return html`
             <div 
               class="person-avatar" 
               style="${avatarStyle}"
-              @mousedown=${startHold}
-              @mouseup=${endHold}
-              @mouseleave=${cancelHold}
+              @mousedown=${handleMouseDown}
+              @mouseup=${handleMouseUp}
+              @mouseleave=${handleMouseLeave}
               @touchstart=${handleTouchStart}
               @touchend=${handleTouchEnd}
               @touchcancel=${cancelHold}
-              @dblclick=${(e) => {
-                e.preventDefault();
-                cancelHold();
-                this._handleAction(doubleTapAction, entityId);
-              }}
               @contextmenu=${(e) => e.preventDefault()}
             >
               ${showPicture 
@@ -2691,8 +3092,9 @@ class HkiHeaderCard extends LitElement {
       borderRadius ? `border-radius:${borderRadius}` : "",
       cfg.card_box_shadow ? `box-shadow:${cfg.card_box_shadow}` : "box-shadow:none",
       borderStyle,
-      // Only apply overflow:hidden when not fixed to allow box-shadow to show through wrapper
-      !effectiveFixed ? "overflow:hidden" : ""
+      // Only apply overflow:hidden when not fixed and no bottom bar slot has overflow enabled
+      // (bottom bar overflow:visible needs the card to not clip its content)
+      !effectiveFixed && !(cfg.bottom_bar_left_overflow || cfg.bottom_bar_center_overflow || cfg.bottom_bar_right_overflow) ? "overflow:hidden" : ""
     ].filter(Boolean).join(";");
 
     // Only show overlay gradient if blend is enabled
@@ -2740,6 +3142,7 @@ class HkiHeaderCard extends LitElement {
         <div class="overlay" style=${overlayStyle}></div>
         <div class="content" style=${contentStyle}>
           ${this._renderTopBar()}
+          ${this._renderBottomBar()}
           <div class="title-block" style=${titleBlockStyle}>
             <div class="title" style=${titleInline} role="heading" aria-level="1">${titleText}</div>
             ${subtitleVisible ? html`<div class="subtitle" style="${subtitleInline}${subtitleTransform}">${subtitleText}</div>` : html``}
@@ -2810,7 +3213,8 @@ class HkiHeaderCardEditor extends LitElement {
     "top_bar_right_pill_padding_x", "top_bar_right_pill_padding_y", "top_bar_right_pill_radius", "top_bar_right_pill_blur",
     "info_pill_border_width", "top_bar_left_pill_border_width", "top_bar_center_pill_border_width", "top_bar_right_pill_border_width",
     "card_border_width",
-    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width"
+    "persons_offset_x", "persons_offset_y", "persons_size", "persons_spacing", "persons_border_width",
+    "bottom_bar_offset_y", "bottom_bar_padding_x"
   ]);
 
   static _nullableNumericFields = new Set([
@@ -2826,6 +3230,7 @@ class HkiHeaderCardEditor extends LitElement {
     "weather_show_pressure", "weather_colored_icons", "info_pill",
     "datetime_show_time", "datetime_show_date", "datetime_show_day", "top_bar_enabled",
     "blend_enabled", "persons_enabled", "persons_use_entity_picture", "persons_grayscale_away", "persons_dynamic_order", "persons_hide_away",
+    "bottom_bar_enabled",
     "top_bar_left_use_global", "top_bar_left_pill", "top_bar_left_overflow", "top_bar_left_show_icon", "top_bar_left_show_condition", "top_bar_left_show_temperature", "top_bar_left_show_humidity", "top_bar_left_show_wind", "top_bar_left_show_pressure", "top_bar_left_weather_colored_icons", "top_bar_left_show_day", "top_bar_left_show_date", "top_bar_left_show_time",
     "top_bar_center_use_global", "top_bar_center_pill", "top_bar_center_overflow", "top_bar_center_show_icon", "top_bar_center_show_condition", "top_bar_center_show_temperature", "top_bar_center_show_humidity", "top_bar_center_show_wind", "top_bar_center_show_pressure", "top_bar_center_weather_colored_icons", "top_bar_center_show_day", "top_bar_center_show_date", "top_bar_center_show_time",
     "top_bar_right_use_global", "top_bar_right_pill", "top_bar_right_overflow", "top_bar_right_show_icon", "top_bar_right_show_condition", "top_bar_right_show_temperature", "top_bar_right_show_humidity", "top_bar_right_show_wind", "top_bar_right_show_pressure", "top_bar_right_weather_colored_icons", "top_bar_right_show_day", "top_bar_right_show_date", "top_bar_right_show_time"
@@ -2836,6 +3241,16 @@ class HkiHeaderCardEditor extends LitElement {
     this._config = {}; // Will be populated by setConfig
     // Cache for domain selection when ha-service-picker isn't available
     this._paDomainCache = {};
+  }
+
+  _getLovelace() {
+    if (this.lovelace) return this.lovelace;
+    try {
+      const root = document.querySelector('home-assistant')?.shadowRoot
+        ?.querySelector('ha-panel-lovelace')?.shadowRoot
+        ?.querySelector('hui-root');
+      return root?.lovelace || root?.__lovelace || null;
+    } catch (e) { return null; }
   }
 
   _renderNavigationPathPicker(label, value, onChange) {
@@ -2930,6 +3345,15 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.data) cleaned.data = action.data;
         if (action.target) cleaned.target = action.target;
         break;
+      case "hki-more-info":
+        if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
+        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
+        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
+        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        if (action.popup_name) cleaned.popup_name = action.popup_name;
+        if (action.popup_state) cleaned.popup_state = action.popup_state;
+        break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
         Object.keys(action).forEach(key => {
@@ -2950,11 +3374,10 @@ class HkiHeaderCardEditor extends LitElement {
 
   _stripDefaults(config) {
     // Create a clean config object with essential fields always present
-    const stripped = { 
-      type: config.type,
-      title: config.title !== undefined ? config.title : "Header",
-      subtitle: config.subtitle !== undefined ? config.subtitle : ""
-    };
+    const stripped = { type: config.type };
+    // Only write title/subtitle when they differ from defaults (avoids noise in YAML)
+    if (config.title && config.title !== "Header") stripped.title = config.title;
+    if (config.subtitle) stripped.subtitle = config.subtitle;
     
     // Always include these essential fields even if they match defaults
     // This ensures Home Assistant recognizes this as a valid header card
@@ -3098,6 +3521,15 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.top_bar_offset_y !== undefined) nested.top_bar.offset_y = flat.top_bar_offset_y;
       if (flat.top_bar_padding_x !== undefined) nested.top_bar.padding_x = flat.top_bar_padding_x;
     }
+
+    // Nest bottom_bar if any settings exist
+    const hasBottomBarConfig = flat.bottom_bar_enabled !== undefined || flat.bottom_bar_offset_y !== undefined || flat.bottom_bar_padding_x !== undefined;
+    if (hasBottomBarConfig) {
+      nested.bottom_bar = nested.bottom_bar || {};
+      if (flat.bottom_bar_enabled !== undefined) nested.bottom_bar.enabled = flat.bottom_bar_enabled;
+      if (flat.bottom_bar_offset_y !== undefined) nested.bottom_bar.offset_y = flat.bottom_bar_offset_y;
+      if (flat.bottom_bar_padding_x !== undefined) nested.bottom_bar.padding_x = flat.bottom_bar_padding_x;
+    }
     
     // Nest info if any settings exist
     const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
@@ -3119,18 +3551,40 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_pill_border_width !== undefined) nested.info.pill_border_width = flat.info_pill_border_width;
       if (flat.info_pill_border_color !== undefined) nested.info.pill_border_color = flat.info_pill_border_color;
     }
+
+    // Nest bottom_info if any settings exist
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_pill', 'bottom_info_pill_background',
+                      'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
+                      'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
+    const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
+    if (hasBottomInfoConfig) {
+      nested.bottom_info = {};
+      if (flat.bottom_info_size_px !== undefined) nested.bottom_info.size_px = flat.bottom_info_size_px;
+      if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
+      if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
+      if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
+      if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
+      if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
+      if (flat.bottom_info_pill_padding_y !== undefined) nested.bottom_info.pill_padding_y = flat.bottom_info_pill_padding_y;
+      if (flat.bottom_info_pill_radius !== undefined) nested.bottom_info.pill_radius = flat.bottom_info_pill_radius;
+      if (flat.bottom_info_pill_blur !== undefined) nested.bottom_info.pill_blur = flat.bottom_info_pill_blur;
+      if (flat.bottom_info_pill_border_style !== undefined) nested.bottom_info.pill_border_style = flat.bottom_info_pill_border_style;
+      if (flat.bottom_info_pill_border_width !== undefined) nested.bottom_info.pill_border_width = flat.bottom_info_pill_border_width;
+      if (flat.bottom_info_pill_border_color !== undefined) nested.bottom_info.pill_border_color = flat.bottom_info_pill_border_color;
+    }
     
     // Nest slots - always include them even if "none" for clarity
+    ['top_bar', 'bottom_bar'].forEach(bar => {
     ['left', 'center', 'right'].forEach(slot => {
-      const slotType = flat[`top_bar_${slot}`];
+      const slotType = flat[`${bar}_${slot}`];
       
       // If slot is "none" or undefined, just set type: "none"
       if (!slotType || slotType === "none") {
-        nested[`top_bar_${slot}`] = { type: "none" };
+        nested[`${bar}_${slot}`] = { type: "none" };
         return;
       }
       
-      const prefix = `top_bar_${slot}_`;
+      const prefix = `${bar}_${slot}_`;
       const slotConfig = { type: slotType };
       
       // Common properties
@@ -3139,6 +3593,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat[prefix + "offset_x_mobile"] !== undefined) slotConfig.offset_x_mobile = flat[prefix + "offset_x_mobile"];
       if (flat[prefix + "offset_y_mobile"] !== undefined) slotConfig.offset_y_mobile = flat[prefix + "offset_y_mobile"];
       if (flat[prefix + "overflow"] !== undefined) slotConfig.overflow = flat[prefix + "overflow"];
+      if (flat[prefix + "align"] !== undefined) slotConfig.align = flat[prefix + "align"];
       
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
@@ -3197,7 +3652,7 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
           if (flat[prefix + "label"] !== undefined) slotConfig.button.label = flat[prefix + "label"];
         }
-      } else if (slotType === "custom") {
+      } else if (slotType === "notifications" || slotType === "custom" || slotType === "card") {
         if (flat[prefix + "card"] !== undefined) {
           slotConfig.custom = { card: flat[prefix + "card"] };
         }
@@ -3212,8 +3667,9 @@ class HkiHeaderCardEditor extends LitElement {
         if (flat[prefix + "double_tap_action"]) slotConfig.actions.double_tap_action = flat[prefix + "double_tap_action"];
       }
       
-      nested[`top_bar_${slot}`] = slotConfig;
+      nested[`${bar}_${slot}`] = slotConfig;
     });
+    }); // end bar loop
     
     // Nest persons
     const personsKeys = ['persons_enabled', 'persons_align', 'persons_offset_x', 'persons_offset_y',
@@ -3290,11 +3746,11 @@ class HkiHeaderCardEditor extends LitElement {
     return ev.detail?.value ?? ev.target?.value;
   }
 
-  _handleCustomCardChange(ev, slot) {
+  _handleCustomCardChange(ev, slot, bar = "top_bar") {
     ev.stopPropagation();
     if (!this._config) return;
     const newCardConfig = ev.detail.config;
-    const field = `top_bar_${slot}_card`;
+    const field = `${bar}_${slot}_card`;
     this._config = { ...this._config, [field]: newCardConfig };
     const strippedConfig = this._stripDefaults(this._config);
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
@@ -3401,7 +3857,9 @@ class HkiHeaderCardEditor extends LitElement {
   }
 
   _renderTemplateEditor(label, field, options = {}) {
-    const value = this._config?.[field] ?? "";
+    // options.value / options.onchange allow standalone use outside of this._config
+    const hasCustomBinding = options.onchange !== undefined;
+    const value = hasCustomBinding ? (options.value ?? "") : (this._config?.[field] ?? "");
     return html`
       <div class="section">${label}</div>
       <ha-code-editor
@@ -3411,9 +3869,12 @@ class HkiHeaderCardEditor extends LitElement {
         autocomplete-entities
         @value-changed=${(ev) => {
           ev.stopPropagation();
-          const newValue = ev.detail?.value;
-          if (newValue !== value) {
-            this._config = { ...this._config, [field]: (newValue ?? "") };
+          const newValue = ev.detail?.value ?? "";
+          if (newValue === value) return;
+          if (hasCustomBinding) {
+            options.onchange(newValue);
+          } else {
+            this._config = { ...this._config, [field]: newValue };
             const strippedConfig = this._stripDefaults(this._config);
             this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: strippedConfig }, bubbles: true, composed: true }));
           }
@@ -3431,28 +3892,41 @@ class HkiHeaderCardEditor extends LitElement {
       spacer: "Spacer",
       weather: "Weather",
       datetime: "Date/Time",
+      notifications: "Notifications",
       custom: "Notifications",
+      card: "Custom Card",
       button: "Button"
     };
     return labels[type] || "Empty";
   }
 
-  _renderSlotEditor(slotName) {
-    const prefix = `top_bar_${slotName}_`;
-    const type = this._config[`top_bar_${slotName}`] || "none";
+  _renderSlotEditor(slotName, bar = "top_bar") {
+    const prefix = `${bar}_${slotName}_`;
+    const type = this._config[`${bar}_${slotName}`] || "none";
     const useGlobal = this._config[prefix + "use_global"] !== false;
     
+    const displayType = (type === "custom") ? "notifications" : type;
     return html`
-      <ha-select label="Content Type" .value=${type} data-field="top_bar_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+      <ha-select label="Content Type" .value=${displayType} data-field="${bar}_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
         <mwc-list-item value="none">None</mwc-list-item>
         <mwc-list-item value="spacer">Spacer</mwc-list-item>
         <mwc-list-item value="weather">Weather</mwc-list-item>
         <mwc-list-item value="datetime">Date/Time</mwc-list-item>
-        <mwc-list-item value="custom">Notifications</mwc-list-item>
+        <mwc-list-item value="notifications">Notifications</mwc-list-item>
+        <mwc-list-item value="card">Custom Card</mwc-list-item>
         <mwc-list-item value="button">Button</mwc-list-item>
       </ha-select>
       
       ${type !== "none" && type !== "spacer" ? html`
+        <div class="section" style="margin-top: 12px;">Alignment</div>
+        <ha-select label="Content Alignment" .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")} data-field="${prefix}align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
+          <mwc-list-item value="start">Start (left)</mwc-list-item>
+          <mwc-list-item value="center">Center</mwc-list-item>
+          <mwc-list-item value="end">End (right)</mwc-list-item>
+          ${(type === "card" || type === "notifications" || type === "custom") ? html`
+            <mwc-list-item value="stretch">Stretch (fill available slots)</mwc-list-item>
+          ` : ''}
+        </ha-select>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -3534,23 +4008,34 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="Label (optional)" .value=${this._config[prefix + "label"] || ""} data-field="${prefix}label" @input=${this._changed}></ha-textfield>
       ` : ''}
       
-      ${type === "custom" ? html`
-          <ha-alert alert-type="warning" style="margin-bottom: 8px;">
+      ${(type === "notifications" || type === "custom") ? html`
+          <ha-alert alert-type="info" style="margin-bottom: 8px;">
             This requires the <b>hki-notify</b> integration and the <b>custom:hki-notification-card</b> resource.
           </ha-alert>
           <p style="opacity: 0.7; font-size: 0.9em; margin-top: 8px;">Enable "Use Header Styling" in the notification card below to inherit styling from the Global Styling (Defaults) settings.</p>
           <div class="card-config">
             <hui-card-element-editor
               .hass=${this.hass}
-              .lovelace=${this.lovelace}
+              .lovelace=${this._getLovelace()}
               .value=${{ 
                 type: "custom:hki-notification-card", 
                 use_header_styling: true, 
                 show_background: false,
                 show_empty: true,
-                ...(this._config[`top_bar_${slotName}_card`] || {})
+                ...(this._config[`${bar}_${slotName}_card`] || {})
               }}
-              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName)}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
+            ></hui-card-element-editor>
+          </div>
+      ` : ''}
+      
+      ${type === "card" ? html`
+          <div class="card-config">
+            <hui-card-element-editor
+              .hass=${this.hass}
+              .lovelace=${this._getLovelace()}
+              .value=${this._config[`${bar}_${slotName}_card`] || { type: "vertical-stack", cards: [] }}
+              @config-changed=${(ev) => this._handleCustomCardChange(ev, slotName, bar)}
             ></hui-card-element-editor>
           </div>
       ` : ''}
@@ -3569,7 +4054,7 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
       ` : ''}
       
-      ${type !== "none" && type !== "custom" && type !== "spacer" ? html`
+      ${type !== "none" && type !== "notifications" && type !== "custom" && type !== "card" && type !== "spacer" ? html`
         <div class="section" style="margin-top: 12px;">Styling</div>
         <div class="switch-row">
           <ha-switch .checked=${useGlobal} data-field="${prefix}use_global" @change=${this._changed}></ha-switch>
@@ -3612,13 +4097,15 @@ class HkiHeaderCardEditor extends LitElement {
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
+      const strippedConfig = this._stripDefaults(this._config);
       this.dispatchEvent(
         new CustomEvent("config-changed", {
-          detail: { config: this._config },
+          detail: { config: strippedConfig },
           bubbles: true,
           composed: true,
         })
       );
+      this.requestUpdate();
     };
 
     const patchAction = (patch) => {
@@ -3634,6 +4121,7 @@ class HkiHeaderCardEditor extends LitElement {
         <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
         <mwc-list-item value="url">Open URL</mwc-list-item>
         <mwc-list-item value="more-info">More Info</mwc-list-item>
+        <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
         <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
         <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
       </ha-select>
@@ -3645,6 +4133,45 @@ class HkiHeaderCardEditor extends LitElement {
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+      ` : ''}
+      ${actionType === "hki-more-info" ? html`
+        <div class="section" style="margin-top: 12px;">Popup Header</div>
+        ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + field, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+        ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + field, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+        <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+        <div class="inline-fields-2">
+          <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+          <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+        </div>
+        <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="none">None</mwc-list-item>
+          <mwc-list-item value="fade">Fade</mwc-list-item>
+          <mwc-list-item value="scale">Scale</mwc-list-item>
+          <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+          <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+        </ha-select>
+        <div class="switch-row" style="margin-top: 8px;">
+          <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+          <span>Background blur</span>
+        </div>
+        <div class="section" style="margin-top: 12px;">Popup Card</div>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+        <div class="card-config">
+          <hui-card-element-editor
+            .hass=${this.hass}
+            .lovelace=${this._getLovelace()}
+            .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+            @config-changed=${(ev) => {
+              ev.stopPropagation();
+              const newCard = ev.detail?.config;
+              if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                patchAction({ custom_popup_card: newCard });
+              }
+            }}
+          ></hui-card-element-editor>
+        </div>
       ` : ''}
       ${actionType === "perform-action" ? html`
         ${customElements.get("ha-service-picker") ? html`
@@ -3788,6 +4315,7 @@ class HkiHeaderCardEditor extends LitElement {
             <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
             <mwc-list-item value="url">Open URL</mwc-list-item>
             <mwc-list-item value="more-info">More Info</mwc-list-item>
+            <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
             <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
             <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
           </ha-select>
@@ -3799,6 +4327,45 @@ class HkiHeaderCardEditor extends LitElement {
           ` : ''}
           ${actionValue === "more-info" || actionValue === "toggle" ? html`
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
+          ` : ''}
+          ${actionValue === "hki-more-info" ? html`
+            <div class="section" style="margin-top: 12px;">Popup Header</div>
+            ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex + "_" + actionType, { value: action.popup_name || "", onchange: (v) => patchAction({ popup_name: v || undefined }) })}
+            ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex + "_" + actionType, { value: action.popup_state || "", onchange: (v) => patchAction({ popup_state: v || undefined }) })}
+            <div class="section" style="margin-top: 12px;">Popup Appearance</div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${String(action.popup_border_radius ?? 16)} @input=${(ev) => patchAction({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Popup Width" helper="auto or px value" .value=${action.popup_width || "auto"} @input=${(ev) => patchAction({ popup_width: ev.target.value })}></ha-textfield>
+            </div>
+            <ha-select label="Open Animation" .value=${action.popup_open_animation || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_open_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="none">None</mwc-list-item>
+              <mwc-list-item value="fade">Fade</mwc-list-item>
+              <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+              <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+            </ha-select>
+            <div class="switch-row" style="margin-top: 8px;">
+              <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+              <span>Background blur</span>
+            </div>
+            <div class="section" style="margin-top: 12px;">Popup Card</div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">This card will be shown inside the HKI popup when this action is triggered.</p>
+            <div class="card-config">
+              <hui-card-element-editor
+                .hass=${this.hass}
+                .lovelace=${this._getLovelace()}
+                .value=${action.custom_popup_card || { type: "vertical-stack", cards: [] }}
+                @config-changed=${(ev) => {
+                  ev.stopPropagation();
+                  const newCard = ev.detail?.config;
+                  if (newCard && JSON.stringify(newCard) !== JSON.stringify(action.custom_popup_card)) {
+                    patchAction({ custom_popup_card: newCard });
+                  }
+                }}
+              ></hui-card-element-editor>
+            </div>
           ` : ''}
           ${actionValue === "perform-action" ? html`
             ${customElements.get("ha-service-picker") ? html`
@@ -4484,23 +5051,99 @@ class HkiHeaderCardEditor extends LitElement {
                 <details class="box-section">
                   <summary>Left Slot: ${this._getSlotLabel(this._config.top_bar_left)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('left')}
+                    ${this._renderSlotEditor('left', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Center Slot: ${this._getSlotLabel(this._config.top_bar_center)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('center')}
+                    ${this._renderSlotEditor('center', 'top_bar')}
                   </div>
                 </details>
 
                 <details class="box-section">
                   <summary>Right Slot: ${this._getSlotLabel(this._config.top_bar_right)}</summary>
                   <div class="box-content">
-                    ${this._renderSlotEditor('right')}
+                    ${this._renderSlotEditor('right', 'top_bar')}
                   </div>
                 </details>
+            ` : ''}
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Bottom Bar</summary>
+          <div class="box-content">
+            <div class="switch-row">
+              <ha-switch .checked=${!!this._config.bottom_bar_enabled} data-field="bottom_bar_enabled" @change=${this._changed}></ha-switch>
+              <span>Enable Bottom Bar</span>
+            </div>
+            ${this._config.bottom_bar_enabled ? html`
+              <div class="inline-fields-2" style="margin-top: 8px;">
+                <ha-textfield label="Y Offset (px)" type="number" .value=${String(this._config.bottom_bar_offset_y ?? 10)} data-field="bottom_bar_offset_y" @input=${this._changed}></ha-textfield>
+                <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_bar_padding_x ?? 0)} data-field="bottom_bar_padding_x" @input=${this._changed}></ha-textfield>
+              </div>
+
+              <details class="box-section">
+                <summary>Global Styling (Defaults)</summary>
+                <div class="box-content">
+                  <div class="inline-fields-2">
+                    <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config.bottom_info_size_px || 12)} data-field="bottom_info_size_px" @input=${this._changed}></ha-textfield>
+                    <ha-select label="Font Weight" .value=${this._config.bottom_info_weight || "medium"} data-field="bottom_info_weight" @selected=${this._changed} @closed=${this._changed}>
+                      ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
+                    </ha-select>
+                  </div>
+                  <ha-textfield label="Text Color" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  
+                  <div class="switch-row">
+                    <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
+                    <span>Enable Pill Style</span>
+                  </div>
+                  ${this._config.bottom_info_pill ? html`
+                    <ha-textfield label="Pill Background" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-2">
+                      <ha-textfield label="Border Radius (px)" type="number" .value=${String(this._config.bottom_info_pill_radius ?? 999)} data-field="bottom_info_pill_radius" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Blur (px)" type="number" .value=${String(this._config.bottom_info_pill_blur ?? 0)} data-field="bottom_info_pill_blur" @input=${this._changed}></ha-textfield>
+                    </div>
+                    <div class="inline-fields-3">
+                      <ha-select label="Border Style" .value=${this._config.bottom_info_pill_border_style || "none"} data-field="bottom_info_pill_border_style" @selected=${this._changed} @closed=${this._changed}>
+                        <mwc-list-item value="none">None</mwc-list-item>
+                        <mwc-list-item value="solid">Solid</mwc-list-item>
+                        <mwc-list-item value="dashed">Dashed</mwc-list-item>
+                        <mwc-list-item value="dotted">Dotted</mwc-list-item>
+                      </ha-select>
+                      <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>
+                    </div>
+                  ` : ''}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Left Slot: ${this._getSlotLabel(this._config.bottom_bar_left)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('left', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Center Slot: ${this._getSlotLabel(this._config.bottom_bar_center)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('center', 'bottom_bar')}
+                </div>
+              </details>
+
+              <details class="box-section">
+                <summary>Right Slot: ${this._getSlotLabel(this._config.bottom_bar_right)}</summary>
+                <div class="box-content">
+                  ${this._renderSlotEditor('right', 'bottom_bar')}
+                </div>
+              </details>
             ` : ''}
           </div>
         </details>

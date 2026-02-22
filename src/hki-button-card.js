@@ -1,19 +1,7 @@
 // HKI Button Card
 
 (function() {
-  const _getLit = () => {
-    const base =
-      customElements.get("hui-masonry-view") ||
-      customElements.get("ha-panel-lovelace") ||
-      customElements.get("ha-app");
-    const LitElement = base ? Object.getPrototypeOf(base) : window.LitElement;
-    const html = LitElement?.prototype?.html || window.html;
-    const css = LitElement?.prototype?.css || window.css;
-    return { LitElement, html, css };
-  };
-
-  const { LitElement, html, css } = _getLit();
-
+  const { LitElement, html, css } = window.HKI.getLit();
   const CARD_TYPE = "hki-button-card";
   const EDITOR_TAG = "hki-button-card-editor";
 
@@ -98,70 +86,13 @@
   });
 
 
-  // Inject popup animation keyframes once into the document
-  if (!document.getElementById('hki-popup-animations')) {
-    const s = document.createElement('style');
-    s.id = 'hki-popup-animations';
-    s.textContent = `
-      @keyframes hki-anim-fade-in        { from { opacity:0 }                           to { opacity:1 } }
-      @keyframes hki-anim-fade-out       { from { opacity:1 }                           to { opacity:0 } }
-      @keyframes hki-anim-scale-in       { from { opacity:0; transform:scale(.85) }     to { opacity:1; transform:scale(1) } }
-      @keyframes hki-anim-scale-out      { from { opacity:1; transform:scale(1) }       to { opacity:0; transform:scale(.85) } }
-      @keyframes hki-anim-slide-up       { from { opacity:0; transform:translateY(40px) }  to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-down { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(40px) } }
-      @keyframes hki-anim-slide-down     { from { opacity:0; transform:translateY(-40px) } to { opacity:1; transform:translateY(0) } }
-      @keyframes hki-anim-slide-out-up   { from { opacity:1; transform:translateY(0) }     to { opacity:0; transform:translateY(-40px) } }
-      @keyframes hki-anim-slide-left     { from { opacity:0; transform:translateX(40px) }  to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-right{ from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(40px) } }
-      @keyframes hki-anim-slide-right    { from { opacity:0; transform:translateX(-40px) } to { opacity:1; transform:translateX(0) } }
-      @keyframes hki-anim-slide-out-left { from { opacity:1; transform:translateX(0) }     to { opacity:0; transform:translateX(-40px) } }
-      @keyframes hki-anim-flip-in        { from { opacity:0; transform:perspective(600px) rotateX(-30deg) } to { opacity:1; transform:perspective(600px) rotateX(0) } }
-      @keyframes hki-anim-flip-out       { from { opacity:1; transform:perspective(600px) rotateX(0) }      to { opacity:0; transform:perspective(600px) rotateX(-30deg) } }
-      @keyframes hki-anim-bounce-in      { 0%{opacity:0;transform:scale(.6)} 60%{transform:scale(1.05)} 80%{transform:scale(.97)} 100%{opacity:1;transform:scale(1)} }
-      @keyframes hki-anim-zoom-in        { 0%{opacity:0; transform:scale(.6) rotate(-2deg)} 60%{opacity:1; transform:scale(1.03) rotate(0deg)} 100%{opacity:1; transform:scale(1) rotate(0deg)} }
-      @keyframes hki-anim-zoom-out       { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.6) rotate(-2deg) } }
-      @keyframes hki-anim-rotate-in      { from { opacity:0; transform:scale(.95) rotate(-8deg) } to { opacity:1; transform:scale(1) rotate(0deg) } }
-      @keyframes hki-anim-rotate-out     { from { opacity:1; transform:scale(1) rotate(0deg) } to { opacity:0; transform:scale(.95) rotate(8deg) } }
-      @keyframes hki-anim-drop-in        { 0%{opacity:0; transform:translateY(-18px) scale(.98)} 60%{opacity:1; transform:translateY(6px) scale(1)} 80%{transform:translateY(-2px)} 100%{opacity:1; transform:translateY(0)} }
-      @keyframes hki-anim-drop-out       { from { opacity:1; transform:translateY(0) } to { opacity:0; transform:translateY(18px) } }
-      @keyframes hki-anim-swing-in       { 0%{opacity:0; transform:translateY(10px) rotate(-6deg)} 60%{opacity:1; transform:translateY(0) rotate(3deg)} 100%{opacity:1; transform:translateY(0) rotate(0deg)} }
-      @keyframes hki-anim-swing-out      { from { opacity:1; transform:translateY(0) rotate(0deg) } to { opacity:0; transform:translateY(10px) rotate(6deg) } }
-    `;
-    document.head.appendChild(s);
-  }
+  // Ensure popup animation keyframes are injected once (shared across HKI cards)
+  window.HKI?.ensurePopupAnimations?.();
 
   // Prevent background page scroll when any popup is open
-  let __hkiPrevBodyScroll = null;
-  let __hkiPrevBodyPosition = null;
-  let __hkiPrevBodyTop = null;
-  let __hkiScrollY = 0;
-  const __hkiLockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll !== null) return;
-      __hkiScrollY = window.scrollY || window.pageYOffset || 0;
-      __hkiPrevBodyScroll = document.body.style.overflow;
-      __hkiPrevBodyPosition = document.body.style.position;
-      __hkiPrevBodyTop = document.body.style.top;
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${__hkiScrollY}px`;
-      document.body.style.width = '100%';
-    } catch (e) {}
-  };
-  const __hkiUnlockScroll = () => {
-    try {
-      if (__hkiPrevBodyScroll === null) return;
-      document.body.style.overflow = __hkiPrevBodyScroll || '';
-      document.body.style.position = __hkiPrevBodyPosition || '';
-      document.body.style.top = __hkiPrevBodyTop || '';
-      document.body.style.width = '';
-      window.scrollTo(0, __hkiScrollY || 0);
-    } catch (e) {}
-    __hkiPrevBodyScroll = null;
-    __hkiPrevBodyPosition = null;
-    __hkiPrevBodyTop = null;
-    __hkiScrollY = 0;
-  };
+    // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
+  const __hkiLockScroll = () => window.HKI?.lockScroll?.();
+  const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
 
   
 
@@ -616,6 +547,7 @@ class HkiButtonCard extends LitElement {
         // Badge does not support label/info display fields
         this._config.show_label = false;
         this._config.show_brightness = false;
+        this._config.show_info_display = false;
       }
 
 
@@ -687,7 +619,11 @@ class HkiButtonCard extends LitElement {
       }
       
       this.requestUpdate();
-    }
+    
+
+      // Ensure badge layout sizes to content inside HA stacks (avoids large gaps)
+      this._applyHostLayoutSizing();
+}
 
     connectedCallback() {
       super.connectedCallback();
@@ -724,6 +660,9 @@ class HkiButtonCard extends LitElement {
     }
 
     updated(changedProps) {
+
+      // Keep host sizing in sync with layout (important for badge layout in stacks)
+      this._applyHostLayoutSizing();
 
       // Ensure we have accurate stage dimensions for stable grid placement (especially inside parent type: grid cards).
       // We observe the ha-card (actual visible box) rather than the host element to avoid padding/overflow clipping issues.
@@ -939,6 +878,30 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
 
     /* --- HELPER METHODS --- */
+
+
+    _applyHostLayoutSizing() {
+      try {
+        const layout = (this._config?.card_layout || 'square');
+        // In HA stacks (e.g. horizontal-stack), children are flex: 1 by default, which makes
+        // "badge" layout leave large gaps. Force the host itself to size to content for badges.
+        if (layout === 'badge') {
+          this.style.setProperty('flex', '0 0 auto', 'important');
+          this.style.setProperty('width', 'fit-content');
+          this.style.setProperty('max-width', '100%');
+          // Avoid unintended stretching from min-width constraints
+          this.style.setProperty('min-width', '0');
+        } else {
+          // Reset so other layouts behave normally
+          this.style.removeProperty('flex');
+          this.style.removeProperty('width');
+          this.style.removeProperty('max-width');
+          this.style.removeProperty('min-width');
+        }
+      } catch (_) {}
+    }
+
+
     _getTempGradient() {
       return 'linear-gradient(to top, #00D9FF 0%, #00E5A0 25%, #DFFF00 50%, #FFB800 75%, #FF8C00 100%)';
     }
@@ -1065,9 +1028,9 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     _updateHeaderIcon() {
       if (!this._popupPortal) return;
-      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon');
+      const headerIcon = this._popupPortal.querySelector('.hki-light-popup-title ha-icon, .hki-light-popup-title ha-state-icon');
       if (headerIcon) {
-        headerIcon.style.color = this._getCurrentColor();
+        headerIcon.style.color = this._getPopupIconColor(this._getCurrentColor());
       }
       const stateEl = this._popupPortal.querySelector('.hki-light-popup-state');
       if (stateEl) {
@@ -1076,7 +1039,7 @@ if (!shouldUpdate && oldEntity && newEntity &&
 	        const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
 	        const isOnEffective = isUnavailable ? false : isOn;
         const brightness = this._getBrightness();
-	        stateEl.textContent = isOnEffective ? brightness + '%' : 'Off';
+	        stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
       }
     }
 
@@ -1146,6 +1109,46 @@ if (!shouldUpdate && oldEntity && newEntity &&
         ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
         : '';
       return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
+    }
+
+    /**
+     * Returns the display name for popup headers.
+     * Priority: config name (template-resolved) → entity friendly_name → entity id
+     */
+    _getPopupName(entity) {
+      if (this._config.name) {
+        return this._isTemplate(this._config.name)
+          ? (this._renderedName || entity?.attributes?.friendly_name || this._config.entity || '')
+          : this._config.name;
+      }
+      return entity?.attributes?.friendly_name || this._config.entity || '';
+    }
+
+    /**
+     * Returns the state string for popup headers.
+     * If state_label is explicitly configured, it takes priority over the
+     * domain-specific state string (e.g. brightness %, mode name, etc.).
+     */
+    _getPopupHeaderState(domainSpecificState) {
+      if (this._config.state_label !== undefined && this._config.state_label !== '') {
+        return this._isTemplate(this._config.state_label)
+          ? (this._renderedState || domainSpecificState)
+          : this._config.state_label;
+      }
+      return domainSpecificState;
+    }
+
+    /**
+     * Returns the icon color to use in popup headers.
+     * If icon_color is set in config it takes priority (template-aware).
+     * Otherwise the domain-specific color (brightness-derived, state-based, etc.) is used.
+     */
+    _getPopupIconColor(domainColor) {
+      if (this._config.icon_color) {
+        const rendered = this.renderTemplate('iconColor', this._config.icon_color);
+        if (rendered && rendered !== '[object Object]') return rendered;
+      }
+      return domainColor;
     }
 
     // Returns the best color for a climate entity by checking hvac_action first,
@@ -2257,7 +2260,7 @@ _tileSliderClick(e) {
       const portal = this._popupPortal;
       if (!portal) return;
 
-      const anim = this._config.popup_close_animation || 'none';
+      const anim = this._config.popup_close_animation || 'scale';
       const dur = this._config.popup_animation_duration ?? 300;
 
       if (anim === 'none') {
@@ -2292,7 +2295,7 @@ _tileSliderClick(e) {
     }
 
     _applyOpenAnimation(portal) {
-      const anim = this._config.popup_open_animation || 'none';
+      const anim = this._config.popup_open_animation || 'scale';
       if (anim === 'none') return;
       const dur = this._config.popup_animation_duration ?? 300;
       const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
@@ -2806,12 +2809,9 @@ _tileSliderClick(e) {
 
 
     _renderPopupPortal() {
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
+      // Reuse existing portal to avoid flicker on hass updates.
       const entity = this._getEntity();
-      const entityName = this._config.name || ((entity ? entity?.attributes?.friendly_name || '' : '') || this._config.entity);
+      const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
       const isOnEffective = isUnavailable ? false : isOn;
@@ -2841,8 +2841,10 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
       
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -3248,7 +3250,7 @@ _tileSliderClick(e) {
               <span id="hkiHeaderIconSlot"></span>
               <span class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off'))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </span>
             </span>
             <div class="hki-light-popup-header-controls">
@@ -3332,8 +3334,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       // Populate header icon (avoid rendering lit-html objects into innerHTML)
@@ -3353,6 +3357,12 @@ _tileSliderClick(e) {
             if (cfgIcon) {
               // Allow custom icon, but keep entity state/color behavior
               el.icon = cfgIcon;
+            }
+
+            // Apply custom icon_color if configured, else actual light/entity color
+            const _slotIconColor = this._getPopupIconColor(this._getCurrentColor());
+            if (_slotIconColor) {
+              el.style.color = _slotIconColor;
             }
 
             slot.appendChild(el);
@@ -3380,9 +3390,9 @@ _tileSliderClick(e) {
     }
 
     _renderClimatePopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const mode = entity.state;
       const unit = '°';
@@ -3402,8 +3412,10 @@ _tileSliderClick(e) {
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const renderStateLine = () => {
         const cur = this._getClimateBadgeTemperature(entity);
@@ -3625,10 +3637,10 @@ _tileSliderClick(e) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${renderStateLine()}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -3665,8 +3677,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -4757,13 +4771,9 @@ _tileSliderClick(e) {
 
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
-
-      if (this._popupPortal) {
-        this._popupPortal.remove();
-      }
-
+      // Reuse existing portal to avoid flicker on hass updates.
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const pos = this._getCoverPosition(entity);
 
       // Check default view configuration for groups
@@ -4783,8 +4793,10 @@ _tileSliderClick(e) {
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (s) => String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -5041,10 +5053,10 @@ _tileSliderClick(e) {
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${controlsIcon}" style="color: rgba(33,150,243,0.95)"></ha-icon>
+              <ha-icon icon="${controlsIcon}" style="color: ${this._getPopupIconColor('rgba(33,150,243,0.95)')}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${pos}%${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(pos + '%')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -5092,8 +5104,10 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
 
@@ -5401,10 +5415,9 @@ document.body.appendChild(portal);
      * ------------------------------------------------------------------ */
     _renderAlarmPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      if (this._popupPortal) this._popupPortal.remove();
-
-      const entityName = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const entityName = this._getPopupName(entity);
       const state = entity.state || 'unknown';
       const popupRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -5412,8 +5425,10 @@ document.body.appendChild(portal);
       const icon = this._getResolvedIcon(entity, (state === 'disarmed') ? 'mdi:shield-check' : 'mdi:shield-lock');
       const iconColor = (state === 'disarmed') ? '#4CAF50' : '#F44336';
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-light-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       const safeTitle = (t) => String(t || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -5545,10 +5560,10 @@ document.body.appendChild(portal);
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${icon}" style="color:${iconColor}"></ha-icon>
+              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(iconColor)}"></ha-icon>
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${String(state).replace(/_/g,' ')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(String(state).replace(/_/g,' '))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
@@ -5578,8 +5593,10 @@ document.body.appendChild(portal);
         </div>
       `;
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
       this._setupAlarmPopupHandlers(portal);
 
@@ -5710,9 +5727,9 @@ document.body.appendChild(portal);
      * Humidifier Popup
      */
     _renderHumidifierPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -5732,8 +5749,10 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -5879,10 +5898,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -5920,8 +5939,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -6127,9 +6148,9 @@ document.body.appendChild(portal);
      * Fan Popup
      */
     _renderFanPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
       const isOn = state === 'on';
@@ -6150,8 +6171,10 @@ document.body.appendChild(portal);
       const valueSize = this._config.popup_value_font_size || 36;
       const valueWeight = this._config.popup_value_font_weight || 300;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -6289,10 +6312,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? speed + '%' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -6342,8 +6365,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -6595,7 +6620,7 @@ document.body.appendChild(portal);
      */
 
     _renderSwitchPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
       this._popupType = 'switch';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
@@ -6612,7 +6637,7 @@ document.body.appendChild(portal);
       const domain = (entity.entity_id || this._config.entity || '').split('.')[0] || this._getDomain();
       const serviceDomain = domain === 'group' ? 'homeassistant' : (domain === 'input_boolean' ? 'input_boolean' : 'switch');
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isOn = state === 'on';
 
@@ -6645,8 +6670,10 @@ document.body.appendChild(portal);
         </button>
       ` : '';
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -6812,10 +6839,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${isOn ? 'On' : 'Off'}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -6844,8 +6871,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -6917,7 +6946,7 @@ document.body.appendChild(portal);
     }
 
     _renderCustomPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
       this._popupType = 'custom';
       this._popupEntityId = entity?.entity_id || this._config?.entity || null;
       const hasRealEntity = !!entity;
@@ -6931,7 +6960,7 @@ document.body.appendChild(portal);
       }
 
 
-      const name = entity?.attributes?.friendly_name || this._config?.name || this._config?.entity || 'Popup';
+      const name = this._getPopupName(entity) || 'Popup';
       const state = entity?.state || '';
       const domain = entity ? this._getDomain() : '';
       const icon = entity ? this._getResolvedIcon(entity, this._getDomainIcon(domain)) : (this._config?.icon || 'mdi:information');
@@ -6954,8 +6983,10 @@ document.body.appendChild(portal);
       const popupBorderRadius = this._config.popup_border_radius ?? 16;
       const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       portal.innerHTML = `
         <style>
@@ -7020,10 +7051,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getLocalizedState(state, domain)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -7079,8 +7110,10 @@ document.body.appendChild(portal);
         });
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -7224,9 +7257,9 @@ document.body.appendChild(portal);
       });
     }
     _renderLockPopupPortal(entity) {
-      if (this._popupPortal) this._popupPortal.remove();
+      // Reuse existing portal to avoid flicker on hass updates.
 
-      const name = entity?.attributes?.friendly_name || '' || this._config.entity;
+      const name = this._getPopupName(entity);
       const state = entity.state;
       const isLocked = state === 'locked';
       const isUnlocked = state === 'unlocked';
@@ -7261,8 +7294,10 @@ document.body.appendChild(portal);
       // Supported features: bit 0 (1) indicates "open" support for locks in Home Assistant
       const canOpenDoor = ((Number(entity?.attributes?.supported_features) || 0) & 1) === 1;
 
-      const portal = document.createElement('div');
+      const portal = this._popupPortal || document.createElement('div');
       portal.className = 'hki-popup-portal';
+      // Clear previous content when reusing.
+      portal.innerHTML = '';
 
       // Calculate slider position (locked = top/100%, unlocked = bottom/0%)
       // Use actual state for slider position, not transition states
@@ -7413,10 +7448,10 @@ document.body.appendChild(portal);
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${color}"></ha-icon>
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${stateText}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(stateText)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -7451,8 +7486,10 @@ document.body.appendChild(portal);
         isBackgroundClick = false;
       });
 
-      document.body.appendChild(portal);
-      this._applyOpenAnimation(portal);
+      if (!this._popupPortal) {
+        document.body.appendChild(portal);
+        this._applyOpenAnimation(portal);
+      }
       this._popupPortal = portal;
 
       const closeBtn = portal.querySelector('#closeBtn');
@@ -8952,7 +8989,7 @@ const iconAlign = this._config.icon_align || 'left';
               const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
               
               const renderInfoDisplay = () => {
-                  if (this._config.show_brightness === false) return '';
+                  if (this._config.show_info_display === false) return '';
                   
                   let bottomValue = '';
                   
@@ -9532,7 +9569,7 @@ const iconAlign = this._config.icon_align || 'left';
                 const _name = (this._config.show_name !== false) ? elements.name?.() : '';
                 const _label = (this._config.show_label && labelText) ? elements.label?.() : '';
                 const _state = (this._config.show_state !== false) ? elements.state?.() : '';
-                const _info  = (this._config.show_brightness !== false) ? elements.info?.() : '';
+                const _info  = (this._config.show_info_display !== false) ? elements.info?.() : '';
                 const _temp  = (this._config.show_temp_badge !== false) ? elements.temp_badge?.() : '';
 
                 return html`
@@ -10775,7 +10812,7 @@ const iconAlign = this._config.icon_align || 'left';
       return (Number.isFinite(n) ? (base + n) : base);
     }
 
-    static get properties() { return { hass: {}, _config: { state: true }, _closedDetails: { state: true } }; }
+    static get properties() { return { hass: {}, lovelace: {}, _config: { state: true }, _closedDetails: { state: true } }; }
     
     constructor() {
       super();
@@ -11102,35 +11139,15 @@ setConfig(config) {
       if (!this._customPopupYamlFocused) {
         this._customPopupYamlDraft = null;
       }
-
-      // Auto-convert: if the incoming YAML differs from its normalized form,
-      // immediately fire config-changed so HA saves the clean nested format.
-      // This handles: old flat keys, obsolete/invalid keys, and nested drift.
-      const normalizedOutput = HkiButtonCard._serializeToNested(flat);
-      if (JSON.stringify(normalizedOutput) !== JSON.stringify(config)) {
-        Promise.resolve().then(() => {
-          this.dispatchEvent(new CustomEvent('config-changed', {
-            detail: { config: normalizedOutput },
-            bubbles: true,
-            composed: true,
-          }));
-        });
-      }
+      // NOTE: Do NOT fire config-changed here. Doing so causes an infinite crash loop when this
+      // editor is embedded inside hui-card-element-editor (e.g. as a slot card in hki-header-card):
+      // setConfig -> config-changed -> parent saves -> HA calls setConfig again -> repeat.
+      // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-    disconnectedCallback() {
+disconnectedCallback() {
       super.disconnectedCallback?.();
-      // HA's save button removes the editor from DOM without calling any save method.
-      // Flush any unsaved yaml editor content before we're destroyed.
-      const yamlEditor = this.shadowRoot?.querySelector('.custom-popup-yaml-editor');
-      if (!yamlEditor) return;
-      const raw = yamlEditor.value ?? '';
-      const obj = this._yamlStrToObj(raw);
-      if (!obj) return;
-      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-      if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-        this._fireChanged({ ...this._config, custom_popup_card: obj });
-      }
+      // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
     
     shouldUpdate(changedProps) {
@@ -11170,6 +11187,7 @@ setConfig(config) {
     
     render() {
       if (!this.hass || !this._config) return html``;
+      this._ensureCardEditorLoaded();
       
       const fonts = ["system", "Roboto", "Open Sans", "Lato", "Montserrat", "Oswald", "Raleway", "custom"];
       // Weights as Names
@@ -12298,50 +12316,66 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
                 <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                 
-                <div style="${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? '' : 'display:none'}">
-                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Custom Card Configuration</p>
-                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Add your custom card configuration in YAML format. The card will be embedded in the popup's content area.</p>
-                  <ha-code-editor
-                    class="custom-popup-yaml-editor"
-                    .hass=${this.hass}
-                    mode="yaml"
-                    autocomplete-entities
-                    autocomplete-icons
-                    .autocompleteEntities=${true}
-                    .autocompleteIcons=${true}
-                    .label=${"Card Config"}
-                    .value=${this._customPopupYamlDraft ?? this._cardObjToYaml(this._config.custom_popup_card ?? this._config.custom_popup?.card)}
-                    @focus=${() => { this._customPopupYamlFocused = true; }}
-                    @blur=${() => { this._customPopupYamlFocused = false; }}
-                    @value-changed=${(ev) => {
-                      ev.stopPropagation();
-                      const raw = ev.detail?.value ?? "";
-                      // Keep what the user typed; don't re-serialize YAML while typing (prevents cursor jumps / spacing issues)
-                      this._customPopupYamlDraft = raw;
-
-                      clearTimeout(this._customPopupYamlDebounce);
-                      this._customPopupYamlDebounce = setTimeout(() => {
-                        const obj = this._yamlStrToObj(raw);
-                        if (!obj) return; // invalid YAML: keep draft, don't overwrite config
-
+                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
+                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
+                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
+                  <div class="card-config">
+                    ${customElements.get('hui-card-element-editor')
+                      ? html`<hui-card-element-editor
+                      .hass=${this.hass}
+                      .lovelace=${this._getLovelace()}
+                      .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                      @config-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const newCard = ev.detail?.config;
+                        if (!newCard) return;
                         const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                        if (JSON.stringify(obj) !== JSON.stringify(existing)) {
-                          this._fireChanged({ ...this._config, custom_popup_card: obj });
+                        if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                          this._fireChanged({ ...this._config, custom_popup_card: newCard });
                         }
-                      }, 300);
-                    }}
-                    @click=${(e) => e.stopPropagation()}
-                  ></ha-code-editor>
-<p style="font-size: 10px; opacity: 0.6; margin: 12px 0 4px 0;">
-                    <strong>Examples:</strong> Button Card, Mushroom Cards, Tile Cards, Vertical Stack, Grid Card, etc.<br>
-                    The popup will maintain its header (icon, name, timestamp), history button, and close button.
-                  </p>
-                </div>
+                      }}
+                    ></hui-card-element-editor>`
+                      : customElements.get('hui-card-picker')
+                        ? html`
+                          <hui-card-picker
+                            .hass=${this.hass}
+                            .lovelace=${this._getLovelace()}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @config-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const picked = ev.detail?.config;
+                              if (!picked) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(picked) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: picked });
+                              }
+                            }}
+                          ></hui-card-picker>
+
+                          <ha-yaml-editor
+                            .hass=${this.hass}
+                            .label=${"Popup Card (YAML)"}
+                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                            @value-changed=${(ev) => {
+                              ev.stopPropagation();
+                              const newCard = ev.detail?.value;
+                              if (!newCard) return;
+                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                              if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                                this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                              }
+                            }}
+                            @click=${(e) => e.stopPropagation()}
+                          ></ha-yaml-editor>
+                        `
+                        : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
+                  </div>
+                ` : ''}
                 
                 <div class="separator"></div>
                 <strong>Popup Animation</strong>
                 <div class="side-by-side">
-                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'none'}
+                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
@@ -12358,7 +12392,7 @@ ${isGoogleLayout ? '' : html`
                      <mwc-list-item value="drop">Drop</mwc-list-item>
                      <mwc-list-item value="swing">Swing</mwc-list-item>
                   </ha-select>
-                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'none'}
+                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
                     @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                     @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                     <mwc-list-item value="none">None</mwc-list-item>
@@ -12929,6 +12963,67 @@ ${isGoogleLayout ? '' : html`
     }
 
     // For Switches (ha-switch)
+    _getLovelace() {
+      // HA sets this.lovelace on the editor element. Fall back to DOM lookup if not set.
+      if (this.lovelace) return this.lovelace;
+      try {
+        const root = document.querySelector('home-assistant')?.shadowRoot
+          ?.querySelector('ha-panel-lovelace')?.shadowRoot
+          ?.querySelector('hui-root');
+        const huiRoot = root || document.querySelector('hui-root');
+        const lv = huiRoot?.lovelace || huiRoot?.__lovelace || huiRoot?._lovelace;
+        if (lv) return lv;
+        // Borrow lovelace from any already-rendered hui-card-element-editor on the page
+        const existingEditor = document.querySelector('hui-card-element-editor');
+        if (existingEditor?.lovelace) return existingEditor.lovelace;
+        return null;
+      } catch (_) { return null; }
+    }
+
+    _ensureCardEditorLoaded() {
+      // Proactively load the built-in Lovelace card editor. HA lazy-loads this,
+      // which can cause the card picker to be missing unless it was opened elsewhere first.
+      //
+      // APPROACH: Call getConfigElement() on already-registered HA cards. This is the
+      // same trick used by simple-swipe-card and triggers HA's own lazy-loader to
+      // register hui-card-picker and hui-card-element-editor as a side effect.
+      // This is far more reliable than trying to import() hardcoded/hashed JS paths.
+      if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) return;
+
+      if (this._waitingForCardEditor) return;
+      this._waitingForCardEditor = true;
+
+      const triggers = [
+        () => customElements.get('hui-entities-card')?.getConfigElement?.(),
+        () => customElements.get('hui-conditional-card')?.getConfigElement?.(),
+        () => customElements.get('hui-vertical-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-horizontal-stack-card')?.getConfigElement?.(),
+        () => customElements.get('hui-glance-card')?.getConfigElement?.(),
+        () => customElements.get('hui-picture-elements-card')?.getConfigElement?.(),
+        () => customElements.get('hui-button-card')?.getConfigElement?.(),
+      ];
+
+      const tryTriggers = async () => {
+        for (const trigger of triggers) {
+          try {
+            await trigger();
+            if (customElements.get('hui-card-element-editor') || customElements.get('hui-card-picker')) break;
+          } catch (_) {}
+        }
+        // Regardless of whether any trigger succeeded, wait for the element to be defined.
+        Promise.race([
+          customElements.whenDefined('hui-card-element-editor'),
+          customElements.whenDefined('hui-card-picker'),
+          new Promise((res) => setTimeout(res, 3000)),
+        ]).then(() => {
+          this._waitingForCardEditor = false;
+          this.requestUpdate();
+        });
+};
+
+      tryTriggers();
+    }
+
     _switchChanged(ev, field) { 
         ev.stopPropagation(); 
         this._fireChanged({ ...this._config, [field]: ev.target.checked }); 
