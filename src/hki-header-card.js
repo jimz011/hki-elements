@@ -1590,6 +1590,8 @@ class HkiHeaderCard extends LitElement {
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
         if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
         if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_close_animation !== undefined) cleaned.popup_close_animation = action.popup_close_animation;
+        if (action.popup_animation_duration !== undefined) cleaned.popup_animation_duration = action.popup_animation_duration;
         if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
         if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
         if (action.popup_name) cleaned.popup_name = action.popup_name;
@@ -1967,6 +1969,8 @@ class HkiHeaderCard extends LitElement {
                 ...(resolvedState ? { state_label: resolvedState } : {}),
                 ...(finalAction.popup_border_radius !== undefined ? { popup_border_radius: finalAction.popup_border_radius } : {}),
                 ...(finalAction.popup_open_animation ? { popup_open_animation: finalAction.popup_open_animation } : {}),
+                ...(finalAction.popup_close_animation ? { popup_close_animation: finalAction.popup_close_animation } : {}),
+                ...(finalAction.popup_animation_duration !== undefined ? { popup_animation_duration: finalAction.popup_animation_duration } : {}),
                 ...(finalAction.popup_width ? { popup_width: finalAction.popup_width } : {}),
                 ...(finalAction.popup_blur_enabled !== undefined ? { popup_blur_enabled: finalAction.popup_blur_enabled } : {}),
               });
@@ -3349,6 +3353,8 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
         if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
         if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
+        if (action.popup_close_animation !== undefined) cleaned.popup_close_animation = action.popup_close_animation;
+        if (action.popup_animation_duration !== undefined) cleaned.popup_animation_duration = action.popup_animation_duration;
         if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
         if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
         if (action.popup_name) cleaned.popup_name = action.popup_name;
@@ -4149,9 +4155,35 @@ class HkiHeaderCardEditor extends LitElement {
           <mwc-list-item value="none">None</mwc-list-item>
           <mwc-list-item value="fade">Fade</mwc-list-item>
           <mwc-list-item value="scale">Scale</mwc-list-item>
+          <mwc-list-item value="zoom">Zoom</mwc-list-item>
           <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
           <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+          <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+          <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+          <mwc-list-item value="flip">Flip</mwc-list-item>
+          <mwc-list-item value="bounce">Bounce</mwc-list-item>
+          <mwc-list-item value="rotate">Rotate</mwc-list-item>
+          <mwc-list-item value="drop">Drop</mwc-list-item>
+          <mwc-list-item value="swing">Swing</mwc-list-item>
         </ha-select>
+        <ha-select label="Close Animation" .value=${action.popup_close_animation || action.popup_open_animation || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_close_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="none">None</mwc-list-item>
+          <mwc-list-item value="fade">Fade</mwc-list-item>
+          <mwc-list-item value="scale">Scale</mwc-list-item>
+          <mwc-list-item value="zoom">Zoom</mwc-list-item>
+          <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+          <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+          <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+          <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+          <mwc-list-item value="flip">Flip</mwc-list-item>
+          <mwc-list-item value="bounce">Bounce</mwc-list-item>
+          <mwc-list-item value="rotate">Rotate</mwc-list-item>
+          <mwc-list-item value="drop">Drop</mwc-list-item>
+          <mwc-list-item value="swing">Swing</mwc-list-item>
+        </ha-select>
+        <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(action.popup_animation_duration ?? 300)} @input=${(ev) => patchAction({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
         <div class="switch-row" style="margin-top: 8px;">
           <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
           <span>Background blur</span>
@@ -4343,9 +4375,35 @@ class HkiHeaderCardEditor extends LitElement {
               <mwc-list-item value="none">None</mwc-list-item>
               <mwc-list-item value="fade">Fade</mwc-list-item>
               <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="zoom">Zoom</mwc-list-item>
               <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
               <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+              <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+              <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+              <mwc-list-item value="flip">Flip</mwc-list-item>
+              <mwc-list-item value="bounce">Bounce</mwc-list-item>
+              <mwc-list-item value="rotate">Rotate</mwc-list-item>
+              <mwc-list-item value="drop">Drop</mwc-list-item>
+              <mwc-list-item value="swing">Swing</mwc-list-item>
             </ha-select>
+            <ha-select label="Close Animation" .value=${action.popup_close_animation || action.popup_open_animation || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); patchAction({ popup_close_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="none">None</mwc-list-item>
+              <mwc-list-item value="fade">Fade</mwc-list-item>
+              <mwc-list-item value="scale">Scale</mwc-list-item>
+              <mwc-list-item value="zoom">Zoom</mwc-list-item>
+              <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+              <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+              <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+              <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+              <mwc-list-item value="flip">Flip</mwc-list-item>
+              <mwc-list-item value="bounce">Bounce</mwc-list-item>
+              <mwc-list-item value="rotate">Rotate</mwc-list-item>
+              <mwc-list-item value="drop">Drop</mwc-list-item>
+              <mwc-list-item value="swing">Swing</mwc-list-item>
+            </ha-select>
+            <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(action.popup_animation_duration ?? 300)} @input=${(ev) => patchAction({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
             <div class="switch-row" style="margin-top: 8px;">
               <ha-switch .checked=${action.popup_blur_enabled !== false} @change=${(ev) => patchAction({ popup_blur_enabled: ev.target.checked })}></ha-switch>
               <span>Background blur</span>
