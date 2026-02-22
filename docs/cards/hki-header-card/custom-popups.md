@@ -41,6 +41,7 @@ tap_action:
 | `popup_border_radius` | `number` | `16` | Popup container border radius (px) |
 | `popup_width` | `string` | `auto` | Popup width — `auto` or a px value such as `400px` |
 | `popup_open_animation` | `string` | `scale` | Entrance animation: `none`, `fade`, `scale`, `slide-up`, `slide-down` |
+| `popup_close_animation` | `string` | `scale` | Entrance animation: `none`, `fade`, `scale`, `slide-up`, `slide-down` |
 | `popup_blur_enabled` | `boolean` | `true` | Blur the backdrop behind the popup |
 
 ---
