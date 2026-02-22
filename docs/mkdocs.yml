@@ -92,7 +92,13 @@ nav:
           - Advanced Usage: components/hki-notify/advanced-usage.md
           - Examples: components/hki-notify/examples.md
           - Troubleshooting: components/hki-notify/troubleshooting.md
+      - HKI ESPHome Humidifier:
+          - Features: components/hki-esphome-humidifier/overview.md
+          - Installation: components/hki-esphome-humidifier/installation.md
+          - Configuration: components/hki-esphome-humidifier/configuration.md
+          - Troubleshooting: components/hki-esphome-humidifier/troubleshooting.md
   - Migration: migration.md
+
 
 
 
