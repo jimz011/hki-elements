@@ -140,6 +140,7 @@ top_bar:
 ### Bottom Bar
 
 The bottom bar is a horizontal container at the bottom of the header with three slots (left, center, right).
+*It is recommended to turn off `fixed badges` before enabling this or better yet, remove badges from the default HA badges slot entirely and use the header slots for your badges instead*
 
 ```yaml
 bottom_bar:
@@ -377,14 +378,13 @@ bottom_bar_center:
 
 ---
 
-### Custom Card / Notifications Slot
+### Notifications Slot
 
-This slot can be used to embed the HKI Notifications Card, but it also accepts any other custom card (if you want to use default HA cards, use a custom card first like custom:stack-in-card)
-As this slot was originally intended just to accept the notification card (but the byproduct is that any card is accepted) I will not officially support using custom cards here. It was meant for notifications. So use this at your own risk if you do wish to use custom cards instead.
+This slot can be used to embed the HKI Notifications Card, it will automatically select the HKI Notifications Card for you and the card will inherit settings from the Header Card
 
 ```yaml
 top_bar_left:
-  type: custom
+  type: notifications
   custom:
     card:
       type: custom:hki-notification-card
@@ -392,14 +392,26 @@ top_bar_left:
       show_background: false
       entity: sensor.notifications
 ```
-
-#### Custom Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `custom.card` | object | Complete card configuration |
-
 The HKI Notifications Card will automatically receive `use_header_styling: true` and `show_background: false` unless specified otherwise.
+
+### Custom Card Slot
+
+This slot can be used to embed ANY Home Assistant or Custom Card into the header. You can do cool stuff with this, but it can be buggy as testing every single card would be impossible. Use this at your own risk!
+
+```yaml
+bottom_bar_center:
+  type: card
+  custom:
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:mini-graph-card
+          entities:
+            - sensor.office_temperature
+```
+You can also use this feature in conjunction with HA Badges or HKI Button Card (badge style selected) to replace the default HA Badges slot. You have much more control over the badge placements using this feature!
+
+For custom cards you can set `align: stretch` to make the card stretch the full width of the top or bottom bar. You could integrate a graph into the header for example with this.
 
 ---
 
