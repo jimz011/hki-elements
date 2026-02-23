@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-16 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-17 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -14300,6 +14300,7 @@ if (!this._popupPortal) {
       const graphColor = this._config.sensor_graph_color || null;
       const useGradient = this._config.sensor_graph_gradient !== false;
       const lineWidth = this._config.sensor_line_width ?? 3;
+      const sensorHours = this._config.sensor_hours ?? 24;
       const showBottomBar = this._config.popup_hide_bottom_bar !== true;
 
       const portal = this._popupPortal || document.createElement('div');
@@ -14339,13 +14340,16 @@ if (!this._popupPortal) {
           .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size: 20px; }
           .hki-popup-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; padding: 16px; gap: 0; }
-          .sensor-tile { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
-          .sensor-tile-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
-          .sensor-tile-title { font-size: 14px; font-weight: 600; opacity: 0.9; }
-          .sensor-tile-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-          .sensor-tile-unit { font-size: 16px; font-weight: 400; opacity: 0.7; margin-left: 2px; }
+          .sensor-tile { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 12px; }
+          .sensor-value-row { display: flex; align-items: baseline; justify-content: flex-end; }
+          .sensor-tile-value { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
+          .sensor-tile-unit { font-size: 18px; font-weight: 400; opacity: 0.7; margin-left: 3px; }
           .sensor-tile-graph { width: 100%; height: 80px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
           .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
+          .sensor-hours-row { display: flex; justify-content: flex-end; gap: 6px; }
+          .sensor-hour-btn { padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--primary-text-color); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+          .sensor-hour-btn.active { background: var(--primary-color,#03a9f4); border-color: var(--primary-color,#03a9f4); font-weight: 600; }
+          .sensor-hour-btn:hover:not(.active) { background: rgba(255,255,255,0.12); }
           .timeline-container { width: 100%; display: flex; flex-direction: column; gap: 0; }
           .timeline-item { display: flex; gap: 12px; position: relative; }
           .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
@@ -14380,11 +14384,9 @@ if (!this._popupPortal) {
           </div>
           <div class="hki-popup-content" id="sensorContent">
             <div class="sensor-tile">
-              <div class="sensor-tile-top">
-                <div class="sensor-tile-title">${entity.attributes?.friendly_name || name}</div>
-                <div class="sensor-tile-value">${state}<span class="sensor-tile-unit">${unit}</span></div>
-              </div>
+              <div class="sensor-value-row"><span class="sensor-tile-value">${state}</span><span class="sensor-tile-unit">${unit}</span></div>
               <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">Loading chart…</div></div>
+              <div class="sensor-hours-row">${[12,24,48,72].map(h => `<button class="sensor-hour-btn${h === sensorHours ? ' active' : ''}" data-hours="${h}">${h}h</button>`).join('')}</div>
             </div>
           </div>
           <div class="hki-popup-nav"></div>
@@ -14413,17 +14415,27 @@ if (!this._popupPortal) {
         if (content) content.innerHTML = '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div>';
         setTimeout(() => this._loadHistory(), 100);
       } else {
-        // Load sparkline
-        setTimeout(() => this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth), 50);
+        // Load sparkline and wire hour picker
+        setTimeout(() => {
+          this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, sensorHours);
+          portal.querySelectorAll('.sensor-hour-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const h = parseInt(btn.dataset.hours, 10);
+              this._fireChanged({ ...this._config, sensor_hours: h });
+              portal.querySelectorAll('.sensor-hour-btn').forEach(b => b.classList.toggle('active', b === btn));
+              this._loadSensorSparkline(portal, this._getEntity(), graphColor, useGradient, lineWidth, h);
+            });
+          });
+        }, 50);
       }
     }
 
-    async _loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth) {
+    async _loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, hours = 24) {
       const wrap = portal.querySelector('#sensorSparkline');
       if (!wrap) return;
       try {
         const entityId = entity.entity_id;
-        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const startTs = new Date(Date.now() - hours * 60 * 60 * 1000);
         const data = await this.hass.callApi('GET', `history/period/${startTs.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}&minimal_response`);
         const series = (Array.isArray(data) && data[0]) ? data[0] : [];
         const pts = [];
@@ -15148,7 +15160,8 @@ if (!this._popupPortal) {
           .header-btn { width:40px;height:40px;border-radius:50%;background:var(--divider-color,rgba(255,255,255,0.05));border:none;color:var(--primary-text-color);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s; }
           .header-btn:hover { background:rgba(255,255,255,0.1);transform:scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size:20px; }
-          .hki-popup-content { flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;padding:0;position:relative; }
+          .hki-popup-content { flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;padding:16px; }
+          .person-map-card { background:rgba(255,255,255,0.05);border-radius:18px;box-shadow:0 6px 18px rgba(0,0,0,0.25);flex:1;overflow:hidden;position:relative; }
           #personMapContainer { width:100%;height:100%;display:block;position:relative;overflow:hidden; }
           #personMapContainer > ha-map { display:block;width:100%;height:100%;border-radius:0; }
           #personMapContainer > hui-map-card,
@@ -15184,7 +15197,7 @@ if (!this._popupPortal) {
           <div class="hki-popup-content" id="personContent">
             ${this._activeView === 'history'
               ? '<div class="timeline-container"><div id="historyContainer"><div class="history-loading">Loading…</div></div></div>'
-              : '<div id="personMapContainer"></div>'}
+              : '<div class="person-map-card"><div id="personMapContainer"></div></div>'}
           </div>
           <div class="hki-popup-nav" id="personNav"></div>
         </div>
@@ -15221,6 +15234,7 @@ if (!this._popupPortal) {
 
     _mountPersonMap(portal, entityId, locationLabel, color) {
       const container = portal.querySelector('#personMapContainer');
+      const cardWrapper = portal.querySelector('.person-map-card');
       if (!container) return;
 
       // Try ha-map directly first (no card chrome, no "home" state label)
@@ -15255,11 +15269,11 @@ if (!this._popupPortal) {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
         setTimeout(() => window.dispatchEvent(new Event('resize')), 500);
 
-        // Location pill overlay
+        // Location pill overlay on the card wrapper
         const label = document.createElement('div');
         label.className = 'person-map-label';
         label.innerHTML = '<div class="person-map-dot"></div><span>' + locationLabel + '</span>';
-        container.appendChild(label);
+        (cardWrapper || container).appendChild(label);
       };
 
       // Fallback: full map card but aggressively stripped
@@ -15309,8 +15323,7 @@ if (!this._popupPortal) {
           const label = document.createElement('div');
           label.className = 'person-map-label';
           label.innerHTML = '<div class="person-map-dot"></div><span>' + locationLabel + '</span>';
-          container.style.position = 'relative';
-          container.appendChild(label);
+          (cardWrapper || container).appendChild(label);
         } catch (e) {
           container.innerHTML = '<div class="history-loading">Map unavailable</div>';
         }
@@ -19676,6 +19689,15 @@ disconnectedCallback() {
               </ha-formfield>
               <ha-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></ha-textfield>
               <ha-textfield label="Line width (px)" type="number" .value=${this._config.sensor_line_width ?? 3} @input=${(ev) => this._textChanged(ev, "sensor_line_width")}></ha-textfield>
+              <ha-select label="Graph time range"
+                .value=${String(this._config.sensor_hours ?? 24)}
+                @selected=${(ev) => this._dropdownChanged(ev, 'sensor_hours')}
+                @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                <mwc-list-item value="12">12 hours</mwc-list-item>
+                <mwc-list-item value="24">24 hours</mwc-list-item>
+                <mwc-list-item value="48">48 hours</mwc-list-item>
+                <mwc-list-item value="72">72 hours</mwc-list-item>
+              </ha-select>
             </div>
           </div>
           ` : ''}
@@ -20387,13 +20409,24 @@ ${isGoogleLayout ? '' : html`
                                   @selected=${(ev) => setEntry({ tap_action: {...entry.tap_action, action: ev.detail.value} })}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
                                   <mwc-list-item value="more-info">More Info (Native)</mwc-list-item>
+                                  <mwc-list-item value="hki-more-info">More Info (HKI)</mwc-list-item>
                                   <mwc-list-item value="toggle">Toggle</mwc-list-item>
                                   <mwc-list-item value="navigate">Navigate</mwc-list-item>
+                                  <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
+                                  <mwc-list-item value="url">Open URL</mwc-list-item>
                                   <mwc-list-item value="none">None</mwc-list-item>
                                 </ha-select>
                                 ${(entry.tap_action?.action==='navigate') ? html`
                                   <ha-textfield label="Navigation Path" .value=${entry.tap_action?.navigation_path||""}
                                     @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, navigation_path: ev.target.value} })}
+                                    style="margin-top:6px;"></ha-textfield>` : ''}
+                                ${(entry.tap_action?.action==='url') ? html`
+                                  <ha-textfield label="URL" .value=${entry.tap_action?.url_path||""} placeholder="https://..."
+                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, url_path: ev.target.value} })}
+                                    style="margin-top:6px;"></ha-textfield>` : ''}
+                                ${(entry.tap_action?.action==='perform-action') ? html`
+                                  <ha-textfield label="Service (domain.service)" .value=${entry.tap_action?.service||""} placeholder="light.turn_on"
+                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, service: ev.target.value} })}
                                     style="margin-top:6px;"></ha-textfield>` : ''}
                               ` : ''}
                             </div>`;
