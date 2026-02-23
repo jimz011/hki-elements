@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-13 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-14 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -8304,7 +8304,7 @@ _tileSliderClick(e) {
       }
 
       // Check if we have HKI popup support for this domain
-      const supportedDomains = ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'];
+      const supportedDomains = ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group', 'automation', 'sensor', 'binary_sensor', 'device_tracker', 'event', 'select', 'input_select', 'number', 'input_number', 'text', 'input_text'];
       if (!supportedDomains.includes(domain)) {
         // Fall back to native more-info for unsupported domains
         const event = new Event('hass-more-info', { bubbles: true, composed: true });
@@ -8359,7 +8359,7 @@ _tileSliderClick(e) {
         }
       }
 
-      if (domain === 'switch' || domain === 'input_boolean') {
+      if (domain === 'switch' || domain === 'input_boolean' || domain === 'automation') {
         this._activeView = 'main';
         this._switchGroupMode = false;
         this._renderSwitchPopupPortal(entity);
@@ -8377,6 +8377,36 @@ _tileSliderClick(e) {
         return;
       }
 
+
+      if (domain === 'sensor') {
+        this._activeView = 'main';
+        this._renderSensorPopupPortal(entity);
+        return;
+      }
+
+      if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') {
+        this._activeView = 'main';
+        this._renderBinarySensorPopupPortal(entity);
+        return;
+      }
+
+      if (domain === 'select' || domain === 'input_select') {
+        this._activeView = 'main';
+        this._renderSelectPopupPortal(entity);
+        return;
+      }
+
+      if (domain === 'number' || domain === 'input_number') {
+        this._activeView = 'main';
+        this._renderNumberPopupPortal(entity);
+        return;
+      }
+
+      if (domain === 'text' || domain === 'input_text') {
+        this._activeView = 'main';
+        this._renderTextPopupPortal(entity);
+        return;
+      }
 
       // Light default view
       this._activeView = 'brightness';
@@ -8429,14 +8459,30 @@ _tileSliderClick(e) {
       }
     }
 
+    _applyPopupNavVisibility(portal) {
+      if (this._config.popup_hide_bottom_bar === true) {
+        portal.setAttribute('data-hide-nav', '');
+        // Inject a persistent stylesheet once so the rule survives innerHTML re-renders
+        if (!document.getElementById('hki-nav-hide-style')) {
+          const s = document.createElement('style');
+          s.id = 'hki-nav-hide-style';
+          s.textContent = '[data-hide-nav] .hki-popup-nav { display: none !important; }';
+          document.head.appendChild(s);
+        }
+      }
+    }
+
     _applyOpenAnimation(portal) {
       const anim = this._config.popup_open_animation || 'scale';
-      if (anim === 'none') return;
-      const dur = this._config.popup_animation_duration ?? 300;
-      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
-      if (container) {
-        container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+      if (anim !== 'none') {
+        const dur = this._config.popup_animation_duration ?? 300;
+        const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
+        if (container) {
+          container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
+        }
       }
+      // Apply bottom-bar visibility for all popups
+      this._applyPopupNavVisibility(portal);
     }
 
     _getOpenKeyframe(anim) {
@@ -13455,14 +13501,13 @@ if (!this._popupPortal) {
           .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
           .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
 
-          /* Keep popup layout consistent with other HKI popups (always show bottom bar) */
           .hki-popup-nav {
             display: flex; justify-content: space-evenly; padding: 12px;
             background: rgba(255, 255, 255, 0.03);
             border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.05));
             gap: 8px;
             flex-shrink: 0;
-            min-height: 74px; /* same visual height even when empty */
+            min-height: 74px;
             box-sizing: border-box;
           }
         </style>
@@ -14225,6 +14270,773 @@ if (!this._popupPortal) {
           this.hass.callService('lock', 'unlock', { entity_id: this._config.entity });
         }
       });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // SENSOR POPUP
+    // ─────────────────────────────────────────────────────────────
+    async _renderSensorPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const domain = 'sensor';
+      const state = entity.state;
+      const unit = entity.attributes?.unit_of_measurement || '';
+      const icon = this._getResolvedIcon(entity, 'mdi:chart-line');
+      const color = 'var(--primary-color, #2196F3)';
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+      const graphColor = this._config.sensor_graph_color || null;
+      const useGradient = this._config.sensor_graph_gradient !== false;
+      const lineWidth = this._config.sensor_line_width ?? 3;
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            ${this._getPopupPortalStyle()}
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
+          }
+          .hki-popup-container {
+            ${this._getPopupCardStyle()};
+            border-radius: ${popupBorderRadius}px;
+            width: ${popupWidth}; height: ${popupHeight};
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; overflow: hidden; user-select: none;
+          }
+          .hki-popup-header {
+            display: flex; justify-content: space-between; align-items: center; padding: 16px 20px;
+            background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05));
+            flex-shrink: 0;
+          }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--divider-color, rgba(255,255,255,0.05)); border: none;
+            color: var(--primary-text-color); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+          }
+          .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+          .hki-popup-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+          .sensor-main-tile {
+            background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; flex: 1;
+          }
+          .sensor-main-value { font-size: 56px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
+          .sensor-main-unit { font-size: 24px; font-weight: 400; opacity: 0.7; margin-left: 4px; }
+          .sensor-main-label { font-size: 14px; opacity: 0.6; margin-top: 4px; }
+          .sensor-sparkline-wrap { flex: 1; min-height: 120px; margin-top: 16px; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
+          .sensor-sparkline-wrap svg { width: 100%; height: 100%; display: block; }
+          .timeline-container { width: 100%; display: flex; flex-direction: column; gap: 0; }
+          .timeline-item { display: flex; gap: 12px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #2196F3; z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.1)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 16px; font-size: 13px; color: var(--primary-text-color); }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+          .hki-popup-nav {
+            display: flex; justify-content: space-evenly; padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-top: 1px solid var(--divider-color, rgba(255,255,255,0.05));
+            flex-shrink: 0; min-height: 74px; box-sizing: border-box;
+            ${showBottomBar ? '' : 'display: none !important;'}
+          }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(state + (unit ? ' ' + unit : ''))}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="sensorHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="sensorContent">
+            <div class="sensor-main-tile">
+              <div class="sensor-main-value">${state}<span class="sensor-main-unit">${unit}</span></div>
+              <div class="sensor-main-label">${entity.attributes?.friendly_name || name}</div>
+              <div class="sensor-sparkline-wrap" id="sensorSparkline"><div class="history-loading">Loading chart…</div></div>
+            </div>
+          </div>
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#sensorHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderSensorPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      if (this._activeView === 'history') {
+        const content = portal.querySelector('#sensorContent');
+        if (content) content.innerHTML = '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div>';
+        setTimeout(() => this._loadHistory(), 100);
+      } else {
+        // Load sparkline
+        setTimeout(() => this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth), 50);
+      }
+    }
+
+    async _loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth) {
+      const wrap = portal.querySelector('#sensorSparkline');
+      if (!wrap) return;
+      try {
+        const entityId = entity.entity_id;
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const data = await this.hass.callApi('GET', `history/period/${startTs.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}&minimal_response`);
+        const series = (Array.isArray(data) && data[0]) ? data[0] : [];
+        const pts = [];
+        for (const it of series) {
+          const ts = it?.lu ?? it?.last_updated ?? it?.last_changed;
+          if (!ts) continue;
+          const n = parseFloat(String(it?.s ?? it?.state));
+          if (!Number.isFinite(n)) continue;
+          pts.push({ t: new Date(ts).getTime(), v: n });
+        }
+        pts.sort((a, b) => a.t - b.t);
+        if (pts.length < 2) { wrap.innerHTML = '<div class="history-loading">Not enough data</div>'; return; }
+        // Downsample
+        const maxN = 80;
+        const ds = pts.length > maxN ? pts.filter((_, i) => i % Math.ceil(pts.length / maxN) === 0) : pts;
+
+        const W = 280, H = 80;
+        const minV = Math.min(...ds.map(p => p.v));
+        const maxV = Math.max(...ds.map(p => p.v));
+        const span = (maxV - minV) || 1;
+        const t0 = ds[0].t, t1 = ds[ds.length - 1].t, tSpan = (t1 - t0) || 1;
+        const xy = ds.map(p => ({
+          x: ((p.t - t0) / tSpan) * W,
+          y: H - ((p.v - minV) / span) * H,
+          v: p.v
+        }));
+
+        const gradId = 'sg' + Math.random().toString(16).slice(2);
+        let gradDef = '';
+        const strokeColor = graphColor || 'var(--primary-color, #2196F3)';
+        if (useGradient && !graphColor) {
+          // Temperature-style gradient
+          const stops = [];
+          const cnt = Math.min(10, xy.length);
+          for (let i = 0; i < cnt; i++) {
+            const idx = Math.round(i * (xy.length - 1) / (cnt - 1 || 1));
+            const p = xy[idx];
+            const n = (p.v - minV) / span;
+            const hue = 200 * (1 - n);
+            const offset = (p.x / W * 100).toFixed(1);
+            stops.push(`<stop offset="${offset}%" stop-color="hsl(${hue},90%,60%)" />`);
+          }
+          gradDef = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">${stops.join('')}</linearGradient></defs>`;
+        } else if (graphColor) {
+          gradDef = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${graphColor}" stop-opacity="0.7"/><stop offset="100%" stop-color="${graphColor}"/></linearGradient></defs>`;
+        }
+
+        const lineStroke = (useGradient || graphColor) ? `url(#${gradId})` : strokeColor;
+        const line = xy.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        const area = `0,${H} ${line} ${W},${H}`;
+
+        wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          ${gradDef}
+          <polygon points="${area}" fill="${lineStroke}" opacity="0.12"/>
+          <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      } catch (e) {
+        console.warn('sensor sparkline error', e);
+        wrap.innerHTML = '<div class="history-loading">Error loading chart</div>';
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // BINARY SENSOR / DEVICE TRACKER / EVENT POPUP
+    // ─────────────────────────────────────────────────────────────
+    _renderBinarySensorPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const domain = (entity.entity_id || '').split('.')[0];
+      const state = entity.state;
+      const deviceClass = entity.attributes?.device_class || '';
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+      // Determine if entity is "active"
+      const activeStates = new Set(['on', 'home', 'detected', 'open', 'motion', 'occupied', 'connected', 'locked', 'problem', 'leak', 'smoke', 'fire', 'vibration', 'sound', 'power']);
+      const isActive = activeStates.has(state);
+      
+      // Pick icon and color based on device class + state
+      const dcIconMap = {
+        motion: { on: 'mdi:motion-sensor', off: 'mdi:motion-sensor-off' },
+        occupancy: { on: 'mdi:home-account', off: 'mdi:home-outline' },
+        door: { on: 'mdi:door-open', off: 'mdi:door-closed' },
+        window: { on: 'mdi:window-open', off: 'mdi:window-closed' },
+        lock: { on: 'mdi:lock-open', off: 'mdi:lock' },
+        smoke: { on: 'mdi:smoke-detector-alert', off: 'mdi:smoke-detector' },
+        moisture: { on: 'mdi:water', off: 'mdi:water-off' },
+        battery: { on: 'mdi:battery-alert', off: 'mdi:battery' },
+        connectivity: { on: 'mdi:wifi', off: 'mdi:wifi-off' },
+        plug: { on: 'mdi:power-plug', off: 'mdi:power-plug-off' },
+        presence: { on: 'mdi:home-account', off: 'mdi:home-outline' },
+      };
+      const dcColor = { on: '#4CAF50', off: '#546E7A' };
+      const dcBadMap = { smoke: true, moisture: true, battery: true, problem: true, gas: true, tamper: true, sound: true, vibration: true, power: true };
+      const isBadActive = dcBadMap[deviceClass];
+      const activeColor = isBadActive ? '#F44336' : '#4CAF50';
+
+      const iconPair = dcIconMap[deviceClass];
+      const icon = this._getResolvedIcon(entity, iconPair ? (isActive ? iconPair.on : iconPair.off) : (domain === 'device_tracker' ? 'mdi:map-marker-account' : 'mdi:radiobox-marked'));
+      const color = isActive ? activeColor : '#546E7A';
+
+      const stateLabel = this._getLocalizedState(state, domain) || state;
+
+      // Build a state bar (like the HA history card)
+      const stateBarInner = this._activeView === 'history' ? '' : this._buildStateBars(entity, domain, deviceClass, isActive, color);
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; ${this._getPopupPortalStyle()} display: flex; align-items: center; justify-content: center; z-index: 9999; }
+          .hki-popup-container { ${this._getPopupCardStyle()}; border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+          .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--divider-color, rgba(255,255,255,0.05)); border: none; color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+          .hki-popup-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+          .bs-state-card { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+          .bs-icon-wrap { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${color}22; border: 2px solid ${color}; }
+          .bs-icon-wrap ha-icon { --mdc-icon-size: 40px; color: ${color}; }
+          .bs-state-label { font-size: 28px; font-weight: 700; text-align: center; }
+          .bs-state-sub { font-size: 13px; opacity: 0.6; text-align: center; }
+          .state-bar-section { width: 100%; }
+          .state-bar-title { font-size: 12px; font-weight: 600; opacity: 0.7; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+          .state-bar-container { width: 100%; height: 28px; border-radius: 6px; overflow: hidden; display: flex; }
+          .state-bar-segment { height: 100%; transition: width 0.3s; cursor: default; position: relative; }
+          .state-bar-segment:hover::after { content: attr(data-tip); position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+          .state-bar-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; opacity: 0.5; }
+          .timeline-container { width: 100%; }
+          .timeline-item { display: flex; gap: 12px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.1)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 14px; font-size: 13px; }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+          .hki-popup-nav { display: flex; justify-content: space-evenly; padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; min-height: 74px; box-sizing: border-box; ${showBottomBar ? '' : 'display: none !important;'} }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(stateLabel)}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="bsHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="bsContent">
+            ${this._activeView === 'history'
+              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              : `<div class="bs-state-card">
+                  <div class="bs-icon-wrap"><ha-icon icon="${icon}"></ha-icon></div>
+                  <div class="bs-state-label">${stateLabel}</div>
+                  <div class="bs-state-sub">${entity.attributes?.friendly_name || name}</div>
+                </div>
+                ${stateBarInner}`}
+          </div>
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#bsHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderBinarySensorPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      else setTimeout(() => this._loadBinaryStateBars(portal, entity, domain, deviceClass, isActive, color), 80);
+    }
+
+    async _loadBinaryStateBars(portal, entity, domain, deviceClass, isActive, activeColor) {
+      const wrap = portal.querySelector('#bsStateBar');
+      if (!wrap) return;
+      try {
+        const entityId = entity.entity_id;
+        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const data = await this.hass.callApi('GET', `history/period/${startTs.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}&minimal_response`);
+        const series = (Array.isArray(data) && data[0]) ? data[0] : [];
+        if (series.length < 2) { wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">No history data</div>'; return; }
+
+        const pts = series.map(it => ({
+          t: new Date(it?.lu ?? it?.last_updated ?? it?.last_changed ?? 0).getTime(),
+          s: String(it?.s ?? it?.state ?? '')
+        })).filter(p => p.t > 0);
+        pts.sort((a, b) => a.t - b.t);
+
+        const now = Date.now();
+        const t0 = pts[0].t;
+        const tSpan = now - t0;
+        const segments = [];
+        const activeSet = new Set(['on', 'home', 'detected', 'open', 'motion', 'occupied', 'connected', 'locked', 'problem', 'leak', 'smoke', 'fire', 'vibration', 'sound', 'power']);
+
+        for (let i = 0; i < pts.length; i++) {
+          const s = pts[i].s;
+          const start = pts[i].t;
+          const end = i + 1 < pts.length ? pts[i + 1].t : now;
+          const width = ((end - start) / tSpan * 100).toFixed(2);
+          const active = activeSet.has(s);
+          const segColor = active ? activeColor : 'rgba(128,128,128,0.25)';
+          const stateLabel = this._getLocalizedState(s, domain) || s;
+          const dur = this._getTimeAgo(new Date(start));
+          segments.push(`<div class="state-bar-segment" style="width:${width}%;background:${segColor}" data-tip="${stateLabel} ${dur}"></div>`);
+        }
+
+        const tFmt = (ts) => {
+          const d = new Date(ts);
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        };
+
+        wrap.innerHTML = `
+          <div class="state-bar-title">Activity (24h)</div>
+          <div class="state-bar-container">${segments.join('')}</div>
+          <div class="state-bar-labels"><span>${tFmt(t0)}</span><span>${tFmt(now)}</span></div>
+        `;
+      } catch (e) {
+        wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">Error</div>';
+      }
+    }
+
+    _buildStateBars(entity, domain, deviceClass, isActive, color) {
+      // Returns placeholder — actual bar is loaded async via _loadBinaryStateBars
+      return `<div class="state-bar-section" id="bsStateBar"><div class="history-loading" style="padding:8px 0;">Loading activity…</div></div>`;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // SELECT / INPUT_SELECT POPUP
+    // ─────────────────────────────────────────────────────────────
+    _renderSelectPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const domain = (entity.entity_id || '').split('.')[0];
+      const currentOption = entity.state;
+      const options = entity.attributes?.options || [];
+      const icon = this._getResolvedIcon(entity, 'mdi:format-list-bulleted');
+      const color = 'var(--primary-color, #9C27B0)';
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+      const hlColor = this._config.popup_highlight_color || 'var(--primary-color, #03a9f4)';
+      const hlRadius = this._config.popup_highlight_radius ?? 14;
+
+      const optionRows = options.map(opt => {
+        const sel = opt === currentOption;
+        const bg = sel ? hlColor : 'rgba(255,255,255,0.05)';
+        const border = sel ? hlColor : 'rgba(255,255,255,0.08)';
+        const fw = sel ? '600' : '400';
+        return `<button class="select-option ${sel ? 'active' : ''}" data-option="${opt}" style="background:${bg};border-color:${border};font-weight:${fw};border-radius:${hlRadius}px;">${opt}</button>`;
+      }).join('');
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; ${this._getPopupPortalStyle()} display: flex; align-items: center; justify-content: center; z-index: 9999; }
+          .hki-popup-container { ${this._getPopupCardStyle()}; border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+          .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--divider-color, rgba(255,255,255,0.05)); border: none; color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+          .hki-popup-content { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+          .select-option { width: 100%; padding: 16px 20px; border: 2px solid; cursor: pointer; font-size: 15px; color: var(--primary-text-color); text-align: left; transition: all 0.15s ease; }
+          .select-option:hover { opacity: 0.85; transform: scale(1.01); }
+          .select-option.active { box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+          .timeline-container { width: 100%; }
+          .timeline-item { display: flex; gap: 12px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #9C27B0; z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.1)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 14px; font-size: 13px; }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+          .hki-popup-nav { display: flex; justify-content: space-evenly; padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; min-height: 74px; box-sizing: border-box; ${showBottomBar ? '' : 'display: none !important;'} }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(currentOption)}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="selectHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="selectContent">
+            ${this._activeView === 'history'
+              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              : optionRows}
+          </div>
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#selectHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderSelectPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      portal.querySelectorAll('.select-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const opt = btn.dataset.option;
+          const svc = domain === 'input_select' ? 'input_select' : 'select';
+          const svcCall = domain === 'input_select' ? 'select_option' : 'select_option';
+          this.hass.callService(svc, svcCall, { entity_id: this._config.entity, option: opt });
+          setTimeout(() => this._renderSelectPopupPortal(this._getEntity()), 300);
+        });
+      });
+
+      if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // NUMBER / INPUT_NUMBER POPUP
+    // ─────────────────────────────────────────────────────────────
+    _renderNumberPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const domain = (entity.entity_id || '').split('.')[0];
+      const rawVal = parseFloat(entity.state) || 0;
+      const min = parseFloat(entity.attributes?.min) ?? 0;
+      const max = parseFloat(entity.attributes?.max) ?? 100;
+      const step = parseFloat(entity.attributes?.step) ?? 1;
+      const unit = entity.attributes?.unit_of_measurement || '';
+      const icon = this._getResolvedIcon(entity, 'mdi:numeric');
+      const color = 'var(--primary-color, #FF9800)';
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+      const borderRadius = this._config.popup_slider_radius ?? 12;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+      const handleRadius = Math.round(borderRadius * 0.7);
+      const valueSize = this._config.popup_value_font_size ?? 36;
+      const valueWeight = this._config.popup_value_font_weight ?? 300;
+      const pct = Math.max(0, Math.min(100, ((rawVal - min) / (max - min)) * 100));
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; ${this._getPopupPortalStyle()} display: flex; align-items: center; justify-content: center; z-index: 9999; }
+          .hki-popup-container { ${this._getPopupCardStyle()}; border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+          .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--divider-color, rgba(255,255,255,0.05)); border: none; color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+          .hki-popup-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
+          .number-slider-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 80px; height: 320px; }
+          .value-display { font-size: ${valueSize}px; font-weight: ${valueWeight}; text-align: center; min-width: 80px; }
+          .slider-unit { font-size: 14px; opacity: 0.6; margin-left: 3px; }
+          .vertical-slider-track { width: 100%; flex: 1; background: var(--secondary-background-color, rgba(255,255,255,0.1)); border: 2px solid var(--divider-color, rgba(255,255,255,0.1)); border-radius: ${borderRadius}px; position: relative; overflow: hidden; cursor: pointer; }
+          .vertical-slider-fill { position: absolute; bottom: 0; left: 0; right: 0; background: ${color}; height: ${pct}%; border-radius: 0 0 ${borderRadius}px ${borderRadius}px; }
+          .vertical-slider-thumb { position: absolute; left: 50%; transform: translateX(-50%); width: 74px; height: 32px; background: white; border-radius: ${handleRadius}px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); cursor: grab; pointer-events: none; bottom: calc(${pct}% - 16px); }
+          .timeline-container { width: 100%; }
+          .timeline-item { display: flex; gap: 12px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #FF9800; z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.1)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 14px; font-size: 13px; }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+          .hki-popup-nav { display: flex; justify-content: space-evenly; padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; min-height: 74px; box-sizing: border-box; ${showBottomBar ? '' : 'display: none !important;'} }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(rawVal + (unit ? ' ' + unit : ''))}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="numHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="numContent">
+            ${this._activeView === 'history'
+              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              : `<div class="number-slider-wrap">
+                  <div class="value-display" id="numDisplay">${rawVal}<span class="slider-unit">${unit}</span></div>
+                  <div class="vertical-slider-track" id="numTrack">
+                    <div class="vertical-slider-fill" id="numFill"></div>
+                    <div class="vertical-slider-thumb" id="numThumb"></div>
+                  </div>
+                </div>`}
+          </div>
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#numHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderNumberPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      if (this._activeView === 'history') {
+        setTimeout(() => this._loadHistory(), 100);
+      } else {
+        const track = portal.querySelector('#numTrack');
+        const fill = portal.querySelector('#numFill');
+        const thumb = portal.querySelector('#numThumb');
+        const display = portal.querySelector('#numDisplay');
+        let isDragging = false;
+        let pendingValue = null;
+        let debounceTimer = null;
+
+        const updateUI = (val) => {
+          const p = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+          if (fill) fill.style.height = p + '%';
+          if (thumb) thumb.style.bottom = `calc(${p}% - 16px)`;
+          if (display) display.innerHTML = `${val}<span class="slider-unit">${unit}</span>`;
+        };
+
+        const getVal = (e) => {
+          const rect = track.getBoundingClientRect();
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          const y = 1 - Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+          let v = min + y * (max - min);
+          v = Math.round(v / step) * step;
+          v = Math.round(v * 1000) / 1000;
+          return Math.max(min, Math.min(max, v));
+        };
+
+        const commit = (val) => {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            const svc = domain === 'input_number' ? 'input_number' : 'number';
+            this.hass.callService(svc, 'set_value', { entity_id: this._config.entity, value: val });
+          }, 300);
+        };
+
+        if (track) {
+          track.addEventListener('mousedown', (e) => { isDragging = true; track.style.cursor = 'grabbing'; const v = getVal(e); pendingValue = v; updateUI(v); });
+          track.addEventListener('touchstart', (e) => { isDragging = true; const v = getVal(e); pendingValue = v; updateUI(v); }, { passive: true });
+          window.addEventListener('mousemove', (e) => { if (!isDragging) return; const v = getVal(e); pendingValue = v; updateUI(v); });
+          window.addEventListener('touchmove', (e) => { if (!isDragging) return; const v = getVal(e); pendingValue = v; updateUI(v); }, { passive: true });
+          const end = () => { if (!isDragging) return; isDragging = false; track.style.cursor = 'pointer'; if (pendingValue !== null) { commit(pendingValue); pendingValue = null; } };
+          window.addEventListener('mouseup', end);
+          window.addEventListener('touchend', end);
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TEXT / INPUT_TEXT POPUP
+    // ─────────────────────────────────────────────────────────────
+    _renderTextPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const domain = (entity.entity_id || '').split('.')[0];
+      const currentText = entity.state === 'unknown' || entity.state === 'unavailable' ? '' : (entity.state || '');
+      const minLen = entity.attributes?.min || 0;
+      const maxLen = entity.attributes?.max || 255;
+      const pattern = entity.attributes?.pattern || null;
+      const mode = entity.attributes?.mode || 'text';
+      const icon = this._getResolvedIcon(entity, 'mdi:form-textbox');
+      const color = 'var(--primary-color, #00BCD4)';
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; ${this._getPopupPortalStyle()} display: flex; align-items: center; justify-content: center; z-index: 9999; }
+          .hki-popup-container { ${this._getPopupCardStyle()}; border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+          .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
+          .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+          .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
+          .hki-popup-state { font-size: 12px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
+          .header-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--divider-color, rgba(255,255,255,0.05)); border: none; color: var(--primary-text-color); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+          .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size: 20px; }
+          .hki-popup-content { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; align-items: stretch; min-height: 0; }
+          .text-field-wrap { display: flex; flex-direction: column; gap: 8px; }
+          .text-input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--divider-color, rgba(255,255,255,0.15)); background: rgba(255,255,255,0.06); color: var(--primary-text-color); font-size: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s; }
+          .text-input:focus { border-color: var(--primary-color, #00BCD4); }
+          .text-input-hint { font-size: 11px; opacity: 0.5; }
+          .text-submit-btn { padding: 14px; border-radius: 12px; border: none; background: var(--primary-color, #00BCD4); color: white; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+          .text-submit-btn:hover { opacity: 0.85; }
+          .text-current { font-size: 13px; opacity: 0.6; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; }
+          .timeline-container { width: 100%; }
+          .timeline-item { display: flex; gap: 12px; position: relative; }
+          .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
+          .timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: #00BCD4; z-index: 2; border: 2px solid var(--card-background-color, #1c1c1c); }
+          .timeline-line { width: 2px; flex-grow: 1; background: var(--divider-color, rgba(255,255,255,0.1)); margin-top: -2px; margin-bottom: -4px; }
+          .timeline-item:last-child .timeline-line { display: none; }
+          .timeline-content { flex: 1; padding-bottom: 14px; font-size: 13px; }
+          .timeline-ago { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; }
+          .timeline-trigger { font-size: 10px; opacity: 0.5; display: block; margin-top: 2px; font-style: italic; }
+          .history-loading { width: 100%; text-align: center; padding: 20px; opacity: 0.6; }
+          .hki-popup-nav { display: flex; justify-content: space-evenly; padding: 12px; background: rgba(255,255,255,0.03); border-top: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; min-height: 74px; box-sizing: border-box; ${showBottomBar ? '' : 'display: none !important;'} }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(currentText || '(empty)')}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="txtHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="textContent">
+            ${this._activeView === 'history'
+              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              : `<div class="text-field-wrap">
+                  <div class="text-current">Current: <strong>${currentText || '(empty)'}</strong></div>
+                  <input class="text-input" id="textInput" type="${mode === 'password' ? 'password' : 'text'}"
+                    value="${currentText.replace(/"/g, '&quot;')}"
+                    minlength="${minLen}" maxlength="${maxLen}"
+                    ${pattern ? `pattern="${pattern}"` : ''} placeholder="Enter text…">
+                  <div class="text-input-hint">Max ${maxLen} characters${minLen > 0 ? ', min ' + minLen : ''}</div>
+                  <button class="text-submit-btn" id="textSubmitBtn">Set Value</button>
+                </div>`}
+          </div>
+          <div class="hki-popup-nav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#txtHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderTextPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      const submitFn = () => {
+        const input = portal.querySelector('#textInput');
+        if (!input) return;
+        const val = input.value;
+        const svc = domain === 'input_text' ? 'input_text' : 'text';
+        this.hass.callService(svc, 'set_value', { entity_id: this._config.entity, value: val });
+        setTimeout(() => this._renderTextPopupPortal(this._getEntity()), 400);
+      };
+
+      portal.querySelector('#textSubmitBtn')?.addEventListener('click', submitFn);
+      portal.querySelector('#textInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitFn(); });
+
+      if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
     }
 
     _renderIndividualView() {
@@ -15037,6 +15849,11 @@ if (!this._popupPortal) {
             if (domain === 'lock') return entry.state !== 'unknown';
             if (domain === 'humidifier') return entry.state !== 'unknown';
             if (domain === 'fan') return entry.state !== 'unknown';
+            if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') return !!entry.state;
+            if (domain === 'sensor') return !!entry.state;
+            if (domain === 'select' || domain === 'input_select') return !!entry.state;
+            if (domain === 'number' || domain === 'input_number') return !!entry.state;
+            if (domain === 'text' || domain === 'input_text') return !!entry.state;
             return (entry.state === 'on' || entry.state === 'off' || entry.state === 'unavailable');
           });
         
@@ -15085,6 +15902,13 @@ if (!this._popupPortal) {
               .replace(/\s+/g, ' ')
               .trim();
             stateText = this._titleCase(norm);
+          } else if (domain === 'sensor' || domain === 'number' || domain === 'input_number' || domain === 'text' || domain === 'input_text') {
+            const unit = this.hass.states[entityId]?.attributes?.unit_of_measurement || '';
+            stateText = unit ? `${entry.state} ${unit}` : (entry.state || 'Changed');
+          } else if (domain === 'select' || domain === 'input_select') {
+            stateText = entry.state || 'Changed';
+          } else if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') {
+            stateText = this._getLocalizedState(entry.state, domain) || entry.state || 'Changed';
           } else if (entry.state === 'on') {
             stateText = this.hass.localize('ui.card.button.turn_on') || 'Turned On';
           } else if (entry.state === 'off') {
@@ -15149,6 +15973,18 @@ if (!this._popupPortal) {
             dotColor = (HVAC_COLORS && HVAC_COLORS[entry.state]) || (entry.state === 'off' ? '#444' : '#FFD700');
           } else if (domain === 'cover') {
             dotColor = entry.state === 'closed' ? '#444' : '#2196F3';
+          } else if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') {
+            dotColor = (entry.state === 'on' || entry.state === 'home' || entry.state === 'detected') ? '#4CAF50' : '#546E7A';
+          } else if (domain === 'sensor') {
+            dotColor = '#2196F3';
+          } else if (domain === 'select' || domain === 'input_select') {
+            dotColor = '#9C27B0';
+          } else if (domain === 'number' || domain === 'input_number') {
+            dotColor = '#FF9800';
+          } else if (domain === 'text' || domain === 'input_text') {
+            dotColor = '#00BCD4';
+          } else if (domain === 'automation') {
+            dotColor = entry.state === 'on' ? '#4CAF50' : '#546E7A';
           } else {
             dotColor = entry.state === 'on' ? '#FFD700' : (entry.state === 'off' ? '#444' : '#E53935');
           }
@@ -17483,6 +18319,7 @@ const iconAlign = this._config.icon_align || 'left';
         popup: true,
         popup_card: false,    // open by default
         popup_default_view: true,
+        sensor_opts: true,
         popup_anim: true,
         popup_container: true,
         popup_blur: true,
@@ -17859,9 +18696,16 @@ disconnectedCallback() {
       const borders = ["solid", "dashed", "dotted", "double", "none"];
 
       const selectedEntity = this.hass.states[this._config.entity];
-      const isClimate = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'climate';
-      const isLock = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'lock';
-      const isHumidifier = selectedEntity && selectedEntity.entity_id && selectedEntity.entity_id.split('.')[0] === 'humidifier';
+      const _edDomain = selectedEntity?.entity_id?.split('.')[0];
+      const isClimate = _edDomain === 'climate';
+      const isLock = _edDomain === 'lock';
+      const isHumidifier = _edDomain === 'humidifier';
+      const isSensor = _edDomain === 'sensor';
+      const isBinarySensor = ['binary_sensor', 'device_tracker', 'event'].includes(_edDomain);
+      const isSelect = ['select', 'input_select'].includes(_edDomain);
+      const isNumber = ['number', 'input_number'].includes(_edDomain);
+      const isText = ['text', 'input_text'].includes(_edDomain);
+      const isAutomation = _edDomain === 'automation';
 
       // Custom Actions Dropdown List (Replaces Native Selector)
       const actionsList = [
@@ -18501,7 +19345,21 @@ disconnectedCallback() {
           </div>
           ` : ''}
 
-          ${isLock ? html`
+          ${isSensor ? html`
+          <div class="accordion-group ">
+            ${renderHeader("Sensor Graph Options", "sensor_opts")}
+            <div class="accordion-content ${this._closedDetails['sensor_opts'] ? 'hidden' : ''}">
+              <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Applies when domain popup is Sensor and action is "More Info (HKI)".</p>
+              <ha-formfield .label=${"Use gradient coloring (temperature-style)"}>
+                <ha-switch .checked=${this._config.sensor_graph_gradient !== false} @change=${(ev) => this._switchChanged(ev, "sensor_graph_gradient")}></ha-switch>
+              </ha-formfield>
+              <ha-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></ha-textfield>
+              <ha-textfield label="Line width (px)" type="number" .value=${this._config.sensor_line_width ?? 3} @input=${(ev) => this._textChanged(ev, "sensor_line_width")}></ha-textfield>
+            </div>
+          </div>
+          ` : ''}
+
+                    ${isLock ? html`
           <div class="accordion-group ">
             ${renderHeader("Lock Settings", "lock")}
             <div class="accordion-content ${this._closedDetails['lock'] ? 'hidden' : ''}">
@@ -19020,6 +19878,9 @@ ${isGoogleLayout ? '' : html`
                     <div class="sub-accordion">
                       ${renderHeader("Popup Card", "popup_card")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_card'] ? 'hidden' : ''}">
+                        <ha-formfield .label=${"Hide bottom bar (save vertical space)"}>
+                          <ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch>
+                        </ha-formfield>
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
                         <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${isCustomPopup} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                         ${isCustomPopup ? html`
