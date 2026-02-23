@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11773,7 +11773,7 @@ if (!this._popupPortal) {
       const ty = 140 + 100 * Math.sin(sa + aa);
       const useGradient = this._config.humidifier_show_gradient !== false;
       const stroke = useGradient ? 'url(#humGradient)' : color;
-      const gradDefs = useGradient ? '<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#8BC34A;stop-opacity:1"/><stop offset="40%" style="stop-color:#29B6F6;stop-opacity:1"/><stop offset="100%" style="stop-color:#0277BD;stop-opacity:1"/></linearGradient></defs>' : '';
+      const gradDefs = useGradient ? '<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#0277BD;stop-opacity:1"/><stop offset="60%" style="stop-color:#29B6F6;stop-opacity:1"/><stop offset="100%" style="stop-color:#8BC34A;stop-opacity:1"/></linearGradient></defs>' : '';
       return `
         <div class="circular-slider-wrapper">
           <div class="circular-slider-container" id="circularSliderHum">
@@ -11833,8 +11833,8 @@ if (!this._popupPortal) {
       };
       return `
         <div class="circular-slider-wrapper">
-          ${buildArc(humLow, 'Low', 'humGradLow', '#8BC34A', '#29B6F6')}
-          ${buildArc(humHigh, 'High', 'humGradHigh', '#29B6F6', '#0277BD')}
+          ${buildArc(humLow, 'Low', 'humGradLow', '#29B6F6', '#8BC34A')}
+          ${buildArc(humHigh, 'High', 'humGradHigh', '#0277BD', '#29B6F6')}
           ${showButtons ? `
             <div class="circular-temp-buttons">
               <button class="circular-temp-btn plus" data-hum-action="plus-high"><ha-icon icon="mdi:plus"></ha-icon></button>
@@ -11948,7 +11948,7 @@ if (!this._popupPortal) {
 
         const setupCircle = (idSuffix, getOptimistic, setOptimistic, commitFn) => {
           const circEl = portal.querySelector(`#circularSliderHum${idSuffix}`);
-          if (!circEl) return;
+          if (!circEl) return null;
           const svg = circEl.querySelector('svg');
           const progress = circEl.querySelector(`#humCircularProgress${idSuffix}`);
           const thumb = circEl.querySelector(`#humCircularThumb${idSuffix}`);
@@ -12000,18 +12000,20 @@ if (!this._popupPortal) {
 
           circEl.addEventListener('mousedown', (e) => { onDown(e.clientX, e.clientY); document.addEventListener('mousemove', mouseMove); document.addEventListener('mouseup', mouseUp); });
           circEl.addEventListener('touchstart', (e) => { onDown(e.touches[0].clientX, e.touches[0].clientY); document.addEventListener('touchmove', touchMove, { passive: true }); document.addEventListener('touchend', touchEnd); }, { passive: true });
+
+          return updateFromVal;
         };
 
         if (isRange) {
+          const updateHigh = setupCircle('High',
+            () => this._optimisticHumidityHigh ?? humHighAttr,
+            (v) => { this._optimisticHumidityHigh = v; },
+            (v) => commitRange(this._optimisticHumidityLow ?? humLowAttr, v)
+          );
           setupCircle('Low',
             () => this._optimisticHumidityLow ?? humLowAttr,
             (v) => { this._optimisticHumidityLow = v; },
             (v) => commitRange(v, this._optimisticHumidityHigh ?? humHighAttr)
-          );
-          setupCircle('High',
-            () => this._optimisticHumidityHigh ?? humHighAttr,
-            (v) => { this._optimisticHumidityHigh = v; },
-            (v) => commitRange(this._optimisticHumidityLow ?? humLowAttr, v)
           );
           // +/- buttons act on High in range mode
           portal.querySelectorAll('[data-hum-action]').forEach(btn => {
@@ -12021,16 +12023,16 @@ if (!this._popupPortal) {
                 const dir = action.startsWith('plus') ? 1 : -1;
                 const cur = this._optimisticHumidityHigh ?? humHighAttr;
                 const val = clamp(cur + dir * step, minHumidity, maxHumidity);
-                this._optimisticHumidityHigh = val;
                 this._isDragging = true;
                 clearTimeout(this._humidifierDebounce);
                 this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
+                if (updateHigh) updateHigh(val);
                 commitRange(this._optimisticHumidityLow ?? humLowAttr, val);
               }
             });
           });
         } else {
-          setupCircle('',
+          const updateCircle = setupCircle('',
             () => this._optimisticHumidity ?? attrs.humidity,
             (v) => { this._optimisticHumidity = v; },
             (v) => this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: v })
@@ -12040,10 +12042,10 @@ if (!this._popupPortal) {
               const cur = this._optimisticHumidity ?? attrs.humidity ?? minHumidity;
               const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
               const val = clamp(cur + dir * step, minHumidity, maxHumidity);
-              this._optimisticHumidity = val;
               this._isDragging = true;
               clearTimeout(this._humidifierDebounce);
               this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
+              if (updateCircle) updateCircle(val);
               this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
             });
           });
@@ -17883,7 +17885,7 @@ disconnectedCallback() {
                 <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${this._config.humidifier_humidity_step ?? 1} @input=${(ev) => this._textChanged(ev, "humidifier_humidity_step")} placeholder="1"></ha-textfield>
                 <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.humidifier_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "humidifier_use_circular_slider")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.humidifier_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "humidifier_show_plus_minus")}></ha-switch></ha-formfield>
-                <ha-formfield .label=${"Show Gradient (circular)"}><ha-switch .checked=${this._config.humidifier_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "humidifier_show_gradient")}></ha-switch></ha-formfield>
+                <ha-formfield .label=${"Show Gradient"}><ha-switch .checked=${this._config.humidifier_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "humidifier_show_gradient")}></ha-switch></ha-formfield>
             </div>
           </div>
           ` : ''}
