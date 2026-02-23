@@ -8225,14 +8225,13 @@ if (!this._popupPortal) {
           }
           .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size: 20px; }
-          .hki-popup-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; padding: 0; }
-          .sensor-tiles { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 16px; overflow-y: auto; }
-          .sensor-tile { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+          .hki-popup-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; padding: 16px; gap: 0; }
+          .sensor-tile { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
           .sensor-tile-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
           .sensor-tile-title { font-size: 14px; font-weight: 600; opacity: 0.9; }
           .sensor-tile-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
           .sensor-tile-unit { font-size: 16px; font-weight: 400; opacity: 0.7; margin-left: 2px; }
-          .sensor-tile-graph { flex: 1; width: 100%; min-height: 120px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
+          .sensor-tile-graph { width: 100%; height: 80px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
           .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
           .timeline-container { width: 100%; display: flex; flex-direction: column; gap: 0; }
           .timeline-item { display: flex; gap: 12px; position: relative; }
@@ -8267,14 +8266,12 @@ if (!this._popupPortal) {
             </div>
           </div>
           <div class="hki-popup-content" id="sensorContent">
-            <div class="sensor-tiles">
-              <div class="sensor-tile">
-                <div class="sensor-tile-top">
-                  <div class="sensor-tile-title">${entity.attributes?.friendly_name || name}</div>
-                  <div class="sensor-tile-value">${state}<span class="sensor-tile-unit">${unit}</span></div>
-                </div>
-                <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">Loading chart…</div></div>
+            <div class="sensor-tile">
+              <div class="sensor-tile-top">
+                <div class="sensor-tile-title">${entity.attributes?.friendly_name || name}</div>
+                <div class="sensor-tile-value">${state}<span class="sensor-tile-unit">${unit}</span></div>
               </div>
+              <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">Loading chart…</div></div>
             </div>
           </div>
           <div class="hki-popup-nav"></div>
@@ -8300,7 +8297,7 @@ if (!this._popupPortal) {
 
       if (this._activeView === 'history') {
         const content = portal.querySelector('#sensorContent');
-        if (content) content.innerHTML = '<div style="padding:16px;flex:1;overflow-y:auto"><div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div></div>';
+        if (content) content.innerHTML = '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div>';
         setTimeout(() => this._loadHistory(), 100);
       } else {
         // Load sparkline
@@ -9039,8 +9036,10 @@ if (!this._popupPortal) {
           .header-btn:hover { background:rgba(255,255,255,0.1);transform:scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size:20px; }
           .hki-popup-content { flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;padding:0;position:relative; }
-          #personMapContainer { width:100%;height:100%;display:block;position:relative; }
-          #personMapContainer > * { display:block;width:100%;height:100%; }
+          #personMapContainer { width:100%;height:100%;display:block;position:relative;overflow:hidden; }
+          #personMapContainer > ha-map { display:block;width:100%;height:100%;border-radius:0; }
+          #personMapContainer > hui-map-card,
+          #personMapContainer > hui-map-card ha-card { display:block;width:100%;height:100%;border-radius:0;box-shadow:none;background:transparent; }
           .person-map-label { position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;color:white;white-space:nowrap;pointer-events:none;z-index:10;display:flex;align-items:center;gap:8px; }
           .person-map-dot { width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0; }
           .history-loading { width:100%;text-align:center;padding:20px;opacity:0.6; }
@@ -9110,14 +9109,90 @@ if (!this._popupPortal) {
     _mountPersonMap(portal, entityId, locationLabel, color) {
       const container = portal.querySelector('#personMapContainer');
       if (!container) return;
-      const mapConfig = { type: 'map', entities: [{ entity: entityId }], hours_to_show: 0, default_zoom: 14 };
-      const tryMount = (helpers) => {
+
+      // Try ha-map directly first (no card chrome, no "home" state label)
+      const tryHaMap = () => {
+        const mapEl = document.createElement('ha-map');
+        mapEl.hass = this.hass;
+        mapEl.entities = [{ entity_id: entityId }];
+        mapEl.zoom = 14;
+        mapEl.style.cssText = 'display:block;width:100%;height:100%;border-radius:0;';
+        container.innerHTML = '';
+        container.appendChild(mapEl);
+
+        // Pierce ha-map shadow root to suppress leaflet zone/tooltip labels
+        const hideLabels = () => {
+          const sr = mapEl.shadowRoot;
+          if (sr && !sr.querySelector('#hki-map-style')) {
+            const s = document.createElement('style');
+            s.id = 'hki-map-style';
+            s.textContent = '.leaflet-tooltip,.leaflet-label,.entity-label{display:none!important}';
+            sr.appendChild(s);
+          }
+          // Trigger leaflet invalidateSize so it fills the container
+          const leafletMap = sr?.querySelector('.leaflet-container')?._leaflet_id
+            ? null : sr?.querySelector('.leaflet-container');
+          if (leafletMap) {
+            window.dispatchEvent(new Event('resize'));
+          }
+        };
+        setTimeout(hideLabels, 200);
+        setTimeout(hideLabels, 800);
+        // Also fire a window resize to prod leaflet into filling its container
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 500);
+
+        // Location pill overlay
+        const label = document.createElement('div');
+        label.className = 'person-map-label';
+        label.innerHTML = '<div class="person-map-dot"></div><span>' + locationLabel + '</span>';
+        container.appendChild(label);
+      };
+
+      // Fallback: full map card but aggressively stripped
+      const tryCardMap = (helpers) => {
         try {
-          const mapCard = helpers.createCardElement(mapConfig);
+          const mapCard = helpers.createCardElement({
+            type: 'map',
+            entities: [{ entity: entityId }],
+            hours_to_show: 0,
+            default_zoom: 14,
+            aspect_ratio: null,
+          });
           mapCard.hass = this.hass;
-          mapCard.style.cssText = 'display:block;width:100%;height:100%;';
+          mapCard.style.cssText = 'display:block;width:100%;height:100%;border-radius:0;';
           container.innerHTML = '';
           container.appendChild(mapCard);
+
+          // Inject aggressive override style into the map card's shadow root
+          const stripCardChrome = () => {
+            const card = mapCard.shadowRoot;
+            if (card) {
+              const s = document.createElement('style');
+              s.textContent = `
+                ha-card { box-shadow:none!important;border-radius:0!important;background:transparent!important;height:100%!important; }
+                .card-content,.card-header { padding:0!important;margin:0!important; }
+              `;
+              card.appendChild(s);
+            }
+            // Also try ha-card's own shadow root
+            const haCard = mapCard.shadowRoot?.querySelector('ha-card');
+            if (haCard) {
+              haCard.style.cssText = 'height:100%;border-radius:0;box-shadow:none;background:transparent;';
+              const hs = haCard.shadowRoot;
+              if (hs) {
+                const s2 = document.createElement('style');
+                s2.textContent = '.card-content{padding:0!important;margin:0!important;}';
+                hs.appendChild(s2);
+              }
+            }
+            // Hide any text labels inside (the "home" zone label)
+            mapCard.shadowRoot?.querySelectorAll('.leaflet-tooltip, .entity-label, .zone-label')
+              .forEach(el => { el.style.display = 'none'; });
+          };
+          setTimeout(stripCardChrome, 150);
+          setTimeout(stripCardChrome, 600);
+
           const label = document.createElement('div');
           label.className = 'person-map-label';
           label.innerHTML = '<div class="person-map-dot"></div><span>' + locationLabel + '</span>';
@@ -9127,10 +9202,23 @@ if (!this._popupPortal) {
           container.innerHTML = '<div class="history-loading">Map unavailable</div>';
         }
       };
-      if (window.loadCardHelpers) {
-        window.loadCardHelpers().then(tryMount).catch(() => { container.innerHTML = '<div class="history-loading">Map unavailable</div>'; });
+
+      // ha-map is preferred — check if it's a known custom element
+      if (customElements.get('ha-map')) {
+        tryHaMap();
+      } else if (window.loadCardHelpers) {
+        window.loadCardHelpers()
+          .then((helpers) => {
+            // Prefer ha-map once helpers have loaded (they register HA elements)
+            if (customElements.get('ha-map')) {
+              tryHaMap();
+            } else {
+              tryCardMap(helpers);
+            }
+          })
+          .catch(() => { container.innerHTML = '<div class="history-loading">Map unavailable</div>'; });
       } else {
-        container.innerHTML = '<div class="history-loading">Card helpers unavailable</div>';
+        container.innerHTML = '<div class="history-loading">Map unavailable</div>';
       }
     }
 
