@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-14 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-15 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -8304,7 +8304,7 @@ _tileSliderClick(e) {
       }
 
       // Check if we have HKI popup support for this domain
-      const supportedDomains = ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group', 'automation', 'sensor', 'binary_sensor', 'device_tracker', 'event', 'select', 'input_select', 'number', 'input_number', 'text', 'input_text'];
+      const supportedDomains = ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group', 'automation', 'sensor', 'binary_sensor', 'device_tracker', 'event', 'select', 'input_select', 'number', 'input_number', 'text', 'input_text', 'person'];
       if (!supportedDomains.includes(domain)) {
         // Fall back to native more-info for unsupported domains
         const event = new Event('hass-more-info', { bubbles: true, composed: true });
@@ -8405,6 +8405,12 @@ _tileSliderClick(e) {
       if (domain === 'text' || domain === 'input_text') {
         this._activeView = 'main';
         this._renderTextPopupPortal(entity);
+        return;
+      }
+
+      if (domain === 'person') {
+        this._activeView = 'main';
+        this._renderPersonPopupPortal(entity);
         return;
       }
 
@@ -13826,6 +13832,13 @@ if (!this._popupPortal) {
 
       // Render the custom card after portal is in DOM
       this._renderCustomCard();
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const nav = portal.querySelector('.hki-popup-nav');
+        if (nav && Array.isArray(this._config.popup_bottom_bar_entities) && this._config.popup_bottom_bar_entities.length > 0) {
+          this._renderBottomBarEntityButtons(nav);
+        }
+      }
     }
 
     _renderCustomPopupContent(entity) {
@@ -14325,16 +14338,15 @@ if (!this._popupPortal) {
           }
           .header-btn:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
           .header-btn ha-icon { --mdc-icon-size: 20px; }
-          .hki-popup-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
-          .sensor-main-tile {
-            background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.25); display: flex; flex-direction: column; flex: 1;
-          }
-          .sensor-main-value { font-size: 56px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
-          .sensor-main-unit { font-size: 24px; font-weight: 400; opacity: 0.7; margin-left: 4px; }
-          .sensor-main-label { font-size: 14px; opacity: 0.6; margin-top: 4px; }
-          .sensor-sparkline-wrap { flex: 1; min-height: 120px; margin-top: 16px; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
-          .sensor-sparkline-wrap svg { width: 100%; height: 100%; display: block; }
+          .hki-popup-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; padding: 0; }
+          .sensor-tiles { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; padding: 16px; overflow-y: auto; }
+          .sensor-tile { background: rgba(255,255,255,0.05); border-radius: 18px; padding: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.25); flex: 1; display: flex; flex-direction: column; min-height: 0; }
+          .sensor-tile-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+          .sensor-tile-title { font-size: 14px; font-weight: 600; opacity: 0.9; }
+          .sensor-tile-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+          .sensor-tile-unit { font-size: 16px; font-weight: 400; opacity: 0.7; margin-left: 2px; }
+          .sensor-tile-graph { flex: 1; width: 100%; min-height: 120px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
+          .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
           .timeline-container { width: 100%; display: flex; flex-direction: column; gap: 0; }
           .timeline-item { display: flex; gap: 12px; position: relative; }
           .timeline-visual { display: flex; flex-direction: column; align-items: center; width: 20px; flex-shrink: 0; }
@@ -14368,10 +14380,14 @@ if (!this._popupPortal) {
             </div>
           </div>
           <div class="hki-popup-content" id="sensorContent">
-            <div class="sensor-main-tile">
-              <div class="sensor-main-value">${state}<span class="sensor-main-unit">${unit}</span></div>
-              <div class="sensor-main-label">${entity.attributes?.friendly_name || name}</div>
-              <div class="sensor-sparkline-wrap" id="sensorSparkline"><div class="history-loading">Loading chart…</div></div>
+            <div class="sensor-tiles">
+              <div class="sensor-tile">
+                <div class="sensor-tile-top">
+                  <div class="sensor-tile-title">${entity.attributes?.friendly_name || name}</div>
+                  <div class="sensor-tile-value">${state}<span class="sensor-tile-unit">${unit}</span></div>
+                </div>
+                <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">Loading chart…</div></div>
+              </div>
             </div>
           </div>
           <div class="hki-popup-nav"></div>
@@ -14397,7 +14413,7 @@ if (!this._popupPortal) {
 
       if (this._activeView === 'history') {
         const content = portal.querySelector('#sensorContent');
-        if (content) content.innerHTML = '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div>';
+        if (content) content.innerHTML = '<div style="padding:16px;flex:1;overflow-y:auto"><div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div></div>';
         setTimeout(() => this._loadHistory(), 100);
       } else {
         // Load sparkline
@@ -14427,7 +14443,7 @@ if (!this._popupPortal) {
         const maxN = 80;
         const ds = pts.length > maxN ? pts.filter((_, i) => i % Math.ceil(pts.length / maxN) === 0) : pts;
 
-        const W = 280, H = 80;
+        const W = 260, H = 56;
         const minV = Math.min(...ds.map(p => p.v));
         const maxV = Math.max(...ds.map(p => p.v));
         const span = (maxV - minV) || 1;
@@ -15037,6 +15053,198 @@ if (!this._popupPortal) {
       portal.querySelector('#textInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitFn(); });
 
       if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // SHARED: Render entity buttons in popup bottom bar
+    // ─────────────────────────────────────────────────────────────
+    _renderBottomBarEntityButtons(navEl) {
+      if (!navEl) return;
+      const entities = this._config.popup_bottom_bar_entities;
+      if (!Array.isArray(entities) || entities.length === 0) return;
+      const align = this._config.popup_bottom_bar_align || 'spread';
+      const justifyMap = { spread: 'space-around', start: 'flex-start', center: 'center', end: 'flex-end' };
+      navEl.style.display = 'flex';
+      navEl.style.alignItems = 'center';
+      navEl.style.justifyContent = justifyMap[align] || 'space-around';
+      navEl.style.padding = '8px 12px';
+      navEl.style.gap = '4px';
+      navEl.style.flexWrap = 'nowrap';
+      navEl.innerHTML = '';
+      entities.slice(0, 5).forEach(cfg => {
+        if (!cfg || !cfg.entity) return;
+        const stateObj = this.hass.states[cfg.entity];
+        if (!stateObj) return;
+        const domain = cfg.entity.split('.')[0];
+        const state = stateObj.state;
+        const isOn = state === 'on' || state === 'home' || state === 'open';
+        const friendlyName = stateObj.attributes?.friendly_name || cfg.entity;
+        const unit = stateObj.attributes?.unit_of_measurement || '';
+        const icon = cfg.icon || stateObj.attributes?.icon || this._getDomainIcon(domain);
+        const isSensor = ['sensor','number','input_number','input_text','text','select','input_select'].includes(domain);
+        let iconColor = isSensor ? 'var(--primary-text-color)' : (isOn ? 'var(--primary-color,#03a9f4)' : 'rgba(255,255,255,0.35)');
+        const displayVal = isSensor ? (state + (unit ? ' ' + unit : '')) : '';
+        const label = String(friendlyName).length > 9 ? String(friendlyName).slice(0,8)+'…' : friendlyName;
+        const btn = document.createElement('button');
+        btn.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 8px;min-width:48px;max-width:72px;background:transparent;border:none;cursor:pointer;color:var(--primary-text-color);border-radius:10px;transition:background 0.15s;flex-shrink:1;';
+        btn.innerHTML = `<ha-icon icon="${icon}" style="--mdc-icon-size:22px;color:${iconColor}"></ha-icon>${displayVal ? `<span style="font-size:9px;opacity:0.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68px">${displayVal}</span>` : ''}<span style="font-size:9px;opacity:0.55;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68px">${label}</span>`;
+        btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255,255,255,0.08)'; });
+        btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
+        btn.addEventListener('click', (e) => { e.stopPropagation(); const action = cfg.tap_action; if (!action || !action.action || action.action === 'none') return; this._executeBottomBarAction(action, cfg.entity); });
+        navEl.appendChild(btn);
+      });
+    }
+
+    _executeBottomBarAction(action, entityId) {
+      const act = action.action;
+      if (act === 'toggle') {
+        const d = entityId.split('.')[0];
+        const svc = d === 'input_boolean' ? 'input_boolean' : (d === 'light' ? 'light' : (d === 'switch' ? 'switch' : 'homeassistant'));
+        this.hass.callService(svc, 'toggle', { entity_id: entityId });
+      } else if (act === 'more-info') {
+        const ev = new Event('hass-more-info', { bubbles: true, composed: true });
+        ev.detail = { entityId };
+        this.dispatchEvent(ev);
+      } else if (act === 'navigate') {
+        if (action.navigation_path) window.history.pushState(null, '', action.navigation_path);
+      } else if (act === 'perform-action' || act === 'call-service') {
+        const serviceStr = action.service || action.perform_action || '';
+        const [d, s] = serviceStr.split('.');
+        if (d && s) this.hass.callService(d, s, { entity_id: entityId, ...(action.service_data || action.data || {}) });
+      } else if (act === 'url') {
+        if (action.url_path) window.open(action.url_path, '_blank');
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // PERSON POPUP — full-size HA map + configurable bottom bar
+    // ─────────────────────────────────────────────────────────────
+    _renderPersonPopupPortal(entity) {
+      const name = this._getPopupName(entity);
+      const entityId = entity.entity_id;
+      const state = entity.state;
+      const icon = this._getResolvedIcon(entity, 'mdi:account');
+      const isHome = state === 'home';
+      const color = isHome ? 'var(--primary-color,#4CAF50)' : '#607D8B';
+      const geocodedEntityId = this._config.person_geocoded_entity;
+      const geocodedState = geocodedEntityId && this.hass.states[geocodedEntityId] ? this.hass.states[geocodedEntityId].state : null;
+      const locationLabel = geocodedState || state;
+      const lastSeen = this._formatLastTriggered(entity);
+      const showBottomBar = this._config.popup_hide_bottom_bar !== true;
+      const hasBottomBarEntities = Array.isArray(this._config.popup_bottom_bar_entities) && this._config.popup_bottom_bar_entities.length > 0;
+      const popupBorderRadius = this._config.popup_border_radius ?? 16;
+      const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
+
+      const portal = this._popupPortal || document.createElement('div');
+      portal.className = 'hki-popup-portal';
+      portal.innerHTML = '';
+      portal.innerHTML = `
+        <style>
+          .hki-popup-portal { position:fixed;top:0;left:0;width:100%;height:100%; ${this._getPopupPortalStyle()} display:flex;align-items:center;justify-content:center;z-index:9999; }
+          .hki-popup-container { ${this._getPopupCardStyle()};border-radius:${popupBorderRadius}px;width:${popupWidth};height:${popupHeight};box-shadow:0 8px 32px rgba(0,0,0,0.4);display:flex;flex-direction:column;overflow:hidden;user-select:none; }
+          .hki-popup-header { display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--divider-color,rgba(255,255,255,0.05));flex-shrink:0; }
+          .hki-popup-title { display:flex;align-items:center;gap:12px;flex:1;min-width:0; }
+          .hki-popup-title ha-icon { --mdc-icon-size:24px; }
+          .hki-popup-title-text { display:flex;flex-direction:column;gap:2px;font-size:16px;font-weight:500;min-width:0; }
+          .hki-popup-state { font-size:12px;opacity:0.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+          .hki-popup-header-controls { display:flex;gap:8px;align-items:center; }
+          .header-btn { width:40px;height:40px;border-radius:50%;background:var(--divider-color,rgba(255,255,255,0.05));border:none;color:var(--primary-text-color);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s; }
+          .header-btn:hover { background:rgba(255,255,255,0.1);transform:scale(1.05); }
+          .header-btn ha-icon { --mdc-icon-size:20px; }
+          .hki-popup-content { flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;padding:0;position:relative; }
+          #personMapContainer { width:100%;height:100%;display:block;position:relative; }
+          #personMapContainer > * { display:block;width:100%;height:100%; }
+          .person-map-label { position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;color:white;white-space:nowrap;pointer-events:none;z-index:10;display:flex;align-items:center;gap:8px; }
+          .person-map-dot { width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0; }
+          .history-loading { width:100%;text-align:center;padding:20px;opacity:0.6; }
+          .timeline-container { padding:16px;overflow-y:auto;height:100%;box-sizing:border-box; }
+          .timeline-item { display:flex;gap:12px;position:relative; }
+          .timeline-visual { display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0; }
+          .timeline-dot { width:10px;height:10px;border-radius:50%;background:var(--primary-color);z-index:2;border:2px solid var(--card-background-color,#1c1c1c); }
+          .timeline-line { width:2px;flex-grow:1;background:var(--divider-color,rgba(255,255,255,0.1));margin-top:-2px;margin-bottom:-4px; }
+          .timeline-item:last-child .timeline-line { display:none; }
+          .timeline-content { flex:1;padding-bottom:14px;font-size:13px; }
+          .timeline-ago { font-size:10px;opacity:0.5;display:block;margin-top:2px; }
+          .timeline-trigger { font-size:10px;opacity:0.5;display:block;margin-top:2px;font-style:italic; }
+          .hki-popup-nav { display:flex;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.03);border-top:1px solid var(--divider-color,rgba(255,255,255,0.05));flex-shrink:0;min-height:74px;box-sizing:border-box; }
+        </style>
+        <div class="hki-popup-container">
+          <div class="hki-popup-header">
+            <div class="hki-popup-title">
+              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(color)}"></ha-icon>
+              <div class="hki-popup-title-text">
+                ${name}
+                <span class="hki-popup-state">${this._getPopupHeaderState(locationLabel)}${lastSeen ? ' — ' + lastSeen : ''}</span>
+              </div>
+            </div>
+            <div class="hki-popup-header-controls">
+              <button class="header-btn" id="personHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+            </div>
+          </div>
+          <div class="hki-popup-content" id="personContent">
+            ${this._activeView === 'history'
+              ? '<div class="timeline-container"><div id="historyContainer"><div class="history-loading">Loading…</div></div></div>'
+              : '<div id="personMapContainer"></div>'}
+          </div>
+          <div class="hki-popup-nav" id="personNav"></div>
+        </div>
+      `;
+
+      const container = portal.querySelector('.hki-popup-container');
+      if (container) container.addEventListener('click', (e) => e.stopPropagation());
+      let isBackgroundClick = false;
+      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+      portal.addEventListener('click', (e) => { if (isBackgroundClick && e.target === portal) this._closePopup(); isBackgroundClick = false; });
+
+      if (!this._popupPortal) { document.body.appendChild(portal); this._applyOpenAnimation(portal); }
+      this._popupPortal = portal;
+
+      portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+      portal.querySelector('#personHistoryBtn')?.addEventListener('click', () => {
+        this._activeView = this._activeView === 'history' ? 'main' : 'history';
+        this._renderPersonPopupPortal(this._getEntity());
+        if (this._activeView === 'history') setTimeout(() => this._loadHistory(), 100);
+      });
+
+      if (showBottomBar && hasBottomBarEntities) {
+        const nav = portal.querySelector('#personNav');
+        if (nav) this._renderBottomBarEntityButtons(nav);
+      }
+
+      if (this._activeView === 'history') {
+        setTimeout(() => this._loadHistory(), 100);
+      } else {
+        setTimeout(() => this._mountPersonMap(portal, entityId, locationLabel, color), 80);
+      }
+    }
+
+    _mountPersonMap(portal, entityId, locationLabel, color) {
+      const container = portal.querySelector('#personMapContainer');
+      if (!container) return;
+      const mapConfig = { type: 'map', entities: [{ entity: entityId }], hours_to_show: 0, default_zoom: 14 };
+      const tryMount = (helpers) => {
+        try {
+          const mapCard = helpers.createCardElement(mapConfig);
+          mapCard.hass = this.hass;
+          mapCard.style.cssText = 'display:block;width:100%;height:100%;';
+          container.innerHTML = '';
+          container.appendChild(mapCard);
+          const label = document.createElement('div');
+          label.className = 'person-map-label';
+          label.innerHTML = '<div class="person-map-dot"></div><span>' + locationLabel + '</span>';
+          container.style.position = 'relative';
+          container.appendChild(label);
+        } catch (e) {
+          container.innerHTML = '<div class="history-loading">Map unavailable</div>';
+        }
+      };
+      if (window.loadCardHelpers) {
+        window.loadCardHelpers().then(tryMount).catch(() => { container.innerHTML = '<div class="history-loading">Map unavailable</div>'; });
+      } else {
+        container.innerHTML = '<div class="history-loading">Card helpers unavailable</div>';
+      }
     }
 
     _renderIndividualView() {
@@ -15849,6 +16057,7 @@ if (!this._popupPortal) {
             if (domain === 'lock') return entry.state !== 'unknown';
             if (domain === 'humidifier') return entry.state !== 'unknown';
             if (domain === 'fan') return entry.state !== 'unknown';
+            if (domain === 'person') return !!entry.state;
             if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') return !!entry.state;
             if (domain === 'sensor') return !!entry.state;
             if (domain === 'select' || domain === 'input_select') return !!entry.state;
@@ -15906,6 +16115,8 @@ if (!this._popupPortal) {
             const unit = this.hass.states[entityId]?.attributes?.unit_of_measurement || '';
             stateText = unit ? `${entry.state} ${unit}` : (entry.state || 'Changed');
           } else if (domain === 'select' || domain === 'input_select') {
+            stateText = entry.state || 'Changed';
+          } else if (domain === 'person') {
             stateText = entry.state || 'Changed';
           } else if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') {
             stateText = this._getLocalizedState(entry.state, domain) || entry.state || 'Changed';
@@ -15975,6 +16186,8 @@ if (!this._popupPortal) {
             dotColor = entry.state === 'closed' ? '#444' : '#2196F3';
           } else if (domain === 'binary_sensor' || domain === 'device_tracker' || domain === 'event') {
             dotColor = (entry.state === 'on' || entry.state === 'home' || entry.state === 'detected') ? '#4CAF50' : '#546E7A';
+          } else if (domain === 'person') {
+            dotColor = entry.state === 'home' ? '#4CAF50' : '#607D8B';
           } else if (domain === 'sensor') {
             dotColor = '#2196F3';
           } else if (domain === 'select' || domain === 'input_select') {
@@ -18320,6 +18533,8 @@ const iconAlign = this._config.icon_align || 'left';
         popup_card: false,    // open by default
         popup_default_view: true,
         sensor_opts: true,
+        person_opts: true,
+        popup_bottom_bar: true,
         popup_anim: true,
         popup_container: true,
         popup_blur: true,
@@ -18706,6 +18921,7 @@ disconnectedCallback() {
       const isNumber = ['number', 'input_number'].includes(_edDomain);
       const isText = ['text', 'input_text'].includes(_edDomain);
       const isAutomation = _edDomain === 'automation';
+      const isPerson = _edDomain === 'person';
 
       // Custom Actions Dropdown List (Replaces Native Selector)
       const actionsList = [
@@ -19341,6 +19557,23 @@ disconnectedCallback() {
                 <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.humidifier_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "humidifier_use_circular_slider")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.humidifier_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "humidifier_show_plus_minus")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show Gradient"}><ha-switch .checked=${this._config.humidifier_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "humidifier_show_gradient")}></ha-switch></ha-formfield>
+            </div>
+          </div>
+          ` : ''}
+
+          ${isPerson ? html`
+          <div class="accordion-group ">
+            ${renderHeader("Person Popup Options", "person_opts")}
+            <div class="accordion-content ${this._closedDetails['person_opts'] ? 'hidden' : ''}">
+              <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Applies when action is "More Info (HKI)" on a person entity.</p>
+              <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">By default the popup shows the person's state (home / away / zone). Link a geocoded address sensor to show the real street address instead.</p>
+              <ha-entity-picker
+                .hass=${this.hass}
+                .value=${this._config.person_geocoded_entity || ""}
+                .label=${"Geocoded Address Entity (optional)"}
+                @value-changed=${(ev) => this._fireChanged({ ...this._config, person_geocoded_entity: ev.detail.value || undefined })}
+                allow-custom-entity
+              ></ha-entity-picker>
             </div>
           </div>
           ` : ''}
@@ -20026,6 +20259,57 @@ ${isGoogleLayout ? '' : html`
                           <ha-textfield label="Card Blur (px)" type="number" .value=${this._config.popup_card_blur_amount ?? 40} @input=${(ev) => this._textChanged(ev, "popup_card_blur_amount")} .disabled=${this._config.popup_card_blur_enabled === false}></ha-textfield>
                           <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_card_opacity ?? 0.4} @input=${(ev) => this._textChanged(ev, "popup_card_opacity")}></ha-textfield>
                         </div>
+                      </div>
+                    </div>
+
+                    <div class="sub-accordion">
+                      ${renderHeader("Bottom Bar Entities", "popup_bottom_bar")}
+                      <div class="sub-accordion-content ${this._closedDetails['popup_bottom_bar'] ? 'hidden' : ''}">
+                        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 5 icon buttons to the bottom bar. Works on person and custom popups.</p>
+                        <ha-select label="Button Alignment"
+                          .value=${this._config.popup_bottom_bar_align || 'spread'}
+                          @selected=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
+                          @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                          <mwc-list-item value="spread">Spread (space around)</mwc-list-item>
+                          <mwc-list-item value="start">Start (left aligned)</mwc-list-item>
+                          <mwc-list-item value="center">Center</mwc-list-item>
+                          <mwc-list-item value="end">End (right aligned)</mwc-list-item>
+                        </ha-select>
+                        ${[0,1,2,3,4].map(i => {
+                          const ents = this._config.popup_bottom_bar_entities || [];
+                          const entry = ents[i] || {};
+                          const setEntry = (patch) => {
+                            const arr = [...(this._config.popup_bottom_bar_entities || Array(5).fill(null))];
+                            while (arr.length < 5) arr.push(null);
+                            const prev = arr[i] || {};
+                            arr[i] = { ...prev, ...patch };
+                            while (arr.length > 0 && !arr[arr.length-1]?.entity) arr.pop();
+                            this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
+                          };
+                          return html`
+                            <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
+                              <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                              <ha-entity-picker .hass=${this.hass} .value=${entry.entity||""} .label=${"Entity"}
+                                @value-changed=${(ev) => setEntry({ entity: ev.detail.value||undefined })}
+                                allow-custom-entity></ha-entity-picker>
+                              ${entry.entity ? html`
+                                <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
+                                  @input=${(ev) => setEntry({ icon: ev.target.value||undefined })} style="margin-top:6px;"></ha-textfield>
+                                <ha-select label="Tap Action" .value=${entry.tap_action?.action||'more-info'}
+                                  @selected=${(ev) => setEntry({ tap_action: {...entry.tap_action, action: ev.detail.value} })}
+                                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
+                                  <mwc-list-item value="more-info">More Info (Native)</mwc-list-item>
+                                  <mwc-list-item value="toggle">Toggle</mwc-list-item>
+                                  <mwc-list-item value="navigate">Navigate</mwc-list-item>
+                                  <mwc-list-item value="none">None</mwc-list-item>
+                                </ha-select>
+                                ${(entry.tap_action?.action==='navigate') ? html`
+                                  <ha-textfield label="Navigation Path" .value=${entry.tap_action?.navigation_path||""}
+                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, navigation_path: ev.target.value} })}
+                                    style="margin-top:6px;"></ha-textfield>` : ''}
+                              ` : ''}
+                            </div>`;
+                        })}
                       </div>
                     </div>
 
