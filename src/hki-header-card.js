@@ -1609,7 +1609,8 @@ class HkiHeaderCard extends LitElement {
         if (action.target) cleaned.target = action.target;
         break;
       case "hki-more-info":
-        // Preserve popup card config and all appearance settings
+        // Preserve entity and popup card config and all appearance settings
+        if (action.entity) cleaned.entity = action.entity;
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
         if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
         if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
@@ -3447,6 +3448,7 @@ class HkiHeaderCardEditor extends LitElement {
         if (action.target) cleaned.target = action.target;
         break;
       case "hki-more-info":
+        if (action.entity) cleaned.entity = action.entity;
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
         if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
         if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
@@ -4238,7 +4240,7 @@ class HkiHeaderCardEditor extends LitElement {
           <span>Background blur</span>
         </div>
         <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Card</div>
-        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI Popup" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI More Info" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
         <div class="card-config">
           <hui-card-element-editor
             .hass=${this.hass}
@@ -4287,7 +4289,7 @@ class HkiHeaderCardEditor extends LitElement {
         <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
         <mwc-list-item value="url">Open URL</mwc-list-item>
         <mwc-list-item value="more-info">More Info</mwc-list-item>
-        <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
+        <mwc-list-item value="hki-more-info">HKI More Info</mwc-list-item>
         <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
         <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
       </ha-select>
@@ -4301,6 +4303,7 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
+        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Entity (overrides slot entity)" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "perform-action" ? html`
@@ -4445,7 +4448,7 @@ class HkiHeaderCardEditor extends LitElement {
             <mwc-list-item value="menu">Toggle Menu</mwc-list-item>
             <mwc-list-item value="url">Open URL</mwc-list-item>
             <mwc-list-item value="more-info">More Info</mwc-list-item>
-            <mwc-list-item value="hki-more-info">HKI Popup</mwc-list-item>
+            <mwc-list-item value="hki-more-info">HKI More Info</mwc-list-item>
             <mwc-list-item value="toggle">Toggle Entity</mwc-list-item>
             <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
           </ha-select>
@@ -4459,6 +4462,7 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
           ` : ''}
           ${actionValue === "hki-more-info" ? html`
+            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Entity (defaults to person entity)" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
           ` : ''}
           ${actionValue === "perform-action" ? html`
@@ -4619,7 +4623,7 @@ class HkiHeaderCardEditor extends LitElement {
           <span>Background blur</span>
         </div>
         <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Card</div>
-        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI Popup" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
+        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI More Info" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
         <div class="card-config">
           <hui-card-element-editor
             .hass=${this.hass}
