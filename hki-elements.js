@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-04 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-05 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11655,8 +11655,6 @@ if (!this._popupPortal) {
         return this._renderHumidifierModesList(modes, currentMode, color);
       }
       if (this._activeView === 'fan') {
-        // Re-read fan entity state fresh at render time so the active selection
-        // is always current even when switching tabs.
         const liveFanEntityId = this._config.humidifier_fan_entity || '';
         const liveFanEntity = liveFanEntityId ? this.hass?.states?.[liveFanEntityId] : null;
         const liveFanModes = liveFanEntity?.attributes?.options || liveFanEntity?.attributes?.fan_modes || fanModes || [];
@@ -11690,7 +11688,9 @@ if (!this._popupPortal) {
 
       // ── Vertical slider ─────────────────────────────────────────────────────
       const humBlue = '#03a9f4';
-      const humGradientCss = 'linear-gradient(to top, #8BC34A 0%, #29B6F6 45%, #0277BD 100%)';
+      const useGradientV = this._config.humidifier_show_gradient !== false;
+      const humVerticalGradient = 'linear-gradient(to top, #8BC34A 0%, #29B6F6 50%, #0277BD 100%)';
+      const sliderBg = useGradientV ? humVerticalGradient : humBlue;
       const renderSlider = (id, value, label) => {
         const v = value ?? '--';
         const pct = value == null ? 0 : ((value - minHumidity) / range) * 100;
@@ -11699,7 +11699,7 @@ if (!this._popupPortal) {
           <div class="humidifier-slider-group">
             <div class="value-display" id="display-${id}">${v}<span>%</span></div>
             <div class="vertical-slider-track" id="slider-${id}" data-type="${id}">
-              <div class="vertical-slider-fill" style="height:${pct}%;background:${humGradientCss};"></div>
+              <div class="vertical-slider-fill" style="height:${pct}%;background:${sliderBg};"></div>
               <div class="vertical-slider-thumb" style="bottom:${thumbPos}"></div>
             </div>
             <div class="slider-label">${label}</div>
@@ -11886,6 +11886,8 @@ if (!this._popupPortal) {
             const domainGuess = fanEntityId.split('.')[0];
             if (domainGuess === 'select') {
               this.hass.callService('select', 'select_option', { entity_id: fanEntityId, option: mode });
+            } else if (domainGuess === 'input_select') {
+              this.hass.callService('input_select', 'select_option', { entity_id: fanEntityId, option: mode });
             } else if (domainGuess === 'fan') {
               this.hass.callService('fan', 'set_preset_mode', { entity_id: fanEntityId, preset_mode: mode });
             } else {
