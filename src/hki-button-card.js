@@ -270,6 +270,16 @@ class HkiButtonCard extends LitElement {
       ['popup_open_animation',      'hki_popup','open_animation'],
       ['popup_close_animation',     'hki_popup','close_animation'],
       ['popup_animation_duration',  'hki_popup','animation_duration'],
+      // bottom bar & person popup (new)
+      ['popup_hide_bottom_bar',     'hki_popup','hide_bottom_bar'],
+      ['popup_bottom_bar_align',    'hki_popup','bottom_bar_align'],
+      ['popup_bottom_bar_entities', 'hki_popup','bottom_bar_entities'],
+      ['person_geocoded_entity',    'hki_popup','person_geocoded_entity'],
+      // sensor popup graph options (new)
+      ['sensor_graph_color',        'hki_popup','sensor_graph_color'],
+      ['sensor_graph_gradient',     'hki_popup','sensor_graph_gradient'],
+      ['sensor_line_width',         'hki_popup','sensor_line_width'],
+      ['sensor_hours',              'hki_popup','sensor_hours'],
       // custom popup
       ['custom_popup_enabled',      'custom_popup','enabled'],
       ['custom_popup_card',         'custom_popup','card'],
@@ -8231,7 +8241,7 @@ if (!this._popupPortal) {
           .sensor-value-row { display: flex; align-items: baseline; justify-content: flex-end; }
           .sensor-tile-value { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
           .sensor-tile-unit { font-size: 18px; font-weight: 400; opacity: 0.7; margin-left: 3px; }
-          .sensor-tile-graph { width: 100%; height: 80px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
+          .sensor-tile-graph { width: 100%; height: 160px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
           .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
           .sensor-hours-row { display: flex; justify-content: flex-end; gap: 6px; }
           .sensor-hour-btn { padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--primary-text-color); font-size: 11px; cursor: pointer; transition: all 0.15s; }
@@ -14275,46 +14285,86 @@ ${isGoogleLayout ? '' : html`
                         ${[0,1,2,3,4].map(i => {
                           const ents = this._config.popup_bottom_bar_entities || [];
                           const entry = ents[i] || {};
+                          const tapAction = entry.tap_action || { action: 'more-info' };
+                          const currentAction = tapAction.action || 'more-info';
+                          const bbKey = `bb_${i}`;
+
                           const setEntry = (patch) => {
-                            const arr = [...(this._config.popup_bottom_bar_entities || Array(5).fill(null))];
-                            while (arr.length < 5) arr.push(null);
-                            const prev = arr[i] || {};
-                            arr[i] = { ...prev, ...patch };
-                            while (arr.length > 0 && !arr[arr.length-1]?.entity) arr.pop();
+                            const src = this._config.popup_bottom_bar_entities || [];
+                            const arr = Array.from({ length: Math.max(src.length, i + 1) }, (_, j) => src[j] || null);
+                            arr[i] = { ...(arr[i] || {}), ...patch };
+                            while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                             this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
                           };
+                          const setTapAction = (actionPatch) => setEntry({ tap_action: { ...tapAction, ...actionPatch } });
+
                           return html`
                             <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
                               <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
                               <ha-entity-picker .hass=${this.hass} .value=${entry.entity||""} .label=${"Entity"}
-                                @value-changed=${(ev) => setEntry({ entity: ev.detail.value||undefined })}
+                                @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
                               ${entry.entity ? html`
                                 <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
-                                  @input=${(ev) => setEntry({ icon: ev.target.value||undefined })} style="margin-top:6px;"></ha-textfield>
-                                <ha-select label="Tap Action" .value=${entry.tap_action?.action||'more-info'}
-                                  @selected=${(ev) => setEntry({ tap_action: {...entry.tap_action, action: ev.detail.value} })}
+                                  @input=${(ev) => setEntry({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
+
+                                <ha-select label="Tap Action" .value=${currentAction}
+                                  @selected=${(ev) => { ev.stopPropagation(); const v = ev.detail?.value || ev.target?.value; if (v && v !== currentAction) setTapAction({ action: v }); }}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
-                                  <mwc-list-item value="more-info">More Info (Native)</mwc-list-item>
-                                  <mwc-list-item value="hki-more-info">More Info (HKI)</mwc-list-item>
-                                  <mwc-list-item value="toggle">Toggle</mwc-list-item>
-                                  <mwc-list-item value="navigate">Navigate</mwc-list-item>
-                                  <mwc-list-item value="perform-action">Perform Action</mwc-list-item>
-                                  <mwc-list-item value="url">Open URL</mwc-list-item>
-                                  <mwc-list-item value="none">None</mwc-list-item>
+                                  ${actionsList.map(a => html`<mwc-list-item .value=${a.value}>${a.label}</mwc-list-item>`)}
                                 </ha-select>
-                                ${(entry.tap_action?.action==='navigate') ? html`
-                                  <ha-textfield label="Navigation Path" .value=${entry.tap_action?.navigation_path||""}
-                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, navigation_path: ev.target.value} })}
-                                    style="margin-top:6px;"></ha-textfield>` : ''}
-                                ${(entry.tap_action?.action==='url') ? html`
-                                  <ha-textfield label="URL" .value=${entry.tap_action?.url_path||""} placeholder="https://..."
-                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, url_path: ev.target.value} })}
-                                    style="margin-top:6px;"></ha-textfield>` : ''}
-                                ${(entry.tap_action?.action==='perform-action') ? html`
-                                  <ha-textfield label="Service (domain.service)" .value=${entry.tap_action?.service||""} placeholder="light.turn_on"
-                                    @input=${(ev) => setEntry({ tap_action: {...entry.tap_action, service: ev.target.value} })}
-                                    style="margin-top:6px;"></ha-textfield>` : ''}
+
+                                ${currentAction === 'navigate' ? html`
+                                  ${customElements.get("ha-navigation-picker") ? html`
+                                    <ha-navigation-picker .hass=${this.hass} label="Navigation Path"
+                                      .value=${tapAction.navigation_path||""}
+                                      @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ navigation_path: ev.detail?.value || "" }); }}
+                                      @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-navigation-picker>
+                                  ` : html`
+                                    <ha-textfield label="Navigation Path" .value=${tapAction.navigation_path||""} placeholder="/lovelace/0"
+                                      @input=${(ev) => setTapAction({ navigation_path: ev.target.value })} style="margin-top:6px;"></ha-textfield>
+                                  `}
+                                ` : ''}
+
+                                ${currentAction === 'url' ? html`
+                                  <ha-textfield label="URL" .value=${tapAction.url_path||""} placeholder="https://..."
+                                    @input=${(ev) => setTapAction({ url_path: ev.target.value })} style="margin-top:6px;"></ha-textfield>
+                                ` : ''}
+
+                                ${currentAction === 'perform-action' ? html`
+                                  ${customElements.get("ha-service-picker") ? html`
+                                    <ha-service-picker .hass=${this.hass} label="Action (service)"
+                                      .value=${tapAction.perform_action||""}
+                                      @value-changed=${(ev) => { ev.stopPropagation(); const v = ev.detail?.value ?? ev.target?.value ?? ""; if (v !== tapAction.perform_action) setTapAction({ perform_action: String(v || "") }); }}
+                                      @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-service-picker>
+                                  ` : html`
+                                    ${(() => {
+                                      const full = String(tapAction.perform_action || "");
+                                      this._paDomainCache = this._paDomainCache || {};
+                                      const cachedDomain = this._paDomainCache[bbKey] || "";
+                                      const derivedDomain = full.includes('.') ? full.split('.')[0] : '';
+                                      const domain = cachedDomain || derivedDomain;
+                                      const derivedService = (full.includes('.') && derivedDomain === domain) ? (full.split('.')[1] || '') : '';
+                                      const domains = Object.keys(this.hass?.services || {}).sort();
+                                      const services = domain && this.hass?.services?.[domain] ? Object.keys(this.hass.services[domain]).sort() : [];
+                                      return html`
+                                        <div class="side-by-side" style="margin-top:6px;">
+                                          <ha-select label="Domain" .value=${domain||""}
+                                            @selected=${(e) => { e.stopPropagation(); this._paDomainCache[bbKey] = e.target.value || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                                            <mwc-list-item value=""></mwc-list-item>
+                                            ${domains.map(d => html`<mwc-list-item .value=${d}>${d}</mwc-list-item>`)}
+                                          </ha-select>
+                                          <ha-select label="Service" .value=${derivedService||""} .disabled=${!domain}
+                                            @selected=${(e) => { e.stopPropagation(); const svc = e.target.value || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                                            <mwc-list-item value=""></mwc-list-item>
+                                            ${services.map(s => html`<mwc-list-item .value=${s}>${s}</mwc-list-item>`)}
+                                          </ha-select>
+                                        </div>`;
+                                    })()}
+                                  `}
+                                ` : ''}
                               ` : ''}
                             </div>`;
                         })}
