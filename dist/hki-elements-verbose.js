@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-12 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-13 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -17481,6 +17481,15 @@ const iconAlign = this._config.icon_align || 'left';
         icon_settings: true,
     
         popup: true,
+        popup_card: false,    // open by default
+        popup_default_view: true,
+        popup_anim: true,
+        popup_container: true,
+        popup_blur: true,
+        popup_features: true,
+        popup_content: true,
+        popup_highlight: true,
+        popup_buttons: true,
     
         actions: true,
         action_tap: true,
@@ -18993,310 +19002,297 @@ ${isGoogleLayout ? '' : html`
                 <p style="font-size: 12px; opacity: 0.7; margin: 8px 0; padding: 8px; background: var(--secondary-background-color); border-radius: 6px; border-left: 3px solid var(--primary-color);">
                   <strong>Note:</strong> These settings only work when an action is set to <code>more-info (HKI)</code>.
                 </p>
-                
-                <div class="separator"></div>
-                <strong>Custom Popup</strong>
-                <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame. Perfect for remote controls, custom climate controls, or specialized interfaces.</p>
-                <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
-                
-                ${(this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true) ? html`
-                  <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Popup Card</p>
-                  <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
-                  <div class="card-config">
-                    ${customElements.get('hui-card-element-editor')
-                      ? html`<hui-card-element-editor
-                      .hass=${this.hass}
-                      .lovelace=${this._getLovelace()}
-                      .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                      @config-changed=${(ev) => {
-                        ev.stopPropagation();
-                        const newCard = ev.detail?.config;
-                        if (!newCard) return;
-                        const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                        if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
-                          this._fireChanged({ ...this._config, custom_popup_card: newCard });
-                        }
-                      }}
-                    ></hui-card-element-editor>`
-                      : customElements.get('hui-card-picker')
-                        ? html`
-                          <hui-card-picker
-                            .hass=${this.hass}
-                            .lovelace=${this._getLovelace()}
-                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                            @config-changed=${(ev) => {
-                              ev.stopPropagation();
-                              const picked = ev.detail?.config;
-                              if (!picked) return;
-                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                              if (JSON.stringify(picked) !== JSON.stringify(existing)) {
-                                this._fireChanged({ ...this._config, custom_popup_card: picked });
-                              }
-                            }}
-                          ></hui-card-picker>
 
-                          <ha-yaml-editor
-                            .hass=${this.hass}
-                            .label=${"Popup Card (YAML)"}
-                            .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
-                            @value-changed=${(ev) => {
-                              ev.stopPropagation();
-                              const newCard = ev.detail?.value;
-                              if (!newCard) return;
-                              const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
-                              if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
-                                this._fireChanged({ ...this._config, custom_popup_card: newCard });
-                              }
-                            }}
-                            @click=${(e) => e.stopPropagation()}
-                          ></ha-yaml-editor>
-                        `
-                        : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
-                  </div>
-                ` : ''}
-                
-                <div class="separator"></div>
-                <strong>Popup Animation</strong>
-                <div class="side-by-side">
-                  <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
-                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
-                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                    <mwc-list-item value="none">None</mwc-list-item>
-                    <mwc-list-item value="fade">Fade</mwc-list-item>
-                    <mwc-list-item value="scale">Scale</mwc-list-item>
-                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                    <mwc-list-item value="flip">Flip</mwc-list-item>
-                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                     <mwc-list-item value="drop">Drop</mwc-list-item>
-                     <mwc-list-item value="swing">Swing</mwc-list-item>
-                  </ha-select>
-                  <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
-                    @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
-                    @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                    <mwc-list-item value="none">None</mwc-list-item>
-                    <mwc-list-item value="fade">Fade</mwc-list-item>
-                    <mwc-list-item value="scale">Scale</mwc-list-item>
-                    <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                    <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                    <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                    <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                    <mwc-list-item value="flip">Flip</mwc-list-item>
-                    <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                     <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                     <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                     <mwc-list-item value="drop">Drop</mwc-list-item>
-                     <mwc-list-item value="swing">Swing</mwc-list-item>
-                  </ha-select>
-                </div>
-                <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
-
-                <div class="separator"></div>
-                <strong>Popup Container</strong>
-                <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
-                <div class="side-by-side">
-                  <ha-select
-                    label="Width"
-                    .value=${this._config.popup_width || 'auto'}
-                    @selected=${(ev) => this._dropdownChanged(ev, "popup_width")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                    <mwc-list-item value="default">Default (400px)</mwc-list-item>
-                    <mwc-list-item value="custom">Custom</mwc-list-item>
-                  </ha-select>
-                  ${this._config.popup_width === 'custom' ? html`
-                    <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
-                  ` : html`<div></div>`}
-                </div>
-                <div class="side-by-side">
-                  <ha-select
-                    label="Height"
-                    .value=${this._config.popup_height || 'auto'}
-                    @selected=${(ev) => this._dropdownChanged(ev, "popup_height")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                    <mwc-list-item value="default">Default (600px)</mwc-list-item>
-                    <mwc-list-item value="custom">Custom</mwc-list-item>
-                  </ha-select>
-                  ${this._config.popup_height === 'custom' ? html`
-                    <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
-                  ` : html`<div></div>`}
-                </div>
-                <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Background Blur (Portal)</p>
-                <ha-formfield .label=${"Enable Background Blur"}><ha-switch .checked=${this._config.popup_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_blur_enabled")}></ha-switch></ha-formfield>
-                <ha-textfield label="Blur Amount (px)" type="number" .value=${this._config.popup_blur_amount ?? 10} @input=${(ev) => this._textChanged(ev, "popup_blur_amount")} .disabled=${this._config.popup_blur_enabled === false}></ha-textfield>
-                
-                <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Card Glass Effect (Bubble-card style)</p>
-                <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Creates a frosted glass effect on the popup card. Enabled by default with 0.4 opacity.</p>
-                <ha-formfield .label=${"Enable Card Blur"}><ha-switch .checked=${this._config.popup_card_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_card_blur_enabled")}></ha-switch></ha-formfield>
-                <div class="side-by-side">
-                  <ha-textfield label="Card Blur (px)" type="number" .value=${this._config.popup_card_blur_amount ?? 40} @input=${(ev) => this._textChanged(ev, "popup_card_blur_amount")} .disabled=${this._config.popup_card_blur_enabled === false}></ha-textfield>
-                  <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_card_opacity ?? 0.4} @input=${(ev) => this._textChanged(ev, "popup_card_opacity")}></ha-textfield>
-                </div>
-                
                 ${(() => {
+                  const isCustomPopup = this._config.custom_popup?.enabled === true || this._config.custom_popup_enabled === true;
                   const domain = selectedEntity?.entity_id?.split('.')[0];
                   const hasChildren = selectedEntity?.attributes?.entity_id && Array.isArray(selectedEntity.attributes.entity_id);
                   const isLightGroup = domain === 'light' && hasChildren;
-                  
-                  // Show default view for any group entity (light, cover, switch, etc.)
-                  // Show default section only for light groups
-                  if (hasChildren) {
-                    const entityTypeName = domain === 'light' ? 'Lights' : (domain === 'cover' ? 'Covers' : (domain === 'switch' ? 'Switches' : 'Entities'));
-                    
-                    return html`
-                      <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Default View${isLightGroup ? ' & Section' : ''} (Groups)</p>
-                      <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">For ${domain} groups, choose which view${isLightGroup ? ' and section' : ''} to show when opening the popup.</p>
-                      <div class="side-by-side">
-                        <ha-select
-                          label="Default View"
-                          .value=${this._config.popup_default_view || 'main'}
-                          @selected=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
-                          @closed=${(e) => e.stopPropagation()}
-                          @click=${(e) => e.stopPropagation()}
-                        >
-                          <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
-                          <mwc-list-item value="individual">Individual ${entityTypeName}</mwc-list-item>
-                        </ha-select>
-                        ${isLightGroup ? html`
-                          <ha-select
-                            label="Default Section"
-                            .value=${this._config.popup_default_section || 'last'}
-                            @selected=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
-                            @closed=${(e) => e.stopPropagation()}
-                            @click=${(e) => e.stopPropagation()}
-                          >
-                            <mwc-list-item value="last">Last Used (Default)</mwc-list-item>
-                            <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
-                            <mwc-list-item value="color">Always Color</mwc-list-item>
-                            <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
-                          </ha-select>
-                        ` : html`<div></div>`}
-                      </div>
-                    `;
-                  }
-                  return '';
-                })()}
-                
-                ${(() => {
-                  const domain = selectedEntity?.entity_id?.split('.')[0];
-                  
-                  // Show/hide options based on entity domain
+                  const entityTypeName = domain === 'light' ? 'Lights' : (domain === 'cover' ? 'Covers' : (domain === 'switch' ? 'Switches' : 'Entities'));
+
                   const showLightOptions = domain === 'light';
                   const showClimateOptions = isClimate;
                   const showAlarmOptions = domain === 'alarm_control_panel';
                   const showCoverOptions = domain === 'cover';
-                  
-                  if (!showLightOptions && !showClimateOptions && !showAlarmOptions && !showCoverOptions) {
-                    return '';
-                  }
-                  
+                  const hasDomainFeatures = showLightOptions || showClimateOptions || showAlarmOptions || showCoverOptions;
+
                   return html`
-                    <div class="separator"></div>
-                    <strong>Features</strong>
-                    <div class="checkbox-grid">
-                      ${showLightOptions ? html`
-                        <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
-                        <ha-formfield .label=${"Show Effects"}><ha-switch .checked=${this._config.popup_show_effects !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_effects")}></ha-switch></ha-formfield>
-                      ` : ''}
-                      ${showClimateOptions ? html`
-                        <ha-formfield .label=${"Show Presets"}><ha-switch .checked=${this._config.popup_show_presets !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_presets")}></ha-switch></ha-formfield>
-                      ` : ''}
-                      ${showCoverOptions ? html`
-                        <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
-                      ` : ''}
+                    <div class="sub-accordion">
+                      ${renderHeader("Popup Card", "popup_card")}
+                      <div class="sub-accordion-content ${this._closedDetails['popup_card'] ? 'hidden' : ''}">
+                        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
+                        <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${isCustomPopup} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
+                        ${isCustomPopup ? html`
+                          <p style="font-size: 10px; opacity: 0.6; margin: 6px 0 4px 0; font-style: italic;">This card will be embedded in the popup. Defaults to a vertical-stack — click the card type to change it.</p>
+                          <div class="card-config">
+                            ${customElements.get('hui-card-element-editor')
+                              ? html`<hui-card-element-editor
+                                .hass=${this.hass}
+                                .lovelace=${this._getLovelace()}
+                                .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                                @config-changed=${(ev) => {
+                                  ev.stopPropagation();
+                                  const newCard = ev.detail?.config;
+                                  if (!newCard) return;
+                                  const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                                  if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                                    this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                                  }
+                                }}
+                              ></hui-card-element-editor>`
+                              : customElements.get('hui-card-picker')
+                                ? html`
+                                  <hui-card-picker
+                                    .hass=${this.hass}
+                                    .lovelace=${this._getLovelace()}
+                                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                                    @config-changed=${(ev) => {
+                                      ev.stopPropagation();
+                                      const picked = ev.detail?.config;
+                                      if (!picked) return;
+                                      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                                      if (JSON.stringify(picked) !== JSON.stringify(existing)) {
+                                        this._fireChanged({ ...this._config, custom_popup_card: picked });
+                                      }
+                                    }}
+                                  ></hui-card-picker>
+                                  <ha-yaml-editor
+                                    .hass=${this.hass}
+                                    .label=${"Popup Card (YAML)"}
+                                    .value=${this._config.custom_popup_card ?? this._config.custom_popup?.card ?? { type: "vertical-stack", cards: [] }}
+                                    @value-changed=${(ev) => {
+                                      ev.stopPropagation();
+                                      const newCard = ev.detail?.value;
+                                      if (!newCard) return;
+                                      const existing = this._config?.custom_popup_card ?? this._config?.custom_popup?.card;
+                                      if (JSON.stringify(newCard) !== JSON.stringify(existing)) {
+                                        this._fireChanged({ ...this._config, custom_popup_card: newCard });
+                                      }
+                                    }}
+                                    @click=${(e) => e.stopPropagation()}
+                                  ></ha-yaml-editor>
+                                `
+                                : (() => { this._ensureCardEditorLoaded(); return html`<div class="hki-editor-loading">Loading card picker…</div>`; })()}
+                          </div>
+                        ` : ''}
+                      </div>
                     </div>
+
+                    <div class="sub-accordion">
+                      ${renderHeader("Animation", "popup_anim")}
+                      <div class="sub-accordion-content ${this._closedDetails['popup_anim'] ? 'hidden' : ''}">
+                        <div class="side-by-side">
+                          <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
+                            @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
+                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                            <mwc-list-item value="none">None</mwc-list-item>
+                            <mwc-list-item value="fade">Fade</mwc-list-item>
+                            <mwc-list-item value="scale">Scale</mwc-list-item>
+                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                            <mwc-list-item value="flip">Flip</mwc-list-item>
+                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                            <mwc-list-item value="drop">Drop</mwc-list-item>
+                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                          </ha-select>
+                          <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
+                            @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
+                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                            <mwc-list-item value="none">None</mwc-list-item>
+                            <mwc-list-item value="fade">Fade</mwc-list-item>
+                            <mwc-list-item value="scale">Scale</mwc-list-item>
+                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
+                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
+                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
+                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
+                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
+                            <mwc-list-item value="flip">Flip</mwc-list-item>
+                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
+                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
+                            <mwc-list-item value="drop">Drop</mwc-list-item>
+                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                          </ha-select>
+                        </div>
+                        <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
+                      </div>
+                    </div>
+
+                    <div class="sub-accordion">
+                      ${renderHeader("Container & Size", "popup_container")}
+                      <div class="sub-accordion-content ${this._closedDetails['popup_container'] ? 'hidden' : ''}">
+                        <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
+                        <div class="side-by-side">
+                          <ha-select label="Width" .value=${this._config.popup_width || 'auto'}
+                            @selected=${(ev) => this._dropdownChanged(ev, "popup_width")}
+                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
+                            <mwc-list-item value="default">Default (400px)</mwc-list-item>
+                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                          </ha-select>
+                          ${this._config.popup_width === 'custom' ? html`
+                            <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
+                          ` : html`<div></div>`}
+                        </div>
+                        <div class="side-by-side">
+                          <ha-select label="Height" .value=${this._config.popup_height || 'auto'}
+                            @selected=${(ev) => this._dropdownChanged(ev, "popup_height")}
+                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
+                            <mwc-list-item value="default">Default (600px)</mwc-list-item>
+                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                          </ha-select>
+                          ${this._config.popup_height === 'custom' ? html`
+                            <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
+                          ` : html`<div></div>`}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="sub-accordion">
+                      ${renderHeader("Blur & Glass Effect", "popup_blur")}
+                      <div class="sub-accordion-content ${this._closedDetails['popup_blur'] ? 'hidden' : ''}">
+                        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 4px 0;">Background (portal)</p>
+                        <ha-formfield .label=${"Enable Background Blur"}><ha-switch .checked=${this._config.popup_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_blur_enabled")}></ha-switch></ha-formfield>
+                        <ha-textfield label="Blur Amount (px)" type="number" .value=${this._config.popup_blur_amount ?? 10} @input=${(ev) => this._textChanged(ev, "popup_blur_amount")} .disabled=${this._config.popup_blur_enabled === false}></ha-textfield>
+                        <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Card glass effect</p>
+                        <p style="font-size: 10px; opacity: 0.6; margin: 0 0 6px 0; font-style: italic;">Creates a frosted glass effect on the popup card.</p>
+                        <ha-formfield .label=${"Enable Card Blur"}><ha-switch .checked=${this._config.popup_card_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_card_blur_enabled")}></ha-switch></ha-formfield>
+                        <div class="side-by-side">
+                          <ha-textfield label="Card Blur (px)" type="number" .value=${this._config.popup_card_blur_amount ?? 40} @input=${(ev) => this._textChanged(ev, "popup_card_blur_amount")} .disabled=${this._config.popup_card_blur_enabled === false}></ha-textfield>
+                          <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_card_opacity ?? 0.4} @input=${(ev) => this._textChanged(ev, "popup_card_opacity")}></ha-textfield>
+                        </div>
+                      </div>
+                    </div>
+
+                    ${!isCustomPopup ? html`
+                      ${hasChildren ? html`
+                        <div class="sub-accordion">
+                          ${renderHeader("Default View (Groups)", "popup_default_view")}
+                          <div class="sub-accordion-content ${this._closedDetails['popup_default_view'] ? 'hidden' : ''}">
+                            <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Choose which view${isLightGroup ? ' and section' : ''} to show when opening the popup.</p>
+                            <div class="side-by-side">
+                              <ha-select label="Default View" .value=${this._config.popup_default_view || 'main'}
+                                @selected=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
+                                @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                                <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
+                                <mwc-list-item value="individual">Individual ${entityTypeName}</mwc-list-item>
+                              </ha-select>
+                              ${isLightGroup ? html`
+                                <ha-select label="Default Section" .value=${this._config.popup_default_section || 'last'}
+                                  @selected=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
+                                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                                  <mwc-list-item value="last">Last Used (Default)</mwc-list-item>
+                                  <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
+                                  <mwc-list-item value="color">Always Color</mwc-list-item>
+                                  <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+                                </ha-select>
+                              ` : html`<div></div>`}
+                            </div>
+                          </div>
+                        </div>
+                      ` : ''}
+
+                      ${hasDomainFeatures ? html`
+                        <div class="sub-accordion">
+                          ${renderHeader("Features", "popup_features")}
+                          <div class="sub-accordion-content ${this._closedDetails['popup_features'] ? 'hidden' : ''}">
+                            <div class="checkbox-grid">
+                              ${showLightOptions ? html`
+                                <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
+                                <ha-formfield .label=${"Show Effects"}><ha-switch .checked=${this._config.popup_show_effects !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_effects")}></ha-switch></ha-formfield>
+                              ` : ''}
+                              ${showClimateOptions ? html`
+                                <ha-formfield .label=${"Show Presets"}><ha-switch .checked=${this._config.popup_show_presets !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_presets")}></ha-switch></ha-formfield>
+                              ` : ''}
+                              ${showCoverOptions ? html`
+                                <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
+                              ` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      ` : ''}
+
+                      <div class="sub-accordion">
+                        ${renderHeader("Content Display", "popup_content")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_content'] ? 'hidden' : ''}">
+                          <ha-textfield label="Slider Border Radius (px)" type="number" .value=${this._config.popup_slider_radius ?? 12} @input=${(ev) => this._textChanged(ev, "popup_slider_radius")}></ha-textfield>
+                          <ha-formfield .label=${"Hide Text Under Buttons"}><ha-switch .checked=${this._config.popup_hide_button_text === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_button_text")}></ha-switch></ha-formfield>
+                          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
+                          <div class="side-by-side">
+                            <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_value_font_size ?? 36} @input=${(ev) => this._textChanged(ev, "popup_value_font_size")}></ha-textfield>
+                            <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_value_font_weight ?? 300} @input=${(ev) => this._textChanged(ev, "popup_value_font_weight")}></ha-textfield>
+                          </div>
+                          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
+                          <div class="side-by-side">
+                            <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_label_font_size ?? 16} @input=${(ev) => this._textChanged(ev, "popup_label_font_size")}></ha-textfield>
+                            <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_label_font_weight ?? 400} @input=${(ev) => this._textChanged(ev, "popup_label_font_weight")}></ha-textfield>
+                          </div>
+                          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">History/Logbook Time Format</p>
+                          <ha-select label="Time Format" .value=${this._config.popup_time_format || 'auto'}
+                            @selected=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
+                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                            <mwc-list-item value="auto">Auto</mwc-list-item>
+                            <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
+                            <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+                          </ha-select>
+                        </div>
+                      </div>
+
+                      <div class="sub-accordion">
+                        ${renderHeader("Active Button Styling", "popup_highlight")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_highlight'] ? 'hidden' : ''}">
+                          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize selected/highlighted buttons</p>
+                          <div class="side-by-side">
+                            <ha-textfield label="Color" .value=${this._config.popup_highlight_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_color")} placeholder="var(--primary-color)"></ha-textfield>
+                            <ha-textfield label="Text Color" .value=${this._config.popup_highlight_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_text_color")} placeholder="white"></ha-textfield>
+                          </div>
+                          <div class="side-by-side">
+                            <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_highlight_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_radius")} placeholder="8"></ha-textfield>
+                            <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_highlight_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_opacity")} placeholder="1"></ha-textfield>
+                          </div>
+                          <div class="side-by-side">
+                            <ha-select label="Border Style" .value=${this._config.popup_highlight_border_style || "none"}
+                              @selected=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
+                              @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                            </ha-select>
+                            <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
+                          </div>
+                          <ha-textfield label="Border Color" .value=${this._config.popup_highlight_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_color")}></ha-textfield>
+                          <ha-textfield label="Box Shadow" .value=${this._config.popup_highlight_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_box_shadow")} placeholder="0 2px 8px rgba(0,0,0,0.2)"></ha-textfield>
+                        </div>
+                      </div>
+
+                      <div class="sub-accordion">
+                        ${renderHeader("Inactive Button Styling", "popup_buttons")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_buttons'] ? 'hidden' : ''}">
+                          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize unselected buttons</p>
+                          <div class="side-by-side">
+                            <ha-textfield label="Background" .value=${this._config.popup_button_bg || ""} @input=${(ev) => this._textChanged(ev, "popup_button_bg")} placeholder="transparent"></ha-textfield>
+                            <ha-textfield label="Text Color" .value=${this._config.popup_button_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_text_color")} placeholder="inherit"></ha-textfield>
+                          </div>
+                          <div class="side-by-side">
+                            <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_button_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_radius")} placeholder="8"></ha-textfield>
+                            <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_button_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_opacity")} placeholder="1"></ha-textfield>
+                          </div>
+                          <div class="side-by-side">
+                            <ha-select label="Border Style" .value=${this._config.popup_button_border_style || "none"}
+                              @selected=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
+                              @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                            </ha-select>
+                            <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
+                          </div>
+                          <ha-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></ha-textfield>
+                        </div>
+                      </div>
+                    ` : ''}
                   `;
                 })()}
-                
-                <div class="separator"></div>
-                <strong>Content Display</strong>
-                <ha-textfield label="Slider Border Radius (px)" type="number" .value=${this._config.popup_slider_radius ?? 12} @input=${(ev) => this._textChanged(ev, "popup_slider_radius")}></ha-textfield>
-                <ha-formfield .label=${"Hide Text Under Buttons"}><ha-switch .checked=${this._config.popup_hide_button_text === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_button_text")}></ha-switch></ha-formfield>
-                
-                <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Value Display (Temperature/Brightness)</p>
-                <div class="side-by-side">
-                    <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_value_font_size ?? 36} @input=${(ev) => this._textChanged(ev, "popup_value_font_size")}></ha-textfield>
-                    <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_value_font_weight ?? 300} @input=${(ev) => this._textChanged(ev, "popup_value_font_weight")}></ha-textfield>
-                </div>
-                
-                <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">Label Display (Color/Mode Names)</p>
-                <div class="side-by-side">
-                    <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_label_font_size ?? 16} @input=${(ev) => this._textChanged(ev, "popup_label_font_size")}></ha-textfield>
-                    <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_label_font_weight ?? 400} @input=${(ev) => this._textChanged(ev, "popup_label_font_weight")}></ha-textfield>
-                </div>
-                
-                <p style="font-size: 11px; opacity: 0.7; margin: 12px 0 4px 0;">History/Logbook Time Format</p>
-                <ha-select
-                  label="Time Format"
-                  .value=${this._config.popup_time_format || 'auto'}
-                  @selected=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <mwc-list-item value="auto">Auto</mwc-list-item>
-                  <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
-                  <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
-                </ha-select>
-                
-                <div class="separator"></div>
-                <strong>Active Button Styling</strong>
-                <p style="font-size: 11px; opacity: 0.7; margin-top: 0;">Customize selected/highlighted buttons</p>
-                <div class="side-by-side">
-                  <ha-textfield label="Color" .value=${this._config.popup_highlight_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_color")} placeholder="var(--primary-color)"></ha-textfield>
-                  <ha-textfield label="Text Color" .value=${this._config.popup_highlight_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_text_color")} placeholder="white"></ha-textfield>
-                </div>
-                <div class="side-by-side">
-                  <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_highlight_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_radius")} placeholder="8"></ha-textfield>
-                  <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_highlight_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_opacity")} placeholder="1"></ha-textfield>
-                </div>
-                <div class="side-by-side">
-                  <ha-select 
-                    label="Border Style" 
-                    .value=${this._config.popup_highlight_border_style || "none"} 
-                    @selected=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
-                  </ha-select>
-                  <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
-                </div>
-                <ha-textfield label="Border Color" .value=${this._config.popup_highlight_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_color")}></ha-textfield>
-                <ha-textfield label="Box Shadow" .value=${this._config.popup_highlight_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_box_shadow")} placeholder="0 2px 8px rgba(0,0,0,0.2)"></ha-textfield>
-                
-                <div class="separator"></div>
-                <strong>Inactive Button Styling</strong>
-                <p style="font-size: 11px; opacity: 0.7; margin-top: 0;">Customize unselected buttons</p>
-                <div class="side-by-side">
-                  <ha-textfield label="Background" .value=${this._config.popup_button_bg || ""} @input=${(ev) => this._textChanged(ev, "popup_button_bg")} placeholder="transparent"></ha-textfield>
-                  <ha-textfield label="Text Color" .value=${this._config.popup_button_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_text_color")} placeholder="inherit"></ha-textfield>
-                </div>
-                <div class="side-by-side">
-                  <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_button_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_radius")} placeholder="8"></ha-textfield>
-                  <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_button_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_opacity")} placeholder="1"></ha-textfield>
-                </div>
-                <div class="side-by-side">
-                  <ha-select 
-                    label="Border Style" 
-                    .value=${this._config.popup_button_border_style || "none"} 
-                    @selected=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
-                  </ha-select>
-                  <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
-                </div>
-                <ha-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></ha-textfield>
              </div>
           </div>
 
