@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-06 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -7263,6 +7263,21 @@ _tileSliderClick(e) {
         }
       }
 
+      if (entity && entity.entity_id && entity.entity_id.startsWith('humidifier.')) {
+        const h = attrs.humidity;
+        if (this._optimisticHumidity != null && typeof h === 'number' && Math.abs(h - this._optimisticHumidity) < 0.001) {
+          this._optimisticHumidity = undefined;
+        }
+        const hLow = attrs.target_humidity_low;
+        if (this._optimisticHumidityLow != null && typeof hLow === 'number' && Math.abs(hLow - this._optimisticHumidityLow) < 0.001) {
+          this._optimisticHumidityLow = undefined;
+        }
+        const hHigh = attrs.target_humidity_high;
+        if (this._optimisticHumidityHigh != null && typeof hHigh === 'number' && Math.abs(hHigh - this._optimisticHumidityHigh) < 0.001) {
+          this._optimisticHumidityHigh = undefined;
+        }
+      }
+
     }
 
     /* --- ACTION HANDLING --- */
@@ -11412,7 +11427,7 @@ if (!this._popupPortal) {
       const state = entity.state;
       const isOn = state === 'on';
       const currentHumidity = attrs.current_humidity ?? 0;
-      const targetHumidity = attrs.humidity ?? 50;
+      const targetHumidity = this._optimisticHumidity ?? attrs.humidity ?? 50;
       const minHumidity = attrs.min_humidity ?? 0;
       const maxHumidity = attrs.max_humidity ?? 100;
       const modes = attrs.available_modes || [];
@@ -11966,11 +11981,12 @@ if (!this._popupPortal) {
           };
 
           let dragging = false;
-          const onDown = (x, y) => { dragging = true; updateFromVal(getValFromPoint(x, y)); };
+          const onDown = (x, y) => { dragging = true; this._isDragging = true; updateFromVal(getValFromPoint(x, y)); };
           const onMove = (x, y) => { if (dragging) updateFromVal(getValFromPoint(x, y)); };
           const onUp = () => {
             if (!dragging) return;
             dragging = false;
+            this._isDragging = false;
             commitFn(getOptimistic());
             document.removeEventListener('mousemove', mouseMove);
             document.removeEventListener('mouseup', mouseUp);
@@ -12006,6 +12022,9 @@ if (!this._popupPortal) {
                 const cur = this._optimisticHumidityHigh ?? humHighAttr;
                 const val = clamp(cur + dir * step, minHumidity, maxHumidity);
                 this._optimisticHumidityHigh = val;
+                this._isDragging = true;
+                clearTimeout(this._humidifierDebounce);
+                this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
                 commitRange(this._optimisticHumidityLow ?? humLowAttr, val);
               }
             });
@@ -12022,6 +12041,9 @@ if (!this._popupPortal) {
               const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
               const val = clamp(cur + dir * step, minHumidity, maxHumidity);
               this._optimisticHumidity = val;
+              this._isDragging = true;
+              clearTimeout(this._humidifierDebounce);
+              this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
               this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
             });
           });
@@ -12049,12 +12071,12 @@ if (!this._popupPortal) {
             return val;
           };
           let isDragging = false;
-          slider.addEventListener('mousedown', (e) => { isDragging = true; update(e.clientY); });
+          slider.addEventListener('mousedown', (e) => { isDragging = true; this._isDragging = true; update(e.clientY); });
           document.addEventListener('mousemove', (e) => { if (isDragging) update(e.clientY); });
-          document.addEventListener('mouseup', (e) => { if (!isDragging) return; isDragging = false; commitFn(update(e.clientY)); });
-          slider.addEventListener('touchstart', (e) => { isDragging = true; update(e.touches[0].clientY); }, { passive: true });
+          document.addEventListener('mouseup', (e) => { if (!isDragging) return; isDragging = false; this._isDragging = false; commitFn(update(e.clientY)); });
+          slider.addEventListener('touchstart', (e) => { isDragging = true; this._isDragging = true; update(e.touches[0].clientY); }, { passive: true });
           document.addEventListener('touchmove', (e) => { if (isDragging) update(e.touches[0].clientY); }, { passive: true });
-          document.addEventListener('touchend', (e) => { if (isDragging && e.changedTouches.length > 0) { isDragging = false; commitFn(update(e.changedTouches[0].clientY)); } }, { passive: true });
+          document.addEventListener('touchend', (e) => { if (isDragging && e.changedTouches.length > 0) { isDragging = false; this._isDragging = false; commitFn(update(e.changedTouches[0].clientY)); } }, { passive: true });
         };
 
         setupVertical('humidity_low',
@@ -12076,6 +12098,9 @@ if (!this._popupPortal) {
               const cur = this._optimisticHumidityHigh ?? humHighAttr;
               const val = clamp(cur + dir * step, minHumidity, maxHumidity);
               this._optimisticHumidityHigh = val;
+              this._isDragging = true;
+              clearTimeout(this._humidifierDebounce);
+              this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
               commitRange(this._optimisticHumidityLow ?? humLowAttr, val);
             }
           });
@@ -12103,28 +12128,43 @@ if (!this._popupPortal) {
 
       portal.querySelectorAll('[data-hum-action]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const cur = attrs.humidity ?? minHumidity;
+          const cur = this._optimisticHumidity ?? attrs.humidity ?? minHumidity;
           const dir = btn.getAttribute('data-hum-action') === 'plus' ? 1 : -1;
           const val = clamp(cur + dir * step, minHumidity, maxHumidity);
+          this._optimisticHumidity = val;
+          this._isDragging = true;
+          clearTimeout(this._humidifierDebounce);
+          this._humidifierDebounce = setTimeout(() => { this._isDragging = false; }, 2000);
+          const display = portal.querySelector('#display-humidity');
+          const fill = slider.querySelector('.vertical-slider-fill');
+          const thumb = slider.querySelector('.vertical-slider-thumb');
+          if (display) display.innerHTML = `${val}<span>%</span>`;
+          const ap = ((val - minHumidity) / range) * 100;
+          if (fill) fill.style.height = `${ap}%`;
+          if (thumb) thumb.style.bottom = ap <= 0 ? '0px' : ap >= 100 ? 'calc(100% - 6px)' : `calc(${ap}% - 6px)`;
           this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: val });
         });
       });
 
       let isDragging = false;
-      slider.addEventListener('mousedown', (e) => { isDragging = true; updateHumidity(e.clientY); });
+      slider.addEventListener('mousedown', (e) => { isDragging = true; this._isDragging = true; updateHumidity(e.clientY); });
       document.addEventListener('mousemove', (e) => { if (isDragging) updateHumidity(e.clientY); });
       document.addEventListener('mouseup', (e) => {
         if (!isDragging) return;
         isDragging = false;
+        this._isDragging = false;
         const value = updateHumidity(e.clientY);
+        this._optimisticHumidity = value;
         this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: value });
       });
-      slider.addEventListener('touchstart', (e) => { isDragging = true; updateHumidity(e.touches[0].clientY); }, { passive: true });
+      slider.addEventListener('touchstart', (e) => { isDragging = true; this._isDragging = true; updateHumidity(e.touches[0].clientY); }, { passive: true });
       document.addEventListener('touchmove', (e) => { if (isDragging) updateHumidity(e.touches[0].clientY); }, { passive: true });
       document.addEventListener('touchend', (e) => {
         if (isDragging && e.changedTouches.length > 0) {
           isDragging = false;
+          this._isDragging = false;
           const value = updateHumidity(e.changedTouches[0].clientY);
+          this._optimisticHumidity = value;
           this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity: value });
         }
       }, { passive: true });
