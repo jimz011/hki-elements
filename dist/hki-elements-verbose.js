@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-03 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11683,6 +11683,7 @@ if (!this._popupPortal) {
       }
 
       // ── Vertical slider ─────────────────────────────────────────────────────
+      const humBlue = '#03a9f4';
       const renderSlider = (id, value, label) => {
         const v = value ?? '--';
         const pct = value == null ? 0 : ((value - minHumidity) / range) * 100;
@@ -11691,7 +11692,7 @@ if (!this._popupPortal) {
           <div class="humidifier-slider-group">
             <div class="value-display" id="display-${id}">${v}<span>%</span></div>
             <div class="vertical-slider-track" id="slider-${id}" data-type="${id}">
-              <div class="vertical-slider-fill" style="height:${pct}%;background:${color};"></div>
+              <div class="vertical-slider-fill" style="height:${pct}%;background:${humBlue};"></div>
               <div class="vertical-slider-thumb" style="bottom:${thumbPos}"></div>
             </div>
             <div class="slider-label">${label}</div>
@@ -11750,7 +11751,7 @@ if (!this._popupPortal) {
       const ty = 140 + 100 * Math.sin(sa + aa);
       const useGradient = this._config.humidifier_show_gradient !== false;
       const stroke = useGradient ? 'url(#humGradient)' : color;
-      const gradDefs = useGradient ? '<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#29ABE2;stop-opacity:1"/><stop offset="100%" style="stop-color:#03a9f4;stop-opacity:1"/></linearGradient></defs>' : '';
+      const gradDefs = useGradient ? '<defs><linearGradient id="humGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#8BC34A;stop-opacity:1"/><stop offset="40%" style="stop-color:#29B6F6;stop-opacity:1"/><stop offset="100%" style="stop-color:#0277BD;stop-opacity:1"/></linearGradient></defs>' : '';
       return `
         <div class="circular-slider-wrapper">
           <div class="circular-slider-container" id="circularSliderHum">
@@ -11810,8 +11811,8 @@ if (!this._popupPortal) {
       };
       return `
         <div class="circular-slider-wrapper">
-          ${buildArc(humLow, 'Low', 'humGradLow', '#29ABE2', '#1E90FF')}
-          ${buildArc(humHigh, 'High', 'humGradHigh', '#03a9f4', '#00BCD4')}
+          ${buildArc(humLow, 'Low', 'humGradLow', '#8BC34A', '#29B6F6')}
+          ${buildArc(humHigh, 'High', 'humGradHigh', '#29B6F6', '#0277BD')}
           ${showButtons ? `
             <div class="circular-temp-buttons">
               <button class="circular-temp-btn plus" data-hum-action="plus-high"><ha-icon icon="mdi:plus"></ha-icon></button>
@@ -11861,15 +11862,28 @@ if (!this._popupPortal) {
       }
 
       if (this._activeView === 'fan') {
+        // Refresh live state from hass at call time (not stale closure)
+        const liveFanEntity = fanEntityId ? this.hass?.states?.[fanEntityId] : null;
         portal.querySelectorAll('[data-fan-mode]').forEach(item => {
           item.addEventListener('click', () => {
             if (!fanEntityId) return;
             const mode = item.getAttribute('data-fan-mode');
+            // Optimistic UI: mark clicked item active immediately
+            portal.querySelectorAll('[data-fan-mode]').forEach(el => {
+              el.classList.remove('active');
+              el.querySelector('ha-icon[icon="mdi:check"]')?.remove();
+            });
+            item.classList.add('active');
+            item.insertAdjacentHTML('beforeend', '<ha-icon icon="mdi:check"></ha-icon>');
+            // Call service
             const domainGuess = fanEntityId.split('.')[0];
             if (domainGuess === 'select') {
               this.hass.callService('select', 'select_option', { entity_id: fanEntityId, option: mode });
-            } else {
+            } else if (domainGuess === 'fan') {
               this.hass.callService('fan', 'set_preset_mode', { entity_id: fanEntityId, preset_mode: mode });
+            } else {
+              // Fallback: try select first
+              this.hass.callService('select', 'select_option', { entity_id: fanEntityId, option: mode });
             }
           });
         });
@@ -11886,7 +11900,23 @@ if (!this._popupPortal) {
 
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v / step) * step));
       const commitRange = (low, high) => {
-        this.hass.callService('humidifier', 'set_humidity', { entity_id: this._config.entity, humidity_low: low, humidity_high: high });
+        // Route range to climate.set_temperature directly (target_temp_low / target_temp_high)
+        // because HA humidifier domain doesn't have a native range service.
+        // Our custom component also handles this via climate entity id stored in hass state attributes.
+        const climateEntityId = entity.attributes?.source_climate_entity;
+        if (climateEntityId) {
+          this.hass.callService('climate', 'set_temperature', {
+            entity_id: climateEntityId,
+            target_temp_low: low,
+            target_temp_high: high,
+          });
+        } else {
+          // Fallback: call humidifier set_humidity with range params (custom component handles it)
+          this.hass.callService('humidifier', 'set_humidity', {
+            entity_id: this._config.entity,
+            humidity: low,
+          });
+        }
       };
 
       if (useCircular) {
