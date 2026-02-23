@@ -4302,7 +4302,6 @@ class HkiHeaderCardEditor extends LitElement {
 
   _renderSlotPopupEditor(prefix, entityId = null) {
     const cfg = this._config;
-    // Derive entity from actions if not provided
     const effectiveEntity = entityId
       || cfg[prefix + "tap_action"]?.entity
       || cfg[prefix + "hold_action"]?.entity
@@ -4318,8 +4317,7 @@ class HkiHeaderCardEditor extends LitElement {
       const mapped = {};
       Object.keys(patch).forEach(k => mapped[prefix + k] = patch[k]);
       this._config = { ...this._config, ...mapped };
-      const strippedConfig = this._stripDefaults(this._config);
-      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig }, bubbles: true, composed: true }));
+      this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._stripDefaults(this._config) }, bubbles: true, composed: true }));
       this.requestUpdate();
     };
     const animOpts = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
@@ -4327,212 +4325,245 @@ class HkiHeaderCardEditor extends LitElement {
 
     return html`
       <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup. These apply whenever an action on this slot is set to "HKI More Info".</p>
+      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup. Apply when an action on this slot is set to "HKI More Info".</p>
 
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
-      ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + prefix, { value: p("popup_name") || "", onchange: (v) => pp({ "popup_name": v || undefined }) })}
-      ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + prefix, { value: p("popup_state") || "", onchange: (v) => pp({ "popup_state": v || undefined }) })}
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Custom Popup Card</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame instead of the auto domain popup.</p>
-      <div class="switch-row">
-        <ha-switch .checked=${enabled} @change=${(ev) => pp({ "custom_popup_enabled": ev.target.checked })}></ha-switch>
-        <span>Enable custom popup card</span>
-      </div>
-      ${enabled ? html`
-        <div class="card-config">
-          ${customElements.get('hui-card-element-editor') ? html`
-            <hui-card-element-editor
-              .hass=${this.hass}
-              .lovelace=${this._getLovelace()}
-              .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
-              @config-changed=${(ev) => {
-                ev.stopPropagation();
-                const newCard = ev.detail?.config;
-                if (newCard && JSON.stringify(newCard) !== JSON.stringify(p("custom_popup_card"))) pp({ "custom_popup_card": newCard });
-              }}
-            ></hui-card-element-editor>
-          ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available. Use YAML mode.</p>`}
+      <details class="box-section">
+        <summary>Popup Header</summary>
+        <div class="box-content">
+          ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + prefix, { value: p("popup_name") || "", onchange: (v) => pp({ "popup_name": v || undefined }) })}
+          ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + prefix, { value: p("popup_state") || "", onchange: (v) => pp({ "popup_state": v || undefined }) })}
         </div>
-      ` : ''}
+      </details>
 
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Animation</div>
-      <div class="inline-fields-2">
-        <ha-select label="Open Animation" .value=${p("popup_open_animation") || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_open_animation": ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-select label="Close Animation" .value=${p("popup_close_animation") || p("popup_open_animation") || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_close_animation": ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-      </div>
-      <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(p("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ "popup_animation_duration": Number(ev.target.value) })}></ha-textfield>
+      <details class="box-section" open>
+        <summary>Popup Card</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to show a custom card instead of the auto domain popup.</p>
+          <div class="switch-row">
+            <ha-switch .checked=${enabled} @change=${(ev) => pp({ "custom_popup_enabled": ev.target.checked })}></ha-switch>
+            <span>Enable custom popup card</span>
+          </div>
+          ${enabled ? html`
+            <div class="card-config">
+              ${customElements.get('hui-card-element-editor') ? html`
+                <hui-card-element-editor
+                  .hass=${this.hass}
+                  .lovelace=${this._getLovelace()}
+                  .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
+                  @config-changed=${(ev) => {
+                    ev.stopPropagation();
+                    const newCard = ev.detail?.config;
+                    if (newCard && JSON.stringify(newCard) !== JSON.stringify(p("custom_popup_card"))) pp({ "custom_popup_card": newCard });
+                  }}
+                ></hui-card-element-editor>
+              ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available. Use YAML mode.</p>`}
+            </div>
+          ` : ''}
+        </div>
+      </details>
 
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Container</div>
-      <ha-textfield label="Border Radius (px)" type="number" .value=${String(p("popup_border_radius") ?? 16)} @input=${(ev) => pp({ "popup_border_radius": Number(ev.target.value) })}></ha-textfield>
-      <div class="inline-fields-2">
-        <ha-select label="Width" .value=${p("popup_width") || "auto"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_width": ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
-          <mwc-list-item value="default">Default (400px)</mwc-list-item>
-          <mwc-list-item value="custom">Custom</mwc-list-item>
-        </ha-select>
-        ${p("popup_width") === "custom" ? html`
-          <ha-textfield label="Custom Width (px)" type="number" .value=${String(p("popup_width_custom") ?? 400)} @input=${(ev) => pp({ "popup_width_custom": Number(ev.target.value) })}></ha-textfield>
-        ` : html`<div></div>`}
-      </div>
-      <div class="inline-fields-2">
-        <ha-select label="Height" .value=${p("popup_height") || "auto"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_height": ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
-          <mwc-list-item value="default">Default (600px)</mwc-list-item>
-          <mwc-list-item value="custom">Custom</mwc-list-item>
-        </ha-select>
-        ${p("popup_height") === "custom" ? html`
-          <ha-textfield label="Custom Height (px)" type="number" .value=${String(p("popup_height_custom") ?? 600)} @input=${(ev) => pp({ "popup_height_custom": Number(ev.target.value) })}></ha-textfield>
-        ` : html`<div></div>`}
-      </div>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Background Blur</div>
-      <div class="switch-row">
-        <ha-switch .checked=${p("popup_blur_enabled") !== false} @change=${(ev) => pp({ "popup_blur_enabled": ev.target.checked })}></ha-switch>
-        <span>Enable background blur</span>
-      </div>
-      <ha-textfield label="Blur Amount (px)" type="number" .value=${String(p("popup_blur_amount") ?? 10)} @input=${(ev) => pp({ "popup_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_blur_enabled") === false}></ha-textfield>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Card Glass Effect</div>
-      <div class="switch-row">
-        <ha-switch .checked=${p("popup_card_blur_enabled") !== false} @change=${(ev) => pp({ "popup_card_blur_enabled": ev.target.checked })}></ha-switch>
-        <span>Enable card blur (frosted glass)</span>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Card Blur (px)" type="number" .value=${String(p("popup_card_blur_amount") ?? 40)} @input=${(ev) => pp({ "popup_card_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_card_blur_enabled") === false}></ha-textfield>
-        <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(p("popup_card_opacity") ?? 0.4)} @input=${(ev) => pp({ "popup_card_opacity": Number(ev.target.value) })}></ha-textfield>
-      </div>
-
-      ${(hasChildren) ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Default View (Groups)</div>
-        <div class="inline-fields-2">
-          <ha-select label="Default View" .value=${p("popup_default_view") || "main"}
-            @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_view": ev.target.value }); }}
-            @closed=${(ev) => ev.stopPropagation()}>
-            <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
-            <mwc-list-item value="individual">Individual Entities</mwc-list-item>
-          </ha-select>
-          ${isLightGroup ? html`
-            <ha-select label="Default Section" .value=${p("popup_default_section") || "last"}
-              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_section": ev.target.value }); }}
+      <details class="box-section">
+        <summary>Animation</summary>
+        <div class="box-content">
+          <div class="inline-fields-2">
+            <ha-select label="Open Animation" .value=${p("popup_open_animation") || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_open_animation": ev.target.value }); }}
               @closed=${(ev) => ev.stopPropagation()}>
-              <mwc-list-item value="last">Last Used</mwc-list-item>
-              <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
-              <mwc-list-item value="color">Always Color</mwc-list-item>
-              <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+              ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
             </ha-select>
-          ` : html`<div></div>`}
+            <ha-select label="Close Animation" .value=${p("popup_close_animation") || p("popup_open_animation") || "scale"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_close_animation": ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
+            </ha-select>
+          </div>
+          <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(p("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ "popup_animation_duration": Number(ev.target.value) })}></ha-textfield>
         </div>
-      ` : ''}
+      </details>
 
-      ${(domain === 'light' || domain === 'climate' || domain === 'cover') ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Features</div>
-        ${domain === 'light' ? html`
-          <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
-          <div class="switch-row"><ha-switch .checked=${p("popup_show_effects") !== false} @change=${(ev) => pp({ "popup_show_effects": ev.target.checked })}></ha-switch><span>Show Effects</span></div>
+      <details class="box-section">
+        <summary>Container & Size</summary>
+        <div class="box-content">
+          <ha-textfield label="Border Radius (px)" type="number" .value=${String(p("popup_border_radius") ?? 16)} @input=${(ev) => pp({ "popup_border_radius": Number(ev.target.value) })}></ha-textfield>
+          <div class="inline-fields-2">
+            <ha-select label="Width" .value=${p("popup_width") || "auto"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_width": ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+              <mwc-list-item value="default">Default (400px)</mwc-list-item>
+              <mwc-list-item value="custom">Custom</mwc-list-item>
+            </ha-select>
+            ${p("popup_width") === "custom" ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(p("popup_width_custom") ?? 400)} @input=${(ev) => pp({ "popup_width_custom": Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+          </div>
+          <div class="inline-fields-2">
+            <ha-select label="Height" .value=${p("popup_height") || "auto"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_height": ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+              <mwc-list-item value="default">Default (600px)</mwc-list-item>
+              <mwc-list-item value="custom">Custom</mwc-list-item>
+            </ha-select>
+            ${p("popup_height") === "custom" ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(p("popup_height_custom") ?? 600)} @input=${(ev) => pp({ "popup_height_custom": Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+          </div>
+        </div>
+      </details>
+
+      <details class="box-section">
+        <summary>Blur & Glass Effect</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 4px 0;">Background (portal)</p>
+          <div class="switch-row">
+            <ha-switch .checked=${p("popup_blur_enabled") !== false} @change=${(ev) => pp({ "popup_blur_enabled": ev.target.checked })}></ha-switch>
+            <span>Enable background blur</span>
+          </div>
+          <ha-textfield label="Blur Amount (px)" type="number" .value=${String(p("popup_blur_amount") ?? 10)} @input=${(ev) => pp({ "popup_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_blur_enabled") === false}></ha-textfield>
+          <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 4px 0;">Card glass effect</p>
+          <div class="switch-row">
+            <ha-switch .checked=${p("popup_card_blur_enabled") !== false} @change=${(ev) => pp({ "popup_card_blur_enabled": ev.target.checked })}></ha-switch>
+            <span>Enable card blur (frosted glass)</span>
+          </div>
+          <div class="inline-fields-2">
+            <ha-textfield label="Card Blur (px)" type="number" .value=${String(p("popup_card_blur_amount") ?? 40)} @input=${(ev) => pp({ "popup_card_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_card_blur_enabled") === false}></ha-textfield>
+            <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(p("popup_card_opacity") ?? 0.4)} @input=${(ev) => pp({ "popup_card_opacity": Number(ev.target.value) })}></ha-textfield>
+          </div>
+        </div>
+      </details>
+
+      ${!enabled ? html`
+        ${(hasChildren) ? html`
+          <details class="box-section">
+            <summary>Default View (Groups)</summary>
+            <div class="box-content">
+              <div class="inline-fields-2">
+                <ha-select label="Default View" .value=${p("popup_default_view") || "main"}
+                  @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_view": ev.target.value }); }}
+                  @closed=${(ev) => ev.stopPropagation()}>
+                  <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
+                  <mwc-list-item value="individual">Individual Entities</mwc-list-item>
+                </ha-select>
+                ${isLightGroup ? html`
+                  <ha-select label="Default Section" .value=${p("popup_default_section") || "last"}
+                    @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_section": ev.target.value }); }}
+                    @closed=${(ev) => ev.stopPropagation()}>
+                    <mwc-list-item value="last">Last Used</mwc-list-item>
+                    <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
+                    <mwc-list-item value="color">Always Color</mwc-list-item>
+                    <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+                  </ha-select>
+                ` : html`<div></div>`}
+              </div>
+            </div>
+          </details>
         ` : ''}
+
+        ${(domain === 'light' || domain === 'cover') ? html`
+          <details class="box-section">
+            <summary>Features</summary>
+            <div class="box-content">
+              <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
+              ${domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${p("popup_show_effects") !== false} @change=${(ev) => pp({ "popup_show_effects": ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+            </div>
+          </details>
+        ` : ''}
+
         ${domain === 'climate' ? html`
-          <div class="switch-row"><ha-switch .checked=${p("popup_show_presets") !== false} @change=${(ev) => pp({ "popup_show_presets": ev.target.checked })}></ha-switch><span>Show Presets</span></div>
+          <details class="box-section">
+            <summary>Climate Options</summary>
+            <div class="box-content">
+              <div class="switch-row"><ha-switch .checked=${p("popup_show_presets") !== false} @change=${(ev) => pp({ "popup_show_presets": ev.target.checked })}></ha-switch><span>Show Presets</span></div>
+              <ha-textfield label="Temperature Step Size" type="number" step="0.1" .value=${String(p("climate_temp_step") ?? 0.5)} @input=${(ev) => pp({ "climate_temp_step": Number(ev.target.value) })} placeholder="0.5"></ha-textfield>
+              <div class="switch-row"><ha-switch .checked=${p("climate_use_circular_slider") === true} @change=${(ev) => pp({ "climate_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("climate_show_plus_minus") === true} @change=${(ev) => pp({ "climate_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("climate_show_gradient") !== false} @change=${(ev) => pp({ "climate_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("climate_show_target_range") !== false} @change=${(ev) => pp({ "climate_show_target_range": ev.target.checked })}></ha-switch><span>Show Min/Max Target Range (if supported)</span></div>
+              <p style="font-size: 12px; font-weight: 500; margin: 8px 0 4px 0;">Extra Sensors (optional)</p>
+              <ha-entity-picker .hass=${this.hass} label="Current Temperature Entity" .value=${p("climate_current_temperature_entity") || ""} @value-changed=${(ev) => pp({ "climate_current_temperature_entity": ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Temperature Sensor Name" .value=${p("climate_temperature_name") || ""} @input=${(ev) => pp({ "climate_temperature_name": ev.target.value || undefined })}></ha-textfield>
+              <ha-entity-picker .hass=${this.hass} label="Humidity Entity" .value=${p("climate_humidity_entity") || ""} @value-changed=${(ev) => pp({ "climate_humidity_entity": ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Humidity Sensor Name" .value=${p("climate_humidity_name") || ""} @input=${(ev) => pp({ "climate_humidity_name": ev.target.value || undefined })}></ha-textfield>
+              <ha-entity-picker .hass=${this.hass} label="Pressure Entity" .value=${p("climate_pressure_entity") || ""} @value-changed=${(ev) => pp({ "climate_pressure_entity": ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Pressure Sensor Name" .value=${p("climate_pressure_name") || ""} @input=${(ev) => pp({ "climate_pressure_name": ev.target.value || undefined })}></ha-textfield>
+            </div>
+          </details>
         ` : ''}
-        ${domain === 'cover' ? html`
-          <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
+
+        ${domain === 'humidifier' ? html`
+          <details class="box-section">
+            <summary>Humidifier Options</summary>
+            <div class="box-content">
+              <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${String(p("humidifier_humidity_step") ?? 1)} @input=${(ev) => pp({ "humidifier_humidity_step": Number(ev.target.value) })} placeholder="1"></ha-textfield>
+              <div class="switch-row"><ha-switch .checked=${p("humidifier_use_circular_slider") === true} @change=${(ev) => pp({ "humidifier_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("humidifier_show_plus_minus") === true} @change=${(ev) => pp({ "humidifier_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("humidifier_show_gradient") !== false} @change=${(ev) => pp({ "humidifier_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+              <ha-entity-picker .hass=${this.hass} label="Fan Speed Entity (select or fan)" .value=${p("humidifier_fan_entity") || ""} @value-changed=${(ev) => pp({ "humidifier_fan_entity": ev.detail.value || undefined })}></ha-entity-picker>
+            </div>
+          </details>
         ` : ''}
+
+        <details class="box-section">
+          <summary>Content Display</summary>
+          <div class="box-content">
+            <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(p("popup_slider_radius") ?? 12)} @input=${(ev) => pp({ "popup_slider_radius": Number(ev.target.value) })}></ha-textfield>
+            <div class="switch-row"><ha-switch .checked=${p("popup_hide_button_text") === true} @change=${(ev) => pp({ "popup_hide_button_text": ev.target.checked })}></ha-switch><span>Hide Text Under Buttons</span></div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 2px 0;">Value Display (Temperature/Brightness)</p>
+            <div class="inline-fields-2">
+              <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_value_font_size") ?? 36)} @input=${(ev) => pp({ "popup_value_font_size": Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_value_font_weight") ?? 300)} @input=${(ev) => pp({ "popup_value_font_weight": Number(ev.target.value) })}></ha-textfield>
+            </div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 2px 0;">Label Display (Color/Mode Names)</p>
+            <div class="inline-fields-2">
+              <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ "popup_label_font_size": Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ "popup_label_font_weight": Number(ev.target.value) })}></ha-textfield>
+            </div>
+            <ha-select label="Time Format" .value=${p("popup_time_format") || "auto"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_time_format": ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto</mwc-list-item>
+              <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
+              <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+            </ha-select>
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Active Button Styling</summary>
+          <div class="box-content">
+            <div class="inline-fields-2">
+              <ha-textfield label="Color" .value=${p("popup_highlight_color") || ""} @input=${(ev) => pp({ "popup_highlight_color": ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
+              <ha-textfield label="Text Color" .value=${p("popup_highlight_text_color") || ""} @input=${(ev) => pp({ "popup_highlight_text_color": ev.target.value || undefined })} placeholder="white"></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_highlight_radius") ?? ""} @input=${(ev) => pp({ "popup_highlight_radius": Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
+              <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_highlight_opacity") ?? ""} @input=${(ev) => pp({ "popup_highlight_opacity": Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Color" .value=${p("popup_highlight_border_color") || ""} @input=${(ev) => pp({ "popup_highlight_border_color": ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Border Width" .value=${p("popup_highlight_border_width") || ""} @input=${(ev) => pp({ "popup_highlight_border_width": ev.target.value || undefined })}></ha-textfield>
+            </div>
+            <ha-textfield label="Box Shadow" .value=${p("popup_highlight_box_shadow") || ""} @input=${(ev) => pp({ "popup_highlight_box_shadow": ev.target.value || undefined })}></ha-textfield>
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Button Styling</summary>
+          <div class="box-content">
+            <div class="inline-fields-2">
+              <ha-textfield label="Background" .value=${p("popup_button_bg") || ""} @input=${(ev) => pp({ "popup_button_bg": ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Text Color" .value=${p("popup_button_text_color") || ""} @input=${(ev) => pp({ "popup_button_text_color": ev.target.value || undefined })}></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_button_radius") ?? ""} @input=${(ev) => pp({ "popup_button_radius": Number(ev.target.value) || undefined })}></ha-textfield>
+              <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_button_opacity") ?? ""} @input=${(ev) => pp({ "popup_button_opacity": Number(ev.target.value) || undefined })}></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Color" .value=${p("popup_button_border_color") || ""} @input=${(ev) => pp({ "popup_button_border_color": ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Border Width" .value=${p("popup_button_border_width") || ""} @input=${(ev) => pp({ "popup_button_border_width": ev.target.value || undefined })}></ha-textfield>
+            </div>
+          </div>
+        </details>
       ` : ''}
-
-      ${domain === 'climate' ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Climate Options</div>
-        <ha-textfield label="Temperature Step Size" type="number" step="0.1" .value=${String(p("climate_temp_step") ?? 0.5)} @input=${(ev) => pp({ "climate_temp_step": Number(ev.target.value) })} placeholder="0.5"></ha-textfield>
-        <div class="switch-row"><ha-switch .checked=${p("climate_use_circular_slider") === true} @change=${(ev) => pp({ "climate_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
-        <div class="switch-row"><ha-switch .checked=${p("climate_show_plus_minus") === true} @change=${(ev) => pp({ "climate_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
-        <div class="switch-row"><ha-switch .checked=${p("climate_show_gradient") !== false} @change=${(ev) => pp({ "climate_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
-        <div class="switch-row"><ha-switch .checked=${p("climate_show_target_range") !== false} @change=${(ev) => pp({ "climate_show_target_range": ev.target.checked })}></ha-switch><span>Show Min/Max Target Range (if supported)</span></div>
-        <p style="font-size: 12px; font-weight: 500; margin: 8px 0 4px 0;">Extra Sensors (optional)</p>
-        <ha-entity-picker .hass=${this.hass} label="Current Temperature Entity" .value=${p("climate_current_temperature_entity") || ""} @value-changed=${(ev) => pp({ "climate_current_temperature_entity": ev.detail.value || undefined })}></ha-entity-picker>
-        <ha-textfield label="Temperature Sensor Name" .value=${p("climate_temperature_name") || ""} @input=${(ev) => pp({ "climate_temperature_name": ev.target.value || undefined })}></ha-textfield>
-        <ha-entity-picker .hass=${this.hass} label="Humidity Entity" .value=${p("climate_humidity_entity") || ""} @value-changed=${(ev) => pp({ "climate_humidity_entity": ev.detail.value || undefined })}></ha-entity-picker>
-        <ha-textfield label="Humidity Sensor Name" .value=${p("climate_humidity_name") || ""} @input=${(ev) => pp({ "climate_humidity_name": ev.target.value || undefined })}></ha-textfield>
-        <ha-entity-picker .hass=${this.hass} label="Pressure Entity" .value=${p("climate_pressure_entity") || ""} @value-changed=${(ev) => pp({ "climate_pressure_entity": ev.detail.value || undefined })}></ha-entity-picker>
-        <ha-textfield label="Pressure Sensor Name" .value=${p("climate_pressure_name") || ""} @input=${(ev) => pp({ "climate_pressure_name": ev.target.value || undefined })}></ha-textfield>
-      ` : ''}
-
-      ${domain === 'humidifier' ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Humidifier Options</div>
-        <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${String(p("humidifier_humidity_step") ?? 1)} @input=${(ev) => pp({ "humidifier_humidity_step": Number(ev.target.value) })} placeholder="1"></ha-textfield>
-        <div class="switch-row"><ha-switch .checked=${p("humidifier_use_circular_slider") === true} @change=${(ev) => pp({ "humidifier_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
-        <div class="switch-row"><ha-switch .checked=${p("humidifier_show_plus_minus") === true} @change=${(ev) => pp({ "humidifier_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
-        <div class="switch-row"><ha-switch .checked=${p("humidifier_show_gradient") !== false} @change=${(ev) => pp({ "humidifier_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
-        <ha-entity-picker .hass=${this.hass} label="Fan Speed Entity (select or fan)" .value=${p("humidifier_fan_entity") || ""} @value-changed=${(ev) => pp({ "humidifier_fan_entity": ev.detail.value || undefined })}></ha-entity-picker>
-      ` : ''}
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Content Display</div>
-      <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(p("popup_slider_radius") ?? 12)} @input=${(ev) => pp({ "popup_slider_radius": Number(ev.target.value) })}></ha-textfield>
-      <div class="switch-row">
-        <ha-switch .checked=${p("popup_hide_button_text") === true} @change=${(ev) => pp({ "popup_hide_button_text": ev.target.checked })}></ha-switch>
-        <span>Hide Text Under Buttons</span>
-      </div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_value_font_size") ?? 36)} @input=${(ev) => pp({ "popup_value_font_size": Number(ev.target.value) })}></ha-textfield>
-        <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_value_font_weight") ?? 300)} @input=${(ev) => pp({ "popup_value_font_weight": Number(ev.target.value) })}></ha-textfield>
-      </div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ "popup_label_font_size": Number(ev.target.value) })}></ha-textfield>
-        <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ "popup_label_font_weight": Number(ev.target.value) })}></ha-textfield>
-      </div>
-      <ha-select label="Time Format" .value=${p("popup_time_format") || "auto"}
-        @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_time_format": ev.target.value }); }}
-        @closed=${(ev) => ev.stopPropagation()}>
-        <mwc-list-item value="auto">Auto</mwc-list-item>
-        <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
-        <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
-      </ha-select>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Active Button Styling</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize selected/highlighted buttons</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Color" .value=${p("popup_highlight_color") || ""} @input=${(ev) => pp({ "popup_highlight_color": ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
-        <ha-textfield label="Text Color" .value=${p("popup_highlight_text_color") || ""} @input=${(ev) => pp({ "popup_highlight_text_color": ev.target.value || undefined })} placeholder="white"></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_highlight_radius") ?? ""} @input=${(ev) => pp({ "popup_highlight_radius": Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
-        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_highlight_opacity") ?? ""} @input=${(ev) => pp({ "popup_highlight_opacity": Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Color" .value=${p("popup_highlight_border_color") || ""} @input=${(ev) => pp({ "popup_highlight_border_color": ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Border Width" .value=${p("popup_highlight_border_width") || ""} @input=${(ev) => pp({ "popup_highlight_border_width": ev.target.value || undefined })}></ha-textfield>
-      </div>
-      <ha-textfield label="Box Shadow" .value=${p("popup_highlight_box_shadow") || ""} @input=${(ev) => pp({ "popup_highlight_box_shadow": ev.target.value || undefined })}></ha-textfield>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Button Styling</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Style for unselected buttons</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Background" .value=${p("popup_button_bg") || ""} @input=${(ev) => pp({ "popup_button_bg": ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Text Color" .value=${p("popup_button_text_color") || ""} @input=${(ev) => pp({ "popup_button_text_color": ev.target.value || undefined })}></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_button_radius") ?? ""} @input=${(ev) => pp({ "popup_button_radius": Number(ev.target.value) || undefined })}></ha-textfield>
-        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_button_opacity") ?? ""} @input=${(ev) => pp({ "popup_button_opacity": Number(ev.target.value) || undefined })}></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Color" .value=${p("popup_button_border_color") || ""} @input=${(ev) => pp({ "popup_button_border_color": ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Border Width" .value=${p("popup_button_border_width") || ""} @input=${(ev) => pp({ "popup_button_border_width": ev.target.value || undefined })}></ha-textfield>
-      </div>
     `;
   }
-
   _renderSlotActionEditor(field) {
     const action = this._config?.[field] || { action: "none" };
     const actionType = action.action || "none";
@@ -4577,7 +4608,7 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Entity (overrides slot entity)" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "perform-action" ? html`
@@ -4736,7 +4767,7 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
           ` : ''}
           ${actionValue === "hki-more-info" ? html`
-            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Entity (defaults to person entity)" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
           ` : ''}
           ${actionValue === "perform-action" ? html`
@@ -4859,156 +4890,264 @@ class HkiHeaderCardEditor extends LitElement {
       this.requestUpdate();
     };
 
-    // Person popup editor - same sections as slot editor, adapted for personConfig
+    // Person popup editor — accordion layout matching slot editor
     const pc = personConfig;
+    const pv = (k) => pc[k];
+    const pp = patchPerson;
     const p_ent = pc.entity || '';
-    const p_domain = p_ent ? p_ent.split('.')[0] : (p_ent === 'person' ? 'person' : null);
+    const p_domain = p_ent ? p_ent.split('.')[0] : null;
     const p_entState = (p_ent && this.hass?.states?.[p_ent]) || null;
     const p_hasChildren = p_entState?.attributes?.entity_id && Array.isArray(p_entState.attributes.entity_id);
     const p_isLightGroup = p_domain === 'light' && p_hasChildren;
-    const pp = patchPerson;
-    const pv = (k) => pc[k];
-    const animOpts2 = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
-    const animLbls2 = ["None","Fade","Scale","Zoom","Slide Up","Slide Down","Slide Left","Slide Right","Flip","Bounce","Rotate","Drop","Swing"];
+    const p_enabled = !!pv('custom_popup_enabled');
+    const animOpts2 = ['none','fade','scale','zoom','slide-up','slide-down','slide-left','slide-right','flip','bounce','rotate','drop','swing'];
+    const animLbls2 = ['None','Fade','Scale','Zoom','Slide Up','Slide Down','Slide Left','Slide Right','Flip','Bounce','Rotate','Drop','Swing'];
 
     return html`
-      ${renderPersonAction("Tap action", "tap_action")}
-      ${renderPersonAction("Hold action", "hold_action")}
-      ${renderPersonAction("Double tap action", "double_tap_action")}
+      ${renderPersonAction('Tap action', 'tap_action')}
+      ${renderPersonAction('Hold action', 'hold_action')}
+      ${renderPersonAction('Double tap action', 'double_tap_action')}
 
       <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
       <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup triggered by actions on this person.</p>
 
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
-      ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex, { value: pv("popup_name") || "", onchange: (v) => pp({ popup_name: v || undefined }) })}
-      ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex, { value: pv("popup_state") || "", onchange: (v) => pp({ popup_state: v || undefined }) })}
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Custom Popup Card</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
-      <div class="switch-row">
-        <ha-switch .checked=${!!pv("custom_popup_enabled")} @change=${(ev) => pp({ custom_popup_enabled: ev.target.checked })}></ha-switch>
-        <span>Enable custom popup card</span>
-      </div>
-      ${pv("custom_popup_enabled") ? html`
-        <div class="card-config">
-          ${customElements.get('hui-card-element-editor') ? html`
-            <hui-card-element-editor
-              .hass=${this.hass}
-              .lovelace=${this._getLovelace()}
-              .value=${pv("custom_popup_card") || { type: "vertical-stack", cards: [] }}
-              @config-changed=${(ev) => {
-                ev.stopPropagation();
-                const newCard = ev.detail?.config;
-                if (newCard && JSON.stringify(newCard) !== JSON.stringify(pv("custom_popup_card"))) pp({ custom_popup_card: newCard });
-              }}
-            ></hui-card-element-editor>
-          ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available.</p>`}
+      <details class="box-section">
+        <summary>Popup Header</summary>
+        <div class="box-content">
+          ${this._renderTemplateEditor('Name (optional, supports Jinja)', 'hki_popup_name_person_' + personIndex, { value: pv('popup_name') || '', onchange: (v) => pp({ popup_name: v || undefined }) })}
+          ${this._renderTemplateEditor('State text (optional, supports Jinja)', 'hki_popup_state_person_' + personIndex, { value: pv('popup_state') || '', onchange: (v) => pp({ popup_state: v || undefined }) })}
         </div>
+      </details>
+
+      <details class="box-section" open>
+        <summary>Popup Card</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to show a custom card instead of the auto domain popup.</p>
+          <div class="switch-row">
+            <ha-switch .checked=${p_enabled} @change=${(ev) => pp({ custom_popup_enabled: ev.target.checked })}></ha-switch>
+            <span>Enable custom popup card</span>
+          </div>
+          ${p_enabled ? html`
+            <div class="card-config">
+              ${customElements.get('hui-card-element-editor') ? html`
+                <hui-card-element-editor
+                  .hass=${this.hass}
+                  .lovelace=${this._getLovelace()}
+                  .value=${pv('custom_popup_card') || { type: 'vertical-stack', cards: [] }}
+                  @config-changed=${(ev) => {
+                    ev.stopPropagation();
+                    const newCard = ev.detail?.config;
+                    if (newCard && JSON.stringify(newCard) !== JSON.stringify(pv('custom_popup_card'))) pp({ custom_popup_card: newCard });
+                  }}
+                ></hui-card-element-editor>
+              ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available. Use YAML mode.</p>`}
+            </div>
+          ` : ''}
+        </div>
+      </details>
+
+      <details class="box-section">
+        <summary>Animation</summary>
+        <div class="box-content">
+          <div class="inline-fields-2">
+            <ha-select label="Open Animation" .value=${pv('popup_open_animation') || 'scale'}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ popup_open_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
+            </ha-select>
+            <ha-select label="Close Animation" .value=${pv('popup_close_animation') || pv('popup_open_animation') || 'scale'}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ popup_close_animation: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
+            </ha-select>
+          </div>
+          <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(pv('popup_animation_duration') ?? 300)} @input=${(ev) => pp({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
+        </div>
+      </details>
+
+      <details class="box-section">
+        <summary>Container & Size</summary>
+        <div class="box-content">
+          <ha-textfield label="Border Radius (px)" type="number" .value=${String(pv('popup_border_radius') ?? 16)} @input=${(ev) => pp({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+          <div class="inline-fields-2">
+            <ha-select label="Width" .value=${pv('popup_width') || 'auto'}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ popup_width: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+              <mwc-list-item value="default">Default (400px)</mwc-list-item>
+              <mwc-list-item value="custom">Custom</mwc-list-item>
+            </ha-select>
+            ${pv('popup_width') === 'custom' ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(pv('popup_width_custom') ?? 400)} @input=${(ev) => pp({ popup_width_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+          </div>
+          <div class="inline-fields-2">
+            <ha-select label="Height" .value=${pv('popup_height') || 'auto'}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ popup_height: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+              <mwc-list-item value="default">Default (600px)</mwc-list-item>
+              <mwc-list-item value="custom">Custom</mwc-list-item>
+            </ha-select>
+            ${pv('popup_height') === 'custom' ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(pv('popup_height_custom') ?? 600)} @input=${(ev) => pp({ popup_height_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+          </div>
+        </div>
+      </details>
+
+      <details class="box-section">
+        <summary>Blur & Glass Effect</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 4px 0;">Background (portal)</p>
+          <div class="switch-row">
+            <ha-switch .checked=${pv('popup_blur_enabled') !== false} @change=${(ev) => pp({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+            <span>Enable background blur</span>
+          </div>
+          <ha-textfield label="Blur Amount (px)" type="number" .value=${String(pv('popup_blur_amount') ?? 10)} @input=${(ev) => pp({ popup_blur_amount: Number(ev.target.value) })} .disabled=${pv('popup_blur_enabled') === false}></ha-textfield>
+          <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 4px 0;">Card glass effect</p>
+          <div class="switch-row">
+            <ha-switch .checked=${pv('popup_card_blur_enabled') !== false} @change=${(ev) => pp({ popup_card_blur_enabled: ev.target.checked })}></ha-switch>
+            <span>Enable card blur (frosted glass)</span>
+          </div>
+          <div class="inline-fields-2">
+            <ha-textfield label="Card Blur (px)" type="number" .value=${String(pv('popup_card_blur_amount') ?? 40)} @input=${(ev) => pp({ popup_card_blur_amount: Number(ev.target.value) })} .disabled=${pv('popup_card_blur_enabled') === false}></ha-textfield>
+            <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(pv('popup_card_opacity') ?? 0.4)} @input=${(ev) => pp({ popup_card_opacity: Number(ev.target.value) })}></ha-textfield>
+          </div>
+        </div>
+      </details>
+
+      ${!p_enabled ? html`
+        ${p_hasChildren ? html`
+          <details class="box-section">
+            <summary>Default View (Groups)</summary>
+            <div class="box-content">
+              <div class="inline-fields-2">
+                <ha-select label="Default View" .value=${pv('popup_default_view') || 'main'}
+                  @selected=${(ev) => { ev.stopPropagation(); pp({ popup_default_view: ev.target.value }); }}
+                  @closed=${(ev) => ev.stopPropagation()}>
+                  <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
+                  <mwc-list-item value="individual">Individual Entities</mwc-list-item>
+                </ha-select>
+                ${p_isLightGroup ? html`
+                  <ha-select label="Default Section" .value=${pv('popup_default_section') || 'last'}
+                    @selected=${(ev) => { ev.stopPropagation(); pp({ popup_default_section: ev.target.value }); }}
+                    @closed=${(ev) => ev.stopPropagation()}>
+                    <mwc-list-item value="last">Last Used</mwc-list-item>
+                    <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
+                    <mwc-list-item value="color">Always Color</mwc-list-item>
+                    <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+                  </ha-select>
+                ` : html`<div></div>`}
+              </div>
+            </div>
+          </details>
+        ` : ''}
+
+        ${(p_domain === 'light' || p_domain === 'cover') ? html`
+          <details class="box-section">
+            <summary>Features</summary>
+            <div class="box-content">
+              <div class="switch-row"><ha-switch .checked=${pv('popup_show_favorites') !== false} @change=${(ev) => pp({ popup_show_favorites: ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
+              ${p_domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${pv('popup_show_effects') !== false} @change=${(ev) => pp({ popup_show_effects: ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+            </div>
+          </details>
+        ` : ''}
+
+        ${p_domain === 'climate' ? html`
+          <details class="box-section">
+            <summary>Climate Options</summary>
+            <div class="box-content">
+              <div class="switch-row"><ha-switch .checked=${pv('popup_show_presets') !== false} @change=${(ev) => pp({ popup_show_presets: ev.target.checked })}></ha-switch><span>Show Presets</span></div>
+              <ha-textfield label="Temperature Step Size" type="number" step="0.1" .value=${String(pv('climate_temp_step') ?? 0.5)} @input=${(ev) => pp({ climate_temp_step: Number(ev.target.value) })} placeholder="0.5"></ha-textfield>
+              <div class="switch-row"><ha-switch .checked=${pv('climate_use_circular_slider') === true} @change=${(ev) => pp({ climate_use_circular_slider: ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('climate_show_plus_minus') === true} @change=${(ev) => pp({ climate_show_plus_minus: ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('climate_show_gradient') !== false} @change=${(ev) => pp({ climate_show_gradient: ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('climate_show_target_range') !== false} @change=${(ev) => pp({ climate_show_target_range: ev.target.checked })}></ha-switch><span>Show Min/Max Target Range (if supported)</span></div>
+              <p style="font-size: 12px; font-weight: 500; margin: 8px 0 4px 0;">Extra Sensors (optional)</p>
+              <ha-entity-picker .hass=${this.hass} label="Current Temperature Entity" .value=${pv('climate_current_temperature_entity') || ''} @value-changed=${(ev) => pp({ climate_current_temperature_entity: ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Temperature Sensor Name" .value=${pv('climate_temperature_name') || ''} @input=${(ev) => pp({ climate_temperature_name: ev.target.value || undefined })}></ha-textfield>
+              <ha-entity-picker .hass=${this.hass} label="Humidity Entity" .value=${pv('climate_humidity_entity') || ''} @value-changed=${(ev) => pp({ climate_humidity_entity: ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Humidity Sensor Name" .value=${pv('climate_humidity_name') || ''} @input=${(ev) => pp({ climate_humidity_name: ev.target.value || undefined })}></ha-textfield>
+              <ha-entity-picker .hass=${this.hass} label="Pressure Entity" .value=${pv('climate_pressure_entity') || ''} @value-changed=${(ev) => pp({ climate_pressure_entity: ev.detail.value || undefined })}></ha-entity-picker>
+              <ha-textfield label="Pressure Sensor Name" .value=${pv('climate_pressure_name') || ''} @input=${(ev) => pp({ climate_pressure_name: ev.target.value || undefined })}></ha-textfield>
+            </div>
+          </details>
+        ` : ''}
+
+        ${p_domain === 'humidifier' ? html`
+          <details class="box-section">
+            <summary>Humidifier Options</summary>
+            <div class="box-content">
+              <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${String(pv('humidifier_humidity_step') ?? 1)} @input=${(ev) => pp({ humidifier_humidity_step: Number(ev.target.value) })} placeholder="1"></ha-textfield>
+              <div class="switch-row"><ha-switch .checked=${pv('humidifier_use_circular_slider') === true} @change=${(ev) => pp({ humidifier_use_circular_slider: ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('humidifier_show_plus_minus') === true} @change=${(ev) => pp({ humidifier_show_plus_minus: ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('humidifier_show_gradient') !== false} @change=${(ev) => pp({ humidifier_show_gradient: ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+              <ha-entity-picker .hass=${this.hass} label="Fan Speed Entity (select or fan)" .value=${pv('humidifier_fan_entity') || ''} @value-changed=${(ev) => pp({ humidifier_fan_entity: ev.detail.value || undefined })}></ha-entity-picker>
+            </div>
+          </details>
+        ` : ''}
+
+        <details class="box-section">
+          <summary>Content Display</summary>
+          <div class="box-content">
+            <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(pv('popup_slider_radius') ?? 12)} @input=${(ev) => pp({ popup_slider_radius: Number(ev.target.value) })}></ha-textfield>
+            <div class="switch-row"><ha-switch .checked=${pv('popup_hide_button_text') === true} @change=${(ev) => pp({ popup_hide_button_text: ev.target.checked })}></ha-switch><span>Hide Text Under Buttons</span></div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 2px 0;">Value Display (Temperature/Brightness)</p>
+            <div class="inline-fields-2">
+              <ha-textfield label="Font Size (px)" type="number" .value=${String(pv('popup_value_font_size') ?? 36)} @input=${(ev) => pp({ popup_value_font_size: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Font Weight" type="number" .value=${String(pv('popup_value_font_weight') ?? 300)} @input=${(ev) => pp({ popup_value_font_weight: Number(ev.target.value) })}></ha-textfield>
+            </div>
+            <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 2px 0;">Label Display (Color/Mode Names)</p>
+            <div class="inline-fields-2">
+              <ha-textfield label="Font Size (px)" type="number" .value=${String(pv('popup_label_font_size') ?? 16)} @input=${(ev) => pp({ popup_label_font_size: Number(ev.target.value) })}></ha-textfield>
+              <ha-textfield label="Font Weight" type="number" .value=${String(pv('popup_label_font_weight') ?? 400)} @input=${(ev) => pp({ popup_label_font_weight: Number(ev.target.value) })}></ha-textfield>
+            </div>
+            <ha-select label="Time Format" .value=${pv('popup_time_format') || 'auto'}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ popup_time_format: ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="auto">Auto</mwc-list-item>
+              <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
+              <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+            </ha-select>
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Active Button Styling</summary>
+          <div class="box-content">
+            <div class="inline-fields-2">
+              <ha-textfield label="Color" .value=${pv('popup_highlight_color') || ''} @input=${(ev) => pp({ popup_highlight_color: ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
+              <ha-textfield label="Text Color" .value=${pv('popup_highlight_text_color') || ''} @input=${(ev) => pp({ popup_highlight_text_color: ev.target.value || undefined })} placeholder="white"></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${pv('popup_highlight_radius') ?? ''} @input=${(ev) => pp({ popup_highlight_radius: Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
+              <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv('popup_highlight_opacity') ?? ''} @input=${(ev) => pp({ popup_highlight_opacity: Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Color" .value=${pv('popup_highlight_border_color') || ''} @input=${(ev) => pp({ popup_highlight_border_color: ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Border Width" .value=${pv('popup_highlight_border_width') || ''} @input=${(ev) => pp({ popup_highlight_border_width: ev.target.value || undefined })}></ha-textfield>
+            </div>
+            <ha-textfield label="Box Shadow" .value=${pv('popup_highlight_box_shadow') || ''} @input=${(ev) => pp({ popup_highlight_box_shadow: ev.target.value || undefined })}></ha-textfield>
+          </div>
+        </details>
+
+        <details class="box-section">
+          <summary>Button Styling</summary>
+          <div class="box-content">
+            <div class="inline-fields-2">
+              <ha-textfield label="Background" .value=${pv('popup_button_bg') || ''} @input=${(ev) => pp({ popup_button_bg: ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Text Color" .value=${pv('popup_button_text_color') || ''} @input=${(ev) => pp({ popup_button_text_color: ev.target.value || undefined })}></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Radius (px)" type="number" .value=${pv('popup_button_radius') ?? ''} @input=${(ev) => pp({ popup_button_radius: Number(ev.target.value) || undefined })}></ha-textfield>
+              <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv('popup_button_opacity') ?? ''} @input=${(ev) => pp({ popup_button_opacity: Number(ev.target.value) || undefined })}></ha-textfield>
+            </div>
+            <div class="inline-fields-2">
+              <ha-textfield label="Border Color" .value=${pv('popup_button_border_color') || ''} @input=${(ev) => pp({ popup_button_border_color: ev.target.value || undefined })}></ha-textfield>
+              <ha-textfield label="Border Width" .value=${pv('popup_button_border_width') || ''} @input=${(ev) => pp({ popup_button_border_width: ev.target.value || undefined })}></ha-textfield>
+            </div>
+          </div>
+        </details>
       ` : ''}
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Animation</div>
-      <div class="inline-fields-2">
-        <ha-select label="Open Animation" .value=${pv("popup_open_animation") || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_open_animation: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-select label="Close Animation" .value=${pv("popup_close_animation") || pv("popup_open_animation") || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_close_animation: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
-        </ha-select>
-      </div>
-      <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(pv("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Container</div>
-      <ha-textfield label="Border Radius (px)" type="number" .value=${String(pv("popup_border_radius") ?? 16)} @input=${(ev) => pp({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
-      <div class="inline-fields-2">
-        <ha-select label="Width" .value=${pv("popup_width") || "auto"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_width: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
-          <mwc-list-item value="default">Default (400px)</mwc-list-item>
-          <mwc-list-item value="custom">Custom</mwc-list-item>
-        </ha-select>
-        ${pv("popup_width") === "custom" ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(pv("popup_width_custom") ?? 400)} @input=${(ev) => pp({ popup_width_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
-      </div>
-      <div class="inline-fields-2">
-        <ha-select label="Height" .value=${pv("popup_height") || "auto"}
-          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_height: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
-          <mwc-list-item value="default">Default (600px)</mwc-list-item>
-          <mwc-list-item value="custom">Custom</mwc-list-item>
-        </ha-select>
-        ${pv("popup_height") === "custom" ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(pv("popup_height_custom") ?? 600)} @input=${(ev) => pp({ popup_height_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
-      </div>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Background Blur</div>
-      <div class="switch-row">
-        <ha-switch .checked=${pv("popup_blur_enabled") !== false} @change=${(ev) => pp({ popup_blur_enabled: ev.target.checked })}></ha-switch>
-        <span>Enable background blur</span>
-      </div>
-      <ha-textfield label="Blur Amount (px)" type="number" .value=${String(pv("popup_blur_amount") ?? 10)} @input=${(ev) => pp({ popup_blur_amount: Number(ev.target.value) })} .disabled=${pv("popup_blur_enabled") === false}></ha-textfield>
-      <div class="section" style="font-size: 12px; opacity: 0.8;">Card Glass Effect</div>
-      <div class="switch-row"><ha-switch .checked=${pv("popup_card_blur_enabled") !== false} @change=${(ev) => pp({ popup_card_blur_enabled: ev.target.checked })}></ha-switch><span>Enable card blur</span></div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Card Blur (px)" type="number" .value=${String(pv("popup_card_blur_amount") ?? 40)} @input=${(ev) => pp({ popup_card_blur_amount: Number(ev.target.value) })} .disabled=${pv("popup_card_blur_enabled") === false}></ha-textfield>
-        <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(pv("popup_card_opacity") ?? 0.4)} @input=${(ev) => pp({ popup_card_opacity: Number(ev.target.value) })}></ha-textfield>
-      </div>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Content Display</div>
-      <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(pv("popup_slider_radius") ?? 12)} @input=${(ev) => pp({ popup_slider_radius: Number(ev.target.value) })}></ha-textfield>
-      <div class="switch-row"><ha-switch .checked=${pv("popup_hide_button_text") === true} @change=${(ev) => pp({ popup_hide_button_text: ev.target.checked })}></ha-switch><span>Hide Text Under Buttons</span></div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Font Size (px)" type="number" .value=${String(pv("popup_value_font_size") ?? 36)} @input=${(ev) => pp({ popup_value_font_size: Number(ev.target.value) })}></ha-textfield>
-        <ha-textfield label="Font Weight" type="number" .value=${String(pv("popup_value_font_weight") ?? 300)} @input=${(ev) => pp({ popup_value_font_weight: Number(ev.target.value) })}></ha-textfield>
-      </div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
-      <div class="inline-fields-2">
-        <ha-textfield label="Font Size (px)" type="number" .value=${String(pv("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ popup_label_font_size: Number(ev.target.value) })}></ha-textfield>
-        <ha-textfield label="Font Weight" type="number" .value=${String(pv("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ popup_label_font_weight: Number(ev.target.value) })}></ha-textfield>
-      </div>
-      <ha-select label="Time Format" .value=${pv("popup_time_format") || "auto"}
-        @selected=${(ev) => { ev.stopPropagation(); pp({ popup_time_format: ev.target.value }); }}
-        @closed=${(ev) => ev.stopPropagation()}>
-        <mwc-list-item value="auto">Auto</mwc-list-item>
-        <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
-        <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
-      </ha-select>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Active Button Styling</div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Color" .value=${pv("popup_highlight_color") || ""} @input=${(ev) => pp({ popup_highlight_color: ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
-        <ha-textfield label="Text Color" .value=${pv("popup_highlight_text_color") || ""} @input=${(ev) => pp({ popup_highlight_text_color: ev.target.value || undefined })} placeholder="white"></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Radius (px)" type="number" .value=${pv("popup_highlight_radius") ?? ""} @input=${(ev) => pp({ popup_highlight_radius: Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
-        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv("popup_highlight_opacity") ?? ""} @input=${(ev) => pp({ popup_highlight_opacity: Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Color" .value=${pv("popup_highlight_border_color") || ""} @input=${(ev) => pp({ popup_highlight_border_color: ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Border Width" .value=${pv("popup_highlight_border_width") || ""} @input=${(ev) => pp({ popup_highlight_border_width: ev.target.value || undefined })}></ha-textfield>
-      </div>
-      <ha-textfield label="Box Shadow" .value=${pv("popup_highlight_box_shadow") || ""} @input=${(ev) => pp({ popup_highlight_box_shadow: ev.target.value || undefined })}></ha-textfield>
-
-      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Button Styling</div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Background" .value=${pv("popup_button_bg") || ""} @input=${(ev) => pp({ popup_button_bg: ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Text Color" .value=${pv("popup_button_text_color") || ""} @input=${(ev) => pp({ popup_button_text_color: ev.target.value || undefined })}></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Radius (px)" type="number" .value=${pv("popup_button_radius") ?? ""} @input=${(ev) => pp({ popup_button_radius: Number(ev.target.value) || undefined })}></ha-textfield>
-        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv("popup_button_opacity") ?? ""} @input=${(ev) => pp({ popup_button_opacity: Number(ev.target.value) || undefined })}></ha-textfield>
-      </div>
-      <div class="inline-fields-2">
-        <ha-textfield label="Border Color" .value=${pv("popup_button_border_color") || ""} @input=${(ev) => pp({ popup_button_border_color: ev.target.value || undefined })}></ha-textfield>
-        <ha-textfield label="Border Width" .value=${pv("popup_button_border_width") || ""} @input=${(ev) => pp({ popup_button_border_width: ev.target.value || undefined })}></ha-textfield>
-      </div>
     `;
   }
-
   _renderActionEditor(label, field) {
     return html`
       <div style="margin-top: 8px;">
@@ -5040,7 +5179,7 @@ class HkiHeaderCardEditor extends LitElement {
         </div>
 
         <details class="box-section" open>
-          <summary>Entity</summary>
+          <summary>Header Text</summary>
           <div class="box-content">
             ${this._renderTemplateEditor("Title template (Jinja)", "title")}
             ${this._renderTemplateEditor("Subtitle template (Jinja)", "subtitle")}
