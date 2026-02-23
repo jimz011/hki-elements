@@ -1565,16 +1565,34 @@ class HkiHeaderCard extends LitElement {
         if (person.hold_action) cleaned.hold_action = this._cleanupActionConfig(person.hold_action);
         if (person.double_tap_action) cleaned.double_tap_action = this._cleanupActionConfig(person.double_tap_action);
         // Preserve slot-level popup settings
-        if (person.custom_popup_enabled !== undefined) cleaned.custom_popup_enabled = person.custom_popup_enabled;
-        if (person.custom_popup_card !== undefined) cleaned.custom_popup_card = person.custom_popup_card;
-        if (person.popup_name !== undefined) cleaned.popup_name = person.popup_name;
-        if (person.popup_state !== undefined) cleaned.popup_state = person.popup_state;
-        if (person.popup_border_radius !== undefined) cleaned.popup_border_radius = person.popup_border_radius;
-        if (person.popup_width !== undefined) cleaned.popup_width = person.popup_width;
-        if (person.popup_open_animation !== undefined) cleaned.popup_open_animation = person.popup_open_animation;
-        if (person.popup_close_animation !== undefined) cleaned.popup_close_animation = person.popup_close_animation;
-        if (person.popup_animation_duration !== undefined) cleaned.popup_animation_duration = person.popup_animation_duration;
-        if (person.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = person.popup_blur_enabled;
+        const _pp = (k) => { if (person[k] !== undefined) cleaned[k] = person[k]; };
+        _pp('custom_popup_enabled'); _pp('custom_popup_card');
+        _pp('popup_name'); _pp('popup_state');
+        _pp('popup_border_radius'); _pp('popup_width'); _pp('popup_width_custom');
+        _pp('popup_height'); _pp('popup_height_custom');
+        _pp('popup_open_animation'); _pp('popup_close_animation'); _pp('popup_animation_duration');
+        _pp('popup_blur_enabled'); _pp('popup_blur_amount');
+        _pp('popup_card_blur_enabled'); _pp('popup_card_blur_amount'); _pp('popup_card_opacity');
+        _pp('popup_show_favorites'); _pp('popup_show_effects'); _pp('popup_show_presets');
+        _pp('popup_slider_radius'); _pp('popup_hide_button_text');
+        _pp('popup_value_font_size'); _pp('popup_value_font_weight');
+        _pp('popup_label_font_size'); _pp('popup_label_font_weight');
+        _pp('popup_time_format'); _pp('popup_default_view'); _pp('popup_default_section');
+        _pp('popup_highlight_color'); _pp('popup_highlight_text_color');
+        _pp('popup_highlight_radius'); _pp('popup_highlight_opacity');
+        _pp('popup_highlight_border_color'); _pp('popup_highlight_border_style');
+        _pp('popup_highlight_border_width'); _pp('popup_highlight_box_shadow');
+        _pp('popup_button_bg'); _pp('popup_button_text_color'); _pp('popup_button_radius');
+        _pp('popup_button_opacity'); _pp('popup_button_border_color');
+        _pp('popup_button_border_style'); _pp('popup_button_border_width');
+        // Domain-specific
+        _pp('climate_temp_step'); _pp('climate_use_circular_slider');
+        _pp('climate_show_plus_minus'); _pp('climate_show_gradient'); _pp('climate_show_target_range');
+        _pp('climate_humidity_entity'); _pp('climate_humidity_name');
+        _pp('climate_pressure_entity'); _pp('climate_pressure_name');
+        _pp('climate_current_temperature_entity'); _pp('climate_temperature_name');
+        _pp('humidifier_humidity_step'); _pp('humidifier_use_circular_slider');
+        _pp('humidifier_show_plus_minus'); _pp('humidifier_show_gradient'); _pp('humidifier_fan_entity');
         
         return cleaned;
       }).filter(Boolean);
@@ -1609,15 +1627,28 @@ class HkiHeaderCard extends LitElement {
         if (action.target) cleaned.target = action.target;
         break;
       case "hki-more-info":
-        // Preserve entity and popup card config and all appearance settings
+        // Preserve entity and all popup settings
         if (action.entity) cleaned.entity = action.entity;
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
-        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
-        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
-        if (action.popup_close_animation !== undefined) cleaned.popup_close_animation = action.popup_close_animation;
-        if (action.popup_animation_duration !== undefined) cleaned.popup_animation_duration = action.popup_animation_duration;
-        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
-        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
+        { const _ac = (k) => { if (action[k] !== undefined) cleaned[k] = action[k]; };
+          _ac('popup_border_radius'); _ac('popup_width'); _ac('popup_width_custom');
+          _ac('popup_height'); _ac('popup_height_custom');
+          _ac('popup_open_animation'); _ac('popup_close_animation'); _ac('popup_animation_duration');
+          _ac('popup_blur_enabled'); _ac('popup_blur_amount');
+          _ac('popup_card_blur_enabled'); _ac('popup_card_blur_amount'); _ac('popup_card_opacity');
+          _ac('popup_show_favorites'); _ac('popup_show_effects'); _ac('popup_show_presets');
+          _ac('popup_slider_radius'); _ac('popup_hide_button_text');
+          _ac('popup_value_font_size'); _ac('popup_value_font_weight');
+          _ac('popup_label_font_size'); _ac('popup_label_font_weight');
+          _ac('popup_time_format'); _ac('popup_default_view'); _ac('popup_default_section');
+          _ac('popup_highlight_color'); _ac('popup_highlight_text_color');
+          _ac('popup_highlight_radius'); _ac('popup_highlight_opacity');
+          _ac('popup_highlight_border_color'); _ac('popup_highlight_border_style');
+          _ac('popup_highlight_border_width'); _ac('popup_highlight_box_shadow');
+          _ac('popup_button_bg'); _ac('popup_button_text_color'); _ac('popup_button_radius');
+          _ac('popup_button_opacity'); _ac('popup_button_border_color');
+          _ac('popup_button_border_style'); _ac('popup_button_border_width');
+        }
         if (action.popup_name) cleaned.popup_name = action.popup_name;
         if (action.popup_state) cleaned.popup_state = action.popup_state;
         break;
@@ -1906,6 +1937,61 @@ class HkiHeaderCard extends LitElement {
     return out;
   }
 
+  // Build a flat object of all popup fields from a merged popup config to spread into btn.setConfig()
+  _buildPopupConfig(p, resolvedName, resolvedState) {
+    const cfg = {};
+    const _s = (k) => { if (p[k] !== undefined) cfg[k] = p[k]; };
+    if (resolvedName) cfg.name = resolvedName;
+    if (resolvedState) cfg.state_label = resolvedState;
+    // Container
+    _s('popup_border_radius'); _s('popup_width'); _s('popup_width_custom');
+    _s('popup_height'); _s('popup_height_custom');
+    // Animation
+    if (p.popup_open_animation) cfg.popup_open_animation = p.popup_open_animation;
+    if (p.popup_close_animation) cfg.popup_close_animation = p.popup_close_animation;
+    _s('popup_animation_duration');
+    // Blur
+    _s('popup_blur_enabled'); _s('popup_blur_amount');
+    _s('popup_card_blur_enabled'); _s('popup_card_blur_amount'); _s('popup_card_opacity');
+    // Features
+    _s('popup_show_favorites'); _s('popup_show_effects'); _s('popup_show_presets');
+    // Content display
+    _s('popup_slider_radius'); _s('popup_hide_button_text');
+    _s('popup_value_font_size'); _s('popup_value_font_weight');
+    _s('popup_label_font_size'); _s('popup_label_font_weight');
+    if (p.popup_time_format) cfg.popup_time_format = p.popup_time_format;
+    if (p.popup_default_view) cfg.popup_default_view = p.popup_default_view;
+    if (p.popup_default_section) cfg.popup_default_section = p.popup_default_section;
+    // Highlight/button styling
+    if (p.popup_highlight_color) cfg.popup_highlight_color = p.popup_highlight_color;
+    if (p.popup_highlight_text_color) cfg.popup_highlight_text_color = p.popup_highlight_text_color;
+    _s('popup_highlight_radius'); _s('popup_highlight_opacity');
+    if (p.popup_highlight_border_color) cfg.popup_highlight_border_color = p.popup_highlight_border_color;
+    if (p.popup_highlight_border_style) cfg.popup_highlight_border_style = p.popup_highlight_border_style;
+    if (p.popup_highlight_border_width) cfg.popup_highlight_border_width = p.popup_highlight_border_width;
+    if (p.popup_highlight_box_shadow) cfg.popup_highlight_box_shadow = p.popup_highlight_box_shadow;
+    if (p.popup_button_bg) cfg.popup_button_bg = p.popup_button_bg;
+    if (p.popup_button_text_color) cfg.popup_button_text_color = p.popup_button_text_color;
+    _s('popup_button_radius'); _s('popup_button_opacity');
+    if (p.popup_button_border_color) cfg.popup_button_border_color = p.popup_button_border_color;
+    if (p.popup_button_border_style) cfg.popup_button_border_style = p.popup_button_border_style;
+    if (p.popup_button_border_width) cfg.popup_button_border_width = p.popup_button_border_width;
+    // Climate
+    _s('climate_temp_step'); _s('climate_use_circular_slider');
+    _s('climate_show_plus_minus'); _s('climate_show_gradient'); _s('climate_show_target_range');
+    if (p.climate_humidity_entity) cfg.climate_humidity_entity = p.climate_humidity_entity;
+    if (p.climate_humidity_name) cfg.climate_humidity_name = p.climate_humidity_name;
+    if (p.climate_pressure_entity) cfg.climate_pressure_entity = p.climate_pressure_entity;
+    if (p.climate_pressure_name) cfg.climate_pressure_name = p.climate_pressure_name;
+    if (p.climate_current_temperature_entity) cfg.climate_current_temperature_entity = p.climate_current_temperature_entity;
+    if (p.climate_temperature_name) cfg.climate_temperature_name = p.climate_temperature_name;
+    // Humidifier
+    _s('humidifier_humidity_step'); _s('humidifier_use_circular_slider');
+    _s('humidifier_show_plus_minus'); _s('humidifier_show_gradient');
+    if (p.humidifier_fan_entity) cfg.humidifier_fan_entity = p.humidifier_fan_entity;
+    return cfg;
+  }
+
   _handleAction(action, entityId = null, popupConfig = null) {
     if (!action || action.action === "none" || !this.hass) return;
 
@@ -1994,14 +2080,7 @@ class HkiHeaderCard extends LitElement {
               btn.setConfig({
                 type: 'custom:hki-button-card',
                 custom_popup: { enabled: true, card: popupCard },
-                ...(resolvedName ? { name: resolvedName } : {}),
-                ...(resolvedState ? { state_label: resolvedState } : {}),
-                ...(mergedPopup.popup_border_radius !== undefined ? { popup_border_radius: mergedPopup.popup_border_radius } : {}),
-                ...(mergedPopup.popup_open_animation ? { popup_open_animation: mergedPopup.popup_open_animation } : {}),
-                ...(mergedPopup.popup_close_animation ? { popup_close_animation: mergedPopup.popup_close_animation } : {}),
-                ...(mergedPopup.popup_animation_duration !== undefined ? { popup_animation_duration: mergedPopup.popup_animation_duration } : {}),
-                ...(mergedPopup.popup_width ? { popup_width: mergedPopup.popup_width } : {}),
-                ...(mergedPopup.popup_blur_enabled !== undefined ? { popup_blur_enabled: mergedPopup.popup_blur_enabled } : {}),
+                ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState),
               });
               btn._openPopup();
             } catch (err) {
@@ -2022,14 +2101,7 @@ class HkiHeaderCard extends LitElement {
                 btn.setConfig({
                   type: 'custom:hki-button-card',
                   entity: popupEntityId,
-                  ...(resolvedName ? { name: resolvedName } : {}),
-                  ...(resolvedState ? { state_label: resolvedState } : {}),
-                  ...(mergedPopup.popup_border_radius !== undefined ? { popup_border_radius: mergedPopup.popup_border_radius } : {}),
-                  ...(mergedPopup.popup_open_animation ? { popup_open_animation: mergedPopup.popup_open_animation } : {}),
-                  ...(mergedPopup.popup_close_animation ? { popup_close_animation: mergedPopup.popup_close_animation } : {}),
-                  ...(mergedPopup.popup_animation_duration !== undefined ? { popup_animation_duration: mergedPopup.popup_animation_duration } : {}),
-                  ...(mergedPopup.popup_width ? { popup_width: mergedPopup.popup_width } : {}),
-                  ...(mergedPopup.popup_blur_enabled !== undefined ? { popup_blur_enabled: mergedPopup.popup_blur_enabled } : {}),
+                  ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState),
                 });
                 btn._openPopup();
               } catch (err) {
@@ -2966,16 +3038,33 @@ class HkiHeaderCard extends LitElement {
           // Person-level popup config (single popup per person, shared across all actions)
           const personPopupConfig = (() => {
             const pc = {};
-            if (personConfig.custom_popup_enabled !== undefined) pc.custom_popup_enabled = personConfig.custom_popup_enabled;
-            if (personConfig.custom_popup_card !== undefined) pc.custom_popup_card = personConfig.custom_popup_card;
-            if (personConfig.popup_name !== undefined) pc.popup_name = personConfig.popup_name;
-            if (personConfig.popup_state !== undefined) pc.popup_state = personConfig.popup_state;
-            if (personConfig.popup_border_radius !== undefined) pc.popup_border_radius = personConfig.popup_border_radius;
-            if (personConfig.popup_width !== undefined) pc.popup_width = personConfig.popup_width;
-            if (personConfig.popup_open_animation !== undefined) pc.popup_open_animation = personConfig.popup_open_animation;
-            if (personConfig.popup_close_animation !== undefined) pc.popup_close_animation = personConfig.popup_close_animation;
-            if (personConfig.popup_animation_duration !== undefined) pc.popup_animation_duration = personConfig.popup_animation_duration;
-            if (personConfig.popup_blur_enabled !== undefined) pc.popup_blur_enabled = personConfig.popup_blur_enabled;
+            const _p = (k) => { if (personConfig[k] !== undefined) pc[k] = personConfig[k]; };
+            _p('custom_popup_enabled'); _p('custom_popup_card');
+            _p('popup_name'); _p('popup_state');
+            _p('popup_border_radius'); _p('popup_width'); _p('popup_width_custom');
+            _p('popup_height'); _p('popup_height_custom');
+            _p('popup_open_animation'); _p('popup_close_animation'); _p('popup_animation_duration');
+            _p('popup_blur_enabled'); _p('popup_blur_amount');
+            _p('popup_card_blur_enabled'); _p('popup_card_blur_amount'); _p('popup_card_opacity');
+            _p('popup_show_favorites'); _p('popup_show_effects'); _p('popup_show_presets');
+            _p('popup_slider_radius'); _p('popup_hide_button_text');
+            _p('popup_value_font_size'); _p('popup_value_font_weight');
+            _p('popup_label_font_size'); _p('popup_label_font_weight');
+            _p('popup_time_format'); _p('popup_default_view'); _p('popup_default_section');
+            _p('popup_highlight_color'); _p('popup_highlight_text_color');
+            _p('popup_highlight_radius'); _p('popup_highlight_opacity');
+            _p('popup_highlight_border_color'); _p('popup_highlight_border_style');
+            _p('popup_highlight_border_width'); _p('popup_highlight_box_shadow');
+            _p('popup_button_bg'); _p('popup_button_text_color'); _p('popup_button_radius');
+            _p('popup_button_opacity'); _p('popup_button_border_color');
+            _p('popup_button_border_style'); _p('popup_button_border_width');
+            _p('climate_temp_step'); _p('climate_use_circular_slider');
+            _p('climate_show_plus_minus'); _p('climate_show_gradient'); _p('climate_show_target_range');
+            _p('climate_humidity_entity'); _p('climate_humidity_name');
+            _p('climate_pressure_entity'); _p('climate_pressure_name');
+            _p('climate_current_temperature_entity'); _p('climate_temperature_name');
+            _p('humidifier_humidity_step'); _p('humidifier_use_circular_slider');
+            _p('humidifier_show_plus_minus'); _p('humidifier_show_gradient'); _p('humidifier_fan_entity');
             return Object.keys(pc).length ? pc : null;
           })();
 
@@ -3450,14 +3539,27 @@ class HkiHeaderCardEditor extends LitElement {
       case "hki-more-info":
         if (action.entity) cleaned.entity = action.entity;
         if (action.custom_popup_card !== undefined) cleaned.custom_popup_card = action.custom_popup_card;
-        if (action.popup_border_radius !== undefined) cleaned.popup_border_radius = action.popup_border_radius;
-        if (action.popup_open_animation !== undefined) cleaned.popup_open_animation = action.popup_open_animation;
-        if (action.popup_close_animation !== undefined) cleaned.popup_close_animation = action.popup_close_animation;
-        if (action.popup_animation_duration !== undefined) cleaned.popup_animation_duration = action.popup_animation_duration;
-        if (action.popup_width !== undefined) cleaned.popup_width = action.popup_width;
-        if (action.popup_blur_enabled !== undefined) cleaned.popup_blur_enabled = action.popup_blur_enabled;
         if (action.popup_name) cleaned.popup_name = action.popup_name;
         if (action.popup_state) cleaned.popup_state = action.popup_state;
+        { const _ac2 = (k) => { if (action[k] !== undefined) cleaned[k] = action[k]; };
+          _ac2('popup_border_radius'); _ac2('popup_width'); _ac2('popup_width_custom');
+          _ac2('popup_height'); _ac2('popup_height_custom');
+          _ac2('popup_open_animation'); _ac2('popup_close_animation'); _ac2('popup_animation_duration');
+          _ac2('popup_blur_enabled'); _ac2('popup_blur_amount');
+          _ac2('popup_card_blur_enabled'); _ac2('popup_card_blur_amount'); _ac2('popup_card_opacity');
+          _ac2('popup_show_favorites'); _ac2('popup_show_effects'); _ac2('popup_show_presets');
+          _ac2('popup_slider_radius'); _ac2('popup_hide_button_text');
+          _ac2('popup_value_font_size'); _ac2('popup_value_font_weight');
+          _ac2('popup_label_font_size'); _ac2('popup_label_font_weight');
+          _ac2('popup_time_format'); _ac2('popup_default_view'); _ac2('popup_default_section');
+          _ac2('popup_highlight_color'); _ac2('popup_highlight_text_color');
+          _ac2('popup_highlight_radius'); _ac2('popup_highlight_opacity');
+          _ac2('popup_highlight_border_color'); _ac2('popup_highlight_border_style');
+          _ac2('popup_highlight_border_width'); _ac2('popup_highlight_box_shadow');
+          _ac2('popup_button_bg'); _ac2('popup_button_text_color'); _ac2('popup_button_radius');
+          _ac2('popup_button_opacity'); _ac2('popup_button_border_color');
+          _ac2('popup_button_border_style'); _ac2('popup_button_border_width');
+        }
         break;
       case "fire-dom-event":
         // Preserve all properties for fire-dom-event (browser_mod integration)
@@ -4198,64 +4300,236 @@ class HkiHeaderCardEditor extends LitElement {
     `;
   }
 
-  _renderSlotPopupEditor(prefix) {
+  _renderSlotPopupEditor(prefix, entityId = null) {
     const cfg = this._config;
+    // Derive entity from actions if not provided
+    const effectiveEntity = entityId
+      || cfg[prefix + "tap_action"]?.entity
+      || cfg[prefix + "hold_action"]?.entity
+      || null;
+    const domain = effectiveEntity ? effectiveEntity.split('.')[0] : null;
+    const selectedEntity = (effectiveEntity && this.hass?.states?.[effectiveEntity]) || null;
+    const hasChildren = selectedEntity?.attributes?.entity_id && Array.isArray(selectedEntity.attributes.entity_id);
+    const isLightGroup = domain === 'light' && hasChildren;
+
     const enabled = !!cfg[prefix + "custom_popup_enabled"];
-    const patchPopup = (patch) => {
-      this._config = { ...this._config, ...patch };
+    const p = (k) => cfg[prefix + k];
+    const pp = (patch) => {
+      const mapped = {};
+      Object.keys(patch).forEach(k => mapped[prefix + k] = patch[k]);
+      this._config = { ...this._config, ...mapped };
       const strippedConfig = this._stripDefaults(this._config);
       this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig }, bubbles: true, composed: true }));
       this.requestUpdate();
     };
-    const animOptions = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
+    const animOpts = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
     const animLabels = ["None","Fade","Scale","Zoom","Slide Up","Slide Down","Slide Left","Slide Right","Flip","Bounce","Rotate","Drop","Swing"];
+
     return html`
-      <div class="section" style="margin-top: 12px;">Custom Popup</div>
+      <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup. These apply whenever an action on this slot is set to "HKI More Info".</p>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
+      ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + prefix, { value: p("popup_name") || "", onchange: (v) => pp({ "popup_name": v || undefined }) })}
+      ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + prefix, { value: p("popup_state") || "", onchange: (v) => pp({ "popup_state": v || undefined }) })}
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Custom Popup Card</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card in the popup frame instead of the auto domain popup.</p>
       <div class="switch-row">
-        <ha-switch .checked=${enabled} @change=${(ev) => patchPopup({ [prefix + "custom_popup_enabled"]: ev.target.checked })}></ha-switch>
-        <span>Enable custom popup (shared across all actions)</span>
+        <ha-switch .checked=${enabled} @change=${(ev) => pp({ "custom_popup_enabled": ev.target.checked })}></ha-switch>
+        <span>Enable custom popup card</span>
       </div>
       ${enabled ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
-        ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_" + prefix, { value: cfg[prefix + "popup_name"] || "", onchange: (v) => patchPopup({ [prefix + "popup_name"]: v || undefined }) })}
-        ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_" + prefix, { value: cfg[prefix + "popup_state"] || "", onchange: (v) => patchPopup({ [prefix + "popup_state"]: v || undefined }) })}
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Appearance</div>
-        <div class="inline-fields-2">
-          <ha-textfield label="Border Radius (px)" type="number" .value=${String(cfg[prefix + "popup_border_radius"] ?? 16)} @input=${(ev) => patchPopup({ [prefix + "popup_border_radius"]: Number(ev.target.value) })}></ha-textfield>
-          <ha-textfield label="Popup Width" helper="auto or px value" .value=${cfg[prefix + "popup_width"] || "auto"} @input=${(ev) => patchPopup({ [prefix + "popup_width"]: ev.target.value })}></ha-textfield>
-        </div>
-        <ha-select label="Open Animation" .value=${cfg[prefix + "popup_open_animation"] || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); patchPopup({ [prefix + "popup_open_animation"]: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOptions.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-select label="Close Animation" .value=${cfg[prefix + "popup_close_animation"] || cfg[prefix + "popup_open_animation"] || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); patchPopup({ [prefix + "popup_close_animation"]: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOptions.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(cfg[prefix + "popup_animation_duration"] ?? 300)} @input=${(ev) => patchPopup({ [prefix + "popup_animation_duration"]: Number(ev.target.value) })}></ha-textfield>
-        <div class="switch-row" style="margin-top: 8px;">
-          <ha-switch .checked=${cfg[prefix + "popup_blur_enabled"] !== false} @change=${(ev) => patchPopup({ [prefix + "popup_blur_enabled"]: ev.target.checked })}></ha-switch>
-          <span>Background blur</span>
-        </div>
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Card</div>
-        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI More Info" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
         <div class="card-config">
-          <hui-card-element-editor
-            .hass=${this.hass}
-            .lovelace=${this._getLovelace()}
-            .value=${cfg[prefix + "custom_popup_card"] || { type: "vertical-stack", cards: [] }}
-            @config-changed=${(ev) => {
-              ev.stopPropagation();
-              const newCard = ev.detail?.config;
-              if (newCard && JSON.stringify(newCard) !== JSON.stringify(cfg[prefix + "custom_popup_card"])) {
-                patchPopup({ [prefix + "custom_popup_card"]: newCard });
-              }
-            }}
-          ></hui-card-element-editor>
+          ${customElements.get('hui-card-element-editor') ? html`
+            <hui-card-element-editor
+              .hass=${this.hass}
+              .lovelace=${this._getLovelace()}
+              .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
+              @config-changed=${(ev) => {
+                ev.stopPropagation();
+                const newCard = ev.detail?.config;
+                if (newCard && JSON.stringify(newCard) !== JSON.stringify(p("custom_popup_card"))) pp({ "custom_popup_card": newCard });
+              }}
+            ></hui-card-element-editor>
+          ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available. Use YAML mode.</p>`}
         </div>
-      ` : ""}
+      ` : ''}
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Animation</div>
+      <div class="inline-fields-2">
+        <ha-select label="Open Animation" .value=${p("popup_open_animation") || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_open_animation": ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
+        </ha-select>
+        <ha-select label="Close Animation" .value=${p("popup_close_animation") || p("popup_open_animation") || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_close_animation": ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          ${animOpts.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
+        </ha-select>
+      </div>
+      <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(p("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ "popup_animation_duration": Number(ev.target.value) })}></ha-textfield>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Container</div>
+      <ha-textfield label="Border Radius (px)" type="number" .value=${String(p("popup_border_radius") ?? 16)} @input=${(ev) => pp({ "popup_border_radius": Number(ev.target.value) })}></ha-textfield>
+      <div class="inline-fields-2">
+        <ha-select label="Width" .value=${p("popup_width") || "auto"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_width": ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+          <mwc-list-item value="default">Default (400px)</mwc-list-item>
+          <mwc-list-item value="custom">Custom</mwc-list-item>
+        </ha-select>
+        ${p("popup_width") === "custom" ? html`
+          <ha-textfield label="Custom Width (px)" type="number" .value=${String(p("popup_width_custom") ?? 400)} @input=${(ev) => pp({ "popup_width_custom": Number(ev.target.value) })}></ha-textfield>
+        ` : html`<div></div>`}
+      </div>
+      <div class="inline-fields-2">
+        <ha-select label="Height" .value=${p("popup_height") || "auto"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_height": ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+          <mwc-list-item value="default">Default (600px)</mwc-list-item>
+          <mwc-list-item value="custom">Custom</mwc-list-item>
+        </ha-select>
+        ${p("popup_height") === "custom" ? html`
+          <ha-textfield label="Custom Height (px)" type="number" .value=${String(p("popup_height_custom") ?? 600)} @input=${(ev) => pp({ "popup_height_custom": Number(ev.target.value) })}></ha-textfield>
+        ` : html`<div></div>`}
+      </div>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Background Blur</div>
+      <div class="switch-row">
+        <ha-switch .checked=${p("popup_blur_enabled") !== false} @change=${(ev) => pp({ "popup_blur_enabled": ev.target.checked })}></ha-switch>
+        <span>Enable background blur</span>
+      </div>
+      <ha-textfield label="Blur Amount (px)" type="number" .value=${String(p("popup_blur_amount") ?? 10)} @input=${(ev) => pp({ "popup_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_blur_enabled") === false}></ha-textfield>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Card Glass Effect</div>
+      <div class="switch-row">
+        <ha-switch .checked=${p("popup_card_blur_enabled") !== false} @change=${(ev) => pp({ "popup_card_blur_enabled": ev.target.checked })}></ha-switch>
+        <span>Enable card blur (frosted glass)</span>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Card Blur (px)" type="number" .value=${String(p("popup_card_blur_amount") ?? 40)} @input=${(ev) => pp({ "popup_card_blur_amount": Number(ev.target.value) })} .disabled=${p("popup_card_blur_enabled") === false}></ha-textfield>
+        <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(p("popup_card_opacity") ?? 0.4)} @input=${(ev) => pp({ "popup_card_opacity": Number(ev.target.value) })}></ha-textfield>
+      </div>
+
+      ${(hasChildren) ? html`
+        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Default View (Groups)</div>
+        <div class="inline-fields-2">
+          <ha-select label="Default View" .value=${p("popup_default_view") || "main"}
+            @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_view": ev.target.value }); }}
+            @closed=${(ev) => ev.stopPropagation()}>
+            <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
+            <mwc-list-item value="individual">Individual Entities</mwc-list-item>
+          </ha-select>
+          ${isLightGroup ? html`
+            <ha-select label="Default Section" .value=${p("popup_default_section") || "last"}
+              @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_default_section": ev.target.value }); }}
+              @closed=${(ev) => ev.stopPropagation()}>
+              <mwc-list-item value="last">Last Used</mwc-list-item>
+              <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
+              <mwc-list-item value="color">Always Color</mwc-list-item>
+              <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+            </ha-select>
+          ` : html`<div></div>`}
+        </div>
+      ` : ''}
+
+      ${(domain === 'light' || domain === 'climate' || domain === 'cover') ? html`
+        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Features</div>
+        ${domain === 'light' ? html`
+          <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
+          <div class="switch-row"><ha-switch .checked=${p("popup_show_effects") !== false} @change=${(ev) => pp({ "popup_show_effects": ev.target.checked })}></ha-switch><span>Show Effects</span></div>
+        ` : ''}
+        ${domain === 'climate' ? html`
+          <div class="switch-row"><ha-switch .checked=${p("popup_show_presets") !== false} @change=${(ev) => pp({ "popup_show_presets": ev.target.checked })}></ha-switch><span>Show Presets</span></div>
+        ` : ''}
+        ${domain === 'cover' ? html`
+          <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
+        ` : ''}
+      ` : ''}
+
+      ${domain === 'climate' ? html`
+        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Climate Options</div>
+        <ha-textfield label="Temperature Step Size" type="number" step="0.1" .value=${String(p("climate_temp_step") ?? 0.5)} @input=${(ev) => pp({ "climate_temp_step": Number(ev.target.value) })} placeholder="0.5"></ha-textfield>
+        <div class="switch-row"><ha-switch .checked=${p("climate_use_circular_slider") === true} @change=${(ev) => pp({ "climate_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+        <div class="switch-row"><ha-switch .checked=${p("climate_show_plus_minus") === true} @change=${(ev) => pp({ "climate_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+        <div class="switch-row"><ha-switch .checked=${p("climate_show_gradient") !== false} @change=${(ev) => pp({ "climate_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+        <div class="switch-row"><ha-switch .checked=${p("climate_show_target_range") !== false} @change=${(ev) => pp({ "climate_show_target_range": ev.target.checked })}></ha-switch><span>Show Min/Max Target Range (if supported)</span></div>
+        <p style="font-size: 12px; font-weight: 500; margin: 8px 0 4px 0;">Extra Sensors (optional)</p>
+        <ha-entity-picker .hass=${this.hass} label="Current Temperature Entity" .value=${p("climate_current_temperature_entity") || ""} @value-changed=${(ev) => pp({ "climate_current_temperature_entity": ev.detail.value || undefined })}></ha-entity-picker>
+        <ha-textfield label="Temperature Sensor Name" .value=${p("climate_temperature_name") || ""} @input=${(ev) => pp({ "climate_temperature_name": ev.target.value || undefined })}></ha-textfield>
+        <ha-entity-picker .hass=${this.hass} label="Humidity Entity" .value=${p("climate_humidity_entity") || ""} @value-changed=${(ev) => pp({ "climate_humidity_entity": ev.detail.value || undefined })}></ha-entity-picker>
+        <ha-textfield label="Humidity Sensor Name" .value=${p("climate_humidity_name") || ""} @input=${(ev) => pp({ "climate_humidity_name": ev.target.value || undefined })}></ha-textfield>
+        <ha-entity-picker .hass=${this.hass} label="Pressure Entity" .value=${p("climate_pressure_entity") || ""} @value-changed=${(ev) => pp({ "climate_pressure_entity": ev.detail.value || undefined })}></ha-entity-picker>
+        <ha-textfield label="Pressure Sensor Name" .value=${p("climate_pressure_name") || ""} @input=${(ev) => pp({ "climate_pressure_name": ev.target.value || undefined })}></ha-textfield>
+      ` : ''}
+
+      ${domain === 'humidifier' ? html`
+        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Humidifier Options</div>
+        <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${String(p("humidifier_humidity_step") ?? 1)} @input=${(ev) => pp({ "humidifier_humidity_step": Number(ev.target.value) })} placeholder="1"></ha-textfield>
+        <div class="switch-row"><ha-switch .checked=${p("humidifier_use_circular_slider") === true} @change=${(ev) => pp({ "humidifier_use_circular_slider": ev.target.checked })}></ha-switch><span>Use Circular Slider</span></div>
+        <div class="switch-row"><ha-switch .checked=${p("humidifier_show_plus_minus") === true} @change=${(ev) => pp({ "humidifier_show_plus_minus": ev.target.checked })}></ha-switch><span>Show +/- Buttons</span></div>
+        <div class="switch-row"><ha-switch .checked=${p("humidifier_show_gradient") !== false} @change=${(ev) => pp({ "humidifier_show_gradient": ev.target.checked })}></ha-switch><span>Show Gradient</span></div>
+        <ha-entity-picker .hass=${this.hass} label="Fan Speed Entity (select or fan)" .value=${p("humidifier_fan_entity") || ""} @value-changed=${(ev) => pp({ "humidifier_fan_entity": ev.detail.value || undefined })}></ha-entity-picker>
+      ` : ''}
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Content Display</div>
+      <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(p("popup_slider_radius") ?? 12)} @input=${(ev) => pp({ "popup_slider_radius": Number(ev.target.value) })}></ha-textfield>
+      <div class="switch-row">
+        <ha-switch .checked=${p("popup_hide_button_text") === true} @change=${(ev) => pp({ "popup_hide_button_text": ev.target.checked })}></ha-switch>
+        <span>Hide Text Under Buttons</span>
+      </div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_value_font_size") ?? 36)} @input=${(ev) => pp({ "popup_value_font_size": Number(ev.target.value) })}></ha-textfield>
+        <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_value_font_weight") ?? 300)} @input=${(ev) => pp({ "popup_value_font_weight": Number(ev.target.value) })}></ha-textfield>
+      </div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ "popup_label_font_size": Number(ev.target.value) })}></ha-textfield>
+        <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ "popup_label_font_weight": Number(ev.target.value) })}></ha-textfield>
+      </div>
+      <ha-select label="Time Format" .value=${p("popup_time_format") || "auto"}
+        @selected=${(ev) => { ev.stopPropagation(); pp({ "popup_time_format": ev.target.value }); }}
+        @closed=${(ev) => ev.stopPropagation()}>
+        <mwc-list-item value="auto">Auto</mwc-list-item>
+        <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
+        <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+      </ha-select>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Active Button Styling</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize selected/highlighted buttons</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Color" .value=${p("popup_highlight_color") || ""} @input=${(ev) => pp({ "popup_highlight_color": ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
+        <ha-textfield label="Text Color" .value=${p("popup_highlight_text_color") || ""} @input=${(ev) => pp({ "popup_highlight_text_color": ev.target.value || undefined })} placeholder="white"></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_highlight_radius") ?? ""} @input=${(ev) => pp({ "popup_highlight_radius": Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
+        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_highlight_opacity") ?? ""} @input=${(ev) => pp({ "popup_highlight_opacity": Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Color" .value=${p("popup_highlight_border_color") || ""} @input=${(ev) => pp({ "popup_highlight_border_color": ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Border Width" .value=${p("popup_highlight_border_width") || ""} @input=${(ev) => pp({ "popup_highlight_border_width": ev.target.value || undefined })}></ha-textfield>
+      </div>
+      <ha-textfield label="Box Shadow" .value=${p("popup_highlight_box_shadow") || ""} @input=${(ev) => pp({ "popup_highlight_box_shadow": ev.target.value || undefined })}></ha-textfield>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Button Styling</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Style for unselected buttons</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Background" .value=${p("popup_button_bg") || ""} @input=${(ev) => pp({ "popup_button_bg": ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Text Color" .value=${p("popup_button_text_color") || ""} @input=${(ev) => pp({ "popup_button_text_color": ev.target.value || undefined })}></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Radius (px)" type="number" .value=${p("popup_button_radius") ?? ""} @input=${(ev) => pp({ "popup_button_radius": Number(ev.target.value) || undefined })}></ha-textfield>
+        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${p("popup_button_opacity") ?? ""} @input=${(ev) => pp({ "popup_button_opacity": Number(ev.target.value) || undefined })}></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Color" .value=${p("popup_button_border_color") || ""} @input=${(ev) => pp({ "popup_button_border_color": ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Border Width" .value=${p("popup_button_border_width") || ""} @input=${(ev) => pp({ "popup_button_border_width": ev.target.value || undefined })}></ha-textfield>
+      </div>
     `;
   }
 
@@ -4585,60 +4859,153 @@ class HkiHeaderCardEditor extends LitElement {
       this.requestUpdate();
     };
 
-    const personPopupEnabled = !!personConfig.custom_popup_enabled;
-    const animOptions = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
-    const animLabels = ["None","Fade","Scale","Zoom","Slide Up","Slide Down","Slide Left","Slide Right","Flip","Bounce","Rotate","Drop","Swing"];
+    // Person popup editor - same sections as slot editor, adapted for personConfig
+    const pc = personConfig;
+    const p_ent = pc.entity || '';
+    const p_domain = p_ent ? p_ent.split('.')[0] : (p_ent === 'person' ? 'person' : null);
+    const p_entState = (p_ent && this.hass?.states?.[p_ent]) || null;
+    const p_hasChildren = p_entState?.attributes?.entity_id && Array.isArray(p_entState.attributes.entity_id);
+    const p_isLightGroup = p_domain === 'light' && p_hasChildren;
+    const pp = patchPerson;
+    const pv = (k) => pc[k];
+    const animOpts2 = ["none","fade","scale","zoom","slide-up","slide-down","slide-left","slide-right","flip","bounce","rotate","drop","swing"];
+    const animLbls2 = ["None","Fade","Scale","Zoom","Slide Up","Slide Down","Slide Left","Slide Right","Flip","Bounce","Rotate","Drop","Swing"];
 
     return html`
       ${renderPersonAction("Tap action", "tap_action")}
       ${renderPersonAction("Hold action", "hold_action")}
       ${renderPersonAction("Double tap action", "double_tap_action")}
-      <div class="section" style="margin-top: 12px;">Custom Popup</div>
+
+      <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup triggered by actions on this person.</p>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
+      ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex, { value: pv("popup_name") || "", onchange: (v) => pp({ popup_name: v || undefined }) })}
+      ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex, { value: pv("popup_state") || "", onchange: (v) => pp({ popup_state: v || undefined }) })}
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Custom Popup Card</div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
       <div class="switch-row">
-        <ha-switch .checked=${personPopupEnabled} @change=${(ev) => patchPerson({ custom_popup_enabled: ev.target.checked })}></ha-switch>
-        <span>Enable custom popup (shared across all actions)</span>
+        <ha-switch .checked=${!!pv("custom_popup_enabled")} @change=${(ev) => pp({ custom_popup_enabled: ev.target.checked })}></ha-switch>
+        <span>Enable custom popup card</span>
       </div>
-      ${personPopupEnabled ? html`
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Header</div>
-        ${this._renderTemplateEditor("Name (optional, supports Jinja)", "hki_popup_name_person_" + personIndex, { value: personConfig.popup_name || "", onchange: (v) => patchPerson({ popup_name: v || undefined }) })}
-        ${this._renderTemplateEditor("State text (optional, supports Jinja)", "hki_popup_state_person_" + personIndex, { value: personConfig.popup_state || "", onchange: (v) => patchPerson({ popup_state: v || undefined }) })}
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Appearance</div>
-        <div class="inline-fields-2">
-          <ha-textfield label="Border Radius (px)" type="number" .value=${String(personConfig.popup_border_radius ?? 16)} @input=${(ev) => patchPerson({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
-          <ha-textfield label="Popup Width" helper="auto or px value" .value=${personConfig.popup_width || "auto"} @input=${(ev) => patchPerson({ popup_width: ev.target.value })}></ha-textfield>
-        </div>
-        <ha-select label="Open Animation" .value=${personConfig.popup_open_animation || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); patchPerson({ popup_open_animation: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOptions.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-select label="Close Animation" .value=${personConfig.popup_close_animation || personConfig.popup_open_animation || "scale"}
-          @selected=${(ev) => { ev.stopPropagation(); patchPerson({ popup_close_animation: ev.target.value }); }}
-          @closed=${(ev) => ev.stopPropagation()}>
-          ${animOptions.map((v, i) => html`<mwc-list-item value="${v}">${animLabels[i]}</mwc-list-item>`)}
-        </ha-select>
-        <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(personConfig.popup_animation_duration ?? 300)} @input=${(ev) => patchPerson({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
-        <div class="switch-row" style="margin-top: 8px;">
-          <ha-switch .checked=${personConfig.popup_blur_enabled !== false} @change=${(ev) => patchPerson({ popup_blur_enabled: ev.target.checked })}></ha-switch>
-          <span>Background blur</span>
-        </div>
-        <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Popup Card</div>
-        <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Shown inside the HKI popup when "HKI More Info" action fires. Leave empty to open the domain-appropriate popup automatically.</p>
+      ${pv("custom_popup_enabled") ? html`
         <div class="card-config">
-          <hui-card-element-editor
-            .hass=${this.hass}
-            .lovelace=${this._getLovelace()}
-            .value=${personConfig.custom_popup_card || { type: "vertical-stack", cards: [] }}
-            @config-changed=${(ev) => {
-              ev.stopPropagation();
-              const newCard = ev.detail?.config;
-              if (newCard && JSON.stringify(newCard) !== JSON.stringify(personConfig.custom_popup_card)) {
-                patchPerson({ custom_popup_card: newCard });
-              }
-            }}
-          ></hui-card-element-editor>
+          ${customElements.get('hui-card-element-editor') ? html`
+            <hui-card-element-editor
+              .hass=${this.hass}
+              .lovelace=${this._getLovelace()}
+              .value=${pv("custom_popup_card") || { type: "vertical-stack", cards: [] }}
+              @config-changed=${(ev) => {
+                ev.stopPropagation();
+                const newCard = ev.detail?.config;
+                if (newCard && JSON.stringify(newCard) !== JSON.stringify(pv("custom_popup_card"))) pp({ custom_popup_card: newCard });
+              }}
+            ></hui-card-element-editor>
+          ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available.</p>`}
         </div>
-      ` : ""}
+      ` : ''}
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Animation</div>
+      <div class="inline-fields-2">
+        <ha-select label="Open Animation" .value=${pv("popup_open_animation") || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_open_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
+        </ha-select>
+        <ha-select label="Close Animation" .value=${pv("popup_close_animation") || pv("popup_open_animation") || "scale"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_close_animation: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          ${animOpts2.map((v, i) => html`<mwc-list-item value="${v}">${animLbls2[i]}</mwc-list-item>`)}
+        </ha-select>
+      </div>
+      <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(pv("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ popup_animation_duration: Number(ev.target.value) })}></ha-textfield>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Container</div>
+      <ha-textfield label="Border Radius (px)" type="number" .value=${String(pv("popup_border_radius") ?? 16)} @input=${(ev) => pp({ popup_border_radius: Number(ev.target.value) })}></ha-textfield>
+      <div class="inline-fields-2">
+        <ha-select label="Width" .value=${pv("popup_width") || "auto"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_width: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+          <mwc-list-item value="default">Default (400px)</mwc-list-item>
+          <mwc-list-item value="custom">Custom</mwc-list-item>
+        </ha-select>
+        ${pv("popup_width") === "custom" ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(pv("popup_width_custom") ?? 400)} @input=${(ev) => pp({ popup_width_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+      </div>
+      <div class="inline-fields-2">
+        <ha-select label="Height" .value=${pv("popup_height") || "auto"}
+          @selected=${(ev) => { ev.stopPropagation(); pp({ popup_height: ev.target.value }); }}
+          @closed=${(ev) => ev.stopPropagation()}>
+          <mwc-list-item value="auto">Auto (Responsive)</mwc-list-item>
+          <mwc-list-item value="default">Default (600px)</mwc-list-item>
+          <mwc-list-item value="custom">Custom</mwc-list-item>
+        </ha-select>
+        ${pv("popup_height") === "custom" ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(pv("popup_height_custom") ?? 600)} @input=${(ev) => pp({ popup_height_custom: Number(ev.target.value) })}></ha-textfield>` : html`<div></div>`}
+      </div>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Background Blur</div>
+      <div class="switch-row">
+        <ha-switch .checked=${pv("popup_blur_enabled") !== false} @change=${(ev) => pp({ popup_blur_enabled: ev.target.checked })}></ha-switch>
+        <span>Enable background blur</span>
+      </div>
+      <ha-textfield label="Blur Amount (px)" type="number" .value=${String(pv("popup_blur_amount") ?? 10)} @input=${(ev) => pp({ popup_blur_amount: Number(ev.target.value) })} .disabled=${pv("popup_blur_enabled") === false}></ha-textfield>
+      <div class="section" style="font-size: 12px; opacity: 0.8;">Card Glass Effect</div>
+      <div class="switch-row"><ha-switch .checked=${pv("popup_card_blur_enabled") !== false} @change=${(ev) => pp({ popup_card_blur_enabled: ev.target.checked })}></ha-switch><span>Enable card blur</span></div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Card Blur (px)" type="number" .value=${String(pv("popup_card_blur_amount") ?? 40)} @input=${(ev) => pp({ popup_card_blur_amount: Number(ev.target.value) })} .disabled=${pv("popup_card_blur_enabled") === false}></ha-textfield>
+        <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${String(pv("popup_card_opacity") ?? 0.4)} @input=${(ev) => pp({ popup_card_opacity: Number(ev.target.value) })}></ha-textfield>
+      </div>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Content Display</div>
+      <ha-textfield label="Slider Border Radius (px)" type="number" .value=${String(pv("popup_slider_radius") ?? 12)} @input=${(ev) => pp({ popup_slider_radius: Number(ev.target.value) })}></ha-textfield>
+      <div class="switch-row"><ha-switch .checked=${pv("popup_hide_button_text") === true} @change=${(ev) => pp({ popup_hide_button_text: ev.target.checked })}></ha-switch><span>Hide Text Under Buttons</span></div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Font Size (px)" type="number" .value=${String(pv("popup_value_font_size") ?? 36)} @input=${(ev) => pp({ popup_value_font_size: Number(ev.target.value) })}></ha-textfield>
+        <ha-textfield label="Font Weight" type="number" .value=${String(pv("popup_value_font_weight") ?? 300)} @input=${(ev) => pp({ popup_value_font_weight: Number(ev.target.value) })}></ha-textfield>
+      </div>
+      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
+      <div class="inline-fields-2">
+        <ha-textfield label="Font Size (px)" type="number" .value=${String(pv("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ popup_label_font_size: Number(ev.target.value) })}></ha-textfield>
+        <ha-textfield label="Font Weight" type="number" .value=${String(pv("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ popup_label_font_weight: Number(ev.target.value) })}></ha-textfield>
+      </div>
+      <ha-select label="Time Format" .value=${pv("popup_time_format") || "auto"}
+        @selected=${(ev) => { ev.stopPropagation(); pp({ popup_time_format: ev.target.value }); }}
+        @closed=${(ev) => ev.stopPropagation()}>
+        <mwc-list-item value="auto">Auto</mwc-list-item>
+        <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
+        <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+      </ha-select>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Active Button Styling</div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Color" .value=${pv("popup_highlight_color") || ""} @input=${(ev) => pp({ popup_highlight_color: ev.target.value || undefined })} placeholder="var(--primary-color)"></ha-textfield>
+        <ha-textfield label="Text Color" .value=${pv("popup_highlight_text_color") || ""} @input=${(ev) => pp({ popup_highlight_text_color: ev.target.value || undefined })} placeholder="white"></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Radius (px)" type="number" .value=${pv("popup_highlight_radius") ?? ""} @input=${(ev) => pp({ popup_highlight_radius: Number(ev.target.value) || undefined })} placeholder="8"></ha-textfield>
+        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv("popup_highlight_opacity") ?? ""} @input=${(ev) => pp({ popup_highlight_opacity: Number(ev.target.value) || undefined })} placeholder="1"></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Color" .value=${pv("popup_highlight_border_color") || ""} @input=${(ev) => pp({ popup_highlight_border_color: ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Border Width" .value=${pv("popup_highlight_border_width") || ""} @input=${(ev) => pp({ popup_highlight_border_width: ev.target.value || undefined })}></ha-textfield>
+      </div>
+      <ha-textfield label="Box Shadow" .value=${pv("popup_highlight_box_shadow") || ""} @input=${(ev) => pp({ popup_highlight_box_shadow: ev.target.value || undefined })}></ha-textfield>
+
+      <div class="section" style="margin-top: 8px; font-size: 12px; opacity: 0.8;">Button Styling</div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Background" .value=${pv("popup_button_bg") || ""} @input=${(ev) => pp({ popup_button_bg: ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Text Color" .value=${pv("popup_button_text_color") || ""} @input=${(ev) => pp({ popup_button_text_color: ev.target.value || undefined })}></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Radius (px)" type="number" .value=${pv("popup_button_radius") ?? ""} @input=${(ev) => pp({ popup_button_radius: Number(ev.target.value) || undefined })}></ha-textfield>
+        <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${pv("popup_button_opacity") ?? ""} @input=${(ev) => pp({ popup_button_opacity: Number(ev.target.value) || undefined })}></ha-textfield>
+      </div>
+      <div class="inline-fields-2">
+        <ha-textfield label="Border Color" .value=${pv("popup_button_border_color") || ""} @input=${(ev) => pp({ popup_button_border_color: ev.target.value || undefined })}></ha-textfield>
+        <ha-textfield label="Border Width" .value=${pv("popup_button_border_width") || ""} @input=${(ev) => pp({ popup_button_border_width: ev.target.value || undefined })}></ha-textfield>
+      </div>
     `;
   }
 
