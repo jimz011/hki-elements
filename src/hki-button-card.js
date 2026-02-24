@@ -8303,8 +8303,10 @@ if (!this._popupPortal) {
           .sensor-value-row { display: flex; align-items: baseline; justify-content: flex-end; }
           .sensor-tile-value { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
           .sensor-tile-unit { font-size: 18px; font-weight: 400; opacity: 0.7; margin-left: 3px; }
-          .sensor-tile-graph { width: 100%; height: 160px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 6px 6px 6px 2px; box-sizing: border-box; }
-          .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
+          .sensor-tile-graph { width: 100%; height: 160px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); box-sizing: border-box; position: relative; }
+          .sensor-tile-graph svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+          .sensor-yaxis { position: absolute; top: 0; left: 0; height: 100%; width: 38px; display: flex; flex-direction: column; justify-content: space-between; padding: 11px 4px 16px 0; box-sizing: border-box; pointer-events: none; }
+          .sensor-yaxis span { font-size: 9px; color: rgba(255,255,255,0.4); font-family: sans-serif; text-align: right; display: block; line-height: 1; white-space: nowrap; }
           .sensor-hours-row { display: flex; justify-content: flex-end; gap: 6px; }
           .sensor-hour-btn { padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--primary-text-color); font-size: 11px; cursor: pointer; transition: all 0.15s; }
           .sensor-hour-btn.active { background: var(--primary-color,#03a9f4); border-color: var(--primary-color,#03a9f4); font-weight: 600; }
@@ -8478,11 +8480,8 @@ if (!this._popupPortal) {
           `<line x1="${PAD_L}" y1="${l.y.toFixed(1)}" x2="${(PAD_L + W).toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`
         ).join('');
         const yAxisLine = `<line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${PAD_T + H}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
-        // Offset each label: top → below the line (+10), mid → centered, bottom → above the line (-3)
-        const yLabelOffsets = [10, 3.5, -3];
-        const yLabels = yLevels.map((l, li) =>
-          `<text x="${PAD_L - 4}" y="${(l.y + yLabelOffsets[li]).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${fmt(l.v)}</text>`
-        ).join('');
+        // Y labels rendered as HTML (not SVG text) to avoid distortion from preserveAspectRatio:none
+        const yHtmlLabels = `<div class="sensor-yaxis"><span>${fmt(maxV)}</span><span>${fmt((minV+maxV)/2)}</span><span>${fmt(minV)}</span></div>`;
 
         let chartBody = '';
         if (graphStyle === 'bar') {
@@ -8503,11 +8502,10 @@ if (!this._popupPortal) {
             <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>`;
         }
 
-        wrap.innerHTML = `<svg viewBox="0 0 ${FULL_W} ${FULL_H}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;">
+        wrap.innerHTML = yHtmlLabels + `<svg viewBox="0 0 ${FULL_W} ${FULL_H}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;">
           <defs>${defsInner}</defs>
           ${gridLines}
           ${yAxisLine}
-          ${yLabels}
           <g clip-path="url(#${clipId})">${chartBody}</g>
         </svg>`;
       } catch (e) {
