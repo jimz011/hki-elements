@@ -3411,7 +3411,9 @@ class HkiHeaderCard extends LitElement {
   }
 }
 
-customElements.define(CARD_NAME, HkiHeaderCard);
+if (!customElements.get(CARD_NAME)) {
+  customElements.define(CARD_NAME, HkiHeaderCard);
+}
 
 
 // ─────────────────────────────────────────────────────────────
@@ -6160,7 +6162,9 @@ class HkiHeaderCardEditor extends LitElement {
   }
 }
 
-customElements.define("hki-header-card-editor", HkiHeaderCardEditor);
+if (!customElements.get("hki-header-card-editor")) {
+  customElements.define("hki-header-card-editor", HkiHeaderCardEditor);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({

@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-23 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-01 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -159,3 +159,154 @@ window.HKI.unlockScroll = window.HKI.unlockScroll || (() => {
     }
   };
 })();
+
+// Shared popup style/dimension helpers used by multiple HKI cards
+window.HKI.getPopupBackdropStyle = window.HKI.getPopupBackdropStyle || ((config = {}) => {
+  const blurEnabled = config.popup_blur_enabled !== false;
+  const blurAmount = config.popup_blur_amount !== undefined ? Number(config.popup_blur_amount) : 10;
+  const blur = blurEnabled && blurAmount > 0
+    ? `backdrop-filter: blur(${blurAmount}px); -webkit-backdrop-filter: blur(${blurAmount}px); will-change: backdrop-filter;`
+    : "";
+  return `background: rgba(0,0,0,0.7); ${blur}`;
+});
+
+window.HKI.getPopupCardStyle = window.HKI.getPopupCardStyle || ((config = {}) => {
+  const cardBlurEnabled = config.popup_card_blur_enabled !== false;
+  const cardBlurAmount = config.popup_card_blur_amount !== undefined ? Number(config.popup_card_blur_amount) : 40;
+  let cardOpacity = config.popup_card_opacity !== undefined ? Number(config.popup_card_opacity) : 0.4;
+
+  // Keep transparency when blur is on so the glass effect remains visible.
+  if (cardBlurEnabled && cardOpacity === 1) cardOpacity = 0.7;
+
+  const bg = (cardOpacity < 1 || cardBlurEnabled)
+    ? `background: rgba(28, 28, 28, ${cardOpacity});`
+    : `background: var(--card-background-color, #1c1c1c);`;
+
+  const blur = cardBlurEnabled && cardBlurAmount > 0
+    ? `backdrop-filter: blur(${cardBlurAmount}px); -webkit-backdrop-filter: blur(${cardBlurAmount}px);`
+    : "";
+
+  return bg + (blur ? ` ${blur}` : "");
+});
+
+window.HKI.getPopupDimensions = window.HKI.getPopupDimensions || ((config = {}) => {
+  const widthCfg = config.popup_width || "auto";
+  const heightCfg = config.popup_height || "auto";
+
+  let width = "95vw; max-width: 500px";
+  let height = "90vh; max-height: 800px";
+
+  if (widthCfg === "custom") {
+    width = `${config.popup_width_custom ?? 400}px`;
+  } else if (widthCfg === "default") {
+    width = "90%; max-width: 400px";
+  } else if (!isNaN(Number(widthCfg))) {
+    width = `${Number(widthCfg)}px`;
+  }
+
+  if (heightCfg === "custom") {
+    height = `${config.popup_height_custom ?? 600}px`;
+  } else if (heightCfg === "default") {
+    height = "600px";
+  } else if (!isNaN(Number(heightCfg))) {
+    height = `${Number(heightCfg)}px`;
+  }
+
+  return { width, height };
+});
+
+window.HKI.getPopupOpenKeyframe = window.HKI.getPopupOpenKeyframe || ((anim) => {
+  const map = {
+    fade: "hki-anim-fade-in",
+    scale: "hki-anim-scale-in",
+    "slide-up": "hki-anim-slide-up",
+    "slide-down": "hki-anim-slide-down",
+    "slide-left": "hki-anim-slide-left",
+    "slide-right": "hki-anim-slide-right",
+    flip: "hki-anim-flip-in",
+    bounce: "hki-anim-bounce-in",
+    zoom: "hki-anim-zoom-in",
+    rotate: "hki-anim-rotate-in",
+    drop: "hki-anim-drop-in",
+    swing: "hki-anim-swing-in",
+  };
+  return map[anim] || "hki-anim-fade-in";
+});
+
+window.HKI.getPopupCloseKeyframe = window.HKI.getPopupCloseKeyframe || ((anim) => {
+  const map = {
+    fade: "hki-anim-fade-out",
+    scale: "hki-anim-scale-out",
+    "slide-up": "hki-anim-slide-out-down",
+    "slide-down": "hki-anim-slide-out-up",
+    "slide-left": "hki-anim-slide-out-right",
+    "slide-right": "hki-anim-slide-out-left",
+    flip: "hki-anim-flip-out",
+    bounce: "hki-anim-scale-out",
+    zoom: "hki-anim-zoom-out",
+    rotate: "hki-anim-rotate-out",
+    drop: "hki-anim-drop-out",
+    swing: "hki-anim-swing-out",
+  };
+  return map[anim] || "hki-anim-fade-out";
+});
+
+window.HKI.animatePopupOpen = window.HKI.animatePopupOpen || (({
+  portal,
+  config = {},
+  selector = ".hki-popup-container",
+} = {}) => {
+  if (!portal) return false;
+  const anim = config.popup_open_animation || "scale";
+  if (anim === "none") return false;
+  const dur = config.popup_animation_duration ?? 300;
+  const container = portal.querySelector(selector);
+  if (!container) return false;
+  window.HKI?.ensurePopupAnimations?.();
+  container.style.animation = "none";
+  void container.offsetWidth;
+  container.style.animation = `${window.HKI.getPopupOpenKeyframe(anim)} ${dur}ms ease forwards`;
+  return true;
+});
+
+window.HKI.animatePopupClose = window.HKI.animatePopupClose || (({
+  portal,
+  config = {},
+  selector = ".hki-popup-container",
+  onDone,
+  fallbackDelayMs = 100,
+} = {}) => {
+  const done = (() => {
+    let called = false;
+    return () => {
+      if (called) return;
+      called = true;
+      onDone?.();
+    };
+  })();
+
+  if (!portal) {
+    done();
+    return;
+  }
+
+  const anim = config.popup_close_animation || config.popup_open_animation || "scale";
+  const dur = config.popup_animation_duration ?? 300;
+  if (anim === "none") {
+    done();
+    return;
+  }
+
+  const container = portal.querySelector(selector);
+  if (!container) {
+    done();
+    return;
+  }
+
+  window.HKI?.ensurePopupAnimations?.();
+  container.style.animation = "none";
+  void container.offsetWidth;
+  container.style.animation = `${window.HKI.getPopupCloseKeyframe(anim)} ${dur}ms ease forwards`;
+  container.addEventListener("animationend", done, { once: true });
+  setTimeout(done, dur + fallbackDelayMs);
+});

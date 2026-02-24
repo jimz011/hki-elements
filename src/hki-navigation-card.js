@@ -2753,8 +2753,12 @@ class HkiNavigationCardEditor extends LitElement {
   }
 }
 
-customElements.define(CARD_TAG, HkiNavigationCard);
-customElements.define(EDITOR_TAG, HkiNavigationCardEditor);
+if (!customElements.get(CARD_TAG)) {
+  customElements.define(CARD_TAG, HkiNavigationCard);
+}
+if (!customElements.get(EDITOR_TAG)) {
+  customElements.define(EDITOR_TAG, HkiNavigationCardEditor);
+}
 
 HkiNavigationCard.getConfigElement = () => document.createElement(EDITOR_TAG);
 HkiNavigationCard.getStubConfig = () => ({

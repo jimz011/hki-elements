@@ -90,7 +90,7 @@
   window.HKI?.ensurePopupAnimations?.();
 
   // Prevent background page scroll when any popup is open
-    // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
+  // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
   const __hkiLockScroll = () => window.HKI?.lockScroll?.();
   const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
 
@@ -98,7 +98,7 @@
 
 
 
-class HkiButtonCard extends LitElement {
+  class HkiButtonCard extends LitElement {
     
     static getConfigElement() {
       // Guard: if editor failed to register for any reason, fall back to a minimal element.
@@ -257,7 +257,6 @@ class HkiButtonCard extends LitElement {
       ['popup_value_font_weight',   'hki_popup','value','font_weight'],
       ['popup_blur_enabled',        'hki_popup','blur_enabled'],
       ['popup_blur_amount',         'hki_popup','blur_amount'],
-      ['popup_border_radius',       'hki_popup','border_radius'],
       ['popup_width',               'hki_popup','width'],
       ['popup_height',              'hki_popup','height'],
       ['popup_width_custom',        'hki_popup','width_custom'],
@@ -642,7 +641,7 @@ class HkiButtonCard extends LitElement {
 
       // Ensure badge layout sizes to content inside HA stacks (avoids large gaps)
       this._applyHostLayoutSizing();
-}
+      }
 
     connectedCallback() {
       super.connectedCallback();
@@ -721,7 +720,7 @@ class HkiButtonCard extends LitElement {
           // Subsequent updates - can use default delay
           this._scheduleTemplateSetup?.();
         }
-}
+      }
       
       // Logic for popup updates
       if (changedProps.has("hass")) {
@@ -757,7 +756,7 @@ class HkiButtonCard extends LitElement {
               }
             }
           }
-if (!shouldUpdate && oldEntity && newEntity && 
+          if (!shouldUpdate && oldEntity && newEntity && 
               oldEntity.state === newEntity.state &&
               JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
             return;
@@ -767,58 +766,58 @@ if (!shouldUpdate && oldEntity && newEntity &&
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';
 
           if (!isDropdownFocused) {
-          // Custom popup: update embedded card with new hass
-          if (this._popupType === 'custom') {
-            // If this custom popup was opened without an entity, there is nothing to
-            // diff/track in hass. Re-rendering the entire portal on every hass update
-            // causes rapid rebuilds ("go crazy") and can prevent closing.
-            // In that case, only forward the latest hass to the embedded card.
-            if (!trackedId) {
+            // Custom popup: update embedded card with new hass
+            if (this._popupType === 'custom') {
+              // If this custom popup was opened without an entity, there is nothing to
+              // diff/track in hass. Re-rendering the entire portal on every hass update
+              // causes rapid rebuilds ("go crazy") and can prevent closing.
+              // In that case, only forward the latest hass to the embedded card.
+              if (!trackedId) {
+                const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
+                const cardElement = cardContainer?.querySelector('*:not([style])');
+                if (cardElement && cardElement.hass !== this.hass) {
+                  cardElement.hass = this.hass;
+                }
+                return;
+              }
+
               const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
               const cardElement = cardContainer?.querySelector('*:not([style])');
               if (cardElement && cardElement.hass !== this.hass) {
                 cardElement.hass = this.hass;
               }
+              // Still re-render to update header state/timestamp
+              this._renderCustomPopupPortal(newEntity);
               return;
             }
-
-            const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
-            const cardElement = cardContainer?.querySelector('*:not([style])');
-            if (cardElement && cardElement.hass !== this.hass) {
-              cardElement.hass = this.hass;
+            if (this._getDomain() === 'climate') {
+              this._renderClimatePopupPortal(newEntity);
+              return;
             }
-            // Still re-render to update header state/timestamp
-            this._renderCustomPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'climate') {
-            this._renderClimatePopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'alarm_control_panel') {
-            this._renderAlarmPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'cover') {
-            this._renderCoverPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'humidifier') {
-            this._renderHumidifierPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'fan') {
-            this._renderFanPopupPortal(newEntity);
-            return;
-          }
-          if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') {
-            this._renderSwitchPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'lock') {
-            this._renderLockPopupPortal(newEntity);
-            return;
-          }
+            if (this._getDomain() === 'alarm_control_panel') {
+              this._renderAlarmPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'cover') {
+              this._renderCoverPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'humidifier') {
+              this._renderHumidifierPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'fan') {
+              this._renderFanPopupPortal(newEntity);
+              return;
+            }
+            if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') {
+              this._renderSwitchPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'lock') {
+              this._renderLockPopupPortal(newEntity);
+              return;
+            }
 
             this._syncState();
             this._updateHeaderIcon();
@@ -1053,12 +1052,12 @@ if (!shouldUpdate && oldEntity && newEntity &&
       }
       const stateEl = this._popupPortal.querySelector('.hki-light-popup-state');
       if (stateEl) {
-	        const entity = this._getEntity();
-	        const isOn = this._isOn();
-	        const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
-	        const isOnEffective = isUnavailable ? false : isOn;
+          const entity = this._getEntity();
+          const isOn = this._isOn();
+          const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
+          const isOnEffective = isUnavailable ? false : isOn;
         const brightness = this._getBrightness();
-	        stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
+          stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
       }
     }
 
@@ -1373,9 +1372,9 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     // keep pending so release can still flush if needed; it'll be cleared there
   }, debounceMs);
-}
+    }
 
-_tileSliderClick(e) {
+    _tileSliderClick(e) {
       // Prevent click from bubbling to card
       e.stopPropagation();
     }
@@ -1944,7 +1943,7 @@ _tileSliderClick(e) {
         return;
       }
 
-// HKI specific - custom popup
+      // HKI specific - custom popup
       if (actionConfig.action === "hki-more-info") {
         this._openPopup();
         return;
@@ -2095,77 +2094,15 @@ _tileSliderClick(e) {
     }
 
     _getPopupPortalStyle() {
-      const blurEnabled = this._config.popup_blur_enabled !== false;
-      const blurAmount = this._config.popup_blur_amount !== undefined ? Number(this._config.popup_blur_amount) : 10;
-      const blur = blurEnabled && blurAmount > 0 
-        ? `backdrop-filter: blur(${blurAmount}px); -webkit-backdrop-filter: blur(${blurAmount}px); will-change: backdrop-filter;` 
-        : '';
-      return `background: rgba(0,0,0,0.7); ${blur}`;
+      return window.HKI?.getPopupBackdropStyle?.(this._config) || '';
     }
 
     _getPopupCardStyle() {
-      const cardBlurEnabled = this._config.popup_card_blur_enabled !== false;
-      const cardBlurAmount = this._config.popup_card_blur_amount !== undefined ? Number(this._config.popup_card_blur_amount) : 40;
-      let cardOpacity = this._config.popup_card_opacity !== undefined ? Number(this._config.popup_card_opacity) : 0.4;
-      
-      // For glass effect to be visible, we need transparency
-      // If blur enabled but user explicitly sets opacity to 1, use 0.7 for more visible glass effect
-      if (cardBlurEnabled && cardOpacity === 1) {
-        cardOpacity = 0.7;
-      }
-      
-      // Build background with proper opacity
-      let bg;
-      if (cardOpacity < 1 || cardBlurEnabled) {
-        // Use rgba for transparency (needed for glass effect)
-        bg = `background: rgba(28, 28, 28, ${cardOpacity});`;
-      } else {
-        // Fully opaque - use CSS variable
-        bg = `background: var(--card-background-color, #1c1c1c);`;
-      }
-      
-      // Add blur effect if enabled
-      const blur = cardBlurEnabled && cardBlurAmount > 0
-        ? `backdrop-filter: blur(${cardBlurAmount}px); -webkit-backdrop-filter: blur(${cardBlurAmount}px);`
-        : '';
-      
-      return bg + (blur ? ' ' + blur : '');
+      return window.HKI?.getPopupCardStyle?.(this._config) || '';
     }
 
     _getPopupDimensions() {
-      const widthCfg = this._config.popup_width || 'auto';
-      const heightCfg = this._config.popup_height || 'auto';
-      
-      let width = '95vw; max-width: 500px';
-      let height = '90vh; max-height: 800px';
-      
-      // Width handling
-      if (widthCfg === 'auto') {
-        width = '95vw; max-width: 500px';
-      } else if (widthCfg === 'custom') {
-        const customWidth = this._config.popup_width_custom ?? 400;
-        width = `${customWidth}px`;
-      } else if (widthCfg === 'default') {
-        width = '90%; max-width: 400px';
-      } else if (!isNaN(Number(widthCfg))) {
-        // Legacy numeric value
-        width = `${Number(widthCfg)}px`;
-      }
-      
-      // Height handling
-      if (heightCfg === 'auto') {
-        height = '90vh; max-height: 800px';
-      } else if (heightCfg === 'custom') {
-        const customHeight = this._config.popup_height_custom ?? 600;
-        height = `${customHeight}px`;
-      } else if (heightCfg === 'default') {
-        height = '600px';
-      } else if (!isNaN(Number(heightCfg))) {
-        // Legacy numeric value
-        height = `${Number(heightCfg)}px`;
-      }
-      
-      return { width, height };
+      return window.HKI?.getPopupDimensions?.(this._config) || { width: '95vw; max-width: 500px', height: '90vh; max-height: 800px' };
     }
 
     _openPopup() {
@@ -2340,37 +2277,24 @@ _tileSliderClick(e) {
       const portal = this._popupPortal;
       if (!portal) return;
 
-      const anim = this._config.popup_close_animation || 'scale';
-      const dur = this._config.popup_animation_duration ?? 300;
-
-      if (anim === 'none') {
+      const cleanup = () => {
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
         portal.remove();
         this._popupPortal = null;
         __hkiUnlockScroll();
-        return;
-      }
+      };
 
-      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
-      if (container) {
-        container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
-        container.addEventListener('animationend', () => {
-          this._popupOpen = false;
-          this._isDragging = false;
-          this._expandedEffects = false;
-          portal.remove();
-          this._popupPortal = null;
-          __hkiUnlockScroll();
-        }, { once: true });
+      if (window.HKI?.animatePopupClose) {
+        window.HKI.animatePopupClose({
+          portal,
+          config: this._config,
+          selector: '.hki-popup-container, .hki-light-popup-container',
+          onDone: cleanup,
+        });
       } else {
-        this._popupOpen = false;
-        this._isDragging = false;
-        this._expandedEffects = false;
-        portal.remove();
-        this._popupPortal = null;
-        __hkiUnlockScroll();
+        cleanup();
       }
     }
 
@@ -2388,54 +2312,13 @@ _tileSliderClick(e) {
     }
 
     _applyOpenAnimation(portal) {
-      const anim = this._config.popup_open_animation || 'scale';
-      if (anim !== 'none') {
-        const dur = this._config.popup_animation_duration ?? 300;
-        const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
-        if (container) {
-          container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
-        }
-      }
+      window.HKI?.animatePopupOpen?.({
+        portal,
+        config: this._config,
+        selector: '.hki-popup-container, .hki-light-popup-container',
+      });
       // Apply bottom-bar visibility for all popups
       this._applyPopupNavVisibility(portal);
-    }
-
-    _getOpenKeyframe(anim) {
-      const map = {
-        'fade':        'hki-anim-fade-in',
-        'scale':       'hki-anim-scale-in',
-        'slide-up':    'hki-anim-slide-up',
-        'slide-down':  'hki-anim-slide-down',
-        'slide-left':  'hki-anim-slide-left',
-        'slide-right': 'hki-anim-slide-right',
-        'flip':        'hki-anim-flip-in',
-        'bounce':      'hki-anim-bounce-in',
-        'zoom':        'hki-anim-zoom-in',
-        'rotate':      'hki-anim-rotate-in',
-        'drop':        'hki-anim-drop-in',
-        'swing':       'hki-anim-swing-in',
-      };
-
-      return map[anim] || 'hki-anim-fade-in';
-    }
-
-    _getCloseKeyframe(anim) {
-      const map = {
-        'fade':        'hki-anim-fade-out',
-        'scale':       'hki-anim-scale-out',
-        'slide-up':    'hki-anim-slide-out-down',
-        'slide-down':  'hki-anim-slide-out-up',
-        'slide-left':  'hki-anim-slide-out-right',
-        'slide-right': 'hki-anim-slide-out-left',
-        'flip':        'hki-anim-flip-out',
-        'bounce':      'hki-anim-scale-out',
-        'zoom':        'hki-anim-zoom-out',
-        'rotate':      'hki-anim-rotate-out',
-        'drop':        'hki-anim-drop-out',
-        'swing':       'hki-anim-swing-out',
-      };
-
-      return map[anim] || 'hki-anim-fade-out';
     }
 
     _getColorName(hue, saturation) {
@@ -5350,7 +5233,7 @@ _tileSliderClick(e) {
             <button class="nav-btn" id="coverOpen" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-up"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Open</span>'}</button>
             <button class="nav-btn" id="coverStop" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:stop"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Stop</span>'}</button>
             <button class="nav-btn" id="coverClose" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-down"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Close</span>'}</button>
-</div>
+          </div>
         </div>
       `;
 
@@ -5367,7 +5250,7 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-if (!this._popupPortal) {
+      if (!this._popupPortal) {
         document.body.appendChild(portal);
         this._applyOpenAnimation(portal);
       }
@@ -8906,7 +8789,7 @@ if (!this._popupPortal) {
                   <div class="vertical-slider-track" id="numTrack">
                     <div class="vertical-slider-fill" id="numFill"></div>
                     <div class="vertical-slider-thumb" id="numThumb"></div>
-                  </div>
+                </div>
                 </div>`}
           </div>
           <div class="hki-popup-nav"></div>
@@ -10491,12 +10374,12 @@ if (!this._popupPortal) {
       // Light group count badge
       if (badgeCount > 0) {
         // Scale badge with icon size (while preserving existing badge size overrides)
-// Use the same responsive icon sizing as the tile icon itself:
-const stageMin = Math.min(this._stageW || 0, this._stageH || 0);
-const maxIconSize = this._config.size_icon || 24;
-const iconScale = (() => { const max = Number(maxIconSize) || 24; return Math.max(0.08, Math.min(0.35, 0.15 * (max / 24))); })();
-const responsiveIcon = stageMin ? Math.round(stageMin * iconScale) : maxIconSize;
-const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
+        // Use the same responsive icon sizing as the tile icon itself:
+        const stageMin = Math.min(this._stageW || 0, this._stageH || 0);
+        const maxIconSize = this._config.size_icon || 24;
+        const iconScale = (() => { const max = Number(maxIconSize) || 24; return Math.max(0.08, Math.min(0.35, 0.15 * (max / 24))); })();
+        const responsiveIcon = stageMin ? Math.round(stageMin * iconScale) : maxIconSize;
+        const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
         // If badge_size isn't configured, derive a sensible diameter from icon size
         const badgeDiameter = (this._config.badge_size !== undefined && this._config.badge_size !== null && this._config.badge_size !== '')
@@ -10528,7 +10411,7 @@ const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
 
 
-/* --- TILE RENDER LOGIC --- */
+    /* --- TILE RENDER LOGIC --- */
 
     render() {
       const layoutRaw = this._config.card_layout || 'square';
@@ -10541,7 +10424,7 @@ const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
       const entity = this._getEntity();
       const hasEntity = !!entity;
-const isOn = hasEntity ? this._isOn() : false;
+      const isOn = hasEntity ? this._isOn() : false;
       const isUnavailable = hasEntity ? (String(entity.state || '').toLowerCase() === 'unavailable') : false;
       const isOnEffective = isUnavailable ? false : isOn;
 
@@ -10572,12 +10455,11 @@ const isOn = hasEntity ? this._isOn() : false;
       let gridCols = this._config.grid_columns;
       let elementGrid = this._config.element_grid;
       let borderRadius = this._config.border_radius;
-      
-            if (layout === 'hki_tile') {
+      if (layout === 'hki_tile') {
         if (borderRadius === undefined) borderRadius = 12;
       }
 
-if (layout === 'square') {
+      if (layout === 'square') {
         // Fixed square layout (button-card grid-template-areas equivalent):
         // "i i"
         // "area area" (whitespace)
@@ -10828,10 +10710,9 @@ if (layout === 'square') {
 
       
 
-const iconAlign = this._config.icon_align || 'left';
-              const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
-              
-              const renderInfoDisplay = () => {
+      const iconAlign = this._config.icon_align || 'left';
+      const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
+      const renderInfoDisplay = () => {
                   if (this._config.show_info_display === false) return '';
                   
                   let bottomValue = '';
@@ -10872,8 +10753,7 @@ const iconAlign = this._config.icon_align || 'left';
                     </div>
                   `;
               };
-
-              const elements = {
+      const elements = {
                 icon: () => html`
                   <div class="tile-header" style="justify-content: ${iconJustify};">
                     ${(this._config.show_icon !== false) ? html`
@@ -10887,7 +10767,7 @@ const iconAlign = this._config.icon_align || 'left';
                             transform: ${getTransform(this._config.icon_offset_x, this._config.icon_offset_y)};
                         "
                         @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || { action: "hki-more-info" }, this._config.icon_double_tap_action); }}
-	                        
+                          
                         @mousedown=${(e) => { e.stopPropagation(); this._startHold(e, this._config.icon_hold_action); }}
                         @mouseup=${(e) => { e.stopPropagation(); this._clearHold(); }}
                         @mouseleave=${(e) => { this._clearHold(); }}
@@ -10971,7 +10851,7 @@ const iconAlign = this._config.icon_align || 'left';
               };
 
 
-// HKI Tile layout: wide pill, icon circle left, stacked text.
+      // HKI Tile layout: wide pill, icon circle left, stacked text.
       if (layout === 'hki_tile') {
         const showIcon = this._config.show_icon !== false;
         const showName = this._config.show_name !== false;
@@ -11136,7 +11016,7 @@ const iconAlign = this._config.icon_align || 'left';
                   `}
 
                   ${this._renderBadge(entity, isOnEffective, tileIconColor, badgeBorder, badgeBg, badgeCount, (x, y) => `translate(${x || 0}px, ${y || 0}px)`)}
-                </div>
+                  </div>
               ` : ''}
 
               <div class="hki-tile-text">
@@ -11323,7 +11203,7 @@ const iconAlign = this._config.icon_align || 'left';
               ${iconColor ? `            --icon-color: ${iconColor} !important;\n` : ''}            "
 
             @click=${() => this._handleDelayClick(this._config.tap_action || { action: "hki-more-info" }, this._config.double_tap_action || { action: "hki-more-info" })}
-	            
+              
             @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
             @mouseup=${() => this._clearHold()}
             @mouseleave=${() => this._clearHold()}
@@ -11396,7 +11276,7 @@ const iconAlign = this._config.icon_align || 'left';
             
           "
           @click=${() => this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action || { action: "hki-more-info" })}
-	          
+            
           @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
           @mouseup=${() => this._clearHold()}
           @mouseleave=${() => this._clearHold()}
@@ -11430,7 +11310,7 @@ const iconAlign = this._config.icon_align || 'left';
                 `;
               }
 
-// Check if we have grid layout config, otherwise use default
+              // Check if we have grid layout config, otherwise use default
               return elementGrid
                 ? (() => {
                 // Button-card-like approach:
@@ -11579,7 +11459,7 @@ const iconAlign = this._config.icon_align || 'left';
                   }
                 }
 
-// Compute stage dimensions for pixel-accurate placement.
+                // Compute stage dimensions for pixel-accurate placement.
                 // Use the measured ha-card size (ResizeObserver) to avoid clipping/misalignment when ha-card has overflow hidden.
                 const _stageW = this._stageW || 0;
                 const _stageH = this._stageH || 0;
@@ -11646,7 +11526,7 @@ const iconAlign = this._config.icon_align || 'left';
                     _slotAlign = 'flex-start';
                   }
 
-// Padding inside each slot. Keep this stable so element offsets don't "drift" when the card resizes.
+                  // Padding inside each slot. Keep this stable so element offsets don't "drift" when the card resizes.
                   // Users can control outer spacing via border/padding settings; slot padding should remain predictable.
                   const _padCfg = Number.isFinite(this._config.grid_cell_padding_px)
                     ? Number(this._config.grid_cell_padding_px)
@@ -11900,59 +11780,59 @@ const iconAlign = this._config.icon_align || 'left';
 
 
         .hki-square-grid .sq-state-row {
-  grid-area: s;
+          grid-area: s;
 
-  /* Full-width row with stable padding; keep state (left) + info (right) locked together */
-  justify-self: stretch;
-  align-self: start;
-  width: 100%;
-  min-width: 0;
+          /* Full-width row with stable padding; keep state (left) + info (right) locked together */
+          justify-self: stretch;
+          align-self: start;
+          width: 100%;
+          min-width: 0;
 
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start; /* info is pushed via margin-left:auto */
-  align-items: baseline;
-  gap: 10px;
+          display: flex;
+          flex-direction: row;
+          justify-content: flex-start; /* info is pushed via margin-left:auto */
+          align-items: baseline;
+          gap: 10px;
 
-  padding: 0 10px;
-  box-sizing: border-box;
+          padding: 0 10px;
+          box-sizing: border-box;
 
-  overflow: visible;
-}
-
-
-.hki-square-grid .sq-state {
-  flex: 1 1 auto;
-  min-width: 0;
-
-  /* Text should not be clipped; allow overflow */
-  overflow: visible;
-  text-overflow: unset;
-  white-space: normal;
-
-  text-align: left;
-}
-
-/* Ensure legacy shared classes don't re-enable ellipsis inside square layout */
-.hki-square-grid .name,
-.hki-square-grid .state,
-.hki-square-grid .label {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-}
+          overflow: visible;
+        }
 
 
-.hki-square-grid .sq-info {
-  flex: 0 0 auto;
-  margin-left: auto;
+        .hki-square-grid .sq-state {
+          flex: 1 1 auto;
+          min-width: 0;
 
-  text-align: right;
-  white-space: nowrap;
-  min-width: 0;
+          /* Text should not be clipped; allow overflow */
+          overflow: visible;
+          text-overflow: unset;
+          white-space: normal;
 
-  overflow: visible;
-}
+          text-align: left;
+        }
+
+        /* Ensure legacy shared classes don't re-enable ellipsis inside square layout */
+        .hki-square-grid .name,
+        .hki-square-grid .state,
+        .hki-square-grid .label {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+        }
+
+
+        .hki-square-grid .sq-info {
+          flex: 0 0 auto;
+          margin-left: auto;
+
+          text-align: right;
+          white-space: nowrap;
+          min-width: 0;
+
+          overflow: visible;
+        }
 
 
 
@@ -12036,7 +11916,7 @@ const iconAlign = this._config.icon_align || 'left';
           font-size: 11px;
           opacity: 0.8;
         }
-.hki-tile.layout-badge {
+        .hki-tile.layout-badge {
             flex-direction: row;
             align-items: center;
             justify-content: flex-start;
@@ -12216,30 +12096,30 @@ const iconAlign = this._config.icon_align || 'left';
         }
 
         /* Ensure HKI Tile slider fill never washes out the icon/circle/badges */
-.hki-tile.layout-hki-tile .tile-header,
-.hki-tile.layout-hki-tile .icon-circle,
-.hki-tile.layout-hki-tile .hki-tile-text {
-    position: relative;
-    z-index: 3;
-}
-/* Keep info display in the corner and above the slider fill */
-.hki-tile.layout-hki-tile .tile-info-corner {
-    position: absolute;
-    z-index: 4;
-}
-/* Badges must remain absolutely positioned (don't let them shift the icon) */
-.hki-tile.layout-hki-tile .badge,
-.hki-tile.layout-hki-tile .climate-corner-badge {
-    position: absolute;
-    z-index: 4;
-}
+        .hki-tile.layout-hki-tile .tile-header,
+        .hki-tile.layout-hki-tile .icon-circle,
+        .hki-tile.layout-hki-tile .hki-tile-text {
+            position: relative;
+            z-index: 3;
+        }
+        /* Keep info display in the corner and above the slider fill */
+        .hki-tile.layout-hki-tile .tile-info-corner {
+            position: absolute;
+            z-index: 4;
+        }
+        /* Badges must remain absolutely positioned (don't let them shift the icon) */
+        .hki-tile.layout-hki-tile .badge,
+        .hki-tile.layout-hki-tile .climate-corner-badge {
+            position: absolute;
+            z-index: 4;
+        }
 
-/* Match HKI default badge placement (tile needs a small nudge) */
-.hki-tile.layout-hki-tile .icon-circle .badge {
-    top: -5px !important;
-    right: -5px !important;
-}
-/* Badge Circular: Fully round badge with icon only */
+        /* Match HKI default badge placement (tile needs a small nudge) */
+        .hki-tile.layout-hki-tile .icon-circle .badge {
+            top: -5px !important;
+            right: -5px !important;
+        }
+        /* Badge Circular: Fully round badge with icon only */
         .hki-tile.layout-badge.badge-circle {
             aspect-ratio: 1 / 1;
             width: auto;
@@ -12272,7 +12152,7 @@ const iconAlign = this._config.icon_align || 'left';
         .hki-tile.layout-circle .icon-circle {
             margin: 0;
         }
-/* Hide badge counter when card is used in header badges section */
+        /* Hide badge counter when card is used in header badges section */
         :host([role="button"]) ha-card::after,
         :host(:not([role])) ha-card::after {
             content: none !important;
@@ -12402,34 +12282,34 @@ const iconAlign = this._config.icon_align || 'left';
             white-space: nowrap;
         }
 
-.layout-grid-container {
+        .layout-grid-container {
             display: grid;
             gap: 12px;
             align-items: stretch;
-          justify-items: stretch;
+            justify-items: stretch;
             width: 100%;
             height: 100%;
-                    align-content: stretch;
+            align-content: stretch;
             min-height: 0;
         }
 
 
-/* Absolute positioning grid mode (grid_position_mode: "absolute") */
-.layout-abs-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-}
-.layout-abs-container .abs-cell {
-    position: absolute;
-    display: flex;
-    box-sizing: border-box;
-    pointer-events: none;
-}
-.layout-abs-container .abs-cell > * {
-    pointer-events: auto;
-}
+        /* Absolute positioning grid mode (grid_position_mode: "absolute") */
+        .layout-abs-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .layout-abs-container .abs-cell {
+            position: absolute;
+            display: flex;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .layout-abs-container .abs-cell > * {
+            pointer-events: auto;
+        }
 
 
         /* Grid layout rows - 3 column grid */
@@ -12462,7 +12342,7 @@ const iconAlign = this._config.icon_align || 'left';
         .grid-cell .info-tag {
             width: 100%;
         }
-.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .state { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .label { opacity: 0.7; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -12571,7 +12451,7 @@ const iconAlign = this._config.icon_align || 'left';
         min-height: 34px;
       }
 
-`;
+      `;
     }
   }
 
@@ -12626,9 +12506,6 @@ const iconAlign = this._config.icon_align || 'left';
       temp_badge_offset_x: 0,
       temp_badge_offset_y: 0,
     };
-
-;
-
 
     _getOffsetUiValue(field) {
       const __layout = (this._config?.card_layout || 'square');
@@ -12726,7 +12603,7 @@ const iconAlign = this._config.icon_align || 'left';
         return s;
       }
 
-if (Array.isArray(obj)) {
+      if (Array.isArray(obj)) {
         return obj.map(item => {
           if (item && typeof item === 'object') {
             // Render object entries; first entry goes inline with "- ", rest align to same column
@@ -12987,7 +12864,7 @@ if (Array.isArray(obj)) {
     }
 
 
-setConfig(config) {
+    setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
       // If the user is not actively editing the YAML, drop the draft so the editor shows the
@@ -13001,7 +12878,7 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-disconnectedCallback() {
+    disconnectedCallback() {
       super.disconnectedCallback?.();
       // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
@@ -13389,9 +13266,9 @@ disconnectedCallback() {
                 </ha-select>
                 <div class="layout-actions">
                   <button type="button" class="hki-reset-btn" @click=${(ev) => { ev.stopPropagation(); this._resetToDefaults(ev); }}>
-  <ha-icon icon="mdi:restore"></ha-icon>
-  <span>Reset to defaults</span>
-</button>
+                    <ha-icon icon="mdi:restore"></ha-icon>
+                    <span>Reset to defaults</span>
+                  </button>
                 </div>
 
                 
@@ -13412,25 +13289,26 @@ disconnectedCallback() {
                       <ha-switch .checked=${this._config.show_state !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_state"); }}></ha-switch>
                     </ha-formfield>
                   </div>
-                ` : ''}</div>
+                ` : ''}
+            </div>
           </div>
 
           <div class="accordion-group ">
             ${renderHeader("Entity", "general")}
             <div class="accordion-content ${this._closedDetails['general'] ? 'hidden' : ''}">
                 <div class="side-by-side" style="grid-template-columns: 1fr auto; align-items:center;">
-  <ha-selector
-    .hass=${this.hass}
-    .selector=${{ entity: {} }}
-    .value=${this._config.entity || ""}
-    .label=${"Entity"}
-    .required=${false}
-    @value-changed=${(ev) => this._selectorChanged(ev, "entity")}
-  ></ha-selector>
-  <button class="hki-editor-clear" title="Clear Entity" @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, entity: "" }); }}>
-    <ha-icon icon="mdi:close"></ha-icon>
-  </button>
-</div>
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${{ entity: {} }}
+                    .value=${this._config.entity || ""}
+                    .label=${"Entity"}
+                    .required=${false}
+                    @value-changed=${(ev) => this._selectorChanged(ev, "entity")}
+                  ></ha-selector>
+                  <button class="hki-editor-clear" title="Clear Entity" @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, entity: "" }); }}>
+                    <ha-icon icon="mdi:close"></ha-icon>
+                  </button>
+                </div>
                 
                 <div class="separator"></div>
                 <strong>Appearance</strong>
@@ -13440,27 +13318,27 @@ disconnectedCallback() {
                   <ha-textfield .label=${"Entity Picture Override (optional)"} .value=${this._config.entity_picture_override || ""} @input=${(ev) => this._textChanged(ev, "entity_picture_override")}></ha-textfield>
                 ` : html`
                   <div class="tpl-field">
-  <div class="tpl-title">Icon</div>
-  <div class="tpl-desc">Enter a single icon (e.g., <code>mdi:lightbulb</code>) or a Jinja template that resolves to one icon.</div>
-  <ha-code-editor
-    .hass=${this.hass}
-    mode="yaml"
-    autocomplete-entities
-    autocomplete-icons
-    .autocompleteEntities=${true}
-    .autocompleteIcons=${true}
-    .label=${"Icon (mdi:* or Jinja)"}
-    .value=${this._config.icon || ""}
-    @value-changed=${(ev) => {
-      ev.stopPropagation();
-      const value = ev.detail?.value;
-      if (value !== this._config.icon) {
-        this._fireChanged({ ...this._config, icon: value || undefined });
-      }
-    }}
-    @click=${(e) => e.stopPropagation()}
-  ></ha-code-editor>
-</div>
+                    <div class="tpl-title">Icon</div>
+                    <div class="tpl-desc">Enter a single icon (e.g., <code>mdi:lightbulb</code>) or a Jinja template that resolves to one icon.</div>
+                    <ha-code-editor
+                      .hass=${this.hass}
+                      mode="yaml"
+                      autocomplete-entities
+                      autocomplete-icons
+                      .autocompleteEntities=${true}
+                      .autocompleteIcons=${true}
+                      .label=${"Icon (mdi:* or Jinja)"}
+                      .value=${this._config.icon || ""}
+                      @value-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const value = ev.detail?.value;
+                        if (value !== this._config.icon) {
+                          this._fireChanged({ ...this._config, icon: value || undefined });
+                        }
+                      }}
+                      @click=${(e) => e.stopPropagation()}
+                    ></ha-code-editor>
+                  </div>
                 `}
                 
                 <div class="separator"></div>
@@ -13558,7 +13436,7 @@ disconnectedCallback() {
                   ></ha-code-editor>
                 </div>
                 `}
-`}
+                `}
 
           </div>
 
@@ -13811,11 +13689,11 @@ disconnectedCallback() {
                   <ha-switch .checked=${this._config.show_info_display !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_info_display"); }}></ha-switch>
                 </ha-formfield>
                 ` : ''} 
-</div>
+                </div>
             </div>
           </div>
 
-<div class="accordion-group ">
+          <div class="accordion-group ">
              ${renderHeader("Card Styling", "card_styling")}
              <div class="accordion-content ${this._closedDetails['card_styling'] ? 'hidden' : ''}">
                 <strong>Colors</strong>
@@ -13902,7 +13780,7 @@ disconnectedCallback() {
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Border Color</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -13977,7 +13855,7 @@ disconnectedCallback() {
                     </div>
                   ` : ''}
                 ` : ''}
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Box Shadow</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14009,7 +13887,7 @@ disconnectedCallback() {
                   <ha-switch .checked=${this._config.show_icon !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_icon"); }}></ha-switch>
                 </ha-formfield>
                 <ha-textfield label="Size (px)" type="number" .value=${this._config.size_icon || 24} @input=${(ev) => this._textChanged(ev, "size_icon")}></ha-textfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Color</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14031,12 +13909,12 @@ disconnectedCallback() {
                 </div>
 
                 ${isGoogleLayout ? '' : html`
-<div class="separator"></div>
+                <div class="separator"></div>
                 <strong>Icon Circle</strong>
                 <ha-formfield .label=${"Show Icon Circle"}>
                   <ha-switch .checked=${this._config.show_icon_circle !== false} @change=${(ev) => this._switchChanged(ev, "show_icon_circle")}></ha-switch>
                 </ha-formfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Circle Background</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14056,7 +13934,7 @@ disconnectedCallback() {
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Circle Border Style</div>
                   <div class="tpl-desc">Supports templates. Values: none, solid, dashed, dotted</div>
                   <ha-code-editor
@@ -14119,13 +13997,13 @@ disconnectedCallback() {
 
                 
                 `}
-${isGoogleLayout ? '' : html`
-<div class="separator"></div>
+                ${isGoogleLayout ? '' : html`
+                <div class="separator"></div>
                 <strong>Icon Badge</strong>
                 <ha-formfield .label=${"Show Icon Badge"}>
                   <ha-switch .checked=${this._config.show_icon_badge !== false} @change=${(ev) => this._switchChanged(ev, "show_icon_badge")}></ha-switch>
                 </ha-formfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Badge Background</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14145,7 +14023,7 @@ ${isGoogleLayout ? '' : html`
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Badge Border Style</div>
                   <div class="tpl-desc">Supports templates. Values: none, solid, dashed, dotted</div>
                   <ha-code-editor
@@ -14207,7 +14085,7 @@ ${isGoogleLayout ? '' : html`
                 <div class="separator"></div>
                 
                 `}
-<strong>Icon Animation</strong>
+                <strong>Icon Animation</strong>
                 <div class="tpl-field">
                   <div class="tpl-title">Animation</div>
                   <div class="tpl-desc">
@@ -15080,7 +14958,7 @@ ${isGoogleLayout ? '' : html`
           this._waitingForCardEditor = false;
           this.requestUpdate();
         });
-};
+      };
 
       tryTriggers();
     }
@@ -15312,7 +15190,7 @@ ${isGoogleLayout ? '' : html`
             .hki-editor-clear:hover{
                 background: var(--secondary-background-color);
             }
-.checkbox-grid { 
+            .checkbox-grid { 
                 display: grid; 
                 grid-template-columns: 1fr 1fr; 
                 gap: 8px; 
@@ -15481,37 +15359,37 @@ ${isGoogleLayout ? '' : html`
                 justify-content: flex-end;
             }
             
-.hki-reset-btn{
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--primary-color);
-    background: var(--primary-color);
-    color: var(--text-primary-color, #fff);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1;
-    transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
-}
-.hki-reset-btn:hover{
-    background: rgba(255,255,255,0.14);
-    border-color: rgba(255,255,255,0.35);
-}
-.hki-reset-btn:active{
-    transform: translateY(1px);
-    background: rgba(255,255,255,0.18);
-}
-.hki-reset-btn ha-icon{
-    width: 18px;
-    height: 18px;
-}
-mwc-button.reset-defaults{
+            .hki-reset-btn{
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 8px;
+                border: 1px solid var(--primary-color);
+                background: var(--primary-color);
+                color: var(--text-primary-color, #fff);
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
+                transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+            }
+            .hki-reset-btn:hover{
+                background: rgba(255,255,255,0.14);
+                border-color: rgba(255,255,255,0.35);
+            }
+            .hki-reset-btn:active{
+                transform: translateY(1px);
+                background: rgba(255,255,255,0.18);
+            }
+            .hki-reset-btn ha-icon{
+                width: 18px;
+                height: 18px;
+            }
+            mwc-button.reset-defaults{
                 --mdc-theme-primary: var(--primary-color);
             }
-`; 
+        `; 
     }
   }
 

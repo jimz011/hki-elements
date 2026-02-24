@@ -1101,8 +1101,12 @@ class HKIPostNLCardEditor extends LitElement {
     }
 }
 
-customElements.define('hki-postnl-card', HKIPostNLCard);
-customElements.define('hki-postnl-card-editor', HKIPostNLCardEditor);
+if (!customElements.get('hki-postnl-card')) {
+    customElements.define('hki-postnl-card', HKIPostNLCard);
+}
+if (!customElements.get('hki-postnl-card-editor')) {
+    customElements.define('hki-postnl-card-editor', HKIPostNLCardEditor);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
