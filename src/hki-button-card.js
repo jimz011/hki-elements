@@ -1160,6 +1160,16 @@ if (!shouldUpdate && oldEntity && newEntity &&
      * If icon_color is set in config it takes priority (template-aware).
      * Otherwise the domain-specific color (brightness-derived, state-based, etc.) is used.
      */
+    // Returns either <img> or <ha-icon> HTML string for popup headers
+    _getPopupHeaderIconHtml(entity, iconStr, color) {
+      const useEntityPic = this._config?.use_entity_picture;
+      if (useEntityPic) {
+        const pic = this._config.entity_picture_override || entity?.attributes?.entity_picture;
+        if (pic) return `<img src="${pic}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`;
+      }
+      return `<ha-icon icon="${iconStr}" style="color:${color};flex-shrink:0;"></ha-icon>`;
+    }
+
     _getPopupIconColor(domainColor) {
       if (this._config.icon_color) {
         const rendered = this.renderTemplate('iconColor', this._config.icon_color);
@@ -3533,6 +3543,7 @@ _tileSliderClick(e) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -3721,7 +3732,7 @@ _tileSliderClick(e) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat'}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat', this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -5297,7 +5308,7 @@ _tileSliderClick(e) {
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${controlsIcon}" style="color: ${this._getPopupIconColor('rgba(33,150,243,0.95)')}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, controlsIcon, this._getPopupIconColor('rgba(33,150,243,0.95)'))}
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
                 <span class="hki-light-popup-state">${this._getPopupHeaderState(pos + '%')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -5804,7 +5815,7 @@ if (!this._popupPortal) {
         <div class="hki-light-popup-container">
           <div class="hki-light-popup-header">
             <div class="hki-light-popup-title">
-              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(iconColor)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(iconColor))}
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
                 <span class="hki-light-popup-state">${this._getPopupHeaderState(String(state).replace(/_/g,' '))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -6025,6 +6036,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -6117,7 +6129,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -6777,6 +6789,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -6892,7 +6905,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -7276,6 +7289,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -7418,7 +7432,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -7588,6 +7602,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -7643,7 +7658,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${hasRealEntity && this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -7938,6 +7953,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8052,7 +8068,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(stateText)}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -8197,7 +8213,8 @@ if (!this._popupPortal) {
       const graphColor = this._config.sensor_graph_color || null;
       const useGradient = this._config.sensor_graph_gradient !== false;
       const lineWidth = this._config.sensor_line_width ?? 3;
-      const sensorHours = this._config.sensor_hours ?? 24;
+      const sensorHours = parseInt(this._config.sensor_hours ?? 24, 10);
+      this._currentSensorHours = sensorHours;
       const showBottomBar = this._config.popup_hide_bottom_bar !== true;
 
       const portal = this._popupPortal || document.createElement('div');
@@ -8225,6 +8242,7 @@ if (!this._popupPortal) {
           }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8268,7 +8286,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(state + (unit ? ' ' + unit : ''))}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
@@ -8316,9 +8334,10 @@ if (!this._popupPortal) {
         setTimeout(() => {
           this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, sensorHours);
           portal.querySelectorAll('.sensor-hour-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
               const h = parseInt(btn.dataset.hours, 10);
-              this._fireChanged({ ...this._config, sensor_hours: h });
+              this._currentSensorHours = h;
               portal.querySelectorAll('.sensor-hour-btn').forEach(b => b.classList.toggle('active', b === btn));
               this._loadSensorSparkline(portal, this._getEntity(), graphColor, useGradient, lineWidth, h);
             });
@@ -8450,6 +8469,7 @@ if (!this._popupPortal) {
           .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8482,7 +8502,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(stateLabel)}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
@@ -8617,6 +8637,7 @@ if (!this._popupPortal) {
           .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8642,7 +8663,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(currentOption)}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
@@ -8725,6 +8746,7 @@ if (!this._popupPortal) {
           .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8753,7 +8775,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(rawVal + (unit ? ' ' + unit : ''))}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
@@ -8872,6 +8894,7 @@ if (!this._popupPortal) {
           .hki-popup-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.05)); flex-shrink: 0; }
           .hki-popup-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
           .hki-popup-title ha-icon { --mdc-icon-size: 24px; }
+          .hki-popup-title img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
           .hki-popup-title-text { display: flex; flex-direction: column; gap: 2px; font-size: 16px; font-weight: 500; min-width: 0; }
           .hki-popup-state { font-size: 12px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .hki-popup-header-controls { display: flex; gap: 8px; align-items: center; }
@@ -8901,7 +8924,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color: ${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(currentText || '(empty)')}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
@@ -9080,7 +9103,7 @@ if (!this._popupPortal) {
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              <ha-icon icon="${icon}" style="color:${this._getPopupIconColor(color)}"></ha-icon>
+              ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(locationLabel)}${lastSeen ? ' — ' + lastSeen : ''}</span>
@@ -14305,6 +14328,8 @@ ${isGoogleLayout ? '' : html`
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
                               ${entry.entity ? html`
+                                <ha-textfield label="Label (optional)" .value=${entry.label||""} placeholder="Custom label"
+                                  @input=${(ev) => setEntry({ label: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
                                 <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
                                   @input=${(ev) => setEntry({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
 
@@ -14364,6 +14389,16 @@ ${isGoogleLayout ? '' : html`
                                         </div>`;
                                     })()}
                                   `}
+                                  ${tapAction.perform_action ? html`
+                                    <ha-selector .hass=${this.hass} .selector=${{ target: {} }} label="Target (optional)"
+                                      .value=${tapAction.target || null}
+                                      @value-changed=${(ev) => { ev.stopPropagation(); const t = ev.detail?.value; const upd = { ...tapAction }; if (t && Object.keys(t).length) upd.target = t; else delete upd.target; setEntry({ tap_action: upd }); }}
+                                      @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-selector>
+                                    <ha-yaml-editor .hass=${this.hass} label="Service Data (optional, YAML)"
+                                      .value=${tapAction.data || null}
+                                      @value-changed=${(ev) => { ev.stopPropagation(); const d = ev.detail?.value; const upd = { ...tapAction }; if (d && typeof d === 'object' && Object.keys(d).length) upd.data = d; else delete upd.data; setEntry({ tap_action: upd }); }}
+                                      @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-yaml-editor>
+                                  ` : ''}
                                 ` : ''}
                               ` : ''}
                             </div>`;
