@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-01 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -19,6 +19,204 @@ if (!window.LitElement) {
 
 // HKI shared helpers (load once, reuse across cards)
 window.HKI = window.HKI || {};
+
+// Shared popup-related keys used across cards/editors.
+window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [
+  "custom_popup_enabled",
+  "custom_popup_card",
+  "popup_name",
+  "popup_state",
+  "popup_icon",
+  "popup_use_entity_picture",
+  "popup_border_radius",
+  "popup_width",
+  "popup_width_custom",
+  "popup_height",
+  "popup_height_custom",
+  "popup_open_animation",
+  "popup_close_animation",
+  "popup_animation_duration",
+  "popup_blur_enabled",
+  "popup_blur_amount",
+  "popup_card_blur_enabled",
+  "popup_card_blur_amount",
+  "popup_card_opacity",
+  "popup_show_favorites",
+  "popup_show_effects",
+  "popup_show_presets",
+  "popup_slider_radius",
+  "popup_hide_button_text",
+  "popup_value_font_size",
+  "popup_value_font_weight",
+  "popup_label_font_size",
+  "popup_label_font_weight",
+  "popup_time_format",
+  "popup_default_view",
+  "popup_default_section",
+  "popup_highlight_color",
+  "popup_highlight_text_color",
+  "popup_highlight_radius",
+  "popup_highlight_opacity",
+  "popup_highlight_border_color",
+  "popup_highlight_border_style",
+  "popup_highlight_border_width",
+  "popup_highlight_box_shadow",
+  "popup_button_bg",
+  "popup_button_text_color",
+  "popup_button_radius",
+  "popup_button_opacity",
+  "popup_button_border_color",
+  "popup_button_border_style",
+  "popup_button_border_width",
+  "popup_bottom_bar_entities",
+  "popup_bottom_bar_align",
+  "popup_hide_bottom_bar",
+  "_bb_slots",
+  "person_geocoded_entity",
+  "sensor_graph_color",
+  "sensor_graph_gradient",
+  "sensor_line_width",
+  "sensor_hours",
+  "sensor_graph_style",
+  "climate_temp_step",
+  "climate_use_circular_slider",
+  "climate_show_plus_minus",
+  "climate_show_gradient",
+  "climate_show_target_range",
+  "climate_humidity_entity",
+  "climate_humidity_name",
+  "climate_pressure_entity",
+  "climate_pressure_name",
+  "climate_current_temperature_entity",
+  "climate_temperature_name",
+  "humidifier_humidity_step",
+  "humidifier_use_circular_slider",
+  "humidifier_show_plus_minus",
+  "humidifier_show_gradient",
+  "humidifier_fan_entity",
+];
+
+window.HKI.copyDefinedKeys = window.HKI.copyDefinedKeys || (({
+  src,
+  dst,
+  keys,
+  srcPrefix = "",
+  dstPrefix = "",
+  onlyIfDstMissing = false,
+} = {}) => {
+  if (!src || !dst || !Array.isArray(keys)) return dst;
+  keys.forEach((k) => {
+    const srcKey = `${srcPrefix}${k}`;
+    const dstKey = `${dstPrefix}${k}`;
+    if (src[srcKey] === undefined) return;
+    if (onlyIfDstMissing && dst[dstKey] !== undefined) return;
+    dst[dstKey] = src[srcKey];
+  });
+  return dst;
+});
+
+// Shared popup editor option lists to reduce duplication across card editors.
+window.HKI.POPUP_EDITOR_OPTIONS = window.HKI.POPUP_EDITOR_OPTIONS || Object.freeze({
+  animations: Object.freeze([
+    Object.freeze({ value: "none", label: "None" }),
+    Object.freeze({ value: "fade", label: "Fade" }),
+    Object.freeze({ value: "scale", label: "Scale" }),
+    Object.freeze({ value: "zoom", label: "Zoom" }),
+    Object.freeze({ value: "slide-up", label: "Slide Up" }),
+    Object.freeze({ value: "slide-down", label: "Slide Down" }),
+    Object.freeze({ value: "slide-left", label: "Slide Left" }),
+    Object.freeze({ value: "slide-right", label: "Slide Right" }),
+    Object.freeze({ value: "flip", label: "Flip" }),
+    Object.freeze({ value: "bounce", label: "Bounce" }),
+    Object.freeze({ value: "rotate", label: "Rotate" }),
+    Object.freeze({ value: "drop", label: "Drop" }),
+    Object.freeze({ value: "swing", label: "Swing" }),
+  ]),
+  width: Object.freeze([
+    Object.freeze({ value: "auto", label: "Auto (Responsive)" }),
+    Object.freeze({ value: "default", label: "Default (400px)" }),
+    Object.freeze({ value: "custom", label: "Custom" }),
+  ]),
+  height: Object.freeze([
+    Object.freeze({ value: "auto", label: "Auto (Responsive)" }),
+    Object.freeze({ value: "default", label: "Default (600px)" }),
+    Object.freeze({ value: "custom", label: "Custom" }),
+  ]),
+  timeFormats: Object.freeze([
+    Object.freeze({ value: "auto", label: "Auto" }),
+    Object.freeze({ value: "12", label: "12-Hour Clock" }),
+    Object.freeze({ value: "24", label: "24-Hour Clock" }),
+  ]),
+});
+
+// Shared editor option lists across HKI card editors.
+window.HKI.EDITOR_OPTIONS = window.HKI.EDITOR_OPTIONS || Object.freeze({
+  borderStyles: Object.freeze([
+    Object.freeze({ value: "solid", label: "solid" }),
+    Object.freeze({ value: "dashed", label: "dashed" }),
+    Object.freeze({ value: "dotted", label: "dotted" }),
+    Object.freeze({ value: "double", label: "double" }),
+    Object.freeze({ value: "none", label: "none" }),
+  ]),
+  buttonActionOptions: Object.freeze([
+    Object.freeze({ value: "toggle", label: "Toggle" }),
+    Object.freeze({ value: "hki-more-info", label: "More Info (HKI)" }),
+    Object.freeze({ value: "more-info", label: "More Info (Native)" }),
+    Object.freeze({ value: "navigate", label: "Navigate" }),
+    Object.freeze({ value: "perform-action", label: "Perform Action" }),
+    Object.freeze({ value: "url", label: "URL" }),
+    Object.freeze({ value: "fire-dom-event", label: "Fire DOM Event" }),
+    Object.freeze({ value: "none", label: "None" }),
+  ]),
+  headerActionOptions: Object.freeze([
+    Object.freeze({ value: "none", label: "None" }),
+    Object.freeze({ value: "navigate", label: "Navigate" }),
+    Object.freeze({ value: "back", label: "Back" }),
+    Object.freeze({ value: "menu", label: "Toggle Menu" }),
+    Object.freeze({ value: "url", label: "Open URL" }),
+    Object.freeze({ value: "more-info", label: "More Info" }),
+    Object.freeze({ value: "hki-more-info", label: "HKI More Info" }),
+    Object.freeze({ value: "toggle", label: "Toggle Entity" }),
+    Object.freeze({ value: "perform-action", label: "Perform Action" }),
+  ]),
+  popupBottomBarActionOptions: Object.freeze([
+    Object.freeze({ value: "toggle", label: "Toggle" }),
+    Object.freeze({ value: "more-info", label: "More Info" }),
+    Object.freeze({ value: "hki-more-info", label: "HKI More Info" }),
+    Object.freeze({ value: "navigate", label: "Navigate" }),
+    Object.freeze({ value: "perform-action", label: "Perform Action" }),
+    Object.freeze({ value: "url", label: "URL" }),
+    Object.freeze({ value: "none", label: "None" }),
+  ]),
+  popupDefaultViewOptions: Object.freeze([
+    Object.freeze({ value: "main", label: "Main (Group Controls)" }),
+    Object.freeze({ value: "individual", label: "Individual Entities" }),
+  ]),
+  popupDefaultSectionOptions: Object.freeze([
+    Object.freeze({ value: "last", label: "Last Used" }),
+    Object.freeze({ value: "brightness", label: "Always Brightness" }),
+    Object.freeze({ value: "color", label: "Always Color" }),
+    Object.freeze({ value: "temperature", label: "Always Temperature" }),
+  ]),
+  popupDefaultSectionOptionsTagged: Object.freeze([
+    Object.freeze({ value: "last", label: "Last Used (Default)" }),
+    Object.freeze({ value: "brightness", label: "Always Brightness" }),
+    Object.freeze({ value: "color", label: "Always Color" }),
+    Object.freeze({ value: "temperature", label: "Always Temperature" }),
+  ]),
+  popupBottomBarAlignOptions: Object.freeze([
+    Object.freeze({ value: "spread", label: "Spread" }),
+    Object.freeze({ value: "start", label: "Start" }),
+    Object.freeze({ value: "center", label: "Center" }),
+    Object.freeze({ value: "end", label: "End" }),
+  ]),
+  popupBottomBarAlignOptionsDetailed: Object.freeze([
+    Object.freeze({ value: "spread", label: "Spread (space around)" }),
+    Object.freeze({ value: "start", label: "Start (left aligned)" }),
+    Object.freeze({ value: "center", label: "Center" }),
+    Object.freeze({ value: "end", label: "End (right aligned)" }),
+  ]),
+});
 
 // Resolve LitElement/html/css from HA's base elements when possible (better compatibility),
 // and cache the result to avoid repeated lookups.

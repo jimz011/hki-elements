@@ -93,6 +93,105 @@
   // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
   const __hkiLockScroll = () => window.HKI?.lockScroll?.();
   const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
+  const HKI_POPUP_EDITOR_OPTIONS = window.HKI?.POPUP_EDITOR_OPTIONS || {
+    animations: [
+      { value: "none", label: "None" },
+      { value: "fade", label: "Fade" },
+      { value: "scale", label: "Scale" },
+      { value: "zoom", label: "Zoom" },
+      { value: "slide-up", label: "Slide Up" },
+      { value: "slide-down", label: "Slide Down" },
+      { value: "slide-left", label: "Slide Left" },
+      { value: "slide-right", label: "Slide Right" },
+      { value: "flip", label: "Flip" },
+      { value: "bounce", label: "Bounce" },
+      { value: "rotate", label: "Rotate" },
+      { value: "drop", label: "Drop" },
+      { value: "swing", label: "Swing" },
+    ],
+    width: [
+      { value: "auto", label: "Auto (Responsive)" },
+      { value: "default", label: "Default (400px)" },
+      { value: "custom", label: "Custom" },
+    ],
+    height: [
+      { value: "auto", label: "Auto (Responsive)" },
+      { value: "default", label: "Default (600px)" },
+      { value: "custom", label: "Custom" },
+    ],
+    timeFormats: [
+      { value: "auto", label: "Auto" },
+      { value: "12", label: "12-Hour Clock" },
+      { value: "24", label: "24-Hour Clock" },
+    ],
+  };
+  const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
+    borderStyles: [
+      { value: "solid", label: "solid" },
+      { value: "dashed", label: "dashed" },
+      { value: "dotted", label: "dotted" },
+      { value: "double", label: "double" },
+      { value: "none", label: "none" },
+    ],
+    buttonActionOptions: [
+      { value: "toggle", label: "Toggle" },
+      { value: "hki-more-info", label: "More Info (HKI)" },
+      { value: "more-info", label: "More Info (Native)" },
+      { value: "navigate", label: "Navigate" },
+      { value: "perform-action", label: "Perform Action" },
+      { value: "url", label: "URL" },
+      { value: "fire-dom-event", label: "Fire DOM Event" },
+      { value: "none", label: "None" },
+    ],
+    headerActionOptions: [
+      { value: "none", label: "None" },
+      { value: "navigate", label: "Navigate" },
+      { value: "back", label: "Back" },
+      { value: "menu", label: "Toggle Menu" },
+      { value: "url", label: "Open URL" },
+      { value: "more-info", label: "More Info" },
+      { value: "hki-more-info", label: "HKI More Info" },
+      { value: "toggle", label: "Toggle Entity" },
+      { value: "perform-action", label: "Perform Action" },
+    ],
+    popupBottomBarActionOptions: [
+      { value: "toggle", label: "Toggle" },
+      { value: "more-info", label: "More Info" },
+      { value: "hki-more-info", label: "HKI More Info" },
+      { value: "navigate", label: "Navigate" },
+      { value: "perform-action", label: "Perform Action" },
+      { value: "url", label: "URL" },
+      { value: "none", label: "None" },
+    ],
+    popupDefaultViewOptions: [
+      { value: "main", label: "Main (Group Controls)" },
+      { value: "individual", label: "Individual Entities" },
+    ],
+    popupDefaultSectionOptions: [
+      { value: "last", label: "Last Used" },
+      { value: "brightness", label: "Always Brightness" },
+      { value: "color", label: "Always Color" },
+      { value: "temperature", label: "Always Temperature" },
+    ],
+    popupDefaultSectionOptionsTagged: [
+      { value: "last", label: "Last Used (Default)" },
+      { value: "brightness", label: "Always Brightness" },
+      { value: "color", label: "Always Color" },
+      { value: "temperature", label: "Always Temperature" },
+    ],
+    popupBottomBarAlignOptions: [
+      { value: "spread", label: "Spread" },
+      { value: "start", label: "Start" },
+      { value: "center", label: "Center" },
+      { value: "end", label: "End" },
+    ],
+    popupBottomBarAlignOptionsDetailed: [
+      { value: "spread", label: "Spread (space around)" },
+      { value: "start", label: "Start (left aligned)" },
+      { value: "center", label: "Center" },
+      { value: "end", label: "End (right aligned)" },
+    ],
+  };
 
   
 
@@ -12930,7 +13029,10 @@
 
       const isGoogleLayout = (this._config.card_layout === 'google_default');
 
-      const borders = ["solid", "dashed", "dotted", "double", "none"];
+      const borderStyleOptions = HKI_EDITOR_OPTIONS.borderStyles;
+      const popupDefaultViewOptions = HKI_EDITOR_OPTIONS.popupDefaultViewOptions;
+      const popupDefaultSectionOptionsTagged = HKI_EDITOR_OPTIONS.popupDefaultSectionOptionsTagged;
+      const popupBottomBarAlignOptionsDetailed = HKI_EDITOR_OPTIONS.popupBottomBarAlignOptionsDetailed;
 
       const selectedEntity = this.hass.states[this._config.entity];
       const _edDomain = selectedEntity?.entity_id?.split('.')[0];
@@ -12946,16 +13048,7 @@
       const isPerson = _edDomain === 'person';
 
       // Custom Actions Dropdown List (Replaces Native Selector)
-      const actionsList = [
-        { value: "toggle", label: "Toggle" },
-        { value: "hki-more-info", label: "More Info (HKI)" },
-        { value: "more-info", label: "More Info (Native)" },
-        { value: "navigate", label: "Navigate" },
-        { value: "perform-action", label: "Perform Action" },
-        { value: "url", label: "URL" },
-        { value: "fire-dom-event", label: "Fire DOM Event" },
-        { value: "none", label: "None" }
-      ];
+      const actionsList = HKI_EDITOR_OPTIONS.buttonActionOptions;
 
       const renderHeader = (title, key) => html`
         <div class="accordion-header" @click=${(e) => this._toggleHeader(e, key)}>
@@ -13545,7 +13638,7 @@
                     @closed=${(e) => e.stopPropagation()}
                     @click=${(e) => e.stopPropagation()}
                   >
-                    ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                    ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                   </ha-select>
                   <ha-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></ha-textfield>
                 </div>
@@ -14217,36 +14310,12 @@
                           <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
                             @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="none">None</mwc-list-item>
-                            <mwc-list-item value="fade">Fade</mwc-list-item>
-                            <mwc-list-item value="scale">Scale</mwc-list-item>
-                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                            <mwc-list-item value="flip">Flip</mwc-list-item>
-                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                            <mwc-list-item value="drop">Drop</mwc-list-item>
-                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
                             @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="none">None</mwc-list-item>
-                            <mwc-list-item value="fade">Fade</mwc-list-item>
-                            <mwc-list-item value="scale">Scale</mwc-list-item>
-                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                            <mwc-list-item value="flip">Flip</mwc-list-item>
-                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                            <mwc-list-item value="drop">Drop</mwc-list-item>
-                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                         </div>
                         <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
@@ -14261,9 +14330,7 @@
                           <ha-select label="Width" .value=${this._config.popup_width || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_width")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                            <mwc-list-item value="default">Default (400px)</mwc-list-item>
-                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.width.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           ${this._config.popup_width === 'custom' ? html`
                             <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
@@ -14273,9 +14340,7 @@
                           <ha-select label="Height" .value=${this._config.popup_height || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_height")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                            <mwc-list-item value="default">Default (600px)</mwc-list-item>
-                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.height.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           ${this._config.popup_height === 'custom' ? html`
                             <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
@@ -14308,10 +14373,7 @@
                           .value=${this._config.popup_bottom_bar_align || 'spread'}
                           @selected=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
                           @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                          <mwc-list-item value="spread">Spread (space around)</mwc-list-item>
-                          <mwc-list-item value="start">Start (left aligned)</mwc-list-item>
-                          <mwc-list-item value="center">Center</mwc-list-item>
-                          <mwc-list-item value="end">End (right aligned)</mwc-list-item>
+                          ${popupBottomBarAlignOptionsDetailed.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                         </ha-select>
                         ${(() => {
                           const currentSlots = this._config._bb_slots ?? Math.max(1, (this._config.popup_bottom_bar_entities || []).filter(Boolean).length || 1);
@@ -14438,17 +14500,13 @@
                               <ha-select label="Default View" .value=${this._config.popup_default_view || 'main'}
                                 @selected=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
                                 @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
-                                <mwc-list-item value="individual">Individual ${entityTypeName}</mwc-list-item>
+                                ${popupDefaultViewOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.value === "individual" ? `Individual ${entityTypeName}` : o.label}</mwc-list-item>`)}
                               </ha-select>
                               ${isLightGroup ? html`
                                 <ha-select label="Default Section" .value=${this._config.popup_default_section || 'last'}
                                   @selected=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                  <mwc-list-item value="last">Last Used (Default)</mwc-list-item>
-                                  <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
-                                  <mwc-list-item value="color">Always Color</mwc-list-item>
-                                  <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+                                  ${popupDefaultSectionOptionsTagged.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                                 </ha-select>
                               ` : html`<div></div>`}
                             </div>
@@ -14495,9 +14553,7 @@
                           <ha-select label="Time Format" .value=${this._config.popup_time_format || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto</mwc-list-item>
-                            <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
-                            <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.timeFormats.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                         </div>
                       </div>
@@ -14518,7 +14574,7 @@
                             <ha-select label="Border Style" .value=${this._config.popup_highlight_border_style || "none"}
                               @selected=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
                               @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                              ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                             </ha-select>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
                           </div>
@@ -14543,7 +14599,7 @@
                             <ha-select label="Border Style" .value=${this._config.popup_button_border_style || "none"}
                               @selected=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
                               @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                              ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                             </ha-select>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
                           </div>
