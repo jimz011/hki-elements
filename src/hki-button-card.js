@@ -280,6 +280,7 @@ class HkiButtonCard extends LitElement {
       ['sensor_graph_gradient',     'hki_popup','sensor_graph_gradient'],
       ['sensor_line_width',         'hki_popup','sensor_line_width'],
       ['sensor_hours',              'hki_popup','sensor_hours'],
+      ['sensor_graph_style',         'hki_popup','sensor_graph_style'],
       // custom popup
       ['custom_popup_enabled',      'custom_popup','enabled'],
       ['custom_popup_card',         'custom_popup','card'],
@@ -309,6 +310,7 @@ class HkiButtonCard extends LitElement {
       'icon_animation', 'icon_align', 'enable_icon_animation',
       // Custom popup
       'custom_popup',
+      '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
       'use_canvas_layout', 'canvas_layout',
@@ -3780,6 +3782,12 @@ _tileSliderClick(e) {
 
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       const historyBtn = portal.querySelector('#historyBtn');
       if (historyBtn) {
         historyBtn.addEventListener('click', () => {
@@ -5366,6 +5374,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
       this._setupCoverPopupHandlers(portal);
 
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
+
       // If history is active (header button), load it
       if (this._coverHistoryOpen) {
         this._loadHistory();
@@ -5891,6 +5905,12 @@ if (!this._popupPortal) {
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
 
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
+
       const historyBtn = portal.querySelector('#alarmHistoryBtn');
       if (historyBtn) {
         historyBtn.addEventListener('click', () => {
@@ -6176,6 +6196,12 @@ if (!this._popupPortal) {
 
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
 
       const historyBtn = portal.querySelector('#humidifierHistoryBtn');
       if (historyBtn) {
@@ -6967,6 +6993,12 @@ if (!this._popupPortal) {
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
 
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
+
       const historyBtn = portal.querySelector('#fanHistoryBtn');
       if (historyBtn) {
         historyBtn.addEventListener('click', () => {
@@ -7472,6 +7504,12 @@ if (!this._popupPortal) {
 
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
 
       const historyBtn = portal.querySelector('#switchHistoryBtn');
       if (historyBtn) {
@@ -8115,6 +8153,12 @@ if (!this._popupPortal) {
       const closeBtn = portal.querySelector('#closeBtn');
       if (closeBtn) closeBtn.addEventListener('click', () => this._closePopup());
 
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
+
       const historyBtn = portal.querySelector('#lockHistoryBtn');
       if (historyBtn) {
         historyBtn.addEventListener('click', () => {
@@ -8319,6 +8363,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
 
       portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       portal.querySelector('#sensorHistoryBtn')?.addEventListener('click', () => {
         this._activeView = this._activeView === 'history' ? 'main' : 'history';
         this._renderSensorPopupPortal(this._getEntity());
@@ -8332,21 +8382,22 @@ if (!this._popupPortal) {
       } else {
         // Load sparkline and wire hour picker
         setTimeout(() => {
-          this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, sensorHours);
+          const graphStyle = this._config.sensor_graph_style || 'line';
+          this._loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, sensorHours, graphStyle);
           portal.querySelectorAll('.sensor-hour-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
               e.stopPropagation();
               const h = parseInt(btn.dataset.hours, 10);
               this._currentSensorHours = h;
               portal.querySelectorAll('.sensor-hour-btn').forEach(b => b.classList.toggle('active', b === btn));
-              this._loadSensorSparkline(portal, this._getEntity(), graphColor, useGradient, lineWidth, h);
+              this._loadSensorSparkline(portal, this._getEntity(), graphColor, useGradient, lineWidth, h, this._config.sensor_graph_style || 'line');
             });
           });
         }, 50);
       }
     }
 
-    async _loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, hours = 24) {
+    async _loadSensorSparkline(portal, entity, graphColor, useGradient, lineWidth, hours = 24, graphStyle = 'line') {
       const wrap = portal.querySelector('#sensorSparkline');
       if (!wrap) return;
       try {
@@ -8427,19 +8478,37 @@ if (!this._popupPortal) {
           `<line x1="${PAD_L}" y1="${l.y.toFixed(1)}" x2="${(PAD_L + W).toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`
         ).join('');
         const yAxisLine = `<line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${PAD_T + H}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
-        const yLabels = yLevels.map(l =>
-          `<text x="${PAD_L - 4}" y="${(l.y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${fmt(l.v)}</text>`
+        // Offset each label: top → below the line (+10), mid → centered, bottom → above the line (-3)
+        const yLabelOffsets = [10, 3.5, -3];
+        const yLabels = yLevels.map((l, li) =>
+          `<text x="${PAD_L - 4}" y="${(l.y + yLabelOffsets[li]).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${fmt(l.v)}</text>`
         ).join('');
+
+        let chartBody = '';
+        if (graphStyle === 'bar') {
+          // Bar chart: one rect per data point
+          const barW = Math.max(1, (W / ds.length) * 0.7);
+          const gap = W / ds.length;
+          chartBody = ds.map((p, idx) => {
+            const x = mapX(p.t) - barW / 2;
+            const yTop = mapY(p.v);
+            const barH = Math.max(1, (PAD_T + H) - yTop);
+            const n = (p.v - minV) / span;
+            const hue = 200 * (1 - n);
+            const col = (useGradient && !graphColor) ? `hsl(${hue},90%,60%)` : lineStroke;
+            return `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="${col}" rx="2" opacity="0.85"/>`;
+          }).join('');
+        } else {
+          chartBody = `<polygon points="${area}" fill="${lineStroke}" opacity="0.12"/>
+            <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
 
         wrap.innerHTML = `<svg viewBox="0 0 ${FULL_W} ${FULL_H}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;">
           <defs>${defsInner}</defs>
           ${gridLines}
           ${yAxisLine}
           ${yLabels}
-          <g clip-path="url(#${clipId})">
-            <polygon points="${area}" fill="${lineStroke}" opacity="0.12"/>
-            <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
-          </g>
+          <g clip-path="url(#${clipId})">${chartBody}</g>
         </svg>`;
       } catch (e) {
         console.warn('sensor sparkline error', e);
@@ -8571,6 +8640,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
 
       portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       portal.querySelector('#bsHistoryBtn')?.addEventListener('click', () => {
         this._activeView = this._activeView === 'history' ? 'main' : 'history';
         this._renderBinarySensorPopupPortal(this._getEntity());
@@ -8727,6 +8802,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
 
       portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       portal.querySelector('#selectHistoryBtn')?.addEventListener('click', () => {
         this._activeView = this._activeView === 'history' ? 'main' : 'history';
         this._renderSelectPopupPortal(this._getEntity());
@@ -8845,6 +8926,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
 
       portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       portal.querySelector('#numHistoryBtn')?.addEventListener('click', () => {
         this._activeView = this._activeView === 'history' ? 'main' : 'history';
         this._renderNumberPopupPortal(this._getEntity());
@@ -8996,6 +9083,12 @@ if (!this._popupPortal) {
       this._popupPortal = portal;
 
       portal.querySelector('#closeBtn')?.addEventListener('click', () => this._closePopup());
+
+      // Bottom bar entity buttons
+      if (this._config.popup_hide_bottom_bar !== true) {
+        const _bbNav = portal.querySelector('.hki-popup-nav');
+        if (_bbNav) this._renderBottomBarEntityButtons(_bbNav);
+      }
       portal.querySelector('#txtHistoryBtn')?.addEventListener('click', () => {
         this._activeView = this._activeView === 'history' ? 'main' : 'history';
         this._renderTextPopupPortal(this._getEntity());
@@ -9033,7 +9126,7 @@ if (!this._popupPortal) {
       navEl.style.gap = '4px';
       navEl.style.flexWrap = 'nowrap';
       navEl.innerHTML = '';
-      entities.slice(0, 5).forEach(cfg => {
+      entities.slice(0, 8).forEach(cfg => {
         if (!cfg || !cfg.entity) return;
         const stateObj = this.hass.states[cfg.entity];
         if (!stateObj) return;
@@ -9139,7 +9232,7 @@ if (!this._popupPortal) {
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(state)}${lastSeen ? ' — ' + lastSeen : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(state.charAt(0).toUpperCase() + state.slice(1))}${lastSeen ? ' — ' + lastSeen : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -13638,6 +13731,12 @@ disconnectedCallback() {
             <div class="accordion-content ${this._closedDetails['sensor_opts'] ? 'hidden' : ''}">
               <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Applies when domain popup is Sensor and action is "More Info (HKI)".</p>
               <ha-formfield .label=${"Use gradient coloring (temperature-style)"}>
+                <ha-select label="Graph Style" .value=${this._config.sensor_graph_style || 'line'}
+                  @selected=${(ev) => this._dropdownChanged(ev, 'sensor_graph_style')}
+                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
+                  <mwc-list-item value="line">Line Graph</mwc-list-item>
+                  <mwc-list-item value="bar">Bar Chart</mwc-list-item>
+                </ha-select>
                 <ha-switch .checked=${this._config.sensor_graph_gradient !== false} @change=${(ev) => this._switchChanged(ev, "sensor_graph_gradient")}></ha-switch>
               </ha-formfield>
               <ha-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></ha-textfield>
@@ -14328,7 +14427,7 @@ ${isGoogleLayout ? '' : html`
                     <div class="sub-accordion">
                       ${renderHeader("Bottom Bar Entities", "popup_bottom_bar")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_bottom_bar'] ? 'hidden' : ''}">
-                        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 5 icon buttons to the bottom bar. Works on person and custom popups.</p>
+                        <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the bottom bar. Works on all popups.</p>
                         <ha-select label="Button Alignment"
                           .value=${this._config.popup_bottom_bar_align || 'spread'}
                           @selected=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
@@ -14338,7 +14437,18 @@ ${isGoogleLayout ? '' : html`
                           <mwc-list-item value="center">Center</mwc-list-item>
                           <mwc-list-item value="end">End (right aligned)</mwc-list-item>
                         </ha-select>
-                        ${[0,1,2,3,4].map(i => {
+                        ${(() => {
+                          const currentSlots = this._config._bb_slots ?? Math.max(1, (this._config.popup_bottom_bar_entities || []).filter(Boolean).length || 1);
+                          const slots = Math.max(1, Math.min(8, currentSlots));
+                          return html`
+                            <div style="display:flex;align-items:center;gap:8px;margin:10px 0 4px 0;">
+                              <span style="font-size:12px;opacity:0.7;flex:1;">Slots: ${slots}</span>
+                              <button style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"
+                                @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, _bb_slots: Math.max(1, slots - 1) }); }}>−</button>
+                              <button style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"
+                                @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, _bb_slots: Math.min(8, slots + 1) }); }}>+</button>
+                            </div>
+                            ${Array.from({ length: slots }, (_, i) => {
                           const ents = this._config.popup_bottom_bar_entities || [];
                           const entry = ents[i] || {};
                           const tapAction = entry.tap_action || { action: 'more-info' };
@@ -14435,7 +14545,10 @@ ${isGoogleLayout ? '' : html`
                                 ` : ''}
                               ` : ''}
                             </div>`;
-                        })}
+                            })}
+                          `;
+                        })()
+                        }
                       </div>
                     </div>
 
