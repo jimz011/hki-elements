@@ -549,6 +549,16 @@ function flattenNestedFormat(nested) {
       if (slotConfig.actions.hold_action) flat[prefix + "hold_action"] = slotConfig.actions.hold_action;
       if (slotConfig.actions.double_tap_action) flat[prefix + "double_tap_action"] = slotConfig.actions.double_tap_action;
     }
+
+    // HKI Popup config (nested sub-object → flat prefix keys)
+    if (slotConfig.hki_popup && typeof slotConfig.hki_popup === 'object') {
+      Object.entries(slotConfig.hki_popup).forEach(([k, v]) => {
+        if (v !== undefined) flat[prefix + k] = v;
+      });
+    }
+    // Also support legacy flat popup keys directly on slotConfig (pre-hki_popup format)
+    const _legacyPopupKeys = ['custom_popup_enabled','custom_popup_card','popup_name','popup_state','popup_icon','popup_use_entity_picture','popup_border_radius','popup_width','popup_width_custom','popup_height','popup_height_custom','popup_open_animation','popup_close_animation','popup_animation_duration','popup_blur_enabled','popup_blur_amount','popup_card_blur_enabled','popup_card_blur_amount','popup_card_opacity','popup_show_favorites','popup_show_effects','popup_show_presets','popup_slider_radius','popup_hide_button_text','popup_value_font_size','popup_value_font_weight','popup_label_font_size','popup_label_font_weight','popup_time_format','popup_default_view','popup_default_section','popup_highlight_color','popup_highlight_text_color','popup_highlight_radius','popup_highlight_opacity','popup_highlight_border_color','popup_highlight_border_style','popup_highlight_border_width','popup_highlight_box_shadow','popup_button_bg','popup_button_text_color','popup_button_radius','popup_button_opacity','popup_button_border_color','popup_button_border_style','popup_button_border_width','popup_bottom_bar_entities','popup_bottom_bar_align','popup_hide_bottom_bar','_bb_slots','person_geocoded_entity','sensor_graph_color','sensor_graph_gradient','sensor_line_width','sensor_hours','sensor_graph_style','climate_temp_step','climate_use_circular_slider','climate_show_plus_minus','climate_show_gradient','climate_show_target_range','climate_humidity_entity','climate_humidity_name','climate_pressure_entity','climate_pressure_name','climate_current_temperature_entity','climate_temperature_name','humidifier_humidity_step','humidifier_use_circular_slider','humidifier_show_plus_minus','humidifier_show_gradient','humidifier_fan_entity'];
+    _legacyPopupKeys.forEach(k => { if (slotConfig[k] !== undefined && flat[prefix + k] === undefined) flat[prefix + k] = slotConfig[k]; });
   });
   }); // end bar loop
   
@@ -1366,6 +1376,9 @@ class HkiHeaderCard extends LitElement {
           if (item.popup_close_animation !== undefined) normalized.popup_close_animation = item.popup_close_animation;
           if (item.popup_animation_duration !== undefined) normalized.popup_animation_duration = item.popup_animation_duration;
           if (item.popup_blur_enabled !== undefined) normalized.popup_blur_enabled = item.popup_blur_enabled;
+          // Preserve ALL popup config keys
+          const _normPopupKeys = ['custom_popup_enabled', 'custom_popup_card', 'popup_name', 'popup_state', 'popup_icon', 'popup_use_entity_picture', 'popup_border_radius', 'popup_width', 'popup_width_custom', 'popup_height', 'popup_height_custom', 'popup_open_animation', 'popup_close_animation', 'popup_animation_duration', 'popup_blur_enabled', 'popup_blur_amount', 'popup_card_blur_enabled', 'popup_card_blur_amount', 'popup_card_opacity', 'popup_show_favorites', 'popup_show_effects', 'popup_show_presets', 'popup_slider_radius', 'popup_hide_button_text', 'popup_value_font_size', 'popup_value_font_weight', 'popup_label_font_size', 'popup_label_font_weight', 'popup_time_format', 'popup_default_view', 'popup_default_section', 'popup_highlight_color', 'popup_highlight_text_color', 'popup_highlight_radius', 'popup_highlight_opacity', 'popup_highlight_border_color', 'popup_highlight_border_style', 'popup_highlight_border_width', 'popup_highlight_box_shadow', 'popup_button_bg', 'popup_button_text_color', 'popup_button_radius', 'popup_button_opacity', 'popup_button_border_color', 'popup_button_border_style', 'popup_button_border_width', 'popup_bottom_bar_entities', 'popup_bottom_bar_align', 'popup_hide_bottom_bar', '_bb_slots', 'person_geocoded_entity', 'sensor_graph_color', 'sensor_graph_gradient', 'sensor_line_width', 'sensor_hours', 'sensor_graph_style', 'climate_temp_step', 'climate_use_circular_slider', 'climate_show_plus_minus', 'climate_show_gradient', 'climate_show_target_range', 'climate_humidity_entity', 'climate_humidity_name', 'climate_pressure_entity', 'climate_pressure_name', 'climate_current_temperature_entity', 'climate_temperature_name', 'humidifier_humidity_step', 'humidifier_use_circular_slider', 'humidifier_show_plus_minus', 'humidifier_show_gradient', 'humidifier_fan_entity'];
+          _normPopupKeys.forEach(k => { if (item[k] !== undefined && normalized[k] === undefined) normalized[k] = item[k]; });
           return normalized;
         }
         // If it's a string (old format), convert to object
@@ -3681,6 +3694,10 @@ class HkiHeaderCardEditor extends LitElement {
             cleanedPerson.picture_away = person.picture_away;
           }
           
+          // Preserve ALL popup settings on the person object
+          const _personPopupKeys = ['custom_popup_enabled', 'custom_popup_card', 'popup_name', 'popup_state', 'popup_icon', 'popup_use_entity_picture', 'popup_border_radius', 'popup_width', 'popup_width_custom', 'popup_height', 'popup_height_custom', 'popup_open_animation', 'popup_close_animation', 'popup_animation_duration', 'popup_blur_enabled', 'popup_blur_amount', 'popup_card_blur_enabled', 'popup_card_blur_amount', 'popup_card_opacity', 'popup_show_favorites', 'popup_show_effects', 'popup_show_presets', 'popup_slider_radius', 'popup_hide_button_text', 'popup_value_font_size', 'popup_value_font_weight', 'popup_label_font_size', 'popup_label_font_weight', 'popup_time_format', 'popup_default_view', 'popup_default_section', 'popup_highlight_color', 'popup_highlight_text_color', 'popup_highlight_radius', 'popup_highlight_opacity', 'popup_highlight_border_color', 'popup_highlight_border_style', 'popup_highlight_border_width', 'popup_highlight_box_shadow', 'popup_button_bg', 'popup_button_text_color', 'popup_button_radius', 'popup_button_opacity', 'popup_button_border_color', 'popup_button_border_style', 'popup_button_border_width', 'popup_bottom_bar_entities', 'popup_bottom_bar_align', 'popup_hide_bottom_bar', '_bb_slots', 'person_geocoded_entity', 'sensor_graph_color', 'sensor_graph_gradient', 'sensor_line_width', 'sensor_hours', 'sensor_graph_style', 'climate_temp_step', 'climate_use_circular_slider', 'climate_show_plus_minus', 'climate_show_gradient', 'climate_show_target_range', 'climate_humidity_entity', 'climate_humidity_name', 'climate_pressure_entity', 'climate_pressure_name', 'climate_current_temperature_entity', 'climate_temperature_name', 'humidifier_humidity_step', 'humidifier_use_circular_slider', 'humidifier_show_plus_minus', 'humidifier_show_gradient', 'humidifier_fan_entity'];
+          _personPopupKeys.forEach(k => { if (person[k] !== undefined) cleanedPerson[k] = person[k]; });
+
           // Clean up actions for each person
           if (person.tap_action) {
             cleanedPerson.tap_action = this._cleanupActionConfig(person.tap_action);
@@ -3905,6 +3922,13 @@ class HkiHeaderCardEditor extends LitElement {
         if (flat[prefix + "double_tap_action"]) slotConfig.actions.double_tap_action = flat[prefix + "double_tap_action"];
       }
       
+
+      // HKI Popup config
+      const _slotPopupKeys = ['custom_popup_enabled', 'custom_popup_card', 'popup_name', 'popup_state', 'popup_icon', 'popup_use_entity_picture', 'popup_border_radius', 'popup_width', 'popup_width_custom', 'popup_height', 'popup_height_custom', 'popup_open_animation', 'popup_close_animation', 'popup_animation_duration', 'popup_blur_enabled', 'popup_blur_amount', 'popup_card_blur_enabled', 'popup_card_blur_amount', 'popup_card_opacity', 'popup_show_favorites', 'popup_show_effects', 'popup_show_presets', 'popup_slider_radius', 'popup_hide_button_text', 'popup_value_font_size', 'popup_value_font_weight', 'popup_label_font_size', 'popup_label_font_weight', 'popup_time_format', 'popup_default_view', 'popup_default_section', 'popup_highlight_color', 'popup_highlight_text_color', 'popup_highlight_radius', 'popup_highlight_opacity', 'popup_highlight_border_color', 'popup_highlight_border_style', 'popup_highlight_border_width', 'popup_highlight_box_shadow', 'popup_button_bg', 'popup_button_text_color', 'popup_button_radius', 'popup_button_opacity', 'popup_button_border_color', 'popup_button_border_style', 'popup_button_border_width', 'popup_bottom_bar_entities', 'popup_bottom_bar_align', 'popup_hide_bottom_bar', '_bb_slots', 'person_geocoded_entity', 'sensor_graph_color', 'sensor_graph_gradient', 'sensor_line_width', 'sensor_hours', 'sensor_graph_style', 'climate_temp_step', 'climate_use_circular_slider', 'climate_show_plus_minus', 'climate_show_gradient', 'climate_show_target_range', 'climate_humidity_entity', 'climate_humidity_name', 'climate_pressure_entity', 'climate_pressure_name', 'climate_current_temperature_entity', 'climate_temperature_name', 'humidifier_humidity_step', 'humidifier_use_circular_slider', 'humidifier_show_plus_minus', 'humidifier_show_gradient', 'humidifier_fan_entity'];
+      const _slotPopupConfig = {};
+      _slotPopupKeys.forEach(k => { if (flat[prefix + k] !== undefined) _slotPopupConfig[k] = flat[prefix + k]; });
+      if (Object.keys(_slotPopupConfig).length) slotConfig.hki_popup = _slotPopupConfig;
+
       nested[`${bar}_${slot}`] = slotConfig;
     });
     }); // end bar loop
