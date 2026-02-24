@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.1.3-dev-19 ',
+  '%c HKI-ELEMENTS %c v1.1.3-dev-20 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -14372,7 +14372,7 @@ if (!this._popupPortal) {
           .sensor-value-row { display: flex; align-items: baseline; justify-content: flex-end; }
           .sensor-tile-value { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
           .sensor-tile-unit { font-size: 18px; font-weight: 400; opacity: 0.7; margin-left: 3px; }
-          .sensor-tile-graph { width: 100%; height: 160px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 8px; box-sizing: border-box; }
+          .sensor-tile-graph { width: 100%; height: 160px; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,0.12); padding: 6px 6px 6px 2px; box-sizing: border-box; }
           .sensor-tile-graph svg { width: 100%; height: 100%; display: block; }
           .sensor-hours-row { display: flex; justify-content: flex-end; gap: 6px; }
           .sensor-hour-btn { padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: var(--primary-text-color); font-size: 11px; cursor: pointer; transition: all 0.15s; }
@@ -14481,22 +14481,28 @@ if (!this._popupPortal) {
         const maxN = 80;
         const ds = pts.length > maxN ? pts.filter((_, i) => i % Math.ceil(pts.length / maxN) === 0) : pts;
 
-        const W = 260, H = 56;
+        // Layout: left pad for y-axis labels, top/bottom pad so line stays inset
+        const FULL_W = 300, FULL_H = 140;
+        const PAD_L = 36, PAD_R = 6, PAD_T = 10, PAD_B = 14;
+        const W = FULL_W - PAD_L - PAD_R;
+        const H = FULL_H - PAD_T - PAD_B;
+
         const minV = Math.min(...ds.map(p => p.v));
         const maxV = Math.max(...ds.map(p => p.v));
         const span = (maxV - minV) || 1;
         const t0 = ds[0].t, t1 = ds[ds.length - 1].t, tSpan = (t1 - t0) || 1;
-        const xy = ds.map(p => ({
-          x: ((p.t - t0) / tSpan) * W,
-          y: H - ((p.v - minV) / span) * H,
-          v: p.v
-        }));
+
+        const mapX = t => PAD_L + ((t - t0) / tSpan) * W;
+        const mapY = v => PAD_T + (1 - (v - minV) / span) * H;
+        const xy = ds.map(p => ({ x: mapX(p.t), y: mapY(p.v), v: p.v }));
 
         const gradId = 'sg' + Math.random().toString(16).slice(2);
-        let gradDef = '';
+        const clipId = 'cl' + Math.random().toString(16).slice(2);
         const strokeColor = graphColor || 'var(--primary-color, #2196F3)';
+
+        // Build defs: clipPath always + optional gradient
+        let defsInner = `<clipPath id="${clipId}"><rect x="${PAD_L}" y="${PAD_T}" width="${W}" height="${H}"/></clipPath>`;
         if (useGradient && !graphColor) {
-          // Temperature-style gradient
           const stops = [];
           const cnt = Math.min(10, xy.length);
           for (let i = 0; i < cnt; i++) {
@@ -14504,22 +14510,49 @@ if (!this._popupPortal) {
             const p = xy[idx];
             const n = (p.v - minV) / span;
             const hue = 200 * (1 - n);
-            const offset = (p.x / W * 100).toFixed(1);
+            const offset = ((p.x - PAD_L) / W * 100).toFixed(1);
             stops.push(`<stop offset="${offset}%" stop-color="hsl(${hue},90%,60%)" />`);
           }
-          gradDef = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">${stops.join('')}</linearGradient></defs>`;
+          defsInner += `<linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">${stops.join('')}</linearGradient>`;
         } else if (graphColor) {
-          gradDef = `<defs><linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${graphColor}" stop-opacity="0.7"/><stop offset="100%" stop-color="${graphColor}"/></linearGradient></defs>`;
+          defsInner += `<linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${graphColor}" stop-opacity="0.7"/><stop offset="100%" stop-color="${graphColor}"/></linearGradient>`;
         }
 
         const lineStroke = (useGradient || graphColor) ? `url(#${gradId})` : strokeColor;
         const line = xy.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-        const area = `0,${H} ${line} ${W},${H}`;
+        const areaBottom = PAD_T + H;
+        const area = `${PAD_L},${areaBottom} ${line} ${PAD_L + W},${areaBottom}`;
 
-        wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-          ${gradDef}
-          <polygon points="${area}" fill="${lineStroke}" opacity="0.12"/>
-          <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+        // Y-axis: 3 levels with gridlines + labels
+        const fmt = v => {
+          const abs = Math.abs(v);
+          if (abs >= 1000) return (v/1000).toFixed(1) + 'k';
+          if (abs >= 100) return v.toFixed(0);
+          if (abs >= 10) return v.toFixed(1);
+          return v.toFixed(2);
+        };
+        const yLevels = [
+          { v: maxV, y: PAD_T },
+          { v: (minV + maxV) / 2, y: PAD_T + H / 2 },
+          { v: minV, y: PAD_T + H },
+        ];
+        const gridLines = yLevels.map(l =>
+          `<line x1="${PAD_L}" y1="${l.y.toFixed(1)}" x2="${(PAD_L + W).toFixed(1)}" y2="${l.y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`
+        ).join('');
+        const yAxisLine = `<line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${PAD_T + H}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+        const yLabels = yLevels.map(l =>
+          `<text x="${PAD_L - 4}" y="${(l.y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)" font-family="sans-serif">${fmt(l.v)}</text>`
+        ).join('');
+
+        wrap.innerHTML = `<svg viewBox="0 0 ${FULL_W} ${FULL_H}" preserveAspectRatio="none" style="display:block;width:100%;height:100%;">
+          <defs>${defsInner}</defs>
+          ${gridLines}
+          ${yAxisLine}
+          ${yLabels}
+          <g clip-path="url(#${clipId})">
+            <polygon points="${area}" fill="${lineStroke}" opacity="0.12"/>
+            <polyline points="${line}" fill="none" stroke="${lineStroke}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
         </svg>`;
       } catch (e) {
         console.warn('sensor sparkline error', e);
@@ -15120,7 +15153,7 @@ if (!this._popupPortal) {
         const domain = cfg.entity.split('.')[0];
         const state = stateObj.state;
         const isOn = state === 'on' || state === 'home' || state === 'open';
-        const friendlyName = stateObj.attributes?.friendly_name || cfg.entity;
+        const friendlyName = cfg.name || stateObj.attributes?.friendly_name || cfg.entity;
         const unit = stateObj.attributes?.unit_of_measurement || '';
         const icon = cfg.icon || stateObj.attributes?.icon || this._getDomainIcon(domain);
         const isSensor = ['sensor','number','input_number','input_text','text','select','input_select'].includes(domain);
@@ -15170,7 +15203,7 @@ if (!this._popupPortal) {
       const color = isHome ? 'var(--primary-color,#4CAF50)' : '#607D8B';
       const geocodedEntityId = this._config.person_geocoded_entity;
       const geocodedState = geocodedEntityId && this.hass.states[geocodedEntityId] ? this.hass.states[geocodedEntityId].state : null;
-      const locationLabel = geocodedState || state;
+      const locationLabel = geocodedState || state;  // used only for the map pin label
       const lastSeen = this._formatLastTriggered(entity);
       const showBottomBar = this._config.popup_hide_bottom_bar !== true;
       const hasBottomBarEntities = Array.isArray(this._config.popup_bottom_bar_entities) && this._config.popup_bottom_bar_entities.length > 0;
@@ -15219,7 +15252,7 @@ if (!this._popupPortal) {
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(locationLabel)}${lastSeen ? ' — ' + lastSeen : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(state)}${lastSeen ? ' — ' + lastSeen : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -19700,7 +19733,7 @@ disconnectedCallback() {
             ${renderHeader("Person Popup Options", "person_opts")}
             <div class="accordion-content ${this._closedDetails['person_opts'] ? 'hidden' : ''}">
               <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Applies when action is "More Info (HKI)" on a person entity.</p>
-              <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">By default the popup shows the person's state (home / away / zone). Link a geocoded address sensor to show the real street address instead.</p>
+              <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Link a geocoded address sensor to show the real street address on the map pin. The popup header always shows the person's state (home / away / zone).</p>
               <ha-entity-picker
                 .hass=${this.hass}
                 .value=${this._config.person_geocoded_entity || ""}
@@ -20441,8 +20474,8 @@ ${isGoogleLayout ? '' : html`
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
                               ${entry.entity ? html`
-                                <ha-textfield label="Label (optional)" .value=${entry.label||""} placeholder="Custom label"
-                                  @input=${(ev) => setEntry({ label: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
+                                <ha-textfield label="Name (optional)" .value=${entry.name||""} placeholder="Custom name"
+                                  @input=${(ev) => setEntry({ name: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
                                 <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
                                   @input=${(ev) => setEntry({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
 
