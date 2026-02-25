@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-03 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -869,6 +869,7 @@ function migrateToNestedFormat(oldConfig) {
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
     'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
+    'grid_options',
     'blend_color', 'blend_stop', 'blend_enabled',
     'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
     'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -1036,6 +1037,7 @@ function flattenNestedFormat(nested) {
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
     'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
+    'grid_options',
     'blend_color', 'blend_stop', 'blend_enabled',
     'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
     'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -4308,6 +4310,7 @@ class HkiHeaderCardEditor extends LitElement {
       'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
       'background', 'background_color', 'background_position', 'background_repeat',
       'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
+      'grid_options',
       'blend_color', 'blend_stop', 'blend_enabled',
       'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
       'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -7110,6 +7113,8 @@ window.customCards.push({
       'icon_animation', 'icon_align', 'enable_icon_animation',
       // Custom popup
       'custom_popup',
+      // Home Assistant layout metadata (must be preserved)
+      'grid_options',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
@@ -22311,7 +22316,7 @@ function removeDefaults(obj, defaults) {
   if (!obj || !defaults) return obj;
   
   // Critical properties that should always be preserved for config structure and Home Assistant compatibility
-  const criticalProps = ['type', 'base', 'horizontal', 'vertical'];
+  const criticalProps = ['type', 'base', 'horizontal', 'vertical', 'grid_options'];
   
   const cleaned = {};
   for (const key in obj) {

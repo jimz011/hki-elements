@@ -408,6 +408,8 @@
       'icon_animation', 'icon_align', 'enable_icon_animation',
       // Custom popup
       'custom_popup',
+      // Home Assistant layout metadata (must be preserved)
+      'grid_options',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
