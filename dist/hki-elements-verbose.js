@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-03 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-06 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -865,6 +865,7 @@ const DEFAULTS = Object.freeze({
   info_size_px: 12,
   info_weight: "medium",
   info_color: "",
+  info_text_shadow: "",
   info_pill: true,
   info_pill_background: "rgba(0,0,0,0.25)",
   info_pill_padding_x: 12,
@@ -879,6 +880,7 @@ const DEFAULTS = Object.freeze({
   bottom_info_size_px: 12,
   bottom_info_weight: "medium",
   bottom_info_color: "",
+  bottom_info_text_shadow: "",
   bottom_info_pill: true,
   bottom_info_pill_background: "rgba(0,0,0,0.25)",
   bottom_info_pill_padding_x: 12,
@@ -967,7 +969,7 @@ function migrateToNestedFormat(oldConfig) {
   }
   
   // Migrate global info styling
-  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
+  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
                     'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                     'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
   if (infoKeys.some(k => oldConfig[k] !== undefined)) {
@@ -975,6 +977,7 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_size_px !== undefined) newConfig.info.size_px = oldConfig.info_size_px;
     if (oldConfig.info_weight !== undefined) newConfig.info.weight = oldConfig.info_weight;
     if (oldConfig.info_color !== undefined) newConfig.info.color = oldConfig.info_color;
+    if (oldConfig.info_text_shadow !== undefined) newConfig.info.text_shadow = oldConfig.info_text_shadow;
     if (oldConfig.info_pill !== undefined) newConfig.info.pill = oldConfig.info_pill;
     if (oldConfig.info_pill_background !== undefined) newConfig.info.pill_background = oldConfig.info_pill_background;
     if (oldConfig.info_pill_padding_x !== undefined) newConfig.info.pill_padding_x = oldConfig.info_pill_padding_x;
@@ -1008,6 +1011,7 @@ function migrateToNestedFormat(oldConfig) {
         size_px: oldConfig[prefix + "size_px"],
         weight: oldConfig[prefix + "weight"],
         color: oldConfig[prefix + "color"],
+        text_shadow: oldConfig[prefix + "text_shadow"],
         pill: oldConfig[prefix + "pill"],
         pill_background: oldConfig[prefix + "pill_background"],
         pill_padding_x: oldConfig[prefix + "pill_padding_x"],
@@ -1155,6 +1159,7 @@ function flattenNestedFormat(nested) {
     if (nested.info.size_px !== undefined) flat.info_size_px = nested.info.size_px;
     if (nested.info.weight !== undefined) flat.info_weight = nested.info.weight;
     if (nested.info.color !== undefined) flat.info_color = nested.info.color;
+    if (nested.info.text_shadow !== undefined) flat.info_text_shadow = nested.info.text_shadow;
     if (nested.info.pill !== undefined) flat.info_pill = nested.info.pill;
     if (nested.info.pill_background !== undefined) flat.info_pill_background = nested.info.pill_background;
     if (nested.info.pill_padding_x !== undefined) flat.info_pill_padding_x = nested.info.pill_padding_x;
@@ -1171,6 +1176,7 @@ function flattenNestedFormat(nested) {
     if (nested.bottom_info.size_px !== undefined) flat.bottom_info_size_px = nested.bottom_info.size_px;
     if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
     if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
+    if (nested.bottom_info.text_shadow !== undefined) flat.bottom_info_text_shadow = nested.bottom_info.text_shadow;
     if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
     if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
     if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
@@ -1207,6 +1213,7 @@ function flattenNestedFormat(nested) {
       flat[prefix + "size_px"] = slotConfig.styling.size_px;
       flat[prefix + "weight"] = slotConfig.styling.weight;
       flat[prefix + "color"] = slotConfig.styling.color;
+      flat[prefix + "text_shadow"] = slotConfig.styling.text_shadow;
       flat[prefix + "pill"] = slotConfig.styling.pill;
       flat[prefix + "pill_background"] = slotConfig.styling.pill_background;
       flat[prefix + "pill_padding_x"] = slotConfig.styling.pill_padding_x;
@@ -1436,8 +1443,7 @@ class HkiHeaderCard extends LitElement {
     // Performance: Style caches
     this._slotStyleCache = new Map();
     this._lastConfigHash = null;
-    this._inlineTplCache = new Map();
-    this._inlineTplPending = new Set();
+    this._inlineTplSubs = new Map();
   }
 
   static get styles() {
@@ -1595,6 +1601,19 @@ class HkiHeaderCard extends LitElement {
 
       .hki-slot-button {
         position: relative;
+      }
+
+      .hki-slot-button-icon-only {
+        width: var(--hki-slot-circle-size, 44px) !important;
+        height: var(--hki-slot-circle-size, 44px) !important;
+        min-width: var(--hki-slot-circle-size, 44px) !important;
+        max-width: var(--hki-slot-circle-size, 44px) !important;
+        min-height: var(--hki-slot-circle-size, 44px) !important;
+        max-height: var(--hki-slot-circle-size, 44px) !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        aspect-ratio: 1 / 1;
       }
 
       .hki-slot-button-badge {
@@ -1813,6 +1832,7 @@ class HkiHeaderCard extends LitElement {
 
     this._unsubscribeTemplate("title");
     this._unsubscribeTemplate("subtitle");
+    this._clearInlineTemplateSubs();
     this._resetBadgesZIndex();
   }
 
@@ -2296,6 +2316,7 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "size_px"] = m[prefix + "size_px"] != null ? clamp(+m[prefix + "size_px"], 8, 64) : null;
       m[prefix + "weight"] = m[prefix + "weight"] ? normalizeWeightKey(m[prefix + "weight"], "medium") : null;
       m[prefix + "color"] = m[prefix + "color"] || null;
+      m[prefix + "text_shadow"] = m[prefix + "text_shadow"] || null;
       m[prefix + "pill"] = m[prefix + "pill"] != null ? !!m[prefix + "pill"] : null;
       m[prefix + "pill_background"] = m[prefix + "pill_background"] || null;
       m[prefix + "pill_padding_x"] = m[prefix + "pill_padding_x"] != null ? clamp(+m[prefix + "pill_padding_x"], 0, 80) : null;
@@ -2316,6 +2337,7 @@ class HkiHeaderCard extends LitElement {
     // Global info styling
     m.info_size_px = clamp(+m.info_size_px || 12, 8, 64);
     m.info_weight = normalizeWeightKey(m.info_weight ?? "medium", "medium");
+    m.info_text_shadow = m.info_text_shadow || "";
     m.info_pill = !!m.info_pill;
     m.info_pill_padding_x = clamp(+m.info_pill_padding_x || 12, 0, 80);
     m.info_pill_padding_y = clamp(+m.info_pill_padding_y || 8, 0, 80);
@@ -2391,6 +2413,7 @@ class HkiHeaderCard extends LitElement {
       }).filter(Boolean);
     }
 
+    this._clearInlineTemplateSubs();
     this._config = m;
     this._scheduleTemplateSetup(0);
     this._debouncedBadgesZIndex();
@@ -2584,30 +2607,86 @@ class HkiHeaderCard extends LitElement {
   _resolveInlineTemplate(raw, fallback = "") {
     if (raw === undefined || raw === null || raw === "") return fallback;
     const str = String(raw);
-    if (!this._isTemplateString(str)) return str;
+    if (!this._isTemplateString(str)) return str.trim();
 
     const vars = this._buildTemplateVariables();
-    const sig = cacheKey(str, vars);
-    if (this._inlineTplCache.has(sig)) return this._inlineTplCache.get(sig) ?? fallback;
+    const sig = cacheKey(`inline:${str}`, vars);
+    if (!this._inlineTplSubs.has(sig)) {
+      this._inlineTplSubs.set(sig, { value: fallback, unsub: null, pending: false });
+      this._subscribeInlineTemplate(sig, str, vars, fallback);
+    }
+    const current = this._inlineTplSubs.get(sig)?.value;
+    return (current == null ? fallback : String(current)).trim();
+  }
 
-    if (!this._inlineTplPending.has(sig) && this.hass?.callWS) {
-      this._inlineTplPending.add(sig);
-      this.hass.callWS({
-        type: "render_template",
-        template: str,
-        variables: vars,
-        strict: false,
-      }).then((res) => {
-        this._inlineTplCache.set(sig, res?.result != null ? String(res.result) : "");
-        this.requestUpdate();
-      }).catch(() => {
-        this._inlineTplCache.set(sig, "");
-      }).finally(() => {
-        this._inlineTplPending.delete(sig);
+  _subscribeInlineTemplate(sig, template, vars, fallback = "") {
+    const entry = this._inlineTplSubs.get(sig);
+    if (!entry || entry.pending) return;
+    entry.pending = true;
+
+    const done = () => {
+      const latest = this._inlineTplSubs.get(sig);
+      if (latest) latest.pending = false;
+    };
+
+    if (this.hass?.connection?.subscribeMessage) {
+      this.hass.connection.subscribeMessage(
+        (msg) => {
+          const e = this._inlineTplSubs.get(sig);
+          if (!e) return;
+          if (msg?.error) return;
+          const nextValue = msg?.result != null ? String(msg.result).trim() : "";
+          if (e.value !== nextValue) {
+            e.value = nextValue;
+            this.requestUpdate();
+          }
+        },
+        { type: "render_template", template, variables: vars, strict: false, report_errors: false }
+      ).then((unsub) => {
+        const e = this._inlineTplSubs.get(sig);
+        if (!e) {
+          try { unsub?.(); } catch (_) {}
+          return;
+        }
+        e.unsub = unsub;
+        done();
+      }).catch(async () => {
+        await this._renderInlineTemplateOnce(sig, template, vars, fallback);
+        done();
       });
+      return;
     }
 
-    return fallback;
+    this._renderInlineTemplateOnce(sig, template, vars, fallback).finally(done);
+  }
+
+  async _renderInlineTemplateOnce(sig, template, vars, fallback = "") {
+    const entry = this._inlineTplSubs.get(sig);
+    if (!entry) return;
+    if (!this.hass?.callWS) {
+      entry.value = fallback;
+      return;
+    }
+    try {
+      const res = await this.hass.callWS({ type: "render_template", template, variables: vars, strict: false });
+      const value = res?.result != null ? String(res.result).trim() : "";
+      if (entry.value !== value) {
+        entry.value = value;
+        this.requestUpdate();
+      }
+    } catch (_) {
+      entry.value = fallback;
+    }
+  }
+
+  _clearInlineTemplateSubs() {
+    if (!this._inlineTplSubs || !this._inlineTplSubs.size) return;
+    this._inlineTplSubs.forEach((entry) => {
+      if (entry?.unsub) {
+        try { entry.unsub(); } catch (_) {}
+      }
+    });
+    this._inlineTplSubs.clear();
   }
 
   _getSlotButtons(prefix) {
@@ -3072,24 +3151,33 @@ class HkiHeaderCard extends LitElement {
     // Pick the right set of global defaults depending on which bar this slot belongs to
     const gp = bar === "bottom_bar" ? "bottom_info_" : "info_";
     
-    // Generate cache key based on relevant config values
-    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "pill"]}:${cfg.font_family}:${cfg.font_style}`;
-    
-    const cached = this._slotStyleCache.get(cacheKey);
-    if (cached) return cached;
-    
     const useGlobal = cfg[prefix + "use_global"] !== false;
+    const rawColorForTpl = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"] || "");
+    const rawTextShadowForTpl = (!useGlobal && cfg[prefix + "text_shadow"]) ? cfg[prefix + "text_shadow"] : (cfg[gp + "text_shadow"] || "");
+    const rawPillBgForTpl = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : (cfg[gp + "pill_background"] || "");
+    const hasTemplateDrivenStyle = this._isTemplateString(rawColorForTpl) || this._isTemplateString(rawTextShadowForTpl) || this._isTemplateString(rawPillBgForTpl);
+
+    // Generate cache key based on relevant config values
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "text_shadow"]}:${cfg[prefix + "pill"]}:${cfg[prefix + "pill_background"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "text_shadow"]}:${cfg[gp + "pill"]}:${cfg[gp + "pill_background"]}:${cfg.font_family}:${cfg.font_style}`;
+    if (!hasTemplateDrivenStyle) {
+      const cached = this._slotStyleCache.get(cacheKey);
+      if (cached) return cached;
+    }
     
     const fontFamily = this._resolveFontFamily();
     
     // Get values, preferring per-slot if not using global, otherwise use bar-specific global
     const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg[gp + "size_px"];
     const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg[gp + "weight"];
-    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"]?.trim() || "var(--hki-header-text-color, #fff)");
+    const rawColor = rawColorForTpl;
+    const color = this._resolveInlineTemplate(rawColor, "").trim() || "var(--hki-header-text-color, #fff)";
+    const rawTextShadow = rawTextShadowForTpl;
+    const textShadow = this._resolveInlineTemplate(rawTextShadow, "").trim();
     const iconSize = Math.round(sizePx * 2);
     
     const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
-    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg[gp + "pill_background"];
+    const rawPillBg = rawPillBgForTpl;
+    const pillBg = this._resolveInlineTemplate(rawPillBg, "").trim() || "rgba(0,0,0,0.25)";
     const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg[gp + "pill_padding_x"];
     const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg[gp + "pill_padding_y"];
     const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg[gp + "pill_radius"];
@@ -3101,7 +3189,7 @@ class HkiHeaderCard extends LitElement {
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
     
-    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};`;
+    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};${textShadow ? `text-shadow:${textShadow};` : ""}`;
     
     const pillStyle = pill ? `--hki-info-pill-background:${pillBg};--hki-info-pill-padding-x:${pillPaddingX}px;--hki-info-pill-padding-y:${pillPaddingY}px;--hki-info-pill-radius:${pillRadius}px;--hki-info-pill-blur:${pillBlur}px;--hki-info-pill-border-style:${pillBorderStyle};--hki-info-pill-border-width:${pillBorderWidth}px;--hki-info-pill-border-color:${pillBorderColor}` : "";
     
@@ -3116,6 +3204,7 @@ class HkiHeaderCard extends LitElement {
       pill, 
       sizePx, 
       color,
+      textShadow,
       pillBg,
       pillPaddingX,
       pillPaddingY,
@@ -3127,8 +3216,10 @@ class HkiHeaderCard extends LitElement {
     };
     
     // Cache the result (limit cache size)
-    if (this._slotStyleCache.size > 20) this._slotStyleCache.clear();
-    this._slotStyleCache.set(cacheKey, result);
+    if (!hasTemplateDrivenStyle) {
+      if (this._slotStyleCache.size > 20) this._slotStyleCache.clear();
+      this._slotStyleCache.set(cacheKey, result);
+    }
     
     return result;
   }
@@ -3256,7 +3347,7 @@ class HkiHeaderCard extends LitElement {
           const circleSize = Math.max(slotStyle.iconSize + (buttonPaddingY * 2), slotStyle.iconSize + 10);
           const iconStyle = iconColor ? `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColor};` : `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
           const labelStyle = labelColor ? `color:${labelColor};` : "";
-          const buttonStyle = `${combinedStyle}${cardColor ? `background:${cardColor};` : ""}${isIconOnly ? `width:${circleSize}px;height:${circleSize}px;justify-content:center;padding:0;border-radius:50%;` : ""}`;
+          const buttonStyle = `${combinedStyle}${cardColor ? `background:${cardColor};` : ""}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
 
           const key = `${stateKey}_${idx}`;
           if (!this._slotHoldState) this._slotHoldState = {};
@@ -3312,7 +3403,7 @@ class HkiHeaderCard extends LitElement {
 
           return html`
             <div
-              class="info-item ${pillClass} hki-slot-button"
+              class="info-item ${pillClass} hki-slot-button ${isIconOnly ? 'hki-slot-button-icon-only' : ''}"
               style="${buttonStyle}"
               @mousedown=${handleMouseDown}
               @mouseup=${handleMouseUp}
@@ -4621,7 +4712,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
     
     // Nest info if any settings exist
-    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
+    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
                       'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                       'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
     const hasInfoConfig = infoKeys.some(k => flat[k] !== undefined);
@@ -4630,6 +4721,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_size_px !== undefined) nested.info.size_px = flat.info_size_px;
       if (flat.info_weight !== undefined) nested.info.weight = flat.info_weight;
       if (flat.info_color !== undefined) nested.info.color = flat.info_color;
+      if (flat.info_text_shadow !== undefined) nested.info.text_shadow = flat.info_text_shadow;
       if (flat.info_pill !== undefined) nested.info.pill = flat.info_pill;
       if (flat.info_pill_background !== undefined) nested.info.pill_background = flat.info_pill_background;
       if (flat.info_pill_padding_x !== undefined) nested.info.pill_padding_x = flat.info_pill_padding_x;
@@ -4642,7 +4734,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
 
     // Nest bottom_info if any settings exist
-    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_pill', 'bottom_info_pill_background',
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_text_shadow', 'bottom_info_pill', 'bottom_info_pill_background',
                       'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
                       'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
     const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
@@ -4651,6 +4743,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.bottom_info_size_px !== undefined) nested.bottom_info.size_px = flat.bottom_info_size_px;
       if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
       if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
+      if (flat.bottom_info_text_shadow !== undefined) nested.bottom_info.text_shadow = flat.bottom_info_text_shadow;
       if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
       if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
       if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
@@ -4690,7 +4783,7 @@ class HkiHeaderCardEditor extends LitElement {
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
         slotConfig.styling = {};
-        const stylingKeys = ['size_px', 'weight', 'color', 'pill', 'pill_background', 'pill_padding_x',
+        const stylingKeys = ['size_px', 'weight', 'color', 'text_shadow', 'pill', 'pill_background', 'pill_padding_x',
                             'pill_padding_y', 'pill_radius', 'pill_blur', 'pill_border_style',
                             'pill_border_width', 'pill_border_color'];
         stylingKeys.forEach(key => {
@@ -5003,6 +5096,21 @@ class HkiHeaderCardEditor extends LitElement {
     `;
   }
 
+  _renderTemplateTextField(label, value, onInput, placeholder = "") {
+    return html`
+      <ha-textfield
+        .label=${label}
+        .value=${value || ""}
+        .placeholder=${placeholder}
+        helper="Jinja supported"
+        @input=${(ev) => {
+          ev.stopPropagation();
+          onInput(ev.target.value ?? "");
+        }}
+      ></ha-textfield>
+    `;
+  }
+
   // Removed - using ha-yaml-editor inline instead
 
   _getSlotLabel(type) {
@@ -5128,9 +5236,6 @@ class HkiHeaderCardEditor extends LitElement {
           const fallback = normalizeSlotButton({
             icon: this._config[prefix + "icon"] || "mdi:gesture-tap",
             name: this._config[prefix + "name"] ?? this._config[prefix + "label"] ?? "",
-            card_color: this._config[prefix + "card_color"] || "",
-            icon_color: this._config[prefix + "icon_color"] || "",
-            label_color: this._config[prefix + "label_color"] || "",
             show_badge: this._config[prefix + "show_badge"] === true,
             badge_source: this._config[prefix + "badge_source"] || "entity",
             badge_entity: this._config[prefix + "badge_entity"] || "",
@@ -5161,14 +5266,8 @@ class HkiHeaderCardEditor extends LitElement {
           };
 
           return html`
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">
-              ${buttons.map((_, idx) => html`
-                <button type="button"
-                  style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:14px;"
-                  title="Button ${idx + 1}">
-                  ${idx + 1}
-                </button>
-              `)}
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
+              ${buttons.map((_, idx) => html`<span style="padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.08);font-size:12px;">${idx + 1}</span>`)}
               <button type="button"
                 style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"
                 @click=${(e) => { e.stopPropagation(); saveButtons([...buttons, createDefaultSlotButton()]); }}>
@@ -5193,25 +5292,7 @@ class HkiHeaderCardEditor extends LitElement {
                     value: btn.icon || "",
                     onchange: (v) => setButton(idx, { icon: v || "mdi:gesture-tap" }),
                   })}
-                  ${this._renderTemplateEditor("Name (optional, Jinja)", `${prefix}btn_${idx}_name`, {
-                    value: btn.name || "",
-                    onchange: (v) => setButton(idx, { name: v || "" }),
-                  })}
-
-                  <div class="inline-fields-2">
-                    ${this._renderTemplateEditor("Card Color (Jinja)", `${prefix}btn_${idx}_card_color`, {
-                      value: btn.card_color || "",
-                      onchange: (v) => setButton(idx, { card_color: v || "" }),
-                    })}
-                    ${this._renderTemplateEditor("Icon Color (Jinja)", `${prefix}btn_${idx}_icon_color`, {
-                      value: btn.icon_color || "",
-                      onchange: (v) => setButton(idx, { icon_color: v || "" }),
-                    })}
-                  </div>
-                  ${this._renderTemplateEditor("Name Color (Jinja)", `${prefix}btn_${idx}_label_color`, {
-                    value: btn.label_color || "",
-                    onchange: (v) => setButton(idx, { label_color: v || "" }),
-                  })}
+                  ${this._renderTemplateTextField("Name (optional)", btn.name || "", (v) => setButton(idx, { name: v || "" }), "{{ ... }}")}
 
                   <div class="switch-row" style="margin-top: 6px;">
                     <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
@@ -5229,20 +5310,11 @@ class HkiHeaderCardEditor extends LitElement {
                       <ha-entity-picker .hass=${this.hass} .value=${btn.badge_entity || ""} label="Badge Entity"
                         @value-changed=${(e) => setButton(idx, { badge_entity: e.detail.value || "" })}></ha-entity-picker>
                     ` : html`
-                      ${this._renderTemplateEditor("Badge Template (Jinja)", `${prefix}btn_${idx}_badge_template`, {
-                        value: btn.badge_template || "",
-                        onchange: (v) => setButton(idx, { badge_template: v || "" }),
-                      })}
+                      ${this._renderTemplateTextField("Badge Template", btn.badge_template || "", (v) => setButton(idx, { badge_template: v || "" }), "{{ ... }}")}
                     `}
                     <div class="inline-fields-2">
-                      ${this._renderTemplateEditor("Badge Color (Jinja)", `${prefix}btn_${idx}_badge_color`, {
-                        value: btn.badge_color || "",
-                        onchange: (v) => setButton(idx, { badge_color: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("Badge Text Color (Jinja)", `${prefix}btn_${idx}_badge_text_color`, {
-                        value: btn.badge_text_color || "",
-                        onchange: (v) => setButton(idx, { badge_text_color: v || "" }),
-                      })}
+                      ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}
+                      ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
                     </div>
                   ` : ''}
                 </div>
@@ -5315,14 +5387,15 @@ class HkiHeaderCardEditor extends LitElement {
               ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
             </ha-select>
           </div>
-          <ha-textfield label="Text Color" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
+          <ha-textfield label="Text Color (Jinja supported)" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
+          <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config[prefix + "text_shadow"] || ""} data-field="${prefix}text_shadow" @input=${this._changed}></ha-textfield>
           
           <div class="switch-row">
             <ha-switch .checked=${this._config[prefix + "pill"] === true} data-field="${prefix}pill" @change=${this._changed}></ha-switch>
             <span>Enable Pill Style</span>
           </div>
           ${this._config[prefix + "pill"] ? html`
-            <ha-textfield label="Pill Background" .value=${this._config[prefix + "pill_background"] || ""} data-field="${prefix}pill_background" @input=${this._changed}></ha-textfield>
+            <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config[prefix + "pill_background"] || ""} data-field="${prefix}pill_background" @input=${this._changed}></ha-textfield>
             <div class="inline-fields-2">
               <ha-textfield label="Padding X" type="number" .value=${String(this._config[prefix + "pill_padding_x"] ?? "")} data-field="${prefix}pill_padding_x" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Padding Y" type="number" .value=${String(this._config[prefix + "pill_padding_y"] ?? "")} data-field="${prefix}pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -6210,6 +6283,17 @@ class HkiHeaderCardEditor extends LitElement {
           </details>
         ` : ''}
 
+        ${p_domain === 'person' ? html`
+          <details class="box-section">
+            <summary>Person Map Options</summary>
+            <div class="box-content">
+              <ha-entity-picker .hass=${this.hass} label="Geocoded Address Entity" .value=${pv('person_geocoded_entity') || ""}
+                @value-changed=${(ev) => pp({ person_geocoded_entity: ev.detail.value || undefined })}
+              ></ha-entity-picker>
+            </div>
+          </details>
+        ` : ''}
+
         <details class="box-section">
           <summary>Content Display</summary>
           <div class="box-content">
@@ -6865,14 +6949,15 @@ class HkiHeaderCardEditor extends LitElement {
                         ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
                       </ha-select>
                     </div>
-                    <ha-textfield label="Text Color" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.info_text_shadow || ""} data-field="info_text_shadow" @input=${this._changed}></ha-textfield>
                     
                     <div class="switch-row">
                       <ha-switch .checked=${!!this._config.info_pill} data-field="info_pill" @change=${this._changed}></ha-switch>
                       <span>Enable Pill Style</span>
                     </div>
                     ${this._config.info_pill ? html`
-                      <ha-textfield label="Pill Background" .value=${this._config.info_pill_background || "rgba(0,0,0,0.25)"} data-field="info_pill_background" @input=${this._changed}></ha-textfield>
+                      <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config.info_pill_background || "rgba(0,0,0,0.25)"} data-field="info_pill_background" @input=${this._changed}></ha-textfield>
                       <div class="inline-fields-2">
                         <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.info_pill_padding_x ?? 12)} data-field="info_pill_padding_x" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.info_pill_padding_y ?? 8)} data-field="info_pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -6941,14 +7026,15 @@ class HkiHeaderCardEditor extends LitElement {
                       ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
                     </ha-select>
                   </div>
-                  <ha-textfield label="Text Color" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.bottom_info_text_shadow || ""} data-field="bottom_info_text_shadow" @input=${this._changed}></ha-textfield>
                   
                   <div class="switch-row">
                     <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
                     <span>Enable Pill Style</span>
                   </div>
                   ${this._config.bottom_info_pill ? html`
-                    <ha-textfield label="Pill Background" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
                     <div class="inline-fields-2">
                       <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
