@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3979,7 +3979,7 @@ class HkiHeaderCard extends LitElement {
       spacerH += (cfg.badges_gap || 0) + kioskGapAdjustment - 48;
     }
 
-    if (editMode && cfg.fixed) {
+    if (editMode && cfg.fixed && !this._inPreview) {
       return html`
         <ha-card class="edit-placeholder">
           <div class="edit-placeholder-inner">

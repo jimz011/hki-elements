@@ -3463,7 +3463,7 @@ class HkiHeaderCard extends LitElement {
       spacerH += (cfg.badges_gap || 0) + kioskGapAdjustment - 48;
     }
 
-    if (editMode && cfg.fixed) {
+    if (editMode && cfg.fixed && !this._inPreview) {
       return html`
         <ha-card class="edit-placeholder">
           <div class="edit-placeholder-inner">
