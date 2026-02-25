@@ -5465,8 +5465,8 @@ class HkiHeaderCardEditor extends LitElement {
       <div class="card-config">
         <div class="disclaimer">
           <ha-alert alert-type="info" title="Documentation">
-            This card should be placed in the header section! Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a>
-            first to set up this card. <br><br>
+            This card can be placed in the header slot, but to make use of advanced layout settings put it in a normal section at the top of the page and make the section as wide as possible. <br><br>
+            Please read the documentation for details and examples: <a href="https://jimz011.github.io/hki-elements/cards/hki-header-card/overview/" target="_blank" rel="noopener noreferrer">HKI Header Card</a> <br><br>
             This card may contain bugs. Use at your own risk!
           </ha-alert>
         </div>

@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-08 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-09 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5981,8 +5981,8 @@ class HkiHeaderCardEditor extends LitElement {
       <div class="card-config">
         <div class="disclaimer">
           <ha-alert alert-type="info" title="Documentation">
-            This card should be placed in the header section! Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a>
-            first to set up this card. <br><br>
+            This card can be placed in the header slot, but to make use of advanced layout settings put it in a normal section at the top of the page and make the section as wide as possible. <br><br>
+            Please read the documentation for details and examples: <a href="https://jimz011.github.io/hki-elements/cards/hki-header-card/overview/" target="_blank" rel="noopener noreferrer">HKI Header Card</a> <br><br>
             This card may contain bugs. Use at your own risk!
           </ha-alert>
         </div>
@@ -6956,6 +6956,54 @@ window.customCards.push({
 
 
   class HkiButtonCard extends LitElement {
+    static BASE_DEFAULTS = Object.freeze({
+      show_name: true,
+      show_state: true,
+      show_info_display: true,
+      show_brightness: true,
+      show_scenes_button: true,
+      show_individual_button: true,
+      show_effects_button: true,
+      show_popup_scenes: true,
+      show_popup_effects: true,
+      // Default actions
+      tap_action: { action: "toggle" },
+      hold_action: { action: "hki-more-info" },
+      bar_border_radius: 40,
+      dynamic_bar_color: true,
+      popup_slider_radius: 12,
+      popup_value_font_size: 36,
+      popup_value_font_weight: 300,
+      popup_label_font_size: 16,
+      popup_label_font_weight: 400,
+      popup_time_format: "auto",
+      // Default styling offsets/sizes
+      brightness_font_weight: "bold",
+      name_offset_x: -10,
+      state_offset_x: -10,
+      label_offset_x: -10,
+      icon_offset_x: -10,
+      brightness_offset_x: 10,
+      brightness_offset_y: 10,
+      temp_badge_offset_x: 10,
+      temp_badge_offset_y: -10,
+      icon_offset_y: -4,
+      label_offset_y: 11,
+      state_offset_y: 10,
+      name_offset_y: 17,
+      name_font_weight: "bold",
+      state_font_weight: "bold",
+      size_name: 13,
+      size_state: 12,
+      size_label: -2,
+      size_brightness: 12,
+      size_icon: 30,
+      temp_badge_size: 40,
+    });
+
+    static _cloneBaseDefaults() {
+      return JSON.parse(JSON.stringify(HkiButtonCard.BASE_DEFAULTS));
+    }
     
     static getConfigElement() {
       // Guard: if editor failed to register for any reason, fall back to a minimal element.
@@ -6970,20 +7018,7 @@ window.customCards.push({
     static getStubConfig() {
       return {
         type: `custom:${CARD_TYPE}`,
-        name: "Living Room Lamp",
-        icon: "mdi:lightbulb",
-        card_layout: "hki_default",
-        show_name: true,
-        show_state: true,
-        state_label: "On",
-        show_label: true,
-        label: "72%",
-        show_icon: true,
-        show_icon_circle: true,
-        show_info_display: false,
-        icon_color: "#ffb300",
-        card_color: "rgba(255,255,255,0.08)",
-        border_radius: 18,
+        ...HkiButtonCard._cloneBaseDefaults(),
       };
     }
 
@@ -7367,48 +7402,7 @@ window.customCards.push({
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
             this._config = {
-        show_name: true,
-        show_state: true,
-        show_info_display: true,
-        show_brightness: true,
-        show_scenes_button: true,
-        show_individual_button: true,
-        show_effects_button: true,
-        show_popup_scenes: true,
-        show_popup_effects: true,
-        // Default actions
-        tap_action: { action: 'toggle' },
-        hold_action: { action: 'hki-more-info' },
-        bar_border_radius: 40,
-        dynamic_bar_color: true,
-        popup_slider_radius: 12,
-        popup_value_font_size: 36,
-        popup_value_font_weight: 300,
-        popup_label_font_size: 16,
-        popup_label_font_weight: 400,
-        popup_time_format: 'auto',
-        // Default styling offsets/sizes (not written to YAML by editor unless user changes)
-        brightness_font_weight: 'bold',
-        name_offset_x: -10,
-        state_offset_x: -10,
-        label_offset_x: -10,
-        icon_offset_x: -10,
-        brightness_offset_x: 10,
-        brightness_offset_y: 10,
-        temp_badge_offset_x: 10,
-        temp_badge_offset_y: -10,
-        icon_offset_y: -4,
-        label_offset_y: 11,
-        state_offset_y: 10,
-        name_offset_y: 17,
-        name_font_weight: 'bold',
-        state_font_weight: 'bold',
-        size_name: 13,
-        size_state: 12,
-        size_label: -2,
-        size_brightness: 12,
-        size_icon: 30,
-        temp_badge_size: 40,
+        ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
       // Use the flat (migrated) config for user-override checks below
@@ -27605,7 +27599,7 @@ class HkiNotificationCardEditor extends LitElement {
               <strong>Documentation</strong><br><br>
               This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br>
               This card can also be placed in the header/badges section!<br>
-              This card can be integrated into <a href="https://github.com/jimz011/hki-header-card" target="_blank">hki-header-card</a><br><br>
+              This card can be integrated into the <a href="https://jimz011.github.io/hki-elements/cards/hki-header-card/overview/" target="_blank">HKI Header Card</a><br><br>
               Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>
               <em>This card may contain bugs. Use at your own risk!</em>
             </ha-alert>

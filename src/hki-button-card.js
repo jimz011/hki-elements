@@ -198,6 +198,54 @@
 
 
   class HkiButtonCard extends LitElement {
+    static BASE_DEFAULTS = Object.freeze({
+      show_name: true,
+      show_state: true,
+      show_info_display: true,
+      show_brightness: true,
+      show_scenes_button: true,
+      show_individual_button: true,
+      show_effects_button: true,
+      show_popup_scenes: true,
+      show_popup_effects: true,
+      // Default actions
+      tap_action: { action: "toggle" },
+      hold_action: { action: "hki-more-info" },
+      bar_border_radius: 40,
+      dynamic_bar_color: true,
+      popup_slider_radius: 12,
+      popup_value_font_size: 36,
+      popup_value_font_weight: 300,
+      popup_label_font_size: 16,
+      popup_label_font_weight: 400,
+      popup_time_format: "auto",
+      // Default styling offsets/sizes
+      brightness_font_weight: "bold",
+      name_offset_x: -10,
+      state_offset_x: -10,
+      label_offset_x: -10,
+      icon_offset_x: -10,
+      brightness_offset_x: 10,
+      brightness_offset_y: 10,
+      temp_badge_offset_x: 10,
+      temp_badge_offset_y: -10,
+      icon_offset_y: -4,
+      label_offset_y: 11,
+      state_offset_y: 10,
+      name_offset_y: 17,
+      name_font_weight: "bold",
+      state_font_weight: "bold",
+      size_name: 13,
+      size_state: 12,
+      size_label: -2,
+      size_brightness: 12,
+      size_icon: 30,
+      temp_badge_size: 40,
+    });
+
+    static _cloneBaseDefaults() {
+      return JSON.parse(JSON.stringify(HkiButtonCard.BASE_DEFAULTS));
+    }
     
     static getConfigElement() {
       // Guard: if editor failed to register for any reason, fall back to a minimal element.
@@ -212,20 +260,7 @@
     static getStubConfig() {
       return {
         type: `custom:${CARD_TYPE}`,
-        name: "Living Room Lamp",
-        icon: "mdi:lightbulb",
-        card_layout: "hki_default",
-        show_name: true,
-        show_state: true,
-        state_label: "On",
-        show_label: true,
-        label: "72%",
-        show_icon: true,
-        show_icon_circle: true,
-        show_info_display: false,
-        icon_color: "#ffb300",
-        card_color: "rgba(255,255,255,0.08)",
-        border_radius: 18,
+        ...HkiButtonCard._cloneBaseDefaults(),
       };
     }
 
@@ -609,48 +644,7 @@
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
             this._config = {
-        show_name: true,
-        show_state: true,
-        show_info_display: true,
-        show_brightness: true,
-        show_scenes_button: true,
-        show_individual_button: true,
-        show_effects_button: true,
-        show_popup_scenes: true,
-        show_popup_effects: true,
-        // Default actions
-        tap_action: { action: 'toggle' },
-        hold_action: { action: 'hki-more-info' },
-        bar_border_radius: 40,
-        dynamic_bar_color: true,
-        popup_slider_radius: 12,
-        popup_value_font_size: 36,
-        popup_value_font_weight: 300,
-        popup_label_font_size: 16,
-        popup_label_font_weight: 400,
-        popup_time_format: 'auto',
-        // Default styling offsets/sizes (not written to YAML by editor unless user changes)
-        brightness_font_weight: 'bold',
-        name_offset_x: -10,
-        state_offset_x: -10,
-        label_offset_x: -10,
-        icon_offset_x: -10,
-        brightness_offset_x: 10,
-        brightness_offset_y: 10,
-        temp_badge_offset_x: 10,
-        temp_badge_offset_y: -10,
-        icon_offset_y: -4,
-        label_offset_y: 11,
-        state_offset_y: 10,
-        name_offset_y: 17,
-        name_font_weight: 'bold',
-        state_font_weight: 'bold',
-        size_name: 13,
-        size_state: 12,
-        size_label: -2,
-        size_brightness: 12,
-        size_icon: 30,
-        temp_badge_size: 40,
+        ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
       // Use the flat (migrated) config for user-override checks below
