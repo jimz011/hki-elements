@@ -165,6 +165,78 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
   ],
 };
 
+const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
+  "icon",
+  "name",
+  "card_color",
+  "icon_color",
+  "label_color",
+  "badge_color",
+  "badge_text_color",
+  "badge_template",
+]);
+
+const createDefaultSlotButton = () => ({
+  icon: "mdi:gesture-tap",
+  name: "",
+  card_color: "",
+  icon_color: "",
+  label_color: "",
+  show_badge: false,
+  badge_source: "entity",
+  badge_entity: "",
+  badge_template: "",
+  badge_color: "",
+  badge_text_color: "",
+});
+
+function normalizeSlotButton(btn) {
+  const src = (btn && typeof btn === "object") ? btn : {};
+  const normalized = {
+    ...createDefaultSlotButton(),
+    ...src,
+  };
+  if (!normalized.name && typeof src.label === "string") normalized.name = src.label;
+  normalized.show_badge = !!normalized.show_badge;
+  normalized.badge_source = normalized.badge_source === "template" ? "template" : "entity";
+  return normalized;
+}
+
+function cleanupSlotButton(btn) {
+  if (!btn || typeof btn !== "object") return null;
+  const normalized = normalizeSlotButton(btn);
+  const cleaned = {};
+
+  SLOT_BUTTON_TEMPLATE_FIELDS.forEach((k) => {
+    const v = normalized[k];
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (trimmed) cleaned[k] = trimmed;
+    }
+  });
+
+  cleaned.show_badge = !!normalized.show_badge;
+  if (cleaned.show_badge) {
+    cleaned.badge_source = normalized.badge_source === "template" ? "template" : "entity";
+    if (cleaned.badge_source === "entity") {
+      if (normalized.badge_entity) cleaned.badge_entity = normalized.badge_entity;
+      delete cleaned.badge_template;
+    } else {
+      if (normalized.badge_template) cleaned.badge_template = normalized.badge_template;
+      delete cleaned.badge_entity;
+    }
+  } else {
+    delete cleaned.badge_source;
+    delete cleaned.badge_entity;
+    delete cleaned.badge_template;
+    delete cleaned.badge_color;
+    delete cleaned.badge_text_color;
+  }
+
+  if (!cleaned.icon) cleaned.icon = "mdi:gesture-tap";
+  return cleaned;
+}
+
 // Shared defaults - single source of truth
 const DEFAULTS = Object.freeze({
   title: "Header",
@@ -462,7 +534,17 @@ function migrateToNestedFormat(oldConfig) {
     } else if (slotType === "button") {
       slotConfig.button = {
         icon: oldConfig[prefix + "icon"],
-        label: oldConfig[prefix + "label"]
+        name: oldConfig[prefix + "name"] ?? oldConfig[prefix + "label"],
+        card_color: oldConfig[prefix + "card_color"],
+        icon_color: oldConfig[prefix + "icon_color"],
+        label_color: oldConfig[prefix + "label_color"],
+        show_badge: oldConfig[prefix + "show_badge"],
+        badge_source: oldConfig[prefix + "badge_source"],
+        badge_entity: oldConfig[prefix + "badge_entity"],
+        badge_template: oldConfig[prefix + "badge_template"],
+        badge_color: oldConfig[prefix + "badge_color"],
+        badge_text_color: oldConfig[prefix + "badge_text_color"],
+        buttons: oldConfig[prefix + "buttons"],
       };
     } else if (slotType === "custom" || slotType === "notifications") {
       slotConfig.custom = {
@@ -643,7 +725,13 @@ function flattenNestedFormat(nested) {
     
     if (slotConfig.button) {
       Object.entries(slotConfig.button).forEach(([key, val]) => {
+        if (key === "label" && slotConfig.button.name === undefined) {
+          flat[prefix + "name"] = val;
+          flat[prefix + "label"] = val;
+          return;
+        }
         flat[prefix + key] = val;
+        if (key === "name") flat[prefix + "label"] = val; // backward compatibility
       });
     }
     
@@ -832,6 +920,8 @@ class HkiHeaderCard extends LitElement {
     // Performance: Style caches
     this._slotStyleCache = new Map();
     this._lastConfigHash = null;
+    this._inlineTplCache = new Map();
+    this._inlineTplPending = new Set();
   }
 
   static get styles() {
@@ -985,6 +1075,27 @@ class HkiHeaderCard extends LitElement {
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
+      }
+
+      .hki-slot-button {
+        position: relative;
+      }
+
+      .hki-slot-button-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: #ff4444;
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 16px;
+        text-align: center;
+        box-sizing: border-box;
       }
 
       .info-clickable {
@@ -1621,11 +1732,35 @@ class HkiHeaderCard extends LitElement {
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
     
     // Per-slot config processing for each slot
+    const normalizeSlotButtonConfig = (prefix) => {
+      const legacyButton = {
+        icon: m[prefix + "icon"],
+        name: m[prefix + "name"] ?? m[prefix + "label"],
+        card_color: m[prefix + "card_color"],
+        icon_color: m[prefix + "icon_color"],
+        label_color: m[prefix + "label_color"],
+        show_badge: m[prefix + "show_badge"],
+        badge_source: m[prefix + "badge_source"],
+        badge_entity: m[prefix + "badge_entity"],
+        badge_template: m[prefix + "badge_template"],
+        badge_color: m[prefix + "badge_color"],
+        badge_text_color: m[prefix + "badge_text_color"],
+      };
+      const hasLegacyButtonConfig = Object.values(legacyButton).some((v) => v !== undefined && v !== null && v !== "");
+      const rawButtons = Array.isArray(m[prefix + "buttons"]) ? m[prefix + "buttons"] : [];
+      let buttons = rawButtons.map((btn) => normalizeSlotButton(btn)).filter(Boolean);
+      if (!buttons.length && hasLegacyButtonConfig) buttons = [normalizeSlotButton(legacyButton)];
+      if (!buttons.length) buttons = [createDefaultSlotButton()];
+      m[prefix + "buttons"] = buttons;
+      m[prefix + "icon"] = buttons[0]?.icon || "mdi:gesture-tap";
+      m[prefix + "name"] = buttons[0]?.name || "";
+      m[prefix + "label"] = m[prefix + "name"]; // backward compatibility
+    };
+
     ["left", "center", "right"].forEach(slot => {
       const prefix = `top_bar_${slot}_`;
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
-      m[prefix + "icon"] = m[prefix + "icon"] || "";
-      m[prefix + "label"] = m[prefix + "label"] || "";
+      normalizeSlotButtonConfig(prefix);
       // Alignment default differs per slot
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
       m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
@@ -1633,8 +1768,7 @@ class HkiHeaderCard extends LitElement {
     ["left", "center", "right"].forEach(slot => {
       const prefix = `bottom_bar_${slot}_`;
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
-      m[prefix + "icon"] = m[prefix + "icon"] || "";
-      m[prefix + "label"] = m[prefix + "label"] || "";
+      normalizeSlotButtonConfig(prefix);
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
       m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
@@ -1929,6 +2063,53 @@ class HkiHeaderCard extends LitElement {
     } else if (key === "subtitle") {
       if (this._renderedSubtitle !== v) { this._renderedSubtitle = v; this.requestUpdate(); }
     }
+  }
+
+  _resolveInlineTemplate(raw, fallback = "") {
+    if (raw === undefined || raw === null || raw === "") return fallback;
+    const str = String(raw);
+    if (!this._isTemplateString(str)) return str;
+
+    const vars = this._buildTemplateVariables();
+    const sig = cacheKey(str, vars);
+    if (this._inlineTplCache.has(sig)) return this._inlineTplCache.get(sig) ?? fallback;
+
+    if (!this._inlineTplPending.has(sig) && this.hass?.callWS) {
+      this._inlineTplPending.add(sig);
+      this.hass.callWS({
+        type: "render_template",
+        template: str,
+        variables: vars,
+        strict: false,
+      }).then((res) => {
+        this._inlineTplCache.set(sig, res?.result != null ? String(res.result) : "");
+        this.requestUpdate();
+      }).catch(() => {
+        this._inlineTplCache.set(sig, "");
+      }).finally(() => {
+        this._inlineTplPending.delete(sig);
+      });
+    }
+
+    return fallback;
+  }
+
+  _getSlotButtons(prefix) {
+    const configured = Array.isArray(this._config?.[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
+    if (configured.length) return configured.map((btn) => normalizeSlotButton(btn));
+    return [normalizeSlotButton({
+      icon: this._config?.[prefix + "icon"] || "mdi:gesture-tap",
+      name: this._config?.[prefix + "name"] ?? this._config?.[prefix + "label"] ?? "",
+      card_color: this._config?.[prefix + "card_color"] || "",
+      icon_color: this._config?.[prefix + "icon_color"] || "",
+      label_color: this._config?.[prefix + "label_color"] || "",
+      show_badge: this._config?.[prefix + "show_badge"] === true,
+      badge_source: this._config?.[prefix + "badge_source"] || "entity",
+      badge_entity: this._config?.[prefix + "badge_entity"] || "",
+      badge_template: this._config?.[prefix + "badge_template"] || "",
+      badge_color: this._config?.[prefix + "badge_color"] || "",
+      badge_text_color: this._config?.[prefix + "badge_text_color"] || "",
+    })];
   }
 
   _unsubscribeTemplate(key) {
@@ -2520,8 +2701,7 @@ class HkiHeaderCard extends LitElement {
   _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
-    const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
-    const label = cfg[prefix + "label"] || "";
+    const buttons = this._getSlotButtons(prefix);
     const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
@@ -2534,74 +2714,109 @@ class HkiHeaderCard extends LitElement {
     const buttonPillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${buttonPaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${buttonPillStyle}`;
     
-    // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
-    // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
-    if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
-    const state = this._slotHoldState[stateKey];
-
-    const startHold = () => {
-      state.holdActive = false;
-      // Always set timer so a long-press is recognized even when holdAction is "none"
-      state.holdTimer = setTimeout(() => {
-        state.holdActive = true;
-        if (holdAction && holdAction.action !== "none") {
-          this._handleSlotTapAction(holdAction, slotName, null, slotPopupConfig);
-        }
-      }, 500);
-    };
-
-    const endHold = () => {
-      if (state.holdTimer) {
-        clearTimeout(state.holdTimer);
-        state.holdTimer = null;
-      }
-      if (!state.holdActive) {
-        // Use click debouncing for double-tap detection
-        state.clickCount++;
-        if (state.clickCount === 1) {
-          state.clickTimer = setTimeout(() => {
-            if (state.clickCount === 1) {
-              this._handleSlotTapAction(tapAction, slotName, null, slotPopupConfig);
-            }
-            state.clickCount = 0;
-          }, 250);
-        } else if (state.clickCount === 2) {
-          clearTimeout(state.clickTimer);
-          state.clickCount = 0;
-          this._handleSlotTapAction(doubleTapAction, slotName, null, slotPopupConfig);
-        }
-      }
-      state.holdActive = false;
-    };
-
-    const cancelHold = () => {
-      if (state.holdTimer) {
-        clearTimeout(state.holdTimer);
-        state.holdTimer = null;
-      }
-      state.holdActive = false;
-    };
-    
-    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
-    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
-    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
-    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
-    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
-    
     return html`
-      <div 
-        class="info-item ${pillClass}" 
-        style="${combinedStyle}"
-        @mousedown=${handleMouseDown}
-        @mouseup=${handleMouseUp}
-        @mouseleave=${handleMouseLeave}
-        @touchstart=${handleTouchStart}
-        @touchend=${handleTouchEnd}
-        @contextmenu=${(e) => e.preventDefault()}
-      >
-        <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon} style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
-        ${label ? html`<span>${label}</span>` : ''}
+      <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${buttons.map((rawBtn, idx) => {
+          const btn = normalizeSlotButton(rawBtn);
+          const icon = this._resolveInlineTemplate(btn.icon || "mdi:gesture-tap", "mdi:gesture-tap");
+          const name = this._resolveInlineTemplate(btn.name || "", "");
+          const cardColor = this._resolveInlineTemplate(btn.card_color || "", "");
+          const iconColor = this._resolveInlineTemplate(btn.icon_color || "", "");
+          const labelColor = this._resolveInlineTemplate(btn.label_color || "", "");
+          const badgeColor = this._resolveInlineTemplate(btn.badge_color || "", "");
+          const badgeTextColor = this._resolveInlineTemplate(btn.badge_text_color || "", "");
+
+          let badgeText = "";
+          if (btn.show_badge) {
+            if (btn.badge_source === "template") {
+              badgeText = this._resolveInlineTemplate(btn.badge_template || "", "");
+            } else if (btn.badge_entity && this.hass?.states?.[btn.badge_entity]) {
+              badgeText = String(this.hass.states[btn.badge_entity].state ?? "");
+            }
+          }
+          const showBadge = btn.show_badge && !!badgeText;
+
+          const isIconOnly = !name;
+          const circleSize = Math.max(slotStyle.iconSize + (buttonPaddingY * 2), slotStyle.iconSize + 10);
+          const iconStyle = iconColor ? `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColor};` : `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
+          const labelStyle = labelColor ? `color:${labelColor};` : "";
+          const buttonStyle = `${combinedStyle}${cardColor ? `background:${cardColor};` : ""}${isIconOnly ? `width:${circleSize}px;height:${circleSize}px;justify-content:center;padding:0;border-radius:50%;` : ""}`;
+
+          const key = `${stateKey}_${idx}`;
+          if (!this._slotHoldState) this._slotHoldState = {};
+          if (!this._slotHoldState[key]) this._slotHoldState[key] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+          const state = this._slotHoldState[key];
+
+          const startHold = () => {
+            state.holdActive = false;
+            state.holdTimer = setTimeout(() => {
+              state.holdActive = true;
+              if (holdAction && holdAction.action !== "none") {
+                this._handleSlotTapAction(holdAction, slotName, null, slotPopupConfig);
+              }
+            }, 500);
+          };
+
+          const endHold = () => {
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
+            }
+            if (!state.holdActive) {
+              state.clickCount++;
+              if (state.clickCount === 1) {
+                state.clickTimer = setTimeout(() => {
+                  if (state.clickCount === 1) {
+                    this._handleSlotTapAction(tapAction, slotName, null, slotPopupConfig);
+                  }
+                  state.clickCount = 0;
+                }, 250);
+              } else if (state.clickCount === 2) {
+                clearTimeout(state.clickTimer);
+                state.clickCount = 0;
+                this._handleSlotTapAction(doubleTapAction, slotName, null, slotPopupConfig);
+              }
+            }
+            state.holdActive = false;
+          };
+
+          const cancelHold = () => {
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
+            }
+            state.holdActive = false;
+          };
+
+          const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+          const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+          const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+          const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+          const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
+          return html`
+            <div
+              class="info-item ${pillClass} hki-slot-button"
+              style="${buttonStyle}"
+              @mousedown=${handleMouseDown}
+              @mouseup=${handleMouseUp}
+              @mouseleave=${handleMouseLeave}
+              @touchstart=${handleTouchStart}
+              @touchend=${handleTouchEnd}
+              @contextmenu=${(e) => e.preventDefault()}
+            >
+              <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
+                <ha-icon .icon=${icon || "mdi:gesture-tap"} style="${iconStyle}"></ha-icon>
+              </div>
+              ${name ? html`<span style="${labelStyle}">${name}</span>` : ''}
+              ${showBadge ? html`
+                <span class="hki-slot-button-badge" style="${badgeColor ? `background:${badgeColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}">
+                  ${badgeText}
+                </span>
+              ` : ''}
+            </div>
+          `;
+        })}
       </div>
     `;
   }
@@ -3731,7 +3946,7 @@ class HkiHeaderCardEditor extends LitElement {
     const alwaysInclude = [
       'height_vh', 'min_height', 'max_height', 'background',
       'persons_enabled',
-      'top_bar_enabled', 'top_bar_left', 'top_bar_center', 'top_bar_right'
+      'top_bar_enabled'
     ];
     
     alwaysInclude.forEach(key => {
@@ -3823,6 +4038,13 @@ class HkiHeaderCardEditor extends LitElement {
             stripped[key] = cleaned;
           }
         }
+        continue;
+      }
+
+      // Clean up slot button arrays
+      if (key.endsWith('_buttons') && Array.isArray(value)) {
+        const cleanedButtons = value.map((btn) => cleanupSlotButton(btn)).filter(Boolean);
+        if (cleanedButtons.length > 0) stripped[key] = cleanedButtons;
         continue;
       }
       
@@ -3924,18 +4146,21 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.bottom_info_pill_border_color !== undefined) nested.bottom_info.pill_border_color = flat.bottom_info_pill_border_color;
     }
     
-    // Nest slots - always include them even if "none" for clarity
+    // Nest slots when they are explicitly configured
     ['top_bar', 'bottom_bar'].forEach(bar => {
     ['left', 'center', 'right'].forEach(slot => {
+      const prefix = `${bar}_${slot}_`;
       const slotType = flat[`${bar}_${slot}`];
+      const hasAnySlotField = Object.keys(flat).some((k) => k.startsWith(prefix));
       
-      // If slot is "none" or undefined, just set type: "none"
+      // Skip untouched slots entirely so we don't write unused keys.
+      if (slotType === undefined && !hasAnySlotField) return;
+
       if (!slotType || slotType === "none") {
         nested[`${bar}_${slot}`] = { type: "none" };
         return;
       }
       
-      const prefix = `${bar}_${slot}_`;
       const slotConfig = { type: slotType };
       
       // Common properties
@@ -3997,11 +4222,27 @@ class HkiHeaderCardEditor extends LitElement {
           });
         }
       } else if (slotType === "button") {
-        const hasButtonConfig = flat[prefix + "icon"] !== undefined || flat[prefix + "label"] !== undefined;
+        const buttonKeys = [
+          "icon", "name", "label", "card_color", "icon_color", "label_color",
+          "show_badge", "badge_source", "badge_entity", "badge_template",
+          "badge_color", "badge_text_color", "buttons",
+        ];
+        const hasButtonConfig = buttonKeys.some((k) => flat[prefix + k] !== undefined);
         if (hasButtonConfig) {
           slotConfig.button = {};
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
-          if (flat[prefix + "label"] !== undefined) slotConfig.button.label = flat[prefix + "label"];
+          if (flat[prefix + "name"] !== undefined) slotConfig.button.name = flat[prefix + "name"];
+          else if (flat[prefix + "label"] !== undefined) slotConfig.button.name = flat[prefix + "label"];
+          if (flat[prefix + "card_color"] !== undefined) slotConfig.button.card_color = flat[prefix + "card_color"];
+          if (flat[prefix + "icon_color"] !== undefined) slotConfig.button.icon_color = flat[prefix + "icon_color"];
+          if (flat[prefix + "label_color"] !== undefined) slotConfig.button.label_color = flat[prefix + "label_color"];
+          if (flat[prefix + "show_badge"] !== undefined) slotConfig.button.show_badge = flat[prefix + "show_badge"];
+          if (flat[prefix + "badge_source"] !== undefined) slotConfig.button.badge_source = flat[prefix + "badge_source"];
+          if (flat[prefix + "badge_entity"] !== undefined) slotConfig.button.badge_entity = flat[prefix + "badge_entity"];
+          if (flat[prefix + "badge_template"] !== undefined) slotConfig.button.badge_template = flat[prefix + "badge_template"];
+          if (flat[prefix + "badge_color"] !== undefined) slotConfig.button.badge_color = flat[prefix + "badge_color"];
+          if (flat[prefix + "badge_text_color"] !== undefined) slotConfig.button.badge_text_color = flat[prefix + "badge_text_color"];
+          if (Array.isArray(flat[prefix + "buttons"])) slotConfig.button.buttons = flat[prefix + "buttons"].map((b) => cleanupSlotButton(b)).filter(Boolean);
         }
       } else if (slotType === "notifications" || slotType === "custom" || slotType === "card") {
         if (flat[prefix + "card"] !== undefined) {
@@ -4366,8 +4607,133 @@ class HkiHeaderCardEditor extends LitElement {
       
       ${type === "button" ? html`
         <div class="section" style="margin-top: 12px;">Button Settings</div>
-        <ha-icon-picker label="Icon" .value=${this._config[prefix + "icon"] || "mdi:gesture-tap"} data-field="${prefix}icon" @value-changed=${(e) => this._changed({target: {value: e.detail.value, dataset: {field: prefix + "icon"}}})}></ha-icon-picker>
-        <ha-textfield label="Label (optional)" .value=${this._config[prefix + "label"] || ""} data-field="${prefix}label" @input=${this._changed}></ha-textfield>
+        ${(() => {
+          const configured = Array.isArray(this._config[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
+          const fallback = normalizeSlotButton({
+            icon: this._config[prefix + "icon"] || "mdi:gesture-tap",
+            name: this._config[prefix + "name"] ?? this._config[prefix + "label"] ?? "",
+            card_color: this._config[prefix + "card_color"] || "",
+            icon_color: this._config[prefix + "icon_color"] || "",
+            label_color: this._config[prefix + "label_color"] || "",
+            show_badge: this._config[prefix + "show_badge"] === true,
+            badge_source: this._config[prefix + "badge_source"] || "entity",
+            badge_entity: this._config[prefix + "badge_entity"] || "",
+            badge_template: this._config[prefix + "badge_template"] || "",
+            badge_color: this._config[prefix + "badge_color"] || "",
+            badge_text_color: this._config[prefix + "badge_text_color"] || "",
+          });
+          const buttons = configured.length ? configured.map((b) => normalizeSlotButton(b)) : [fallback];
+
+          const saveButtons = (nextButtons) => {
+            const cleaned = nextButtons.map((b) => cleanupSlotButton(b)).filter(Boolean);
+            const first = cleaned[0] || createDefaultSlotButton();
+            this._config = {
+              ...this._config,
+              [prefix + "buttons"]: cleaned,
+              [prefix + "icon"]: first.icon || "mdi:gesture-tap",
+              [prefix + "name"]: first.name || "",
+              [prefix + "label"]: first.name || "", // backward compatibility
+            };
+            const strippedConfig = this._stripDefaults(this._config);
+            this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+            this.requestUpdate();
+          };
+
+          const setButton = (idx, patch) => {
+            const next = buttons.map((b, i) => (i === idx ? normalizeSlotButton({ ...b, ...patch }) : b));
+            saveButtons(next);
+          };
+
+          return html`
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">
+              ${buttons.map((_, idx) => html`
+                <button type="button"
+                  style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:14px;"
+                  title="Button ${idx + 1}">
+                  ${idx + 1}
+                </button>
+              `)}
+              <button type="button"
+                style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"
+                @click=${(e) => { e.stopPropagation(); saveButtons([...buttons, createDefaultSlotButton()]); }}>
+                <ha-icon icon="mdi:plus"></ha-icon>
+              </button>
+            </div>
+
+            ${buttons.map((btn, idx) => {
+              const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              return html`
+                <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <p style="font-size:11px;opacity:0.7;margin:0;font-weight:600;">Button ${idx + 1}</p>
+                    ${buttons.length > 1 ? html`
+                      <mwc-icon-button @click=${() => saveButtons(buttons.filter((_, i) => i !== idx))}>
+                        <ha-icon icon="mdi:delete"></ha-icon>
+                      </mwc-icon-button>
+                    ` : ''}
+                  </div>
+
+                  ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
+                    value: btn.icon || "",
+                    onchange: (v) => setButton(idx, { icon: v || "mdi:gesture-tap" }),
+                  })}
+                  ${this._renderTemplateEditor("Name (optional, Jinja)", `${prefix}btn_${idx}_name`, {
+                    value: btn.name || "",
+                    onchange: (v) => setButton(idx, { name: v || "" }),
+                  })}
+
+                  <div class="inline-fields-2">
+                    ${this._renderTemplateEditor("Card Color (Jinja)", `${prefix}btn_${idx}_card_color`, {
+                      value: btn.card_color || "",
+                      onchange: (v) => setButton(idx, { card_color: v || "" }),
+                    })}
+                    ${this._renderTemplateEditor("Icon Color (Jinja)", `${prefix}btn_${idx}_icon_color`, {
+                      value: btn.icon_color || "",
+                      onchange: (v) => setButton(idx, { icon_color: v || "" }),
+                    })}
+                  </div>
+                  ${this._renderTemplateEditor("Name Color (Jinja)", `${prefix}btn_${idx}_label_color`, {
+                    value: btn.label_color || "",
+                    onchange: (v) => setButton(idx, { label_color: v || "" }),
+                  })}
+
+                  <div class="switch-row" style="margin-top: 6px;">
+                    <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
+                    <span>Show badge</span>
+                  </div>
+
+                  ${btn.show_badge ? html`
+                    <ha-select label="Badge Source" .value=${badgeSource}
+                      @selected=${(e) => setButton(idx, { badge_source: e.target.value || "entity" })}
+                      @closed=${(e) => e.stopPropagation()}>
+                      <mwc-list-item value="entity">Entity state</mwc-list-item>
+                      <mwc-list-item value="template">Jinja template</mwc-list-item>
+                    </ha-select>
+                    ${badgeSource === "entity" ? html`
+                      <ha-entity-picker .hass=${this.hass} .value=${btn.badge_entity || ""} label="Badge Entity"
+                        @value-changed=${(e) => setButton(idx, { badge_entity: e.detail.value || "" })}></ha-entity-picker>
+                    ` : html`
+                      ${this._renderTemplateEditor("Badge Template (Jinja)", `${prefix}btn_${idx}_badge_template`, {
+                        value: btn.badge_template || "",
+                        onchange: (v) => setButton(idx, { badge_template: v || "" }),
+                      })}
+                    `}
+                    <div class="inline-fields-2">
+                      ${this._renderTemplateEditor("Badge Color (Jinja)", `${prefix}btn_${idx}_badge_color`, {
+                        value: btn.badge_color || "",
+                        onchange: (v) => setButton(idx, { badge_color: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Badge Text Color (Jinja)", `${prefix}btn_${idx}_badge_text_color`, {
+                        value: btn.badge_text_color || "",
+                        onchange: (v) => setButton(idx, { badge_text_color: v || "" }),
+                      })}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            })}
+          `;
+        })()}
       ` : ''}
       
       ${(type === "notifications" || type === "custom") ? html`
@@ -4457,9 +4823,14 @@ class HkiHeaderCardEditor extends LitElement {
 
   _renderSlotPopupEditor(prefix, entityId = null) {
     const cfg = this._config;
+    const slotActions = [
+      cfg[prefix + "tap_action"],
+      cfg[prefix + "hold_action"],
+      cfg[prefix + "double_tap_action"],
+    ].filter(Boolean);
     const effectiveEntity = entityId
-      || cfg[prefix + "tap_action"]?.entity
-      || cfg[prefix + "hold_action"]?.entity
+      || slotActions.find((a) => a?.action === "hki-more-info" && a?.entity)?.entity
+      || slotActions.find((a) => a?.entity)?.entity
       || null;
     const domain = effectiveEntity ? effectiveEntity.split('.')[0] : null;
     const selectedEntity = (effectiveEntity && this.hass?.states?.[effectiveEntity]) || null;
@@ -5126,7 +5497,11 @@ class HkiHeaderCardEditor extends LitElement {
     const pc = personConfig;
     const pv = (k) => pc[k];
     const pp = patchPerson;
-    const p_ent = pc.entity || '';
+    const personActions = [pc.tap_action, pc.hold_action, pc.double_tap_action].filter(Boolean);
+    const p_ent = personActions.find((a) => a?.action === "hki-more-info" && a?.entity)?.entity
+      || personActions.find((a) => a?.entity)?.entity
+      || pc.entity
+      || '';
     const p_domain = p_ent ? p_ent.split('.')[0] : null;
     const p_entState = (p_ent && this.hass?.states?.[p_ent]) || null;
     const p_hasChildren = p_entState?.attributes?.entity_id && Array.isArray(p_entState.attributes.entity_id);
