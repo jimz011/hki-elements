@@ -3470,7 +3470,7 @@ class HkiHeaderCard extends LitElement {
             <ha-icon icon="mdi:view-headline"></ha-icon>
             <div class="edit-placeholder-text">
               <div class="edit-placeholder-title">HKI Header Card</div>
-              <div class="edit-placeholder-subtitle">Fixed-position header • This placeholder makes the card easy to select in edit mode</div>
+              <div class="edit-placeholder-subtitle">Fixed-position header • This header will be hidden in edit mode for easier editing, when editing the header you'll see a preview of the header.</div>
             </div>
           </div>
         </ha-card>
@@ -3508,8 +3508,8 @@ class HkiHeaderCard extends LitElement {
   static getStubConfig() {
     return {
       ...DEFAULTS,
-      title: "{% if is_state('sun.sun','above_horizon') %}Good day, {{ user }}{% else %}Good evening, {{ user }}{% endif %}",
-      subtitle: "{{ now().strftime('%A %H:%M') }}",
+      title: "Welcome Home",
+      subtitle: "Tuesday 19:45",
       font_family: "roboto",
     };
   }
@@ -6229,6 +6229,6 @@ window.customCards.push({
   type: CARD_NAME,
   name: "HKI Header Card",
   description: "Full Width Customizable Header.",
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });

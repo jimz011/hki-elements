@@ -210,7 +210,23 @@
     }
 
     static getStubConfig() {
-      return {};
+      return {
+        type: `custom:${CARD_TYPE}`,
+        name: "Living Room Lamp",
+        icon: "mdi:lightbulb",
+        card_layout: "hki_default",
+        show_name: true,
+        show_state: true,
+        state_label: "On",
+        show_label: true,
+        label: "72%",
+        show_icon: true,
+        show_icon_circle: true,
+        show_info_display: false,
+        icon_color: "#ffb300",
+        card_color: "rgba(255,255,255,0.08)",
+        border_radius: 18,
+      };
     }
 
     // ─── CONFIG FORMAT: FLAT (internal) ↔ NESTED (user YAML) ─────────────────

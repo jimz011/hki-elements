@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-07 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-08 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3986,7 +3986,7 @@ class HkiHeaderCard extends LitElement {
             <ha-icon icon="mdi:view-headline"></ha-icon>
             <div class="edit-placeholder-text">
               <div class="edit-placeholder-title">HKI Header Card</div>
-              <div class="edit-placeholder-subtitle">Fixed-position header • This placeholder makes the card easy to select in edit mode</div>
+              <div class="edit-placeholder-subtitle">Fixed-position header • This header will be hidden in edit mode for easier editing, when editing the header you'll see a preview of the header.</div>
             </div>
           </div>
         </ha-card>
@@ -4024,8 +4024,8 @@ class HkiHeaderCard extends LitElement {
   static getStubConfig() {
     return {
       ...DEFAULTS,
-      title: "{% if is_state('sun.sun','above_horizon') %}Good day, {{ user }}{% else %}Good evening, {{ user }}{% endif %}",
-      subtitle: "{{ now().strftime('%A %H:%M') }}",
+      title: "Welcome Home",
+      subtitle: "Tuesday 19:45",
       font_family: "roboto",
     };
   }
@@ -6745,7 +6745,7 @@ window.customCards.push({
   type: CARD_NAME,
   name: "HKI Header Card",
   description: "Full Width Customizable Header.",
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
 
@@ -6968,7 +6968,23 @@ window.customCards.push({
     }
 
     static getStubConfig() {
-      return {};
+      return {
+        type: `custom:${CARD_TYPE}`,
+        name: "Living Room Lamp",
+        icon: "mdi:lightbulb",
+        card_layout: "hki_default",
+        show_name: true,
+        show_state: true,
+        state_label: "On",
+        show_label: true,
+        label: "72%",
+        show_icon: true,
+        show_icon_circle: true,
+        show_info_display: false,
+        icon_color: "#ffb300",
+        card_color: "rgba(255,255,255,0.08)",
+        border_radius: 18,
+      };
     }
 
     // ─── CONFIG FORMAT: FLAT (internal) ↔ NESTED (user YAML) ─────────────────
@@ -23344,6 +23360,22 @@ class HkiNavigationCard extends LitElement {
     return false;
   }
 
+  _isInPreviewContext() {
+    let node = this;
+    while (node) {
+      const root = node.getRootNode?.();
+      if (!root || root === document) break;
+      const host = root.host;
+      if (!host) break;
+      const tag = (host.tagName || "").toLowerCase();
+      if (tag === "hui-card-preview" || tag === "hui-dialog-edit-card" || tag === "ha-dialog" || tag === "ha-dialog-scroller") {
+        return true;
+      }
+      node = host;
+    }
+    return false;
+  }
+
   // Optimized Deep Query: Passes results array ref instead of concat
   _queryDeep(selector, root = document, maxDepth = 12, results = [], visited = new Set()) {
     const walk = (node, depth) => {
@@ -24191,6 +24223,8 @@ class HkiNavigationCard extends LitElement {
     if (!this._config) return html``;
     const c = this._config;
     const editMode = this._isEditMode();
+    const inPreviewContext = this._isInPreviewContext();
+    const showEditPlaceholder = editMode && !inPreviewContext;
     const offsetX = this._computeOffsetX();
     const offsetY = c.offset_y;
 
@@ -24228,7 +24262,7 @@ class HkiNavigationCard extends LitElement {
     const shadowVarStyle = shadowVars.length ? `; ${shadowVars.join(";")}` : "";
     const base = c.base?.button;
 
-    const placeholder = editMode ? html`
+    const placeholder = showEditPlaceholder ? html`
           <ha-card class="edit-placeholder">
             <div class="edit-placeholder-inner">
               <ha-icon icon="mdi:gesture-tap-button"></ha-icon>
@@ -25011,7 +25045,7 @@ window.customCards.push({
   type: CARD_TYPE,
   name: "HKI Navigation Card",
   description: "Highly Customizable Navigation Bar.",
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
 });
 

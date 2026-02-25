@@ -1109,6 +1109,22 @@ class HkiNavigationCard extends LitElement {
     return false;
   }
 
+  _isInPreviewContext() {
+    let node = this;
+    while (node) {
+      const root = node.getRootNode?.();
+      if (!root || root === document) break;
+      const host = root.host;
+      if (!host) break;
+      const tag = (host.tagName || "").toLowerCase();
+      if (tag === "hui-card-preview" || tag === "hui-dialog-edit-card" || tag === "ha-dialog" || tag === "ha-dialog-scroller") {
+        return true;
+      }
+      node = host;
+    }
+    return false;
+  }
+
   // Optimized Deep Query: Passes results array ref instead of concat
   _queryDeep(selector, root = document, maxDepth = 12, results = [], visited = new Set()) {
     const walk = (node, depth) => {
@@ -1956,6 +1972,8 @@ class HkiNavigationCard extends LitElement {
     if (!this._config) return html``;
     const c = this._config;
     const editMode = this._isEditMode();
+    const inPreviewContext = this._isInPreviewContext();
+    const showEditPlaceholder = editMode && !inPreviewContext;
     const offsetX = this._computeOffsetX();
     const offsetY = c.offset_y;
 
@@ -1993,7 +2011,7 @@ class HkiNavigationCard extends LitElement {
     const shadowVarStyle = shadowVars.length ? `; ${shadowVars.join(";")}` : "";
     const base = c.base?.button;
 
-    const placeholder = editMode ? html`
+    const placeholder = showEditPlaceholder ? html`
           <ha-card class="edit-placeholder">
             <div class="edit-placeholder-inner">
               <ha-icon icon="mdi:gesture-tap-button"></ha-icon>
@@ -2776,6 +2794,6 @@ window.customCards.push({
   type: CARD_TYPE,
   name: "HKI Navigation Card",
   description: "Highly Customizable Navigation Bar.",
-  preview: false,
+  preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
 });
