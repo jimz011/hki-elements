@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-06 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3980,9 +3980,8 @@ class HkiHeaderCard extends LitElement {
     }
 
     if (editMode && cfg.fixed) {
-      const placeholderHeight = Math.max(96, cfg.min_height || 0);
       return html`
-        <ha-card class="edit-placeholder" style="height:${placeholderHeight}px;">
+        <ha-card class="edit-placeholder">
           <div class="edit-placeholder-inner">
             <ha-icon icon="mdi:view-headline"></ha-icon>
             <div class="edit-placeholder-text">
