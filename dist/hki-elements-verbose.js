@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-03 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-04 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1413,6 +1413,33 @@ class HkiHeaderCard extends LitElement {
       .header-spacer {
         width: 100%;
         display: block;
+      }
+
+      .edit-placeholder {
+        border-radius: 14px;
+        border: 2px dashed rgba(160, 160, 160, 0.35);
+        background: rgba(0, 0, 0, 0.02);
+        box-shadow: none;
+      }
+
+      .edit-placeholder-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .edit-placeholder-text {
+        min-width: 0;
+      }
+
+      .edit-placeholder-title {
+        font-weight: 800;
+      }
+
+      .edit-placeholder-subtitle {
+        opacity: 0.7;
+        font-size: 12px;
       }
 
       /* PERSON AVATARS */
@@ -3957,6 +3984,21 @@ class HkiHeaderCard extends LitElement {
     `;
 
     if (!effectiveFixed) return cardMarkup;
+
+    if (this._editMode) {
+      const placeholderHeight = Math.max(96, spacerH || 0, cfg.min_height || 0);
+      return html`
+        <ha-card class="edit-placeholder" style="height:${placeholderHeight}px;">
+          <div class="edit-placeholder-inner">
+            <ha-icon icon="mdi:view-headline"></ha-icon>
+            <div class="edit-placeholder-text">
+              <div class="edit-placeholder-title">HKI Header Card</div>
+              <div class="edit-placeholder-subtitle">Fixed-position header placeholder for easier selection in edit mode</div>
+            </div>
+          </div>
+        </ha-card>
+      `;
+    }
 
     return html`
       <div class="header-fixed" style=${wrapperStyle}>${cardMarkup}</div>
