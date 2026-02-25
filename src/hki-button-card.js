@@ -90,15 +90,162 @@
   window.HKI?.ensurePopupAnimations?.();
 
   // Prevent background page scroll when any popup is open
-    // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
+  // Scroll locking is shared across HKI cards (implemented in _bundle-header.js)
   const __hkiLockScroll = () => window.HKI?.lockScroll?.();
   const __hkiUnlockScroll = () => window.HKI?.unlockScroll?.();
+  const HKI_POPUP_EDITOR_OPTIONS = window.HKI?.POPUP_EDITOR_OPTIONS || {
+    animations: [
+      { value: "none", label: "None" },
+      { value: "fade", label: "Fade" },
+      { value: "scale", label: "Scale" },
+      { value: "zoom", label: "Zoom" },
+      { value: "slide-up", label: "Slide Up" },
+      { value: "slide-down", label: "Slide Down" },
+      { value: "slide-left", label: "Slide Left" },
+      { value: "slide-right", label: "Slide Right" },
+      { value: "flip", label: "Flip" },
+      { value: "bounce", label: "Bounce" },
+      { value: "rotate", label: "Rotate" },
+      { value: "drop", label: "Drop" },
+      { value: "swing", label: "Swing" },
+    ],
+    width: [
+      { value: "auto", label: "Auto (Responsive)" },
+      { value: "default", label: "Default (400px)" },
+      { value: "custom", label: "Custom" },
+    ],
+    height: [
+      { value: "auto", label: "Auto (Responsive)" },
+      { value: "default", label: "Default (600px)" },
+      { value: "custom", label: "Custom" },
+    ],
+    timeFormats: [
+      { value: "auto", label: "Auto" },
+      { value: "12", label: "12-Hour Clock" },
+      { value: "24", label: "24-Hour Clock" },
+    ],
+  };
+  const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
+    borderStyles: [
+      { value: "solid", label: "solid" },
+      { value: "dashed", label: "dashed" },
+      { value: "dotted", label: "dotted" },
+      { value: "double", label: "double" },
+      { value: "none", label: "none" },
+    ],
+    buttonActionOptions: [
+      { value: "toggle", label: "Toggle" },
+      { value: "hki-more-info", label: "More Info (HKI)" },
+      { value: "more-info", label: "More Info (Native)" },
+      { value: "navigate", label: "Navigate" },
+      { value: "perform-action", label: "Perform Action" },
+      { value: "url", label: "URL" },
+      { value: "fire-dom-event", label: "Fire DOM Event" },
+      { value: "none", label: "None" },
+    ],
+    headerActionOptions: [
+      { value: "none", label: "None" },
+      { value: "navigate", label: "Navigate" },
+      { value: "back", label: "Back" },
+      { value: "menu", label: "Toggle Menu" },
+      { value: "url", label: "Open URL" },
+      { value: "more-info", label: "More Info" },
+      { value: "hki-more-info", label: "HKI More Info" },
+      { value: "toggle", label: "Toggle Entity" },
+      { value: "perform-action", label: "Perform Action" },
+    ],
+    popupBottomBarActionOptions: [
+      { value: "toggle", label: "Toggle" },
+      { value: "more-info", label: "More Info" },
+      { value: "hki-more-info", label: "HKI More Info" },
+      { value: "navigate", label: "Navigate" },
+      { value: "perform-action", label: "Perform Action" },
+      { value: "url", label: "URL" },
+      { value: "none", label: "None" },
+    ],
+    popupDefaultViewOptions: [
+      { value: "main", label: "Main (Group Controls)" },
+      { value: "individual", label: "Individual Entities" },
+    ],
+    popupDefaultSectionOptions: [
+      { value: "last", label: "Last Used" },
+      { value: "brightness", label: "Always Brightness" },
+      { value: "color", label: "Always Color" },
+      { value: "temperature", label: "Always Temperature" },
+    ],
+    popupDefaultSectionOptionsTagged: [
+      { value: "last", label: "Last Used (Default)" },
+      { value: "brightness", label: "Always Brightness" },
+      { value: "color", label: "Always Color" },
+      { value: "temperature", label: "Always Temperature" },
+    ],
+    popupBottomBarAlignOptions: [
+      { value: "spread", label: "Spread" },
+      { value: "start", label: "Start" },
+      { value: "center", label: "Center" },
+      { value: "end", label: "End" },
+    ],
+    popupBottomBarAlignOptionsDetailed: [
+      { value: "spread", label: "Spread (space around)" },
+      { value: "start", label: "Start (left aligned)" },
+      { value: "center", label: "Center" },
+      { value: "end", label: "End (right aligned)" },
+    ],
+  };
 
   
 
 
 
-class HkiButtonCard extends LitElement {
+  class HkiButtonCard extends LitElement {
+    static BASE_DEFAULTS = Object.freeze({
+      show_name: true,
+      show_state: true,
+      show_info_display: true,
+      show_brightness: true,
+      show_scenes_button: true,
+      show_individual_button: true,
+      show_effects_button: true,
+      show_popup_scenes: true,
+      show_popup_effects: true,
+      // Default actions
+      tap_action: { action: "toggle" },
+      hold_action: { action: "hki-more-info" },
+      bar_border_radius: 40,
+      dynamic_bar_color: true,
+      popup_slider_radius: 12,
+      popup_value_font_size: 36,
+      popup_value_font_weight: 300,
+      popup_label_font_size: 16,
+      popup_label_font_weight: 400,
+      popup_time_format: "auto",
+      // Default styling offsets/sizes
+      brightness_font_weight: "bold",
+      name_offset_x: -10,
+      state_offset_x: -10,
+      label_offset_x: -10,
+      icon_offset_x: -10,
+      brightness_offset_x: 10,
+      brightness_offset_y: 10,
+      temp_badge_offset_x: 10,
+      temp_badge_offset_y: -10,
+      icon_offset_y: -4,
+      label_offset_y: 11,
+      state_offset_y: 10,
+      name_offset_y: 17,
+      name_font_weight: "bold",
+      state_font_weight: "bold",
+      size_name: 13,
+      size_state: 12,
+      size_label: -2,
+      size_brightness: 12,
+      size_icon: 30,
+      temp_badge_size: 40,
+    });
+
+    static _cloneBaseDefaults() {
+      return JSON.parse(JSON.stringify(HkiButtonCard.BASE_DEFAULTS));
+    }
     
     static getConfigElement() {
       // Guard: if editor failed to register for any reason, fall back to a minimal element.
@@ -111,7 +258,10 @@ class HkiButtonCard extends LitElement {
     }
 
     static getStubConfig() {
-      return {};
+      return {
+        type: `custom:${CARD_TYPE}`,
+        ...HkiButtonCard._cloneBaseDefaults(),
+      };
     }
 
     // ─── CONFIG FORMAT: FLAT (internal) ↔ NESTED (user YAML) ─────────────────
@@ -257,7 +407,6 @@ class HkiButtonCard extends LitElement {
       ['popup_value_font_weight',   'hki_popup','value','font_weight'],
       ['popup_blur_enabled',        'hki_popup','blur_enabled'],
       ['popup_blur_amount',         'hki_popup','blur_amount'],
-      ['popup_border_radius',       'hki_popup','border_radius'],
       ['popup_width',               'hki_popup','width'],
       ['popup_height',              'hki_popup','height'],
       ['popup_width_custom',        'hki_popup','width_custom'],
@@ -310,6 +459,8 @@ class HkiButtonCard extends LitElement {
       'icon_animation', 'icon_align', 'enable_icon_animation',
       // Custom popup
       'custom_popup',
+      // Home Assistant layout metadata (must be preserved)
+      'grid_options',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
@@ -493,48 +644,7 @@ class HkiButtonCard extends LitElement {
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
             this._config = {
-        show_name: true,
-        show_state: true,
-        show_info_display: true,
-        show_brightness: true,
-        show_scenes_button: true,
-        show_individual_button: true,
-        show_effects_button: true,
-        show_popup_scenes: true,
-        show_popup_effects: true,
-        // Default actions
-        tap_action: { action: 'toggle' },
-        hold_action: { action: 'hki-more-info' },
-        bar_border_radius: 40,
-        dynamic_bar_color: true,
-        popup_slider_radius: 12,
-        popup_value_font_size: 36,
-        popup_value_font_weight: 300,
-        popup_label_font_size: 16,
-        popup_label_font_weight: 400,
-        popup_time_format: 'auto',
-        // Default styling offsets/sizes (not written to YAML by editor unless user changes)
-        brightness_font_weight: 'bold',
-        name_offset_x: -10,
-        state_offset_x: -10,
-        label_offset_x: -10,
-        icon_offset_x: -10,
-        brightness_offset_x: 10,
-        brightness_offset_y: 10,
-        temp_badge_offset_x: 10,
-        temp_badge_offset_y: -10,
-        icon_offset_y: -4,
-        label_offset_y: 11,
-        state_offset_y: 10,
-        name_offset_y: 17,
-        name_font_weight: 'bold',
-        state_font_weight: 'bold',
-        size_name: 13,
-        size_state: 12,
-        size_label: -2,
-        size_brightness: 12,
-        size_icon: 30,
-        temp_badge_size: 40,
+        ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
       // Use the flat (migrated) config for user-override checks below
@@ -642,7 +752,7 @@ class HkiButtonCard extends LitElement {
 
       // Ensure badge layout sizes to content inside HA stacks (avoids large gaps)
       this._applyHostLayoutSizing();
-}
+      }
 
     connectedCallback() {
       super.connectedCallback();
@@ -721,7 +831,7 @@ class HkiButtonCard extends LitElement {
           // Subsequent updates - can use default delay
           this._scheduleTemplateSetup?.();
         }
-}
+      }
       
       // Logic for popup updates
       if (changedProps.has("hass")) {
@@ -757,7 +867,7 @@ class HkiButtonCard extends LitElement {
               }
             }
           }
-if (!shouldUpdate && oldEntity && newEntity && 
+          if (!shouldUpdate && oldEntity && newEntity && 
               oldEntity.state === newEntity.state &&
               JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
             return;
@@ -767,58 +877,58 @@ if (!shouldUpdate && oldEntity && newEntity &&
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';
 
           if (!isDropdownFocused) {
-          // Custom popup: update embedded card with new hass
-          if (this._popupType === 'custom') {
-            // If this custom popup was opened without an entity, there is nothing to
-            // diff/track in hass. Re-rendering the entire portal on every hass update
-            // causes rapid rebuilds ("go crazy") and can prevent closing.
-            // In that case, only forward the latest hass to the embedded card.
-            if (!trackedId) {
+            // Custom popup: update embedded card with new hass
+            if (this._popupType === 'custom') {
+              // If this custom popup was opened without an entity, there is nothing to
+              // diff/track in hass. Re-rendering the entire portal on every hass update
+              // causes rapid rebuilds ("go crazy") and can prevent closing.
+              // In that case, only forward the latest hass to the embedded card.
+              if (!trackedId) {
+                const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
+                const cardElement = cardContainer?.querySelector('*:not([style])');
+                if (cardElement && cardElement.hass !== this.hass) {
+                  cardElement.hass = this.hass;
+                }
+                return;
+              }
+
               const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
               const cardElement = cardContainer?.querySelector('*:not([style])');
               if (cardElement && cardElement.hass !== this.hass) {
                 cardElement.hass = this.hass;
               }
+              // Still re-render to update header state/timestamp
+              this._renderCustomPopupPortal(newEntity);
               return;
             }
-
-            const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
-            const cardElement = cardContainer?.querySelector('*:not([style])');
-            if (cardElement && cardElement.hass !== this.hass) {
-              cardElement.hass = this.hass;
+            if (this._getDomain() === 'climate') {
+              this._renderClimatePopupPortal(newEntity);
+              return;
             }
-            // Still re-render to update header state/timestamp
-            this._renderCustomPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'climate') {
-            this._renderClimatePopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'alarm_control_panel') {
-            this._renderAlarmPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'cover') {
-            this._renderCoverPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'humidifier') {
-            this._renderHumidifierPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'fan') {
-            this._renderFanPopupPortal(newEntity);
-            return;
-          }
-          if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') {
-            this._renderSwitchPopupPortal(newEntity);
-            return;
-          }
-          if (this._getDomain() === 'lock') {
-            this._renderLockPopupPortal(newEntity);
-            return;
-          }
+            if (this._getDomain() === 'alarm_control_panel') {
+              this._renderAlarmPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'cover') {
+              this._renderCoverPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'humidifier') {
+              this._renderHumidifierPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'fan') {
+              this._renderFanPopupPortal(newEntity);
+              return;
+            }
+            if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') {
+              this._renderSwitchPopupPortal(newEntity);
+              return;
+            }
+            if (this._getDomain() === 'lock') {
+              this._renderLockPopupPortal(newEntity);
+              return;
+            }
 
             this._syncState();
             this._updateHeaderIcon();
@@ -1053,12 +1163,12 @@ if (!shouldUpdate && oldEntity && newEntity &&
       }
       const stateEl = this._popupPortal.querySelector('.hki-light-popup-state');
       if (stateEl) {
-	        const entity = this._getEntity();
-	        const isOn = this._isOn();
-	        const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
-	        const isOnEffective = isUnavailable ? false : isOn;
+          const entity = this._getEntity();
+          const isOn = this._isOn();
+          const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
+          const isOnEffective = isUnavailable ? false : isOn;
         const brightness = this._getBrightness();
-	        stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
+          stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
       }
     }
 
@@ -1373,9 +1483,9 @@ if (!shouldUpdate && oldEntity && newEntity &&
 
     // keep pending so release can still flush if needed; it'll be cleared there
   }, debounceMs);
-}
+    }
 
-_tileSliderClick(e) {
+    _tileSliderClick(e) {
       // Prevent click from bubbling to card
       e.stopPropagation();
     }
@@ -1944,7 +2054,7 @@ _tileSliderClick(e) {
         return;
       }
 
-// HKI specific - custom popup
+      // HKI specific - custom popup
       if (actionConfig.action === "hki-more-info") {
         this._openPopup();
         return;
@@ -2095,77 +2205,15 @@ _tileSliderClick(e) {
     }
 
     _getPopupPortalStyle() {
-      const blurEnabled = this._config.popup_blur_enabled !== false;
-      const blurAmount = this._config.popup_blur_amount !== undefined ? Number(this._config.popup_blur_amount) : 10;
-      const blur = blurEnabled && blurAmount > 0 
-        ? `backdrop-filter: blur(${blurAmount}px); -webkit-backdrop-filter: blur(${blurAmount}px); will-change: backdrop-filter;` 
-        : '';
-      return `background: rgba(0,0,0,0.7); ${blur}`;
+      return window.HKI?.getPopupBackdropStyle?.(this._config) || '';
     }
 
     _getPopupCardStyle() {
-      const cardBlurEnabled = this._config.popup_card_blur_enabled !== false;
-      const cardBlurAmount = this._config.popup_card_blur_amount !== undefined ? Number(this._config.popup_card_blur_amount) : 40;
-      let cardOpacity = this._config.popup_card_opacity !== undefined ? Number(this._config.popup_card_opacity) : 0.4;
-      
-      // For glass effect to be visible, we need transparency
-      // If blur enabled but user explicitly sets opacity to 1, use 0.7 for more visible glass effect
-      if (cardBlurEnabled && cardOpacity === 1) {
-        cardOpacity = 0.7;
-      }
-      
-      // Build background with proper opacity
-      let bg;
-      if (cardOpacity < 1 || cardBlurEnabled) {
-        // Use rgba for transparency (needed for glass effect)
-        bg = `background: rgba(28, 28, 28, ${cardOpacity});`;
-      } else {
-        // Fully opaque - use CSS variable
-        bg = `background: var(--card-background-color, #1c1c1c);`;
-      }
-      
-      // Add blur effect if enabled
-      const blur = cardBlurEnabled && cardBlurAmount > 0
-        ? `backdrop-filter: blur(${cardBlurAmount}px); -webkit-backdrop-filter: blur(${cardBlurAmount}px);`
-        : '';
-      
-      return bg + (blur ? ' ' + blur : '');
+      return window.HKI?.getPopupCardStyle?.(this._config) || '';
     }
 
     _getPopupDimensions() {
-      const widthCfg = this._config.popup_width || 'auto';
-      const heightCfg = this._config.popup_height || 'auto';
-      
-      let width = '95vw; max-width: 500px';
-      let height = '90vh; max-height: 800px';
-      
-      // Width handling
-      if (widthCfg === 'auto') {
-        width = '95vw; max-width: 500px';
-      } else if (widthCfg === 'custom') {
-        const customWidth = this._config.popup_width_custom ?? 400;
-        width = `${customWidth}px`;
-      } else if (widthCfg === 'default') {
-        width = '90%; max-width: 400px';
-      } else if (!isNaN(Number(widthCfg))) {
-        // Legacy numeric value
-        width = `${Number(widthCfg)}px`;
-      }
-      
-      // Height handling
-      if (heightCfg === 'auto') {
-        height = '90vh; max-height: 800px';
-      } else if (heightCfg === 'custom') {
-        const customHeight = this._config.popup_height_custom ?? 600;
-        height = `${customHeight}px`;
-      } else if (heightCfg === 'default') {
-        height = '600px';
-      } else if (!isNaN(Number(heightCfg))) {
-        // Legacy numeric value
-        height = `${Number(heightCfg)}px`;
-      }
-      
-      return { width, height };
+      return window.HKI?.getPopupDimensions?.(this._config) || { width: '95vw; max-width: 500px', height: '90vh; max-height: 800px' };
     }
 
     _openPopup() {
@@ -2340,37 +2388,24 @@ _tileSliderClick(e) {
       const portal = this._popupPortal;
       if (!portal) return;
 
-      const anim = this._config.popup_close_animation || 'scale';
-      const dur = this._config.popup_animation_duration ?? 300;
-
-      if (anim === 'none') {
+      const cleanup = () => {
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
         portal.remove();
         this._popupPortal = null;
         __hkiUnlockScroll();
-        return;
-      }
+      };
 
-      const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
-      if (container) {
-        container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
-        container.addEventListener('animationend', () => {
-          this._popupOpen = false;
-          this._isDragging = false;
-          this._expandedEffects = false;
-          portal.remove();
-          this._popupPortal = null;
-          __hkiUnlockScroll();
-        }, { once: true });
+      if (window.HKI?.animatePopupClose) {
+        window.HKI.animatePopupClose({
+          portal,
+          config: this._config,
+          selector: '.hki-popup-container, .hki-light-popup-container',
+          onDone: cleanup,
+        });
       } else {
-        this._popupOpen = false;
-        this._isDragging = false;
-        this._expandedEffects = false;
-        portal.remove();
-        this._popupPortal = null;
-        __hkiUnlockScroll();
+        cleanup();
       }
     }
 
@@ -2388,54 +2423,13 @@ _tileSliderClick(e) {
     }
 
     _applyOpenAnimation(portal) {
-      const anim = this._config.popup_open_animation || 'scale';
-      if (anim !== 'none') {
-        const dur = this._config.popup_animation_duration ?? 300;
-        const container = portal.querySelector('.hki-popup-container, .hki-light-popup-container');
-        if (container) {
-          container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
-        }
-      }
+      window.HKI?.animatePopupOpen?.({
+        portal,
+        config: this._config,
+        selector: '.hki-popup-container, .hki-light-popup-container',
+      });
       // Apply bottom-bar visibility for all popups
       this._applyPopupNavVisibility(portal);
-    }
-
-    _getOpenKeyframe(anim) {
-      const map = {
-        'fade':        'hki-anim-fade-in',
-        'scale':       'hki-anim-scale-in',
-        'slide-up':    'hki-anim-slide-up',
-        'slide-down':  'hki-anim-slide-down',
-        'slide-left':  'hki-anim-slide-left',
-        'slide-right': 'hki-anim-slide-right',
-        'flip':        'hki-anim-flip-in',
-        'bounce':      'hki-anim-bounce-in',
-        'zoom':        'hki-anim-zoom-in',
-        'rotate':      'hki-anim-rotate-in',
-        'drop':        'hki-anim-drop-in',
-        'swing':       'hki-anim-swing-in',
-      };
-
-      return map[anim] || 'hki-anim-fade-in';
-    }
-
-    _getCloseKeyframe(anim) {
-      const map = {
-        'fade':        'hki-anim-fade-out',
-        'scale':       'hki-anim-scale-out',
-        'slide-up':    'hki-anim-slide-out-down',
-        'slide-down':  'hki-anim-slide-out-up',
-        'slide-left':  'hki-anim-slide-out-right',
-        'slide-right': 'hki-anim-slide-out-left',
-        'flip':        'hki-anim-flip-out',
-        'bounce':      'hki-anim-scale-out',
-        'zoom':        'hki-anim-zoom-out',
-        'rotate':      'hki-anim-rotate-out',
-        'drop':        'hki-anim-drop-out',
-        'swing':       'hki-anim-swing-out',
-      };
-
-      return map[anim] || 'hki-anim-fade-out';
     }
 
     _getColorName(hue, saturation) {
@@ -5350,7 +5344,7 @@ _tileSliderClick(e) {
             <button class="nav-btn" id="coverOpen" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-up"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Open</span>'}</button>
             <button class="nav-btn" id="coverStop" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:stop"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Stop</span>'}</button>
             <button class="nav-btn" id="coverClose" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-down"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Close</span>'}</button>
-</div>
+          </div>
         </div>
       `;
 
@@ -5367,7 +5361,7 @@ _tileSliderClick(e) {
         isBackgroundClick = false;
       });
 
-if (!this._popupPortal) {
+      if (!this._popupPortal) {
         document.body.appendChild(portal);
         this._applyOpenAnimation(portal);
       }
@@ -8906,7 +8900,7 @@ if (!this._popupPortal) {
                   <div class="vertical-slider-track" id="numTrack">
                     <div class="vertical-slider-fill" id="numFill"></div>
                     <div class="vertical-slider-thumb" id="numThumb"></div>
-                  </div>
+                </div>
                 </div>`}
           </div>
           <div class="hki-popup-nav"></div>
@@ -10491,12 +10485,12 @@ if (!this._popupPortal) {
       // Light group count badge
       if (badgeCount > 0) {
         // Scale badge with icon size (while preserving existing badge size overrides)
-// Use the same responsive icon sizing as the tile icon itself:
-const stageMin = Math.min(this._stageW || 0, this._stageH || 0);
-const maxIconSize = this._config.size_icon || 24;
-const iconScale = (() => { const max = Number(maxIconSize) || 24; return Math.max(0.08, Math.min(0.35, 0.15 * (max / 24))); })();
-const responsiveIcon = stageMin ? Math.round(stageMin * iconScale) : maxIconSize;
-const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
+        // Use the same responsive icon sizing as the tile icon itself:
+        const stageMin = Math.min(this._stageW || 0, this._stageH || 0);
+        const maxIconSize = this._config.size_icon || 24;
+        const iconScale = (() => { const max = Number(maxIconSize) || 24; return Math.max(0.08, Math.min(0.35, 0.15 * (max / 24))); })();
+        const responsiveIcon = stageMin ? Math.round(stageMin * iconScale) : maxIconSize;
+        const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
         // If badge_size isn't configured, derive a sensible diameter from icon size
         const badgeDiameter = (this._config.badge_size !== undefined && this._config.badge_size !== null && this._config.badge_size !== '')
@@ -10528,7 +10522,7 @@ const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
 
 
-/* --- TILE RENDER LOGIC --- */
+    /* --- TILE RENDER LOGIC --- */
 
     render() {
       const layoutRaw = this._config.card_layout || 'square';
@@ -10541,7 +10535,7 @@ const iconSize = Math.max(16, Math.min(maxIconSize, responsiveIcon));
 
       const entity = this._getEntity();
       const hasEntity = !!entity;
-const isOn = hasEntity ? this._isOn() : false;
+      const isOn = hasEntity ? this._isOn() : false;
       const isUnavailable = hasEntity ? (String(entity.state || '').toLowerCase() === 'unavailable') : false;
       const isOnEffective = isUnavailable ? false : isOn;
 
@@ -10572,12 +10566,11 @@ const isOn = hasEntity ? this._isOn() : false;
       let gridCols = this._config.grid_columns;
       let elementGrid = this._config.element_grid;
       let borderRadius = this._config.border_radius;
-      
-            if (layout === 'hki_tile') {
+      if (layout === 'hki_tile') {
         if (borderRadius === undefined) borderRadius = 12;
       }
 
-if (layout === 'square') {
+      if (layout === 'square') {
         // Fixed square layout (button-card grid-template-areas equivalent):
         // "i i"
         // "area area" (whitespace)
@@ -10828,10 +10821,9 @@ if (layout === 'square') {
 
       
 
-const iconAlign = this._config.icon_align || 'left';
-              const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
-              
-              const renderInfoDisplay = () => {
+      const iconAlign = this._config.icon_align || 'left';
+      const iconJustify = iconAlign === 'center' ? 'center' : iconAlign === 'right' ? 'flex-end' : 'flex-start';
+      const renderInfoDisplay = () => {
                   if (this._config.show_info_display === false) return '';
                   
                   let bottomValue = '';
@@ -10872,8 +10864,7 @@ const iconAlign = this._config.icon_align || 'left';
                     </div>
                   `;
               };
-
-              const elements = {
+      const elements = {
                 icon: () => html`
                   <div class="tile-header" style="justify-content: ${iconJustify};">
                     ${(this._config.show_icon !== false) ? html`
@@ -10887,7 +10878,7 @@ const iconAlign = this._config.icon_align || 'left';
                             transform: ${getTransform(this._config.icon_offset_x, this._config.icon_offset_y)};
                         "
                         @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || { action: "hki-more-info" }, this._config.icon_double_tap_action); }}
-	                        
+                          
                         @mousedown=${(e) => { e.stopPropagation(); this._startHold(e, this._config.icon_hold_action); }}
                         @mouseup=${(e) => { e.stopPropagation(); this._clearHold(); }}
                         @mouseleave=${(e) => { this._clearHold(); }}
@@ -10971,7 +10962,7 @@ const iconAlign = this._config.icon_align || 'left';
               };
 
 
-// HKI Tile layout: wide pill, icon circle left, stacked text.
+      // HKI Tile layout: wide pill, icon circle left, stacked text.
       if (layout === 'hki_tile') {
         const showIcon = this._config.show_icon !== false;
         const showName = this._config.show_name !== false;
@@ -11136,7 +11127,7 @@ const iconAlign = this._config.icon_align || 'left';
                   `}
 
                   ${this._renderBadge(entity, isOnEffective, tileIconColor, badgeBorder, badgeBg, badgeCount, (x, y) => `translate(${x || 0}px, ${y || 0}px)`)}
-                </div>
+                  </div>
               ` : ''}
 
               <div class="hki-tile-text">
@@ -11323,7 +11314,7 @@ const iconAlign = this._config.icon_align || 'left';
               ${iconColor ? `            --icon-color: ${iconColor} !important;\n` : ''}            "
 
             @click=${() => this._handleDelayClick(this._config.tap_action || { action: "hki-more-info" }, this._config.double_tap_action || { action: "hki-more-info" })}
-	            
+              
             @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
             @mouseup=${() => this._clearHold()}
             @mouseleave=${() => this._clearHold()}
@@ -11396,7 +11387,7 @@ const iconAlign = this._config.icon_align || 'left';
             
           "
           @click=${() => this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action || { action: "hki-more-info" })}
-	          
+            
           @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
           @mouseup=${() => this._clearHold()}
           @mouseleave=${() => this._clearHold()}
@@ -11430,7 +11421,7 @@ const iconAlign = this._config.icon_align || 'left';
                 `;
               }
 
-// Check if we have grid layout config, otherwise use default
+              // Check if we have grid layout config, otherwise use default
               return elementGrid
                 ? (() => {
                 // Button-card-like approach:
@@ -11579,7 +11570,7 @@ const iconAlign = this._config.icon_align || 'left';
                   }
                 }
 
-// Compute stage dimensions for pixel-accurate placement.
+                // Compute stage dimensions for pixel-accurate placement.
                 // Use the measured ha-card size (ResizeObserver) to avoid clipping/misalignment when ha-card has overflow hidden.
                 const _stageW = this._stageW || 0;
                 const _stageH = this._stageH || 0;
@@ -11646,7 +11637,7 @@ const iconAlign = this._config.icon_align || 'left';
                     _slotAlign = 'flex-start';
                   }
 
-// Padding inside each slot. Keep this stable so element offsets don't "drift" when the card resizes.
+                  // Padding inside each slot. Keep this stable so element offsets don't "drift" when the card resizes.
                   // Users can control outer spacing via border/padding settings; slot padding should remain predictable.
                   const _padCfg = Number.isFinite(this._config.grid_cell_padding_px)
                     ? Number(this._config.grid_cell_padding_px)
@@ -11900,59 +11891,59 @@ const iconAlign = this._config.icon_align || 'left';
 
 
         .hki-square-grid .sq-state-row {
-  grid-area: s;
+          grid-area: s;
 
-  /* Full-width row with stable padding; keep state (left) + info (right) locked together */
-  justify-self: stretch;
-  align-self: start;
-  width: 100%;
-  min-width: 0;
+          /* Full-width row with stable padding; keep state (left) + info (right) locked together */
+          justify-self: stretch;
+          align-self: start;
+          width: 100%;
+          min-width: 0;
 
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start; /* info is pushed via margin-left:auto */
-  align-items: baseline;
-  gap: 10px;
+          display: flex;
+          flex-direction: row;
+          justify-content: flex-start; /* info is pushed via margin-left:auto */
+          align-items: baseline;
+          gap: 10px;
 
-  padding: 0 10px;
-  box-sizing: border-box;
+          padding: 0 10px;
+          box-sizing: border-box;
 
-  overflow: visible;
-}
-
-
-.hki-square-grid .sq-state {
-  flex: 1 1 auto;
-  min-width: 0;
-
-  /* Text should not be clipped; allow overflow */
-  overflow: visible;
-  text-overflow: unset;
-  white-space: normal;
-
-  text-align: left;
-}
-
-/* Ensure legacy shared classes don't re-enable ellipsis inside square layout */
-.hki-square-grid .name,
-.hki-square-grid .state,
-.hki-square-grid .label {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-}
+          overflow: visible;
+        }
 
 
-.hki-square-grid .sq-info {
-  flex: 0 0 auto;
-  margin-left: auto;
+        .hki-square-grid .sq-state {
+          flex: 1 1 auto;
+          min-width: 0;
 
-  text-align: right;
-  white-space: nowrap;
-  min-width: 0;
+          /* Text should not be clipped; allow overflow */
+          overflow: visible;
+          text-overflow: unset;
+          white-space: normal;
 
-  overflow: visible;
-}
+          text-align: left;
+        }
+
+        /* Ensure legacy shared classes don't re-enable ellipsis inside square layout */
+        .hki-square-grid .name,
+        .hki-square-grid .state,
+        .hki-square-grid .label {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+        }
+
+
+        .hki-square-grid .sq-info {
+          flex: 0 0 auto;
+          margin-left: auto;
+
+          text-align: right;
+          white-space: nowrap;
+          min-width: 0;
+
+          overflow: visible;
+        }
 
 
 
@@ -12036,7 +12027,7 @@ const iconAlign = this._config.icon_align || 'left';
           font-size: 11px;
           opacity: 0.8;
         }
-.hki-tile.layout-badge {
+        .hki-tile.layout-badge {
             flex-direction: row;
             align-items: center;
             justify-content: flex-start;
@@ -12216,30 +12207,30 @@ const iconAlign = this._config.icon_align || 'left';
         }
 
         /* Ensure HKI Tile slider fill never washes out the icon/circle/badges */
-.hki-tile.layout-hki-tile .tile-header,
-.hki-tile.layout-hki-tile .icon-circle,
-.hki-tile.layout-hki-tile .hki-tile-text {
-    position: relative;
-    z-index: 3;
-}
-/* Keep info display in the corner and above the slider fill */
-.hki-tile.layout-hki-tile .tile-info-corner {
-    position: absolute;
-    z-index: 4;
-}
-/* Badges must remain absolutely positioned (don't let them shift the icon) */
-.hki-tile.layout-hki-tile .badge,
-.hki-tile.layout-hki-tile .climate-corner-badge {
-    position: absolute;
-    z-index: 4;
-}
+        .hki-tile.layout-hki-tile .tile-header,
+        .hki-tile.layout-hki-tile .icon-circle,
+        .hki-tile.layout-hki-tile .hki-tile-text {
+            position: relative;
+            z-index: 3;
+        }
+        /* Keep info display in the corner and above the slider fill */
+        .hki-tile.layout-hki-tile .tile-info-corner {
+            position: absolute;
+            z-index: 4;
+        }
+        /* Badges must remain absolutely positioned (don't let them shift the icon) */
+        .hki-tile.layout-hki-tile .badge,
+        .hki-tile.layout-hki-tile .climate-corner-badge {
+            position: absolute;
+            z-index: 4;
+        }
 
-/* Match HKI default badge placement (tile needs a small nudge) */
-.hki-tile.layout-hki-tile .icon-circle .badge {
-    top: -5px !important;
-    right: -5px !important;
-}
-/* Badge Circular: Fully round badge with icon only */
+        /* Match HKI default badge placement (tile needs a small nudge) */
+        .hki-tile.layout-hki-tile .icon-circle .badge {
+            top: -5px !important;
+            right: -5px !important;
+        }
+        /* Badge Circular: Fully round badge with icon only */
         .hki-tile.layout-badge.badge-circle {
             aspect-ratio: 1 / 1;
             width: auto;
@@ -12272,7 +12263,7 @@ const iconAlign = this._config.icon_align || 'left';
         .hki-tile.layout-circle .icon-circle {
             margin: 0;
         }
-/* Hide badge counter when card is used in header badges section */
+        /* Hide badge counter when card is used in header badges section */
         :host([role="button"]) ha-card::after,
         :host(:not([role])) ha-card::after {
             content: none !important;
@@ -12402,34 +12393,34 @@ const iconAlign = this._config.icon_align || 'left';
             white-space: nowrap;
         }
 
-.layout-grid-container {
+        .layout-grid-container {
             display: grid;
             gap: 12px;
             align-items: stretch;
-          justify-items: stretch;
+            justify-items: stretch;
             width: 100%;
             height: 100%;
-                    align-content: stretch;
+            align-content: stretch;
             min-height: 0;
         }
 
 
-/* Absolute positioning grid mode (grid_position_mode: "absolute") */
-.layout-abs-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-}
-.layout-abs-container .abs-cell {
-    position: absolute;
-    display: flex;
-    box-sizing: border-box;
-    pointer-events: none;
-}
-.layout-abs-container .abs-cell > * {
-    pointer-events: auto;
-}
+        /* Absolute positioning grid mode (grid_position_mode: "absolute") */
+        .layout-abs-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .layout-abs-container .abs-cell {
+            position: absolute;
+            display: flex;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .layout-abs-container .abs-cell > * {
+            pointer-events: auto;
+        }
 
 
         /* Grid layout rows - 3 column grid */
@@ -12462,7 +12453,7 @@ const iconAlign = this._config.icon_align || 'left';
         .grid-cell .info-tag {
             width: 100%;
         }
-.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .state { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .label { opacity: 0.7; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -12571,7 +12562,7 @@ const iconAlign = this._config.icon_align || 'left';
         min-height: 34px;
       }
 
-`;
+      `;
     }
   }
 
@@ -12626,9 +12617,6 @@ const iconAlign = this._config.icon_align || 'left';
       temp_badge_offset_x: 0,
       temp_badge_offset_y: 0,
     };
-
-;
-
 
     _getOffsetUiValue(field) {
       const __layout = (this._config?.card_layout || 'square');
@@ -12726,7 +12714,7 @@ const iconAlign = this._config.icon_align || 'left';
         return s;
       }
 
-if (Array.isArray(obj)) {
+      if (Array.isArray(obj)) {
         return obj.map(item => {
           if (item && typeof item === 'object') {
             // Render object entries; first entry goes inline with "- ", rest align to same column
@@ -12987,7 +12975,7 @@ if (Array.isArray(obj)) {
     }
 
 
-setConfig(config) {
+    setConfig(config) {
       const flat = HkiButtonCard._migrateFlatConfig(config) || {};
       this._config = flat;
       // If the user is not actively editing the YAML, drop the draft so the editor shows the
@@ -13001,7 +12989,7 @@ setConfig(config) {
       // Migration/normalization is already handled by _fireChanged on every real user-driven change.
     }
 
-disconnectedCallback() {
+    disconnectedCallback() {
       super.disconnectedCallback?.();
       // hui-card-element-editor saves on every change, so no flush needed on disconnect.
     }
@@ -13053,7 +13041,10 @@ disconnectedCallback() {
 
       const isGoogleLayout = (this._config.card_layout === 'google_default');
 
-      const borders = ["solid", "dashed", "dotted", "double", "none"];
+      const borderStyleOptions = HKI_EDITOR_OPTIONS.borderStyles;
+      const popupDefaultViewOptions = HKI_EDITOR_OPTIONS.popupDefaultViewOptions;
+      const popupDefaultSectionOptionsTagged = HKI_EDITOR_OPTIONS.popupDefaultSectionOptionsTagged;
+      const popupBottomBarAlignOptionsDetailed = HKI_EDITOR_OPTIONS.popupBottomBarAlignOptionsDetailed;
 
       const selectedEntity = this.hass.states[this._config.entity];
       const _edDomain = selectedEntity?.entity_id?.split('.')[0];
@@ -13069,16 +13060,7 @@ disconnectedCallback() {
       const isPerson = _edDomain === 'person';
 
       // Custom Actions Dropdown List (Replaces Native Selector)
-      const actionsList = [
-        { value: "toggle", label: "Toggle" },
-        { value: "hki-more-info", label: "More Info (HKI)" },
-        { value: "more-info", label: "More Info (Native)" },
-        { value: "navigate", label: "Navigate" },
-        { value: "perform-action", label: "Perform Action" },
-        { value: "url", label: "URL" },
-        { value: "fire-dom-event", label: "Fire DOM Event" },
-        { value: "none", label: "None" }
-      ];
+      const actionsList = HKI_EDITOR_OPTIONS.buttonActionOptions;
 
       const renderHeader = (title, key) => html`
         <div class="accordion-header" @click=${(e) => this._toggleHeader(e, key)}>
@@ -13389,9 +13371,9 @@ disconnectedCallback() {
                 </ha-select>
                 <div class="layout-actions">
                   <button type="button" class="hki-reset-btn" @click=${(ev) => { ev.stopPropagation(); this._resetToDefaults(ev); }}>
-  <ha-icon icon="mdi:restore"></ha-icon>
-  <span>Reset to defaults</span>
-</button>
+                    <ha-icon icon="mdi:restore"></ha-icon>
+                    <span>Reset to defaults</span>
+                  </button>
                 </div>
 
                 
@@ -13412,25 +13394,26 @@ disconnectedCallback() {
                       <ha-switch .checked=${this._config.show_state !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_state"); }}></ha-switch>
                     </ha-formfield>
                   </div>
-                ` : ''}</div>
+                ` : ''}
+            </div>
           </div>
 
           <div class="accordion-group ">
             ${renderHeader("Entity", "general")}
             <div class="accordion-content ${this._closedDetails['general'] ? 'hidden' : ''}">
                 <div class="side-by-side" style="grid-template-columns: 1fr auto; align-items:center;">
-  <ha-selector
-    .hass=${this.hass}
-    .selector=${{ entity: {} }}
-    .value=${this._config.entity || ""}
-    .label=${"Entity"}
-    .required=${false}
-    @value-changed=${(ev) => this._selectorChanged(ev, "entity")}
-  ></ha-selector>
-  <button class="hki-editor-clear" title="Clear Entity" @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, entity: "" }); }}>
-    <ha-icon icon="mdi:close"></ha-icon>
-  </button>
-</div>
+                  <ha-selector
+                    .hass=${this.hass}
+                    .selector=${{ entity: {} }}
+                    .value=${this._config.entity || ""}
+                    .label=${"Entity"}
+                    .required=${false}
+                    @value-changed=${(ev) => this._selectorChanged(ev, "entity")}
+                  ></ha-selector>
+                  <button class="hki-editor-clear" title="Clear Entity" @click=${(e) => { e.stopPropagation(); this._fireChanged({ ...this._config, entity: "" }); }}>
+                    <ha-icon icon="mdi:close"></ha-icon>
+                  </button>
+                </div>
                 
                 <div class="separator"></div>
                 <strong>Appearance</strong>
@@ -13440,27 +13423,27 @@ disconnectedCallback() {
                   <ha-textfield .label=${"Entity Picture Override (optional)"} .value=${this._config.entity_picture_override || ""} @input=${(ev) => this._textChanged(ev, "entity_picture_override")}></ha-textfield>
                 ` : html`
                   <div class="tpl-field">
-  <div class="tpl-title">Icon</div>
-  <div class="tpl-desc">Enter a single icon (e.g., <code>mdi:lightbulb</code>) or a Jinja template that resolves to one icon.</div>
-  <ha-code-editor
-    .hass=${this.hass}
-    mode="yaml"
-    autocomplete-entities
-    autocomplete-icons
-    .autocompleteEntities=${true}
-    .autocompleteIcons=${true}
-    .label=${"Icon (mdi:* or Jinja)"}
-    .value=${this._config.icon || ""}
-    @value-changed=${(ev) => {
-      ev.stopPropagation();
-      const value = ev.detail?.value;
-      if (value !== this._config.icon) {
-        this._fireChanged({ ...this._config, icon: value || undefined });
-      }
-    }}
-    @click=${(e) => e.stopPropagation()}
-  ></ha-code-editor>
-</div>
+                    <div class="tpl-title">Icon</div>
+                    <div class="tpl-desc">Enter a single icon (e.g., <code>mdi:lightbulb</code>) or a Jinja template that resolves to one icon.</div>
+                    <ha-code-editor
+                      .hass=${this.hass}
+                      mode="yaml"
+                      autocomplete-entities
+                      autocomplete-icons
+                      .autocompleteEntities=${true}
+                      .autocompleteIcons=${true}
+                      .label=${"Icon (mdi:* or Jinja)"}
+                      .value=${this._config.icon || ""}
+                      @value-changed=${(ev) => {
+                        ev.stopPropagation();
+                        const value = ev.detail?.value;
+                        if (value !== this._config.icon) {
+                          this._fireChanged({ ...this._config, icon: value || undefined });
+                        }
+                      }}
+                      @click=${(e) => e.stopPropagation()}
+                    ></ha-code-editor>
+                  </div>
                 `}
                 
                 <div class="separator"></div>
@@ -13558,7 +13541,7 @@ disconnectedCallback() {
                   ></ha-code-editor>
                 </div>
                 `}
-`}
+                `}
 
           </div>
 
@@ -13667,7 +13650,7 @@ disconnectedCallback() {
                     @closed=${(e) => e.stopPropagation()}
                     @click=${(e) => e.stopPropagation()}
                   >
-                    ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                    ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                   </ha-select>
                   <ha-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></ha-textfield>
                 </div>
@@ -13811,11 +13794,11 @@ disconnectedCallback() {
                   <ha-switch .checked=${this._config.show_info_display !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_info_display"); }}></ha-switch>
                 </ha-formfield>
                 ` : ''} 
-</div>
+                </div>
             </div>
           </div>
 
-<div class="accordion-group ">
+          <div class="accordion-group ">
              ${renderHeader("Card Styling", "card_styling")}
              <div class="accordion-content ${this._closedDetails['card_styling'] ? 'hidden' : ''}">
                 <strong>Colors</strong>
@@ -13902,7 +13885,7 @@ disconnectedCallback() {
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Border Color</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -13977,7 +13960,7 @@ disconnectedCallback() {
                     </div>
                   ` : ''}
                 ` : ''}
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Box Shadow</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14009,7 +13992,7 @@ disconnectedCallback() {
                   <ha-switch .checked=${this._config.show_icon !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_icon"); }}></ha-switch>
                 </ha-formfield>
                 <ha-textfield label="Size (px)" type="number" .value=${this._config.size_icon || 24} @input=${(ev) => this._textChanged(ev, "size_icon")}></ha-textfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Color</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14031,12 +14014,12 @@ disconnectedCallback() {
                 </div>
 
                 ${isGoogleLayout ? '' : html`
-<div class="separator"></div>
+                <div class="separator"></div>
                 <strong>Icon Circle</strong>
                 <ha-formfield .label=${"Show Icon Circle"}>
                   <ha-switch .checked=${this._config.show_icon_circle !== false} @change=${(ev) => this._switchChanged(ev, "show_icon_circle")}></ha-switch>
                 </ha-formfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Circle Background</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14056,7 +14039,7 @@ disconnectedCallback() {
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Icon Circle Border Style</div>
                   <div class="tpl-desc">Supports templates. Values: none, solid, dashed, dotted</div>
                   <ha-code-editor
@@ -14119,13 +14102,13 @@ disconnectedCallback() {
 
                 
                 `}
-${isGoogleLayout ? '' : html`
-<div class="separator"></div>
+                ${isGoogleLayout ? '' : html`
+                <div class="separator"></div>
                 <strong>Icon Badge</strong>
                 <ha-formfield .label=${"Show Icon Badge"}>
                   <ha-switch .checked=${this._config.show_icon_badge !== false} @change=${(ev) => this._switchChanged(ev, "show_icon_badge")}></ha-switch>
                 </ha-formfield>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Badge Background</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
                   <ha-code-editor
@@ -14145,7 +14128,7 @@ ${isGoogleLayout ? '' : html`
                     @click=${(e) => e.stopPropagation()}
                   ></ha-code-editor>
                 </div>
-<div class="tpl-field">
+                <div class="tpl-field">
                   <div class="tpl-title">Badge Border Style</div>
                   <div class="tpl-desc">Supports templates. Values: none, solid, dashed, dotted</div>
                   <ha-code-editor
@@ -14207,7 +14190,7 @@ ${isGoogleLayout ? '' : html`
                 <div class="separator"></div>
                 
                 `}
-<strong>Icon Animation</strong>
+                <strong>Icon Animation</strong>
                 <div class="tpl-field">
                   <div class="tpl-title">Animation</div>
                   <div class="tpl-desc">
@@ -14339,36 +14322,12 @@ ${isGoogleLayout ? '' : html`
                           <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
                             @selected=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="none">None</mwc-list-item>
-                            <mwc-list-item value="fade">Fade</mwc-list-item>
-                            <mwc-list-item value="scale">Scale</mwc-list-item>
-                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                            <mwc-list-item value="flip">Flip</mwc-list-item>
-                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                            <mwc-list-item value="drop">Drop</mwc-list-item>
-                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
                             @selected=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="none">None</mwc-list-item>
-                            <mwc-list-item value="fade">Fade</mwc-list-item>
-                            <mwc-list-item value="scale">Scale</mwc-list-item>
-                            <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                            <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                            <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                            <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                            <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                            <mwc-list-item value="flip">Flip</mwc-list-item>
-                            <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                            <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                            <mwc-list-item value="drop">Drop</mwc-list-item>
-                            <mwc-list-item value="swing">Swing</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                         </div>
                         <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
@@ -14383,9 +14342,7 @@ ${isGoogleLayout ? '' : html`
                           <ha-select label="Width" .value=${this._config.popup_width || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_width")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                            <mwc-list-item value="default">Default (400px)</mwc-list-item>
-                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.width.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           ${this._config.popup_width === 'custom' ? html`
                             <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
@@ -14395,9 +14352,7 @@ ${isGoogleLayout ? '' : html`
                           <ha-select label="Height" .value=${this._config.popup_height || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_height")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                            <mwc-list-item value="default">Default (600px)</mwc-list-item>
-                            <mwc-list-item value="custom">Custom</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.height.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                           ${this._config.popup_height === 'custom' ? html`
                             <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
@@ -14430,10 +14385,7 @@ ${isGoogleLayout ? '' : html`
                           .value=${this._config.popup_bottom_bar_align || 'spread'}
                           @selected=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
                           @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                          <mwc-list-item value="spread">Spread (space around)</mwc-list-item>
-                          <mwc-list-item value="start">Start (left aligned)</mwc-list-item>
-                          <mwc-list-item value="center">Center</mwc-list-item>
-                          <mwc-list-item value="end">End (right aligned)</mwc-list-item>
+                          ${popupBottomBarAlignOptionsDetailed.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                         </ha-select>
                         ${(() => {
                           const currentSlots = this._config._bb_slots ?? Math.max(1, (this._config.popup_bottom_bar_entities || []).filter(Boolean).length || 1);
@@ -14560,17 +14512,13 @@ ${isGoogleLayout ? '' : html`
                               <ha-select label="Default View" .value=${this._config.popup_default_view || 'main'}
                                 @selected=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
                                 @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                <mwc-list-item value="main">Main (Group Controls)</mwc-list-item>
-                                <mwc-list-item value="individual">Individual ${entityTypeName}</mwc-list-item>
+                                ${popupDefaultViewOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.value === "individual" ? `Individual ${entityTypeName}` : o.label}</mwc-list-item>`)}
                               </ha-select>
                               ${isLightGroup ? html`
                                 <ha-select label="Default Section" .value=${this._config.popup_default_section || 'last'}
                                   @selected=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                  <mwc-list-item value="last">Last Used (Default)</mwc-list-item>
-                                  <mwc-list-item value="brightness">Always Brightness</mwc-list-item>
-                                  <mwc-list-item value="color">Always Color</mwc-list-item>
-                                  <mwc-list-item value="temperature">Always Temperature</mwc-list-item>
+                                  ${popupDefaultSectionOptionsTagged.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                                 </ha-select>
                               ` : html`<div></div>`}
                             </div>
@@ -14617,9 +14565,7 @@ ${isGoogleLayout ? '' : html`
                           <ha-select label="Time Format" .value=${this._config.popup_time_format || 'auto'}
                             @selected=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            <mwc-list-item value="auto">Auto</mwc-list-item>
-                            <mwc-list-item value="12">12-Hour Clock</mwc-list-item>
-                            <mwc-list-item value="24">24-Hour Clock</mwc-list-item>
+                            ${HKI_POPUP_EDITOR_OPTIONS.timeFormats.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                           </ha-select>
                         </div>
                       </div>
@@ -14640,7 +14586,7 @@ ${isGoogleLayout ? '' : html`
                             <ha-select label="Border Style" .value=${this._config.popup_highlight_border_style || "none"}
                               @selected=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
                               @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                              ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                             </ha-select>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
                           </div>
@@ -14665,7 +14611,7 @@ ${isGoogleLayout ? '' : html`
                             <ha-select label="Border Style" .value=${this._config.popup_button_border_style || "none"}
                               @selected=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
                               @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borders.map(b => html`<mwc-list-item .value=${b}>${b}</mwc-list-item>`)}
+                              ${borderStyleOptions.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}
                             </ha-select>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
                           </div>
@@ -15080,7 +15026,7 @@ ${isGoogleLayout ? '' : html`
           this._waitingForCardEditor = false;
           this.requestUpdate();
         });
-};
+      };
 
       tryTriggers();
     }
@@ -15312,7 +15258,7 @@ ${isGoogleLayout ? '' : html`
             .hki-editor-clear:hover{
                 background: var(--secondary-background-color);
             }
-.checkbox-grid { 
+            .checkbox-grid { 
                 display: grid; 
                 grid-template-columns: 1fr 1fr; 
                 gap: 8px; 
@@ -15481,37 +15427,37 @@ ${isGoogleLayout ? '' : html`
                 justify-content: flex-end;
             }
             
-.hki-reset-btn{
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--primary-color);
-    background: var(--primary-color);
-    color: var(--text-primary-color, #fff);
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1;
-    transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
-}
-.hki-reset-btn:hover{
-    background: rgba(255,255,255,0.14);
-    border-color: rgba(255,255,255,0.35);
-}
-.hki-reset-btn:active{
-    transform: translateY(1px);
-    background: rgba(255,255,255,0.18);
-}
-.hki-reset-btn ha-icon{
-    width: 18px;
-    height: 18px;
-}
-mwc-button.reset-defaults{
+            .hki-reset-btn{
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 8px;
+                border: 1px solid var(--primary-color);
+                background: var(--primary-color);
+                color: var(--text-primary-color, #fff);
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                line-height: 1;
+                transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+            }
+            .hki-reset-btn:hover{
+                background: rgba(255,255,255,0.14);
+                border-color: rgba(255,255,255,0.35);
+            }
+            .hki-reset-btn:active{
+                transform: translateY(1px);
+                background: rgba(255,255,255,0.18);
+            }
+            .hki-reset-btn ha-icon{
+                width: 18px;
+                height: 18px;
+            }
+            mwc-button.reset-defaults{
                 --mdc-theme-primary: var(--primary-color);
             }
-`; 
+        `; 
     }
   }
 

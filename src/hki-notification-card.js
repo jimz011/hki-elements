@@ -523,19 +523,11 @@ _openPopup() {
   this._popupOpen = true;
   this._popupClosing = false;
   this._createPopupPortal();
-
-  window.HKI?.ensurePopupAnimations?.();
-  const c = this._config || {};
-  const anim = c.popup_open_animation || "scale";
-  const dur = c.popup_animation_duration ?? 300;
-  if (anim !== "none" && this._popupPortal) {
-    const container = this._popupPortal.querySelector(".hki-popup-container");
-    if (container) {
-      container.style.animation = "none";
-      void container.offsetWidth; // force reflow
-      container.style.animation = `${this._getOpenKeyframe(anim)} ${dur}ms ease forwards`;
-    }
-  }
+  window.HKI?.animatePopupOpen?.({
+    portal: this._popupPortal,
+    config: this._config || {},
+    selector: ".hki-popup-container",
+  });
 }
 
 _closePopup(e) {
@@ -551,80 +543,24 @@ _closePopup(e) {
     return;
   }
 
-  const c = this._config || {};
-  const anim = c.popup_close_animation || c.popup_open_animation || "scale";
-  const dur = c.popup_animation_duration ?? 300;
-
   const cleanup = () => {
     this._popupOpen = false;
     this._popupClosing = false;
     this._removePopupPortal();
   };
-
-  if (anim === "none") {
-    cleanup();
-    return;
-  }
-
-  window.HKI?.ensurePopupAnimations?.();
-  const container = portal.querySelector(".hki-popup-container");
-  if (!container) {
-    cleanup();
-    return;
-  }
-
-  // Only animate the container — animating the portal (backdrop) simultaneously
-  // creates a double-fade conflict with non-fade animations (scale, slide, etc.).
-  container.style.animation = "none";
-  void container.offsetWidth; // force reflow so new animation fires cleanly
-  container.style.animation = `${this._getCloseKeyframe(anim)} ${dur}ms ease forwards`;
-
-  // animationend gives pixel-perfect cleanup timing
-  container.addEventListener("animationend", cleanup, { once: true });
-  // Fallback in case animationend never fires (e.g. element hidden mid-flight)
-  setTimeout(cleanup, dur + 100);
+  window.HKI?.animatePopupClose?.({
+    portal,
+    config: this._config || {},
+    selector: ".hki-popup-container",
+    onDone: cleanup,
+    fallbackDelayMs: 100,
+  });
 }
   _removePopupPortal() {
     if (this._popupPortal) {
       this._popupPortal.remove();
       this._popupPortal = null;
     }
-  }
-
-  _getOpenKeyframe(anim) {
-    const map = {
-      'fade':        'hki-anim-fade-in',
-      'scale':       'hki-anim-scale-in',
-      'slide-up':    'hki-anim-slide-up',
-      'slide-down':  'hki-anim-slide-down',
-      'slide-left':  'hki-anim-slide-left',
-      'slide-right': 'hki-anim-slide-right',
-      'flip':        'hki-anim-flip-in',
-      'bounce':      'hki-anim-bounce-in',
-      'zoom':        'hki-anim-zoom-in',
-      'rotate':      'hki-anim-rotate-in',
-      'drop':        'hki-anim-drop-in',
-      'swing':       'hki-anim-swing-in',
-    };
-    return map[anim] || 'hki-anim-fade-in';
-  }
-
-  _getCloseKeyframe(anim) {
-    const map = {
-      'fade':        'hki-anim-fade-out',
-      'scale':       'hki-anim-scale-out',
-      'slide-up':    'hki-anim-slide-out-down',
-      'slide-down':  'hki-anim-slide-out-up',
-      'slide-left':  'hki-anim-slide-out-right',
-      'slide-right': 'hki-anim-slide-out-left',
-      'flip':        'hki-anim-flip-out',
-      'bounce':      'hki-anim-scale-out',
-      'zoom':        'hki-anim-zoom-out',
-      'rotate':      'hki-anim-rotate-out',
-      'drop':        'hki-anim-drop-out',
-      'swing':       'hki-anim-swing-out',
-    };
-    return map[anim] || 'hki-anim-fade-out';
   }
 
   // ===== Confirmation (tap_action) overlay =====
@@ -833,69 +769,15 @@ _closePopup(e) {
 
 
   _getPopupPortalStyle() {
-    const blurEnabled = this._config.popup_blur_enabled !== false;
-    const blurAmount = this._config.popup_blur_amount !== undefined ? Number(this._config.popup_blur_amount) : 10;
-    const blur = blurEnabled && blurAmount > 0
-      ? `backdrop-filter: blur(${blurAmount}px); -webkit-backdrop-filter: blur(${blurAmount}px); will-change: backdrop-filter;`
-      : '';
-    // Match hki-button-card default backdrop
-    return `background: rgba(0,0,0,0.7); ${blur}`;
+    return window.HKI?.getPopupBackdropStyle?.(this._config) || '';
   }
 
   _getPopupCardStyle() {
-    const cardBlurEnabled = this._config.popup_card_blur_enabled !== false;
-    const cardBlurAmount = this._config.popup_card_blur_amount !== undefined ? Number(this._config.popup_card_blur_amount) : 40;
-    let cardOpacity = this._config.popup_card_opacity !== undefined ? Number(this._config.popup_card_opacity) : 0.4;
-
-    // If blur is enabled but user sets opacity to 1, keep some transparency so glass effect is visible
-    if (cardBlurEnabled && cardOpacity === 1) {
-      cardOpacity = 0.7;
-    }
-
-    let bg;
-    if (cardOpacity < 1 || cardBlurEnabled) {
-      bg = `background: rgba(28, 28, 28, ${cardOpacity});`;
-    } else {
-      bg = `background: var(--card-background-color, #1c1c1c);`;
-    }
-
-    const blur = cardBlurEnabled && cardBlurAmount > 0
-      ? `backdrop-filter: blur(${cardBlurAmount}px); -webkit-backdrop-filter: blur(${cardBlurAmount}px);`
-      : '';
-
-    return bg + (blur ? ' ' + blur : '');
+    return window.HKI?.getPopupCardStyle?.(this._config) || '';
   }
 
   _getPopupDimensions() {
-    const widthCfg = this._config.popup_width || 'auto';
-    const heightCfg = this._config.popup_height || 'auto';
-
-    let width = '95vw; max-width: 500px';
-    let height = '90vh; max-height: 800px';
-
-    if (widthCfg === 'auto') {
-      width = '95vw; max-width: 500px';
-    } else if (widthCfg === 'custom') {
-      const customWidth = this._config.popup_width_custom ?? 400;
-      width = `${customWidth}px`;
-    } else if (widthCfg === 'default') {
-      width = '90%; max-width: 400px';
-    } else if (!isNaN(Number(widthCfg))) {
-      width = `${Number(widthCfg)}px`;
-    }
-
-    if (heightCfg === 'auto') {
-      height = '90vh; max-height: 800px';
-    } else if (heightCfg === 'custom') {
-      const customHeight = this._config.popup_height_custom ?? 600;
-      height = `${customHeight}px`;
-    } else if (heightCfg === 'default') {
-      height = '600px';
-    } else if (!isNaN(Number(heightCfg))) {
-      height = `${Number(heightCfg)}px`;
-    }
-
-    return { width, height };
+    return window.HKI?.getPopupDimensions?.(this._config) || { width: '95vw; max-width: 500px', height: '90vh; max-height: 800px' };
   }
 
   _createPopupPortal() {
@@ -2665,7 +2547,7 @@ class HkiNotificationCardEditor extends LitElement {
               <strong>Documentation</strong><br><br>
               This card requires the <a href="https://github.com/jimz011/hki-notify" target="_blank">HKI Notify</a> integration to function.<br>
               This card can also be placed in the header/badges section!<br>
-              This card can be integrated into <a href="https://github.com/jimz011/hki-header-card" target="_blank">hki-header-card</a><br><br>
+              This card can be integrated into the <a href="https://jimz011.github.io/hki-elements/cards/hki-header-card/overview/" target="_blank">HKI Header Card</a><br><br>
               Please read the <a href="https://jimz011.github.io/hki-elements/" target="_blank" rel="noopener noreferrer">documentation</a> to set up this card.<br><br>
               <em>This card may contain bugs. Use at your own risk!</em>
             </ha-alert>
@@ -3269,7 +3151,11 @@ class HkiNotificationCardEditor extends LitElement {
   }
 }
 
-customElements.define(CARD_TYPE, HkiNotificationCard);
-customElements.define(EDITOR_TAG, HkiNotificationCardEditor);
+if (!customElements.get(CARD_TYPE)) {
+  customElements.define(CARD_TYPE, HkiNotificationCard);
+}
+if (!customElements.get(EDITOR_TAG)) {
+  customElements.define(EDITOR_TAG, HkiNotificationCardEditor);
+}
 window.customCards = window.customCards || [];
 window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", description: "Animated notification ticker.", preview: true });
