@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0-dev-04 ',
+  '%c HKI-ELEMENTS %c v1.3.0-dev-05 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1971,6 +1971,17 @@ class HkiHeaderCard extends LitElement {
     }
   }
 
+  _isEditMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("edit") === "1") return true;
+    } catch (_) {}
+    if (document.body?.classList) {
+      if (document.body.classList.contains("edit-mode") || document.body.classList.contains("edit")) return true;
+    }
+    return false;
+  }
+
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
 
@@ -3814,6 +3825,7 @@ class HkiHeaderCard extends LitElement {
     if (!this._config) return html``;
 
     const cfg = this._config;
+    const editMode = this._isEditMode() || this._editMode;
     const effectiveFixed = !!cfg.fixed && !this._inPreview;
 
     const titleText = this._isTemplateString(cfg.title) ? (this._renderedTitle ?? "") : (cfg.title ?? "");
@@ -3967,6 +3979,21 @@ class HkiHeaderCard extends LitElement {
       spacerH += (cfg.badges_gap || 0) + kioskGapAdjustment - 48;
     }
 
+    if (editMode && cfg.fixed) {
+      const placeholderHeight = Math.max(96, cfg.min_height || 0);
+      return html`
+        <ha-card class="edit-placeholder" style="height:${placeholderHeight}px;">
+          <div class="edit-placeholder-inner">
+            <ha-icon icon="mdi:view-headline"></ha-icon>
+            <div class="edit-placeholder-text">
+              <div class="edit-placeholder-title">HKI Header Card</div>
+              <div class="edit-placeholder-subtitle">Fixed-position header • This placeholder makes the card easy to select in edit mode</div>
+            </div>
+          </div>
+        </ha-card>
+      `;
+    }
+
     const cardMarkup = html`
       <ha-card class="header" style=${cardStyle} aria-label=${titleText || "Header"}>
         <div class="overlay" style=${overlayStyle}></div>
@@ -3984,21 +4011,6 @@ class HkiHeaderCard extends LitElement {
     `;
 
     if (!effectiveFixed) return cardMarkup;
-
-    if (this._editMode) {
-      const placeholderHeight = Math.max(96, spacerH || 0, cfg.min_height || 0);
-      return html`
-        <ha-card class="edit-placeholder" style="height:${placeholderHeight}px;">
-          <div class="edit-placeholder-inner">
-            <ha-icon icon="mdi:view-headline"></ha-icon>
-            <div class="edit-placeholder-text">
-              <div class="edit-placeholder-title">HKI Header Card</div>
-              <div class="edit-placeholder-subtitle">Fixed-position header placeholder for easier selection in edit mode</div>
-            </div>
-          </div>
-        </ha-card>
-      `;
-    }
 
     return html`
       <div class="header-fixed" style=${wrapperStyle}>${cardMarkup}</div>
