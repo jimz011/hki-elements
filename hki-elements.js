@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-06 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -26559,6 +26559,10 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
+  _renderTemplateInput(scope, key, label, placeholder = "{{ ... }} or CSS value") {
+    return this._renderInput(scope, key, label, "text", placeholder);
+  }
+
   _renderCategory(title, fields) {
     return html`
       <div class="category">
@@ -26575,7 +26579,7 @@ class HkiSettingsBase extends LitElement {
           <div class="scope-title">${title}</div>
           <div class="scope-sub">${subtitle}</div>
         </div>
-        <mwc-button @click=${() => this._resetScope(scope)}>Reset ${scope}</mwc-button>
+        <mwc-button raised class="reset-btn" @click=${() => this._resetScope(scope)}>Reset ${scope}</mwc-button>
       </div>
     `;
   }
@@ -26597,32 +26601,39 @@ class HkiSettingsBase extends LitElement {
           <section class="scope">
             ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
             ${this._renderCategory("Card Surface", html`
-              ${this._renderInput("button", "border_radius", "Border radius (px or CSS)")}
-              ${this._renderInput("button", "box_shadow", "Box shadow")}
-              ${this._renderInput("button", "border_width", "Border width")}
+              ${this._renderTemplateInput("button", "border_radius", "Border radius (Template/CSS)")}
+              ${this._renderTemplateInput("button", "box_shadow", "Box shadow (Template/CSS)")}
+              ${this._renderTemplateInput("button", "border_width", "Border width (Template/CSS)")}
               ${this._renderSelect("button", "border_style", "Border style", BORDER_STYLES)}
-              ${this._renderInput("button", "border_color", "Border color")}
+              ${this._renderTemplateInput("button", "border_color", "Border color (Template/CSS)")}
             `)}
             ${this._renderCategory("Name Typography", html`
               ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
               ${this._renderInput("button", "name_font_custom", "Name custom font")}
               ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_name", "Name size", "number")}
-              ${this._renderInput("button", "name_color", "Name color")}
+              ${this._renderTemplateInput("button", "name_color", "Name color (Template/CSS)")}
             `)}
             ${this._renderCategory("State Typography", html`
               ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
               ${this._renderInput("button", "state_font_custom", "State custom font")}
               ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_state", "State size", "number")}
-              ${this._renderInput("button", "state_color", "State color")}
+              ${this._renderTemplateInput("button", "state_color", "State color (Template/CSS)")}
             `)}
             ${this._renderCategory("Label Typography", html`
               ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
               ${this._renderInput("button", "label_font_custom", "Label custom font")}
               ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_label", "Label size", "number")}
-              ${this._renderInput("button", "label_color", "Label color")}
+              ${this._renderTemplateInput("button", "label_color", "Label color (Template/CSS)")}
+            `)}
+            ${this._renderCategory("Info/Brightness Typography", html`
+              ${this._renderSelect("button", "brightness_font_family", "Info font family", FONT_FAMILIES)}
+              ${this._renderInput("button", "brightness_font_custom", "Info custom font")}
+              ${this._renderSelect("button", "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
+              ${this._renderInput("button", "size_brightness", "Info size", "number")}
+              ${this._renderTemplateInput("button", "brightness_color", "Info color (Template/CSS)")}
             `)}
           </section>
         </details>
@@ -26632,13 +26643,13 @@ class HkiSettingsBase extends LitElement {
           <section class="scope">
             ${this._renderScopeHeader("Header Card Defaults", "header", "Applied to hki-header-card when a field is empty.")}
             ${this._renderCategory("Card Surface", html`
-              ${this._renderInput("header", "card_border_radius", "Card border radius")}
-              ${this._renderInput("header", "card_border_radius_top", "Top border radius")}
-              ${this._renderInput("header", "card_border_radius_bottom", "Bottom border radius")}
-              ${this._renderInput("header", "card_box_shadow", "Card box shadow")}
+              ${this._renderTemplateInput("header", "card_border_radius", "Card border radius (Template/CSS)")}
+              ${this._renderTemplateInput("header", "card_border_radius_top", "Top border radius (Template/CSS)")}
+              ${this._renderTemplateInput("header", "card_border_radius_bottom", "Bottom border radius (Template/CSS)")}
+              ${this._renderTemplateInput("header", "card_box_shadow", "Card box shadow (Template/CSS)")}
               ${this._renderInput("header", "card_border_width", "Card border width", "number")}
               ${this._renderSelect("header", "card_border_style", "Card border style", BORDER_STYLES)}
-              ${this._renderInput("header", "card_border_color", "Card border color")}
+              ${this._renderTemplateInput("header", "card_border_color", "Card border color (Template/CSS)")}
             `)}
             ${this._renderCategory("Typography", html`
               ${this._renderSelect("header", "font_family", "Font family", FONT_FAMILIES)}
@@ -26646,8 +26657,10 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("header", "font_style", "Font style", [{ value: "normal", label: "normal" }, { value: "italic", label: "italic" }])}
               ${this._renderInput("header", "title_size_px", "Title size", "number")}
               ${this._renderInput("header", "subtitle_size_px", "Subtitle size", "number")}
-              ${this._renderInput("header", "title_color", "Title color")}
-              ${this._renderInput("header", "subtitle_color", "Subtitle color")}
+              ${this._renderSelect("header", "title_weight", "Title weight", FONT_WEIGHTS)}
+              ${this._renderSelect("header", "subtitle_weight", "Subtitle weight", FONT_WEIGHTS)}
+              ${this._renderTemplateInput("header", "title_color", "Title color (Template/CSS)")}
+              ${this._renderTemplateInput("header", "subtitle_color", "Subtitle color (Template/CSS)")}
             `)}
           </section>
         </details>
@@ -26660,22 +26673,32 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("navigation", "default_border_radius", "Default border radius", "number")}
               ${this._renderInput("navigation", "default_border_width", "Default border width", "number")}
               ${this._renderSelect("navigation", "default_border_style", "Default border style", BORDER_STYLES)}
-              ${this._renderInput("navigation", "default_border_color", "Default border color")}
-              ${this._renderInput("navigation", "button_box_shadow", "Button box shadow")}
-              ${this._renderInput("navigation", "button_box_shadow_hover", "Button box shadow hover")}
+              ${this._renderTemplateInput("navigation", "default_border_color", "Default border color (Template/CSS)")}
+              ${this._renderTemplateInput("navigation", "button_box_shadow", "Button box shadow (Template/CSS)")}
+              ${this._renderTemplateInput("navigation", "button_box_shadow_hover", "Button box shadow hover (Template/CSS)")}
+              ${this._renderInput("navigation", "default_button_opacity", "Default button opacity (0-1)", "number")}
+              ${this._renderTemplateInput("navigation", "default_background", "Default background (Template/CSS)")}
+              ${this._renderTemplateInput("navigation", "default_icon_color", "Default icon color (Template/CSS)")}
             `)}
             ${this._renderCategory("Label Typography", html`
               ${this._renderInput("navigation", "label_font_size", "Label font size", "number")}
               ${this._renderInput("navigation", "label_font_weight", "Label font weight", "number")}
               ${this._renderInput("navigation", "label_letter_spacing", "Label letter spacing", "number")}
               ${this._renderSelect("navigation", "label_text_transform", "Label text transform", NAV_TEXT_TRANSFORM)}
-              ${this._renderInput("navigation", "label_color", "Label color")}
+              ${this._renderTemplateInput("navigation", "label_color", "Label color (Template/CSS)")}
+            `)}
+            ${this._renderCategory("Bottom Bar", html`
+              ${this._renderInput("navigation", "bottom_bar_border_radius", "Bottom bar radius", "number")}
+              ${this._renderTemplateInput("navigation", "bottom_bar_box_shadow", "Bottom bar box shadow (Template/CSS)")}
+              ${this._renderInput("navigation", "bottom_bar_border_width", "Bottom bar border width", "number")}
+              ${this._renderSelect("navigation", "bottom_bar_border_style", "Bottom bar border style", BORDER_STYLES)}
+              ${this._renderTemplateInput("navigation", "bottom_bar_border_color", "Bottom bar border color (Template/CSS)")}
             `)}
           </section>
         </details>
 
         <div class="footer">
-          <mwc-button @click=${this._resetAll}>Reset all globals</mwc-button>
+          <mwc-button raised class="reset-btn reset-all-btn" @click=${this._resetAll}>Reset all globals</mwc-button>
         </div>
       </div>
     `;
@@ -26771,6 +26794,13 @@ class HkiSettingsBase extends LitElement {
       .scope-sub {
         font-size: 11px;
         opacity: 0.75;
+      }
+      .reset-btn {
+        --mdc-theme-primary: var(--primary-color);
+        --mdc-theme-on-primary: var(--text-primary-color, #fff);
+      }
+      .reset-all-btn {
+        --mdc-theme-primary: var(--error-color, #d32f2f);
       }
       .grid {
         display: grid;
