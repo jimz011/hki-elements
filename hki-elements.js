@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -740,6 +740,12 @@ function popupNestedKeyToFlatKey(nestedKey) {
   return `popup_${nestedKey}`;
 }
 
+function popupAnyKeyToFlatKey(key) {
+  if (typeof key !== "string") return key;
+  if (PERSON_POPUP_FLAT_KEYS.includes(key) || HKI_POPUP_CONFIG_KEYS.includes(key)) return key;
+  return popupNestedKeyToFlatKey(key);
+}
+
 const createDefaultSlotButton = () => ({
   icon: "",
   name: "",
@@ -768,6 +774,7 @@ const createDefaultSlotButton = () => ({
   badge_template: "",
   badge_color: "",
   badge_text_color: "",
+  popup: {},
 });
 
 function normalizeSlotButton(btn) {
@@ -781,6 +788,18 @@ function normalizeSlotButton(btn) {
   normalized.show_badge = !!normalized.show_badge;
   normalized.badge_source = normalized.badge_source === "template" ? "template" : "entity";
   normalized.visibility_mode = (normalized.visibility_mode === "state" || normalized.visibility_mode === "attribute") ? normalized.visibility_mode : "none";
+  const popupObj = {};
+  const nestedPopup = (src.popup && typeof src.popup === "object") ? src.popup : null;
+  if (nestedPopup) {
+    Object.entries(nestedPopup).forEach(([k, v]) => {
+      if (v !== undefined) popupObj[popupAnyKeyToFlatKey(k)] = v;
+    });
+  }
+  PERSON_POPUP_FLAT_KEYS.forEach((flatKey) => {
+    if (src[flatKey] === undefined) return;
+    popupObj[flatKey] = src[flatKey];
+  });
+  normalized.popup = popupObj;
   return normalized;
 }
 
@@ -854,6 +873,14 @@ function cleanupSlotButton(btn) {
   cleaned.tap_action = normalizeAction(normalized.tap_action) || { action: "none" };
   cleaned.hold_action = normalizeAction(normalized.hold_action) || { action: "none" };
   cleaned.double_tap_action = normalizeAction(normalized.double_tap_action) || { action: "none" };
+  if (normalized.popup && typeof normalized.popup === "object") {
+    const popup = {};
+    Object.entries(normalized.popup).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return;
+      popup[popupFlatKeyToNestedKey(popupAnyKeyToFlatKey(key))] = value;
+    });
+    if (Object.keys(popup).length) cleaned.popup = popup;
+  }
   return cleaned;
 }
 
@@ -3564,8 +3591,18 @@ class HkiHeaderCard extends LitElement {
           const tapAction = btn.tap_action || { action: "none" };
           const holdAction = btn.hold_action || { action: "none" };
           const doubleTapAction = btn.double_tap_action || { action: "none" };
+          const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
+          const buttonPopupOverrides = {};
+          const buttonPopup = (btn.popup && typeof btn.popup === "object") ? btn.popup : null;
+          if (buttonPopup) {
+            Object.entries(buttonPopup).forEach(([key, value]) => {
+              if (value === undefined) return;
+              buttonPopupOverrides[popupAnyKeyToFlatKey(key)] = value;
+            });
+          }
           const buttonPopupConfig = {
             ...(slotPopupConfig || {}),
+            ...buttonPopupOverrides,
             ...(name ? { popup_name: name } : {}),
             ...(stateLabel ? { popup_state: stateLabel } : {}),
             ...(icon ? { popup_icon: icon } : {}),
@@ -3626,7 +3663,7 @@ class HkiHeaderCard extends LitElement {
 
           return html`
             <div
-              class="info-item ${pillClass} hki-slot-button ${isIconOnly ? 'hki-slot-button-icon-only' : ''}"
+              class="info-item ${pillClass} hki-slot-button ${isIconOnly ? 'hki-slot-button-icon-only' : ''} ${hasAnyAction ? 'info-clickable' : ''}"
               style="${buttonStyle}"
               @mousedown=${handleMouseDown}
               @mouseup=${handleMouseUp}
@@ -3735,6 +3772,7 @@ class HkiHeaderCard extends LitElement {
     const tapAction = cfg[prefix + "tap_action"] || cfg.info_tap_action || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+    const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
@@ -3791,7 +3829,7 @@ class HkiHeaderCard extends LitElement {
 
     return html`
       <div 
-        class="info-item ${pillClass}" 
+        class="info-item ${pillClass} ${hasAnyAction ? 'info-clickable' : ''}" 
         style="${combinedStyle}"
         @mousedown=${handleMouseDown}
         @mouseup=${handleMouseUp}
@@ -3854,6 +3892,7 @@ class HkiHeaderCard extends LitElement {
     const tapAction = cfg[prefix + "tap_action"] || cfg.info_tap_action || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+    const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
@@ -3910,7 +3949,7 @@ class HkiHeaderCard extends LitElement {
 
     return html`
       <div 
-        class="info-item ${pillClass}" 
+        class="info-item ${pillClass} ${hasAnyAction ? 'info-clickable' : ''}" 
         style="${combinedStyle}"
         @mousedown=${handleMouseDown}
         @mouseup=${handleMouseUp}
@@ -5357,6 +5396,7 @@ class HkiHeaderCardEditor extends LitElement {
         .value=${value}
         mode="jinja2"
         autocomplete-entities
+        autocomplete-icons
         @value-changed=${(ev) => {
           ev.stopPropagation();
           const newValue = ev.detail?.value ?? "";
@@ -5626,6 +5666,8 @@ class HkiHeaderCardEditor extends LitElement {
                     </div>
                     </div>
 
+                  <ha-entity-picker .hass=${this.hass} .value=${btn.entity || ""} label="Entity (optional)"
+                    @value-changed=${(e) => setButton(idx, { entity: e.detail.value || "" })}></ha-entity-picker>
                   ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
                     value: btn.icon || "",
                     onchange: (v) => setButton(idx, { icon: v || "" }),
@@ -5638,8 +5680,6 @@ class HkiHeaderCardEditor extends LitElement {
                     value: btn.state || "",
                     onchange: (v) => setButton(idx, { state: v || "" }),
                   })}
-                  <ha-entity-picker .hass=${this.hass} .value=${btn.entity || ""} label="Entity (optional)"
-                    @value-changed=${(e) => setButton(idx, { entity: e.detail.value || "" })}></ha-entity-picker>
 
                   <div class="switch-row" style="margin-top: 6px;">
                     <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
@@ -5680,7 +5720,18 @@ class HkiHeaderCardEditor extends LitElement {
                   <details class="box-section" style="margin-top:8px;">
                     <summary>HKI Popup Settings</summary>
                     <div class="box-content">
-                      ${this._renderSlotPopupEditor(prefix, popupEntity)}
+                      ${this._renderSlotPopupEditor(`${prefix}btn_${idx}_popup_`, popupEntity, {
+                        actions: [tapAction, holdAction, doubleTapAction],
+                        popupGetter: () => btn.popup || {},
+                        popupSetter: (patch) => {
+                          const prev = (btn.popup && typeof btn.popup === "object") ? btn.popup : {};
+                          const nextPopup = { ...prev, ...patch };
+                          Object.keys(nextPopup).forEach((k) => {
+                            if (nextPopup[k] === undefined || nextPopup[k] === null || nextPopup[k] === "") delete nextPopup[k];
+                          });
+                          setButton(idx, { popup: nextPopup });
+                        },
+                      })}
                     </div>
                   </details>
 
@@ -5855,13 +5906,18 @@ class HkiHeaderCardEditor extends LitElement {
     `;
   }
 
-  _renderSlotPopupEditor(prefix, entityId = null) {
+  _renderSlotPopupEditor(prefix, entityId = null, options = {}) {
     const cfg = this._config;
-    const slotActions = [
-      cfg[prefix + "tap_action"],
-      cfg[prefix + "hold_action"],
-      cfg[prefix + "double_tap_action"],
-    ].filter(Boolean);
+    const boundPopup = (options.popupGetter && typeof options.popupGetter === "function")
+      ? (options.popupGetter() || {})
+      : null;
+    const slotActions = Array.isArray(options.actions) && options.actions.length
+      ? options.actions.filter(Boolean)
+      : [
+          cfg[prefix + "tap_action"],
+          cfg[prefix + "hold_action"],
+          cfg[prefix + "double_tap_action"],
+        ].filter(Boolean);
     const effectiveEntity = entityId
       || slotActions.find((a) => a?.action === "hki-more-info" && a?.entity)?.entity
       || slotActions.find((a) => a?.entity)?.entity
@@ -5871,9 +5927,13 @@ class HkiHeaderCardEditor extends LitElement {
     const hasChildren = selectedEntity?.attributes?.entity_id && Array.isArray(selectedEntity.attributes.entity_id);
     const isLightGroup = domain === 'light' && hasChildren;
 
-    const enabled = !!cfg[prefix + "custom_popup_enabled"];
-    const p = (k) => cfg[prefix + k];
+    const enabled = boundPopup ? !!boundPopup.custom_popup_enabled : !!cfg[prefix + "custom_popup_enabled"];
+    const p = (k) => boundPopup ? boundPopup[k] : cfg[prefix + k];
     const pp = (patch) => {
+      if (boundPopup && options.popupSetter && typeof options.popupSetter === "function") {
+        options.popupSetter(patch);
+        return;
+      }
       const mapped = {};
       Object.keys(patch).forEach(k => mapped[prefix + k] = patch[k]);
       this._config = { ...this._config, ...mapped };
