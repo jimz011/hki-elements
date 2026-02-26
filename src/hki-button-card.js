@@ -460,7 +460,7 @@
       // Custom popup
       'custom_popup',
       // Home Assistant layout metadata (must be preserved)
-      'grid_options',
+      'grid_options', 'visibility',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
