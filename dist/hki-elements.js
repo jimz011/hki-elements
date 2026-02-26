@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-08 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-09 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1616,12 +1616,12 @@ class HkiHeaderCard extends LitElement {
       }
 
       .hki-slot-button-icon-only {
-        width: var(--hki-slot-circle-size, 44px) !important;
-        height: var(--hki-slot-circle-size, 44px) !important;
-        min-width: var(--hki-slot-circle-size, 44px) !important;
-        max-width: var(--hki-slot-circle-size, 44px) !important;
-        min-height: var(--hki-slot-circle-size, 44px) !important;
-        max-height: var(--hki-slot-circle-size, 44px) !important;
+        width: var(--hki-slot-circle-size, 34px) !important;
+        height: var(--hki-slot-circle-size, 34px) !important;
+        min-width: var(--hki-slot-circle-size, 34px) !important;
+        max-width: var(--hki-slot-circle-size, 34px) !important;
+        min-height: var(--hki-slot-circle-size, 34px) !important;
+        max-height: var(--hki-slot-circle-size, 34px) !important;
         border-radius: 50% !important;
         padding: 0 !important;
         gap: 0 !important;
@@ -3346,7 +3346,7 @@ class HkiHeaderCard extends LitElement {
           const showBadge = btn.show_badge && !!badgeText;
 
           const isIconOnly = !name;
-          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2) - 2));
+          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2) - 6));
           const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
           const buttonStyle = `${combinedStyle}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const tapAction = btn.tap_action || { action: "none" };
@@ -5282,6 +5282,7 @@ class HkiHeaderCardEditor extends LitElement {
               const tapAction = btn.tap_action || { action: "none" };
               const holdAction = btn.hold_action || { action: "none" };
               const doubleTapAction = btn.double_tap_action || { action: "none" };
+              const popupEntity = tapAction.entity || holdAction.entity || doubleTapAction.entity || "";
               const renderActionEditor = (actionLabel, actionObj, setAction) => html`
                 <div style="margin-top:6px;">
                   <p style="font-size:11px;opacity:0.7;margin:0 0 4px 0;">${actionLabel}</p>
@@ -5374,6 +5375,13 @@ class HkiHeaderCardEditor extends LitElement {
                       ${renderActionEditor("Tap action", tapAction, (v) => setButton(idx, { tap_action: v }))}
                       ${renderActionEditor("Hold action", holdAction, (v) => setButton(idx, { hold_action: v }))}
                       ${renderActionEditor("Double tap action", doubleTapAction, (v) => setButton(idx, { double_tap_action: v }))}
+                    </div>
+                  </details>
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>HKI Popup Settings</summary>
+                    <div class="box-content">
+                      ${this._renderSlotPopupEditor(prefix, popupEntity)}
                     </div>
                   </details>
                   </div>
@@ -6694,9 +6702,9 @@ class HkiHeaderCardEditor extends LitElement {
                       ></ha-entity-picker>
                     ` : ''}
 
-                    <details style="margin-top: 8px;">
-                      <summary style="cursor: pointer; font-weight: 500; padding: 8px 0;">Custom Icons & Pictures</summary>
-                      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <details class="box-section" style="margin-top: 8px;">
+                      <summary>Custom Icons & Pictures</summary>
+                      <div class="box-content" style="display: flex; flex-direction: column; gap: 8px;">
                         <ha-icon-picker
                           .hass=${this.hass}
                           .value=${typeof personConfig !== 'string' ? (personConfig.icon_home || "") : ""}
