@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-09 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-10 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -684,17 +684,27 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
 const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon",
   "name",
+  "state",
   "badge_color",
   "badge_text_color",
   "badge_template",
+  "visibility_state",
+  "visibility_attribute_value",
 ]);
 
 const createDefaultSlotButton = () => ({
-  icon: "mdi:gesture-tap",
+  icon: "",
   name: "",
+  state: "",
+  entity: "",
   tap_action: { action: "none" },
   hold_action: { action: "none" },
   double_tap_action: { action: "none" },
+  visibility_mode: "none", // none | state | attribute
+  visibility_entity: "",
+  visibility_state: "",
+  visibility_attribute: "",
+  visibility_attribute_value: "",
   show_badge: false,
   badge_source: "entity",
   badge_entity: "",
@@ -712,6 +722,7 @@ function normalizeSlotButton(btn) {
   if (!normalized.name && typeof src.label === "string") normalized.name = src.label;
   normalized.show_badge = !!normalized.show_badge;
   normalized.badge_source = normalized.badge_source === "template" ? "template" : "entity";
+  normalized.visibility_mode = (normalized.visibility_mode === "state" || normalized.visibility_mode === "attribute") ? normalized.visibility_mode : "none";
   return normalized;
 }
 
@@ -727,6 +738,20 @@ function cleanupSlotButton(btn) {
       if (trimmed) cleaned[k] = trimmed;
     }
   });
+  if (normalized.entity) cleaned.entity = normalized.entity;
+  if (normalized.visibility_mode && normalized.visibility_mode !== "none") {
+    cleaned.visibility_mode = normalized.visibility_mode;
+    if (normalized.visibility_entity) cleaned.visibility_entity = normalized.visibility_entity;
+    if (normalized.visibility_mode === "state") {
+      if (normalized.visibility_state) cleaned.visibility_state = normalized.visibility_state;
+      delete cleaned.visibility_attribute;
+      delete cleaned.visibility_attribute_value;
+    } else if (normalized.visibility_mode === "attribute") {
+      if (normalized.visibility_attribute) cleaned.visibility_attribute = normalized.visibility_attribute;
+      if (normalized.visibility_attribute_value) cleaned.visibility_attribute_value = normalized.visibility_attribute_value;
+      delete cleaned.visibility_state;
+    }
+  }
 
   cleaned.show_badge = !!normalized.show_badge;
   if (cleaned.show_badge) {
@@ -746,7 +771,6 @@ function cleanupSlotButton(btn) {
     delete cleaned.badge_text_color;
   }
 
-  if (!cleaned.icon) cleaned.icon = "mdi:gesture-tap";
   const normalizeAction = (action) => {
     if (!action || typeof action !== "object") return null;
     const actionType = action.action || "none";
@@ -1069,6 +1093,13 @@ function migrateToNestedFormat(oldConfig) {
       slotConfig.button = {
         icon: oldConfig[prefix + "icon"],
         name: oldConfig[prefix + "name"] ?? oldConfig[prefix + "label"],
+        state: oldConfig[prefix + "state"],
+        entity: oldConfig[prefix + "entity"],
+        visibility_mode: oldConfig[prefix + "visibility_mode"],
+        visibility_entity: oldConfig[prefix + "visibility_entity"],
+        visibility_state: oldConfig[prefix + "visibility_state"],
+        visibility_attribute: oldConfig[prefix + "visibility_attribute"],
+        visibility_attribute_value: oldConfig[prefix + "visibility_attribute_value"],
         show_badge: oldConfig[prefix + "show_badge"],
         badge_source: oldConfig[prefix + "badge_source"],
         badge_entity: oldConfig[prefix + "badge_entity"],
@@ -1630,8 +1661,8 @@ class HkiHeaderCard extends LitElement {
 
       .hki-slot-button-badge {
         position: absolute;
-        top: 2px;
-        right: 2px;
+        top: -4px;
+        right: -4px;
         min-width: 16px;
         height: 16px;
         padding: 0 5px;
@@ -2286,6 +2317,13 @@ class HkiHeaderCard extends LitElement {
       const legacyButton = {
         icon: m[prefix + "icon"],
         name: m[prefix + "name"] ?? m[prefix + "label"],
+        state: m[prefix + "state"],
+        entity: m[prefix + "entity"],
+        visibility_mode: m[prefix + "visibility_mode"],
+        visibility_entity: m[prefix + "visibility_entity"],
+        visibility_state: m[prefix + "visibility_state"],
+        visibility_attribute: m[prefix + "visibility_attribute"],
+        visibility_attribute_value: m[prefix + "visibility_attribute_value"],
         show_badge: m[prefix + "show_badge"],
         badge_source: m[prefix + "badge_source"],
         badge_entity: m[prefix + "badge_entity"],
@@ -2704,8 +2742,15 @@ class HkiHeaderCard extends LitElement {
     const configured = Array.isArray(this._config?.[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
     if (configured.length) return configured.map((btn) => normalizeSlotButton(btn));
     return [normalizeSlotButton({
-      icon: this._config?.[prefix + "icon"] || "mdi:gesture-tap",
+      icon: this._config?.[prefix + "icon"] || "",
       name: this._config?.[prefix + "name"] ?? this._config?.[prefix + "label"] ?? "",
+      state: this._config?.[prefix + "state"] || "",
+      entity: this._config?.[prefix + "entity"] || "",
+      visibility_mode: this._config?.[prefix + "visibility_mode"] || "none",
+      visibility_entity: this._config?.[prefix + "visibility_entity"] || "",
+      visibility_state: this._config?.[prefix + "visibility_state"] || "",
+      visibility_attribute: this._config?.[prefix + "visibility_attribute"] || "",
+      visibility_attribute_value: this._config?.[prefix + "visibility_attribute_value"] || "",
       show_badge: this._config?.[prefix + "show_badge"] === true,
       badge_source: this._config?.[prefix + "badge_source"] || "entity",
       badge_entity: this._config?.[prefix + "badge_entity"] || "",
@@ -3330,10 +3375,43 @@ class HkiHeaderCard extends LitElement {
       <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
         ${buttons.map((rawBtn, idx) => {
           const btn = normalizeSlotButton(rawBtn);
-          const icon = this._resolveInlineTemplate(btn.icon || "mdi:gesture-tap", "mdi:gesture-tap");
-          const name = this._resolveInlineTemplate(btn.name || "", "");
+          const buttonEntityId = btn.entity || "";
+          const buttonEntity = buttonEntityId && this.hass?.states?.[buttonEntityId] ? this.hass.states[buttonEntityId] : null;
+          const entityName = buttonEntity?.attributes?.friendly_name ? String(buttonEntity.attributes.friendly_name) : "";
+          const entityIcon = buttonEntity?.attributes?.icon ? String(buttonEntity.attributes.icon) : "";
+          const entityState = buttonEntity ? String(buttonEntity.state ?? "") : "";
+
+          const iconOverride = this._resolveInlineTemplate(btn.icon || "", "");
+          const nameOverride = this._resolveInlineTemplate(btn.name || "", "");
+          const stateOverride = this._resolveInlineTemplate(btn.state || "", "");
+
+          const icon = iconOverride || entityIcon || "mdi:gesture-tap";
+          const name = nameOverride || entityName || "";
+          const stateLabel = stateOverride || entityState || "";
           const badgeColor = this._resolveInlineTemplate(btn.badge_color || "", "");
           const badgeTextColor = this._resolveInlineTemplate(btn.badge_text_color || "", "");
+
+          const conditionMode = btn.visibility_mode || "none";
+          const conditionEntityId = btn.visibility_entity || buttonEntityId;
+          const conditionEntity = conditionEntityId && this.hass?.states?.[conditionEntityId] ? this.hass.states[conditionEntityId] : null;
+          const readAttributePath = (attributes, path) => {
+            if (!attributes || !path) return undefined;
+            return String(path).split(".").reduce((acc, key) => {
+              if (acc == null || typeof acc !== "object") return undefined;
+              return acc[key];
+            }, attributes);
+          };
+          let isVisible = true;
+          if (conditionMode === "state") {
+            const expectedState = this._resolveInlineTemplate(btn.visibility_state || "", "");
+            isVisible = !!(conditionEntity && expectedState !== "" && String(conditionEntity.state ?? "") === String(expectedState));
+          } else if (conditionMode === "attribute") {
+            const attrName = (btn.visibility_attribute || "").trim();
+            const expectedAttrValue = this._resolveInlineTemplate(btn.visibility_attribute_value || "", "");
+            const currentAttrValue = readAttributePath(conditionEntity?.attributes || null, attrName);
+            isVisible = !!(conditionEntity && attrName && expectedAttrValue !== "" && String(currentAttrValue ?? "") === String(expectedAttrValue));
+          }
+          if (!isVisible) return html``;
 
           let badgeText = "";
           if (btn.show_badge) {
@@ -3345,13 +3423,20 @@ class HkiHeaderCard extends LitElement {
           }
           const showBadge = btn.show_badge && !!badgeText;
 
-          const isIconOnly = !name;
-          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2) - 6));
+          const isIconOnly = !name && !stateLabel;
+          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
           const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
-          const buttonStyle = `${combinedStyle}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const buttonStyle = `${combinedStyle}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const tapAction = btn.tap_action || { action: "none" };
           const holdAction = btn.hold_action || { action: "none" };
           const doubleTapAction = btn.double_tap_action || { action: "none" };
+          const buttonPopupConfig = {
+            ...(slotPopupConfig || {}),
+            ...(name ? { popup_name: name } : {}),
+            ...(stateLabel ? { popup_state: stateLabel } : {}),
+            ...(icon ? { popup_icon: icon } : {}),
+          };
+          const effectivePopupConfig = Object.keys(buttonPopupConfig).length ? buttonPopupConfig : null;
 
           const key = `${stateKey}_${idx}`;
           if (!this._slotHoldState) this._slotHoldState = {};
@@ -3363,7 +3448,7 @@ class HkiHeaderCard extends LitElement {
             state.holdTimer = setTimeout(() => {
               state.holdActive = true;
               if (holdAction && holdAction.action !== "none") {
-                this._handleSlotTapAction(holdAction, slotName, null, slotPopupConfig);
+                this._handleSlotTapAction(holdAction, slotName, buttonEntityId || null, effectivePopupConfig);
               }
             }, 500);
           };
@@ -3378,14 +3463,14 @@ class HkiHeaderCard extends LitElement {
               if (state.clickCount === 1) {
                 state.clickTimer = setTimeout(() => {
                   if (state.clickCount === 1) {
-                    this._handleSlotTapAction(tapAction, slotName, null, slotPopupConfig);
+                    this._handleSlotTapAction(tapAction, slotName, buttonEntityId || null, effectivePopupConfig);
                   }
                   state.clickCount = 0;
                 }, 250);
               } else if (state.clickCount === 2) {
                 clearTimeout(state.clickTimer);
                 state.clickCount = 0;
-                this._handleSlotTapAction(doubleTapAction, slotName, null, slotPopupConfig);
+                this._handleSlotTapAction(doubleTapAction, slotName, buttonEntityId || null, effectivePopupConfig);
               }
             }
             state.holdActive = false;
@@ -3417,9 +3502,10 @@ class HkiHeaderCard extends LitElement {
               @contextmenu=${(e) => e.preventDefault()}
             >
               <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
-                <ha-icon .icon=${icon || "mdi:gesture-tap"} style="${iconStyle}"></ha-icon>
+                <ha-icon .icon=${icon} style="${iconStyle}"></ha-icon>
               </div>
               ${name ? html`<span>${name}</span>` : ''}
+              ${stateLabel ? html`<span style="opacity:0.85;">${stateLabel}</span>` : ''}
               ${showBadge ? html`
                 <span class="hki-slot-button-badge" style="${badgeColor ? `background:${badgeColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}">
                   ${badgeText}
@@ -4837,7 +4923,8 @@ class HkiHeaderCardEditor extends LitElement {
         }
       } else if (slotType === "button") {
         const buttonKeys = [
-          "icon", "name", "label",
+          "icon", "name", "label", "state", "entity",
+          "visibility_mode", "visibility_entity", "visibility_state", "visibility_attribute", "visibility_attribute_value",
           "show_badge", "badge_source", "badge_entity", "badge_template",
           "badge_color", "badge_text_color", "buttons",
         ];
@@ -4847,6 +4934,13 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
           if (flat[prefix + "name"] !== undefined) slotConfig.button.name = flat[prefix + "name"];
           else if (flat[prefix + "label"] !== undefined) slotConfig.button.name = flat[prefix + "label"];
+          if (flat[prefix + "state"] !== undefined) slotConfig.button.state = flat[prefix + "state"];
+          if (flat[prefix + "entity"] !== undefined) slotConfig.button.entity = flat[prefix + "entity"];
+          if (flat[prefix + "visibility_mode"] !== undefined) slotConfig.button.visibility_mode = flat[prefix + "visibility_mode"];
+          if (flat[prefix + "visibility_entity"] !== undefined) slotConfig.button.visibility_entity = flat[prefix + "visibility_entity"];
+          if (flat[prefix + "visibility_state"] !== undefined) slotConfig.button.visibility_state = flat[prefix + "visibility_state"];
+          if (flat[prefix + "visibility_attribute"] !== undefined) slotConfig.button.visibility_attribute = flat[prefix + "visibility_attribute"];
+          if (flat[prefix + "visibility_attribute_value"] !== undefined) slotConfig.button.visibility_attribute_value = flat[prefix + "visibility_attribute_value"];
           if (flat[prefix + "show_badge"] !== undefined) slotConfig.button.show_badge = flat[prefix + "show_badge"];
           if (flat[prefix + "badge_source"] !== undefined) slotConfig.button.badge_source = flat[prefix + "badge_source"];
           if (flat[prefix + "badge_entity"] !== undefined) slotConfig.button.badge_entity = flat[prefix + "badge_entity"];
@@ -5236,8 +5330,15 @@ class HkiHeaderCardEditor extends LitElement {
         ${(() => {
           const configured = Array.isArray(this._config[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
           const fallback = normalizeSlotButton({
-            icon: this._config[prefix + "icon"] || "mdi:gesture-tap",
+            icon: this._config[prefix + "icon"] || "",
             name: this._config[prefix + "name"] ?? this._config[prefix + "label"] ?? "",
+            state: this._config[prefix + "state"] || "",
+            entity: this._config[prefix + "entity"] || "",
+            visibility_mode: this._config[prefix + "visibility_mode"] || "none",
+            visibility_entity: this._config[prefix + "visibility_entity"] || "",
+            visibility_state: this._config[prefix + "visibility_state"] || "",
+            visibility_attribute: this._config[prefix + "visibility_attribute"] || "",
+            visibility_attribute_value: this._config[prefix + "visibility_attribute_value"] || "",
             show_badge: this._config[prefix + "show_badge"] === true,
             badge_source: this._config[prefix + "badge_source"] || "entity",
             badge_entity: this._config[prefix + "badge_entity"] || "",
@@ -5255,6 +5356,8 @@ class HkiHeaderCardEditor extends LitElement {
               [prefix + "buttons"]: cleaned,
               [prefix + "icon"]: first.icon || "mdi:gesture-tap",
               [prefix + "name"]: first.name || "",
+              [prefix + "state"]: first.state || "",
+              [prefix + "entity"]: first.entity || "",
               [prefix + "label"]: first.name || "", // backward compatibility
             };
             const strippedConfig = this._stripDefaults(this._config);
@@ -5282,7 +5385,7 @@ class HkiHeaderCardEditor extends LitElement {
               const tapAction = btn.tap_action || { action: "none" };
               const holdAction = btn.hold_action || { action: "none" };
               const doubleTapAction = btn.double_tap_action || { action: "none" };
-              const popupEntity = tapAction.entity || holdAction.entity || doubleTapAction.entity || "";
+              const popupEntity = tapAction.entity || holdAction.entity || doubleTapAction.entity || btn.entity || "";
               const renderActionEditor = (actionLabel, actionObj, setAction) => html`
                 <div style="margin-top:6px;">
                   <p style="font-size:11px;opacity:0.7;margin:0 0 4px 0;">${actionLabel}</p>
@@ -5335,12 +5438,18 @@ class HkiHeaderCardEditor extends LitElement {
 
                   ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
                     value: btn.icon || "",
-                    onchange: (v) => setButton(idx, { icon: v || "mdi:gesture-tap" }),
+                    onchange: (v) => setButton(idx, { icon: v || "" }),
                   })}
-                  ${this._renderTemplateEditor("Name (optional, Jinja)", `${prefix}btn_${idx}_name`, {
+                  ${this._renderTemplateEditor("Name Override (optional, Jinja)", `${prefix}btn_${idx}_name`, {
                     value: btn.name || "",
                     onchange: (v) => setButton(idx, { name: v || "" }),
                   })}
+                  ${this._renderTemplateEditor("State Override (optional, Jinja)", `${prefix}btn_${idx}_state`, {
+                    value: btn.state || "",
+                    onchange: (v) => setButton(idx, { state: v || "" }),
+                  })}
+                  <ha-entity-picker .hass=${this.hass} .value=${btn.entity || ""} label="Entity (optional)"
+                    @value-changed=${(e) => setButton(idx, { entity: e.detail.value || "" })}></ha-entity-picker>
 
                   <div class="switch-row" style="margin-top: 6px;">
                     <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
@@ -5382,6 +5491,40 @@ class HkiHeaderCardEditor extends LitElement {
                     <summary>HKI Popup Settings</summary>
                     <div class="box-content">
                       ${this._renderSlotPopupEditor(prefix, popupEntity)}
+                    </div>
+                  </details>
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>Visibility Conditions</summary>
+                    <div class="box-content">
+                      <ha-select label="Show button when" .value=${btn.visibility_mode || "none"}
+                        @selected=${(e) => setButton(idx, { visibility_mode: e.target.value || "none" })}
+                        @closed=${(e) => e.stopPropagation()}>
+                        <mwc-list-item value="none">Always show</mwc-list-item>
+                        <mwc-list-item value="state">Entity state equals</mwc-list-item>
+                        <mwc-list-item value="attribute">Entity attribute equals</mwc-list-item>
+                      </ha-select>
+
+                      ${btn.visibility_mode && btn.visibility_mode !== "none" ? html`
+                        <ha-entity-picker .hass=${this.hass} .value=${btn.visibility_entity || btn.entity || ""} label="Condition Entity"
+                          @value-changed=${(e) => setButton(idx, { visibility_entity: e.detail.value || "" })}></ha-entity-picker>
+                      ` : ''}
+
+                      ${btn.visibility_mode === "state" ? html`
+                        ${this._renderTemplateEditor("Expected State (Jinja supported)", `${prefix}btn_${idx}_visibility_state`, {
+                          value: btn.visibility_state || "",
+                          onchange: (v) => setButton(idx, { visibility_state: v || "" }),
+                        })}
+                      ` : ''}
+
+                      ${btn.visibility_mode === "attribute" ? html`
+                        <ha-textfield label="Attribute path" .value=${btn.visibility_attribute || ""} placeholder="friendly_name or nested.path"
+                          @input=${(e) => setButton(idx, { visibility_attribute: e.target.value || "" })}></ha-textfield>
+                        ${this._renderTemplateEditor("Expected Attribute Value (Jinja supported)", `${prefix}btn_${idx}_visibility_attribute_value`, {
+                          value: btn.visibility_attribute_value || "",
+                          onchange: (v) => setButton(idx, { visibility_attribute_value: v || "" }),
+                        })}
+                      ` : ''}
                     </div>
                   </details>
                   </div>
