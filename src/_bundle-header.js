@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-04 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-05 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -544,12 +544,19 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
 
 window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) => {
   const current = window.HKI.getGlobalSettings();
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
   const next = {
     ...current,
     ...(settings || {}),
-    button: { ...(current.button || {}), ...((settings && settings.button) || {}) },
-    header: { ...(current.header || {}), ...((settings && settings.header) || {}) },
-    navigation: { ...(current.navigation || {}), ...((settings && settings.navigation) || {}) },
+    button: hasOwn(settings, "button")
+      ? (((settings && settings.button) && typeof settings.button === "object") ? { ...settings.button } : {})
+      : { ...(current.button || {}) },
+    header: hasOwn(settings, "header")
+      ? (((settings && settings.header) && typeof settings.header === "object") ? { ...settings.header } : {})
+      : { ...(current.header || {}) },
+    navigation: hasOwn(settings, "navigation")
+      ? (((settings && settings.navigation) && typeof settings.navigation === "object") ? { ...settings.navigation } : {})
+      : { ...(current.navigation || {}) },
   };
   window.HKI._globalSettingsCache = next;
   try {
