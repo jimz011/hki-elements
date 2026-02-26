@@ -174,6 +174,7 @@ const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "name_color",
   "state_color",
   "text_shadow",
+  "icon_shadow",
   "badge_color",
   "badge_text_color",
   "badge_template",
@@ -186,6 +187,7 @@ const SLOT_BUTTON_STYLE_FIELDS = Object.freeze([
   "name_color",
   "state_color",
   "text_shadow",
+  "icon_shadow",
   "name_offset_x",
   "name_offset_y",
   "state_offset_x",
@@ -240,6 +242,7 @@ const createDefaultSlotButton = () => ({
   name_color: "",
   state_color: "",
   text_shadow: "",
+  icon_shadow: "",
   name_offset_x: 0,
   name_offset_y: 0,
   state_offset_x: 0,
@@ -481,6 +484,7 @@ const DEFAULTS = Object.freeze({
   info_weight: "medium",
   info_color: "",
   info_text_shadow: "",
+  info_icon_shadow: "",
   info_pill: true,
   info_pill_background: "rgba(0,0,0,0.25)",
   info_pill_padding_x: 12,
@@ -496,6 +500,7 @@ const DEFAULTS = Object.freeze({
   bottom_info_weight: "medium",
   bottom_info_color: "",
   bottom_info_text_shadow: "",
+  bottom_info_icon_shadow: "",
   bottom_info_pill: true,
   bottom_info_pill_background: "rgba(0,0,0,0.25)",
   bottom_info_pill_padding_x: 12,
@@ -584,7 +589,7 @@ function migrateToNestedFormat(oldConfig) {
   }
   
   // Migrate global info styling
-  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
+  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_icon_shadow', 'info_pill', 'info_pill_background',
                     'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                     'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
   if (infoKeys.some(k => oldConfig[k] !== undefined)) {
@@ -593,6 +598,7 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_weight !== undefined) newConfig.info.weight = oldConfig.info_weight;
     if (oldConfig.info_color !== undefined) newConfig.info.color = oldConfig.info_color;
     if (oldConfig.info_text_shadow !== undefined) newConfig.info.text_shadow = oldConfig.info_text_shadow;
+    if (oldConfig.info_icon_shadow !== undefined) newConfig.info.icon_shadow = oldConfig.info_icon_shadow;
     if (oldConfig.info_pill !== undefined) newConfig.info.pill = oldConfig.info_pill;
     if (oldConfig.info_pill_background !== undefined) newConfig.info.pill_background = oldConfig.info_pill_background;
     if (oldConfig.info_pill_padding_x !== undefined) newConfig.info.pill_padding_x = oldConfig.info_pill_padding_x;
@@ -627,6 +633,7 @@ function migrateToNestedFormat(oldConfig) {
         weight: oldConfig[prefix + "weight"],
         color: oldConfig[prefix + "color"],
         text_shadow: oldConfig[prefix + "text_shadow"],
+        icon_shadow: oldConfig[prefix + "icon_shadow"],
         pill: oldConfig[prefix + "pill"],
         pill_background: oldConfig[prefix + "pill_background"],
         pill_padding_x: oldConfig[prefix + "pill_padding_x"],
@@ -677,6 +684,7 @@ function migrateToNestedFormat(oldConfig) {
         name_color: oldConfig[prefix + "name_color"],
         state_color: oldConfig[prefix + "state_color"],
         text_shadow: oldConfig[prefix + "text_shadow"],
+        icon_shadow: oldConfig[prefix + "icon_shadow"],
         name_offset_x: oldConfig[prefix + "name_offset_x"],
         name_offset_y: oldConfig[prefix + "name_offset_y"],
         state_offset_x: oldConfig[prefix + "state_offset_x"],
@@ -788,6 +796,7 @@ function flattenNestedFormat(nested) {
     if (nested.info.weight !== undefined) flat.info_weight = nested.info.weight;
     if (nested.info.color !== undefined) flat.info_color = nested.info.color;
     if (nested.info.text_shadow !== undefined) flat.info_text_shadow = nested.info.text_shadow;
+    if (nested.info.icon_shadow !== undefined) flat.info_icon_shadow = nested.info.icon_shadow;
     if (nested.info.pill !== undefined) flat.info_pill = nested.info.pill;
     if (nested.info.pill_background !== undefined) flat.info_pill_background = nested.info.pill_background;
     if (nested.info.pill_padding_x !== undefined) flat.info_pill_padding_x = nested.info.pill_padding_x;
@@ -805,6 +814,7 @@ function flattenNestedFormat(nested) {
     if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
     if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
     if (nested.bottom_info.text_shadow !== undefined) flat.bottom_info_text_shadow = nested.bottom_info.text_shadow;
+    if (nested.bottom_info.icon_shadow !== undefined) flat.bottom_info_icon_shadow = nested.bottom_info.icon_shadow;
     if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
     if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
     if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
@@ -842,6 +852,7 @@ function flattenNestedFormat(nested) {
       flat[prefix + "weight"] = slotConfig.styling.weight;
       flat[prefix + "color"] = slotConfig.styling.color;
       flat[prefix + "text_shadow"] = slotConfig.styling.text_shadow;
+      flat[prefix + "icon_shadow"] = slotConfig.styling.icon_shadow;
       flat[prefix + "pill"] = slotConfig.styling.pill;
       flat[prefix + "pill_background"] = slotConfig.styling.pill_background;
       flat[prefix + "pill_padding_x"] = slotConfig.styling.pill_padding_x;
@@ -1941,6 +1952,7 @@ class HkiHeaderCard extends LitElement {
         name_color: m[prefix + "name_color"],
         state_color: m[prefix + "state_color"],
         text_shadow: m[prefix + "text_shadow"],
+        icon_shadow: m[prefix + "icon_shadow"],
         name_offset_x: m[prefix + "name_offset_x"],
         name_offset_y: m[prefix + "name_offset_y"],
         state_offset_x: m[prefix + "state_offset_x"],
@@ -1991,6 +2003,7 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "weight"] = m[prefix + "weight"] ? normalizeWeightKey(m[prefix + "weight"], "medium") : null;
       m[prefix + "color"] = m[prefix + "color"] || null;
       m[prefix + "text_shadow"] = m[prefix + "text_shadow"] || null;
+      m[prefix + "icon_shadow"] = m[prefix + "icon_shadow"] || null;
       m[prefix + "pill"] = m[prefix + "pill"] != null ? !!m[prefix + "pill"] : null;
       m[prefix + "pill_background"] = m[prefix + "pill_background"] || null;
       m[prefix + "pill_padding_x"] = m[prefix + "pill_padding_x"] != null ? clamp(+m[prefix + "pill_padding_x"], 0, 80) : null;
@@ -2012,6 +2025,7 @@ class HkiHeaderCard extends LitElement {
     m.info_size_px = clamp(+m.info_size_px || 12, 8, 64);
     m.info_weight = normalizeWeightKey(m.info_weight ?? "medium", "medium");
     m.info_text_shadow = m.info_text_shadow || "";
+    m.info_icon_shadow = m.info_icon_shadow || "";
     m.info_pill = !!m.info_pill;
     m.info_pill_padding_x = clamp(+m.info_pill_padding_x || 12, 0, 80);
     m.info_pill_padding_y = clamp(+m.info_pill_padding_y || 8, 0, 80);
@@ -2020,6 +2034,8 @@ class HkiHeaderCard extends LitElement {
     m.info_pill_border_style = ["none", "solid", "dashed", "dotted"].includes(m.info_pill_border_style) ? m.info_pill_border_style : "none";
     m.info_pill_border_width = clamp(+m.info_pill_border_width || 0, 0, 10);
     m.info_pill_border_color = m.info_pill_border_color || "rgba(255,255,255,0.1)";
+    m.bottom_info_text_shadow = m.bottom_info_text_shadow || "";
+    m.bottom_info_icon_shadow = m.bottom_info_icon_shadow || "";
 
     // Weather options (Global fallback)
     m.weather_show_icon = m.weather_show_icon !== false;
@@ -2376,6 +2392,7 @@ class HkiHeaderCard extends LitElement {
       name_color: this._config?.[prefix + "name_color"] || "",
       state_color: this._config?.[prefix + "state_color"] || "",
       text_shadow: this._config?.[prefix + "text_shadow"] || "",
+      icon_shadow: this._config?.[prefix + "icon_shadow"] || "",
       name_offset_x: this._config?.[prefix + "name_offset_x"] ?? 0,
       name_offset_y: this._config?.[prefix + "name_offset_y"] ?? 0,
       state_offset_x: this._config?.[prefix + "state_offset_x"] ?? 0,
@@ -2831,6 +2848,13 @@ class HkiHeaderCard extends LitElement {
     if (needsUpdate) this.requestUpdate();
   }
 
+  _asIconFilterValue(rawValue) {
+    const v = String(rawValue || "").trim();
+    if (!v) return "";
+    if (/[a-z-]+\(/i.test(v)) return v;
+    return `drop-shadow(${v})`;
+  }
+
   _getSlotStyle(slotName, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
@@ -2841,11 +2865,12 @@ class HkiHeaderCard extends LitElement {
     const useGlobal = cfg[prefix + "use_global"] !== false;
     const rawColorForTpl = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"] || "");
     const rawTextShadowForTpl = (!useGlobal && cfg[prefix + "text_shadow"]) ? cfg[prefix + "text_shadow"] : (cfg[gp + "text_shadow"] || "");
+    const rawIconShadowForTpl = (!useGlobal && cfg[prefix + "icon_shadow"]) ? cfg[prefix + "icon_shadow"] : (cfg[gp + "icon_shadow"] || "");
     const rawPillBgForTpl = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : (cfg[gp + "pill_background"] || "");
-    const hasTemplateDrivenStyle = this._isTemplateString(rawColorForTpl) || this._isTemplateString(rawTextShadowForTpl) || this._isTemplateString(rawPillBgForTpl);
+    const hasTemplateDrivenStyle = this._isTemplateString(rawColorForTpl) || this._isTemplateString(rawTextShadowForTpl) || this._isTemplateString(rawIconShadowForTpl) || this._isTemplateString(rawPillBgForTpl);
 
     // Generate cache key based on relevant config values
-    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "text_shadow"]}:${cfg[prefix + "pill"]}:${cfg[prefix + "pill_background"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "text_shadow"]}:${cfg[gp + "pill"]}:${cfg[gp + "pill_background"]}:${cfg.font_family}:${cfg.font_style}`;
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "text_shadow"]}:${cfg[prefix + "icon_shadow"]}:${cfg[prefix + "pill"]}:${cfg[prefix + "pill_background"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "text_shadow"]}:${cfg[gp + "icon_shadow"]}:${cfg[gp + "pill"]}:${cfg[gp + "pill_background"]}:${cfg.font_family}:${cfg.font_style}`;
     if (!hasTemplateDrivenStyle) {
       const cached = this._slotStyleCache.get(cacheKey);
       if (cached) return cached;
@@ -2860,6 +2885,9 @@ class HkiHeaderCard extends LitElement {
     const color = this._resolveInlineTemplate(rawColor, "").trim() || "var(--hki-header-text-color, #fff)";
     const rawTextShadow = rawTextShadowForTpl;
     const textShadow = this._resolveInlineTemplate(rawTextShadow, "").trim();
+    const rawIconShadow = rawIconShadowForTpl;
+    const iconShadow = this._resolveInlineTemplate(rawIconShadow, "").trim();
+    const iconShadowFilter = this._asIconFilterValue(iconShadow);
     const iconSize = Math.round(sizePx * 2);
     
     const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
@@ -2892,6 +2920,8 @@ class HkiHeaderCard extends LitElement {
       sizePx, 
       color,
       textShadow,
+      iconShadow,
+      iconShadowFilter,
       pillBg,
       pillPaddingX,
       pillPaddingY,
@@ -2992,6 +3022,40 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
+  _getDomainDefaultIcon(domain) {
+    const iconMap = {
+      light: "mdi:lightbulb",
+      switch: "mdi:toggle-switch",
+      fan: "mdi:fan",
+      cover: "mdi:window-shutter",
+      lock: "mdi:lock",
+      climate: "mdi:thermostat",
+      alarm_control_panel: "mdi:shield-home",
+      media_player: "mdi:speaker",
+      vacuum: "mdi:robot-vacuum",
+      camera: "mdi:camera",
+      sensor: "mdi:gauge",
+      binary_sensor: "mdi:checkbox-marked-circle",
+      input_boolean: "mdi:toggle-switch",
+      input_number: "mdi:ray-vertex",
+      input_select: "mdi:format-list-bulleted",
+      automation: "mdi:robot",
+      script: "mdi:script-text",
+      scene: "mdi:palette",
+      remote: "mdi:remote",
+      humidifier: "mdi:air-humidifier",
+    };
+    return iconMap[domain] || "mdi:gesture-tap";
+  }
+
+  _getEntityDefaultIcon(entity) {
+    if (!entity || typeof entity !== "object") return "";
+    if (entity.attributes?.icon) return String(entity.attributes.icon);
+    const entityId = entity.entity_id || "";
+    const domain = entityId.includes(".") ? entityId.split(".")[0] : "";
+    return this._getDomainDefaultIcon(domain);
+  }
+
   _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
@@ -3012,7 +3076,7 @@ class HkiHeaderCard extends LitElement {
           const buttonEntityId = btn.entity || "";
           const buttonEntity = buttonEntityId && this.hass?.states?.[buttonEntityId] ? this.hass.states[buttonEntityId] : null;
           const entityName = buttonEntity?.attributes?.friendly_name ? String(buttonEntity.attributes.friendly_name) : "";
-          const entityIcon = buttonEntity?.attributes?.icon ? String(buttonEntity.attributes.icon) : "";
+          const entityIcon = buttonEntity ? this._getEntityDefaultIcon(buttonEntity) : "";
           const entityState = buttonEntity ? String(buttonEntity.state ?? "") : "";
 
           const iconOverride = this._resolveInlineTemplate(btn.icon || "", "");
@@ -3029,6 +3093,8 @@ class HkiHeaderCard extends LitElement {
           const nameColorOverride = this._resolveInlineTemplate(btn.name_color || "", "");
           const stateColorOverride = this._resolveInlineTemplate(btn.state_color || "", "");
           const textShadowOverride = this._resolveInlineTemplate(btn.text_shadow || "", "");
+          const iconShadowOverride = this._resolveInlineTemplate(btn.icon_shadow || "", "");
+          const effectiveIconShadow = this._asIconFilterValue(iconShadowOverride || slotStyle.iconShadow || "");
 
           const conditionMode = btn.visibility_mode || "none";
           const conditionEntityId = btn.visibility_entity || buttonEntityId;
@@ -3064,7 +3130,7 @@ class HkiHeaderCard extends LitElement {
 
           const isIconOnly = !name && !stateLabel;
           const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
-          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}`;
+          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}${effectiveIconShadow ? `filter:${effectiveIconShadow};` : ""}`;
           const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const nameOffsetX = toNum(btn.name_offset_x, 0);
           const nameOffsetY = toNum(btn.name_offset_y, 0);
@@ -3323,9 +3389,9 @@ class HkiHeaderCard extends LitElement {
         @contextmenu=${(e) => e.preventDefault()}
       >
         ${showIcon ? (useSvg 
-            ? html`<img src="${svgUrl}" class="info-icon ${animClass}" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;" alt="${state}" />`
+            ? html`<img src="${svgUrl}" class="info-icon ${animClass}" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;${slotStyle.iconShadowFilter ? `filter:${slotStyle.iconShadowFilter};` : ""}" alt="${state}" />`
             : html`<div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon class="${animClass}" .icon=${weatherIcon}
-                   style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColor};"></ha-icon></div>`)
+                   style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColor};${slotStyle.iconShadowFilter ? `filter:${slotStyle.iconShadowFilter};` : ""}"></ha-icon></div>`)
         : ""}
         ${showCondition ? html`<span class="info-condition">${conditionText}</span>` : ""}
         ${showTemp && temperature != null ? html`<span class="info-temperature">${Math.round(temperature)}${unit}</span>` : ""}
@@ -3444,7 +3510,7 @@ class HkiHeaderCard extends LitElement {
       >
         ${icon ? html`
           <div class="info-icon ${animClass}" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon}
-                   style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
+                   style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${slotStyle.iconShadowFilter ? `filter:${slotStyle.iconShadowFilter};` : ""}"></ha-icon></div>
         ` : ""}
         <span>${displayText}</span>
       </div>
@@ -4464,7 +4530,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
     
     // Nest info if any settings exist
-    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
+    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_icon_shadow', 'info_pill', 'info_pill_background',
                       'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                       'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
     const hasInfoConfig = infoKeys.some(k => flat[k] !== undefined);
@@ -4474,6 +4540,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_weight !== undefined) nested.info.weight = flat.info_weight;
       if (flat.info_color !== undefined) nested.info.color = flat.info_color;
       if (flat.info_text_shadow !== undefined) nested.info.text_shadow = flat.info_text_shadow;
+      if (flat.info_icon_shadow !== undefined) nested.info.icon_shadow = flat.info_icon_shadow;
       if (flat.info_pill !== undefined) nested.info.pill = flat.info_pill;
       if (flat.info_pill_background !== undefined) nested.info.pill_background = flat.info_pill_background;
       if (flat.info_pill_padding_x !== undefined) nested.info.pill_padding_x = flat.info_pill_padding_x;
@@ -4486,7 +4553,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
 
     // Nest bottom_info if any settings exist
-    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_text_shadow', 'bottom_info_pill', 'bottom_info_pill_background',
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_text_shadow', 'bottom_info_icon_shadow', 'bottom_info_pill', 'bottom_info_pill_background',
                       'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
                       'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
     const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
@@ -4496,6 +4563,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
       if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
       if (flat.bottom_info_text_shadow !== undefined) nested.bottom_info.text_shadow = flat.bottom_info_text_shadow;
+      if (flat.bottom_info_icon_shadow !== undefined) nested.bottom_info.icon_shadow = flat.bottom_info_icon_shadow;
       if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
       if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
       if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
@@ -4535,7 +4603,7 @@ class HkiHeaderCardEditor extends LitElement {
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
         slotConfig.styling = {};
-        const stylingKeys = ['size_px', 'weight', 'color', 'text_shadow', 'pill', 'pill_background', 'pill_padding_x',
+        const stylingKeys = ['size_px', 'weight', 'color', 'text_shadow', 'icon_shadow', 'pill', 'pill_background', 'pill_padding_x',
                             'pill_padding_y', 'pill_radius', 'pill_blur', 'pill_border_style',
                             'pill_border_width', 'pill_border_color'];
         stylingKeys.forEach(key => {
@@ -4585,7 +4653,7 @@ class HkiHeaderCardEditor extends LitElement {
       } else if (slotType === "button") {
         const buttonKeys = [
           "icon", "name", "state", "entity",
-          "card_color", "icon_color", "name_color", "state_color", "text_shadow",
+          "card_color", "icon_color", "name_color", "state_color", "text_shadow", "icon_shadow",
           "name_offset_x", "name_offset_y", "state_offset_x", "state_offset_y",
           "visibility_mode", "visibility_entity", "visibility_state", "visibility_attribute", "visibility_attribute_value",
           "show_badge", "badge_source", "badge_entity", "badge_template",
@@ -4603,6 +4671,7 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "name_color"] !== undefined) slotConfig.button.name_color = flat[prefix + "name_color"];
           if (flat[prefix + "state_color"] !== undefined) slotConfig.button.state_color = flat[prefix + "state_color"];
           if (flat[prefix + "text_shadow"] !== undefined) slotConfig.button.text_shadow = flat[prefix + "text_shadow"];
+          if (flat[prefix + "icon_shadow"] !== undefined) slotConfig.button.icon_shadow = flat[prefix + "icon_shadow"];
           if (flat[prefix + "name_offset_x"] !== undefined) slotConfig.button.name_offset_x = flat[prefix + "name_offset_x"];
           if (flat[prefix + "name_offset_y"] !== undefined) slotConfig.button.name_offset_y = flat[prefix + "name_offset_y"];
           if (flat[prefix + "state_offset_x"] !== undefined) slotConfig.button.state_offset_x = flat[prefix + "state_offset_x"];
@@ -5045,6 +5114,7 @@ class HkiHeaderCardEditor extends LitElement {
             name_color: this._config[prefix + "name_color"] || "",
             state_color: this._config[prefix + "state_color"] || "",
             text_shadow: this._config[prefix + "text_shadow"] || "",
+            icon_shadow: this._config[prefix + "icon_shadow"] || "",
             name_offset_x: this._config[prefix + "name_offset_x"] ?? 0,
             name_offset_y: this._config[prefix + "name_offset_y"] ?? 0,
             state_offset_x: this._config[prefix + "state_offset_x"] ?? 0,
@@ -5241,6 +5311,10 @@ class HkiHeaderCardEditor extends LitElement {
                       ${this._renderTemplateEditor("Text Shadow (CSS/Jinja)", `${prefix}btn_${idx}_text_shadow`, {
                         value: btn.text_shadow || "",
                         onchange: (v) => setButton(idx, { text_shadow: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Icon Shadow (CSS/Jinja)", `${prefix}btn_${idx}_icon_shadow`, {
+                        value: btn.icon_shadow || "",
+                        onchange: (v) => setButton(idx, { icon_shadow: v || "" }),
                       })}
                       <div class="inline-fields-2">
                         <ha-textfield label="Name Offset X" type="number" .value=${String(btn.name_offset_x ?? 0)}
@@ -7002,6 +7076,7 @@ class HkiHeaderCardEditor extends LitElement {
                     </div>
                     <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
                     <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.info_text_shadow || ""} data-field="info_text_shadow" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Icon Shadow (CSS/Jinja)" helper="Use filter syntax or plain shadow, e.g. drop-shadow(0 2px 6px rgba(0,0,0,.6)) or 0 2px 6px rgba(0,0,0,.6)" .value=${this._config.info_icon_shadow || ""} data-field="info_icon_shadow" @input=${this._changed}></ha-textfield>
                     
                     <div class="switch-row">
                       <ha-switch .checked=${!!this._config.info_pill} data-field="info_pill" @change=${this._changed}></ha-switch>
@@ -7079,6 +7154,7 @@ class HkiHeaderCardEditor extends LitElement {
                   </div>
                   <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
                   <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.bottom_info_text_shadow || ""} data-field="bottom_info_text_shadow" @input=${this._changed}></ha-textfield>
+                  <ha-textfield label="Icon Shadow (CSS/Jinja)" helper="Use filter syntax or plain shadow, e.g. drop-shadow(0 2px 6px rgba(0,0,0,.6)) or 0 2px 6px rgba(0,0,0,.6)" .value=${this._config.bottom_info_icon_shadow || ""} data-field="bottom_info_icon_shadow" @input=${this._changed}></ha-textfield>
                   
                   <div class="switch-row">
                     <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
