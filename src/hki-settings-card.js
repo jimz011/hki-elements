@@ -45,10 +45,6 @@ const NAV_TEXT_TRANSFORM = [
 
 const DEFAULT_CONFIG = Object.freeze({
   type: `custom:${CARD_TYPE}`,
-  title: "HKI Global Settings",
-  button: {},
-  header: {},
-  navigation: {},
 });
 
 const isUnset = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
@@ -65,9 +61,13 @@ function sanitizeScope(scopeObj) {
 
 function normalizeConfig(config) {
   const c = { ...DEFAULT_CONFIG, ...(config || {}) };
-  c.button = (c.button && typeof c.button === "object") ? { ...c.button } : {};
-  c.header = (c.header && typeof c.header === "object") ? { ...c.header } : {};
-  c.navigation = (c.navigation && typeof c.navigation === "object") ? { ...c.navigation } : {};
+  if (typeof c.title !== "string" || !c.title.trim()) delete c.title;
+  if (c.button && typeof c.button === "object") c.button = { ...c.button };
+  else delete c.button;
+  if (c.header && typeof c.header === "object") c.header = { ...c.header };
+  else delete c.header;
+  if (c.navigation && typeof c.navigation === "object") c.navigation = { ...c.navigation };
+  else delete c.navigation;
   return c;
 }
 
@@ -87,9 +87,9 @@ class HkiSettingsBase extends LitElement {
   _publishGlobals() {
     const cfg = this._config || DEFAULT_CONFIG;
     window.HKI?.setGlobalSettings?.({
-      button: sanitizeScope(cfg.button),
-      header: sanitizeScope(cfg.header),
-      navigation: sanitizeScope(cfg.navigation),
+      button: sanitizeScope(cfg.button || {}),
+      header: sanitizeScope(cfg.header || {}),
+      navigation: sanitizeScope(cfg.navigation || {}),
     });
   }
 
@@ -105,13 +105,16 @@ class HkiSettingsBase extends LitElement {
 
   _setText(scope, key, value) {
     const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
     if (!value || value.trim() === "") delete next[scope][key];
     else next[scope][key] = value.trim();
+    if (!Object.keys(next[scope]).length) delete next[scope];
     this._emitChanged(next);
   }
 
   _setNumber(scope, key, value) {
     const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
     const raw = String(value ?? "").trim();
     if (raw === "") delete next[scope][key];
     else {
@@ -119,19 +122,22 @@ class HkiSettingsBase extends LitElement {
       if (Number.isFinite(n)) next[scope][key] = n;
       else delete next[scope][key];
     }
+    if (!Object.keys(next[scope]).length) delete next[scope];
     this._emitChanged(next);
   }
 
   _setSelect(scope, key, value) {
     const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
     if (!value || value === "__inherit__") delete next[scope][key];
     else next[scope][key] = value;
+    if (!Object.keys(next[scope]).length) delete next[scope];
     this._emitChanged(next);
   }
 
   _resetScope(scope) {
     const next = normalizeConfig(this._config);
-    next[scope] = {};
+    delete next[scope];
     this._emitChanged(next);
   }
 
@@ -193,7 +199,7 @@ class HkiSettingsBase extends LitElement {
           </div>
         </div>
 
-        <details class="scope-accordion" open>
+        <details class="scope-accordion">
           <summary>Button Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
