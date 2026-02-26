@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -684,9 +684,6 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
 const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon",
   "name",
-  "card_color",
-  "icon_color",
-  "label_color",
   "badge_color",
   "badge_text_color",
   "badge_template",
@@ -695,9 +692,6 @@ const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
 const createDefaultSlotButton = () => ({
   icon: "mdi:gesture-tap",
   name: "",
-  card_color: "",
-  icon_color: "",
-  label_color: "",
   show_badge: false,
   badge_source: "entity",
   badge_entity: "",
@@ -1055,9 +1049,6 @@ function migrateToNestedFormat(oldConfig) {
       slotConfig.button = {
         icon: oldConfig[prefix + "icon"],
         name: oldConfig[prefix + "name"] ?? oldConfig[prefix + "label"],
-        card_color: oldConfig[prefix + "card_color"],
-        icon_color: oldConfig[prefix + "icon_color"],
-        label_color: oldConfig[prefix + "label_color"],
         show_badge: oldConfig[prefix + "show_badge"],
         badge_source: oldConfig[prefix + "badge_source"],
         badge_entity: oldConfig[prefix + "badge_entity"],
@@ -1601,6 +1592,7 @@ class HkiHeaderCard extends LitElement {
 
       .hki-slot-button {
         position: relative;
+        overflow: visible !important;
       }
 
       .hki-slot-button-icon-only {
@@ -2272,9 +2264,6 @@ class HkiHeaderCard extends LitElement {
       const legacyButton = {
         icon: m[prefix + "icon"],
         name: m[prefix + "name"] ?? m[prefix + "label"],
-        card_color: m[prefix + "card_color"],
-        icon_color: m[prefix + "icon_color"],
-        label_color: m[prefix + "label_color"],
         show_badge: m[prefix + "show_badge"],
         badge_source: m[prefix + "badge_source"],
         badge_entity: m[prefix + "badge_entity"],
@@ -2695,9 +2684,6 @@ class HkiHeaderCard extends LitElement {
     return [normalizeSlotButton({
       icon: this._config?.[prefix + "icon"] || "mdi:gesture-tap",
       name: this._config?.[prefix + "name"] ?? this._config?.[prefix + "label"] ?? "",
-      card_color: this._config?.[prefix + "card_color"] || "",
-      icon_color: this._config?.[prefix + "icon_color"] || "",
-      label_color: this._config?.[prefix + "label_color"] || "",
       show_badge: this._config?.[prefix + "show_badge"] === true,
       badge_source: this._config?.[prefix + "badge_source"] || "entity",
       badge_entity: this._config?.[prefix + "badge_entity"] || "",
@@ -3327,9 +3313,6 @@ class HkiHeaderCard extends LitElement {
           const btn = normalizeSlotButton(rawBtn);
           const icon = this._resolveInlineTemplate(btn.icon || "mdi:gesture-tap", "mdi:gesture-tap");
           const name = this._resolveInlineTemplate(btn.name || "", "");
-          const cardColor = this._resolveInlineTemplate(btn.card_color || "", "");
-          const iconColor = this._resolveInlineTemplate(btn.icon_color || "", "");
-          const labelColor = this._resolveInlineTemplate(btn.label_color || "", "");
           const badgeColor = this._resolveInlineTemplate(btn.badge_color || "", "");
           const badgeTextColor = this._resolveInlineTemplate(btn.badge_text_color || "", "");
 
@@ -3344,10 +3327,10 @@ class HkiHeaderCard extends LitElement {
           const showBadge = btn.show_badge && !!badgeText;
 
           const isIconOnly = !name;
-          const circleSize = Math.max(slotStyle.iconSize + (buttonPaddingY * 2), slotStyle.iconSize + 10);
-          const iconStyle = iconColor ? `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColor};` : `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
-          const labelStyle = labelColor ? `color:${labelColor};` : "";
-          const buttonStyle = `${combinedStyle}${cardColor ? `background:${cardColor};` : ""}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const referenceLineHeight = Math.max(slotStyle.iconSize, Math.round(slotStyle.sizePx * 1.15));
+          const circleSize = referenceLineHeight + (buttonPaddingY * 2);
+          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
+          const buttonStyle = `${combinedStyle}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
 
           const key = `${stateKey}_${idx}`;
           if (!this._slotHoldState) this._slotHoldState = {};
@@ -3415,7 +3398,7 @@ class HkiHeaderCard extends LitElement {
               <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
                 <ha-icon .icon=${icon || "mdi:gesture-tap"} style="${iconStyle}"></ha-icon>
               </div>
-              ${name ? html`<span style="${labelStyle}">${name}</span>` : ''}
+              ${name ? html`<span>${name}</span>` : ''}
               ${showBadge ? html`
                 <span class="hki-slot-button-badge" style="${badgeColor ? `background:${badgeColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}">
                   ${badgeText}
@@ -4577,6 +4560,7 @@ class HkiHeaderCardEditor extends LitElement {
       
       // Skip deprecated keys
       if (deprecatedKeys.includes(key)) continue;
+      if (/^(top_bar|bottom_bar)_(left|center|right)_(card_color|icon_color|label_color)$/.test(key)) continue;
       
       const defaultValue = DEFAULTS[key];
       
@@ -4832,7 +4816,7 @@ class HkiHeaderCardEditor extends LitElement {
         }
       } else if (slotType === "button") {
         const buttonKeys = [
-          "icon", "name", "label", "card_color", "icon_color", "label_color",
+          "icon", "name", "label",
           "show_badge", "badge_source", "badge_entity", "badge_template",
           "badge_color", "badge_text_color", "buttons",
         ];
@@ -4842,9 +4826,6 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
           if (flat[prefix + "name"] !== undefined) slotConfig.button.name = flat[prefix + "name"];
           else if (flat[prefix + "label"] !== undefined) slotConfig.button.name = flat[prefix + "label"];
-          if (flat[prefix + "card_color"] !== undefined) slotConfig.button.card_color = flat[prefix + "card_color"];
-          if (flat[prefix + "icon_color"] !== undefined) slotConfig.button.icon_color = flat[prefix + "icon_color"];
-          if (flat[prefix + "label_color"] !== undefined) slotConfig.button.label_color = flat[prefix + "label_color"];
           if (flat[prefix + "show_badge"] !== undefined) slotConfig.button.show_badge = flat[prefix + "show_badge"];
           if (flat[prefix + "badge_source"] !== undefined) slotConfig.button.badge_source = flat[prefix + "badge_source"];
           if (flat[prefix + "badge_entity"] !== undefined) slotConfig.button.badge_entity = flat[prefix + "badge_entity"];
@@ -5278,21 +5259,43 @@ class HkiHeaderCardEditor extends LitElement {
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
               return html`
-                <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                    <p style="font-size:11px;opacity:0.7;margin:0;font-weight:600;">Button ${idx + 1}</p>
-                    ${buttons.length > 1 ? html`
-                      <mwc-icon-button @click=${() => saveButtons(buttons.filter((_, i) => i !== idx))}>
-                        <ha-icon icon="mdi:delete"></ha-icon>
+                <details class="box-section" style="margin-top:8px;" open>
+                  <summary>Button ${idx + 1}</summary>
+                  <div class="box-content" style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
+                    <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:2px;">
+                      <mwc-icon-button ?disabled=${idx === 0} @click=${() => {
+                        if (idx === 0) return;
+                        const next = [...buttons];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        saveButtons(next);
+                      }}>
+                        <ha-icon icon="mdi:chevron-up"></ha-icon>
                       </mwc-icon-button>
-                    ` : ''}
-                  </div>
+                      <mwc-icon-button ?disabled=${idx === buttons.length - 1} @click=${() => {
+                        if (idx >= buttons.length - 1) return;
+                        const next = [...buttons];
+                        [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                        saveButtons(next);
+                      }}>
+                        <ha-icon icon="mdi:chevron-down"></ha-icon>
+                      </mwc-icon-button>
+                      ${buttons.length > 1 ? html`
+                        <mwc-icon-button @click=${() => saveButtons(buttons.filter((_, i) => i !== idx))}>
+                          <ha-icon icon="mdi:delete"></ha-icon>
+                        </mwc-icon-button>
+                      ` : ''}
+                    </div>
+                    </div>
 
                   ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
                     value: btn.icon || "",
                     onchange: (v) => setButton(idx, { icon: v || "mdi:gesture-tap" }),
                   })}
-                  ${this._renderTemplateTextField("Name (optional)", btn.name || "", (v) => setButton(idx, { name: v || "" }), "{{ ... }}")}
+                  ${this._renderTemplateEditor("Name (optional, Jinja)", `${prefix}btn_${idx}_name`, {
+                    value: btn.name || "",
+                    onchange: (v) => setButton(idx, { name: v || "" }),
+                  })}
 
                   <div class="switch-row" style="margin-top: 6px;">
                     <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
@@ -5310,14 +5313,18 @@ class HkiHeaderCardEditor extends LitElement {
                       <ha-entity-picker .hass=${this.hass} .value=${btn.badge_entity || ""} label="Badge Entity"
                         @value-changed=${(e) => setButton(idx, { badge_entity: e.detail.value || "" })}></ha-entity-picker>
                     ` : html`
-                      ${this._renderTemplateTextField("Badge Template", btn.badge_template || "", (v) => setButton(idx, { badge_template: v || "" }), "{{ ... }}")}
+                      ${this._renderTemplateEditor("Badge Template (Jinja)", `${prefix}btn_${idx}_badge_template`, {
+                        value: btn.badge_template || "",
+                        onchange: (v) => setButton(idx, { badge_template: v || "" }),
+                      })}
                     `}
                     <div class="inline-fields-2">
                       ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}
                       ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
                     </div>
                   ` : ''}
-                </div>
+                  </div>
+                </details>
               `;
             })}
           `;
@@ -5361,7 +5368,10 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
         ${this._renderActionEditor("Hold action", prefix + "hold_action")}
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
-        ${this._renderSlotPopupEditor(prefix)}
+        <details class="box-section" style="margin-top:8px;">
+          <summary>HKI Popup Settings</summary>
+          <div class="box-content">${this._renderSlotPopupEditor(prefix)}</div>
+        </details>
       ` : ''}
       
       ${(type === "weather" || type === "datetime" || type === "button") ? html`
@@ -5369,7 +5379,10 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
         ${this._renderActionEditor("Hold action", prefix + "hold_action")}
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
-        ${this._renderSlotPopupEditor(prefix)}
+        <details class="box-section" style="margin-top:8px;">
+          <summary>HKI Popup Settings</summary>
+          <div class="box-content">${this._renderSlotPopupEditor(prefix)}</div>
+        </details>
       ` : ''}
       
       ${type !== "none" && type !== "notifications" && type !== "custom" && type !== "card" && type !== "spacer" ? html`
@@ -5395,7 +5408,7 @@ class HkiHeaderCardEditor extends LitElement {
             <span>Enable Pill Style</span>
           </div>
           ${this._config[prefix + "pill"] ? html`
-            <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config[prefix + "pill_background"] || ""} data-field="${prefix}pill_background" @input=${this._changed}></ha-textfield>
+            ${this._renderTemplateEditor("Pill Background (Jinja)", `${prefix}pill_background`)}
             <div class="inline-fields-2">
               <ha-textfield label="Padding X" type="number" .value=${String(this._config[prefix + "pill_padding_x"] ?? "")} data-field="${prefix}pill_padding_x" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Padding Y" type="number" .value=${String(this._config[prefix + "pill_padding_y"] ?? "")} data-field="${prefix}pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -5740,10 +5753,24 @@ class HkiHeaderCardEditor extends LitElement {
                     while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                     pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
                   };
+                  const moveSlot = (toIndex) => {
+                    const src = (p('popup_bottom_bar_entities') || []);
+                    if (toIndex < 0 || toIndex >= _bbSlots || toIndex === i) return;
+                    const arr = Array.from({ length: Math.max(src.length, _bbSlots) }, (_, j) => src[j] || null);
+                    [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                    while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                    pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+                  };
                   const setTap = (tap) => setSlot({ tap_action: { ..._tap, ...tap } });
                   return html`
                     <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                      <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                        <div style="display:flex;align-items:center;gap:2px;">
+                          <mwc-icon-button ?disabled=${i === 0} @click=${() => moveSlot(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                          <mwc-icon-button ?disabled=${i === _bbSlots - 1} @click=${() => moveSlot(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                        </div>
+                      </div>
                       <ha-entity-picker .hass=${this.hass} .value=${_ent.entity||''} .label=${"Entity"}
                         @value-changed=${(ev) => setSlot({ entity: ev.detail.value || undefined })}
                         allow-custom-entity></ha-entity-picker>
@@ -6386,10 +6413,24 @@ class HkiHeaderCardEditor extends LitElement {
                     while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                     pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
                   };
+                  const moveSlot = (toIndex) => {
+                    const src = (pv('popup_bottom_bar_entities') || []);
+                    if (toIndex < 0 || toIndex >= _bbSlots || toIndex === i) return;
+                    const arr = Array.from({ length: Math.max(src.length, _bbSlots) }, (_, j) => src[j] || null);
+                    [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                    while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                    pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+                  };
                   const setTap = (tap) => setSlot({ tap_action: { ..._tap, ...tap } });
                   return html`
                     <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                      <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                        <div style="display:flex;align-items:center;gap:2px;">
+                          <mwc-icon-button ?disabled=${i === 0} @click=${() => moveSlot(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                          <mwc-icon-button ?disabled=${i === _bbSlots - 1} @click=${() => moveSlot(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                        </div>
+                      </div>
                       <ha-entity-picker .hass=${this.hass} .value=${_ent.entity||''} .label=${"Entity"}
                         @value-changed=${(ev) => setSlot({ entity: ev.detail.value || undefined })}
                         allow-custom-entity></ha-entity-picker>
@@ -6501,18 +6542,43 @@ class HkiHeaderCardEditor extends LitElement {
                   <div style="border: 1px solid var(--divider-color); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                       <strong>Person ${index + 1}</strong>
-                      <mwc-icon-button 
-                        @click=${() => {
+                      <div style="display:flex;align-items:center;gap:2px;">
+                        <mwc-icon-button ?disabled=${index === 0} @click=${() => {
+                          if (index === 0) return;
                           const updated = [...this._config.persons_entities];
-                          updated.splice(index, 1);
+                          [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
                           this._config = { ...this._config, persons_entities: updated };
                           const strippedConfig = this._stripDefaults(this._config);
                           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                           this.requestUpdate();
-                        }}
-                      >
-                        <ha-icon icon="mdi:delete"></ha-icon>
-                      </mwc-icon-button>
+                        }}>
+                          <ha-icon icon="mdi:chevron-up"></ha-icon>
+                        </mwc-icon-button>
+                        <mwc-icon-button ?disabled=${index === (this._config.persons_entities || []).length - 1} @click=${() => {
+                          const arr = this._config.persons_entities || [];
+                          if (index >= arr.length - 1) return;
+                          const updated = [...arr];
+                          [updated[index + 1], updated[index]] = [updated[index], updated[index + 1]];
+                          this._config = { ...this._config, persons_entities: updated };
+                          const strippedConfig = this._stripDefaults(this._config);
+                          this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+                          this.requestUpdate();
+                        }}>
+                          <ha-icon icon="mdi:chevron-down"></ha-icon>
+                        </mwc-icon-button>
+                        <mwc-icon-button 
+                          @click=${() => {
+                            const updated = [...this._config.persons_entities];
+                            updated.splice(index, 1);
+                            this._config = { ...this._config, persons_entities: updated };
+                            const strippedConfig = this._stripDefaults(this._config);
+                            this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+                            this.requestUpdate();
+                          }}
+                        >
+                          <ha-icon icon="mdi:delete"></ha-icon>
+                        </mwc-icon-button>
+                      </div>
                     </div>
                     
                     <ha-entity-picker
@@ -6671,7 +6737,12 @@ class HkiHeaderCardEditor extends LitElement {
                       </div>
                     </details>
 
-                    ${this._renderPersonActionEditors(index)}
+                    <details class="box-section" style="margin-top:8px;">
+                      <summary>HKI Popup Settings</summary>
+                      <div class="box-content">
+                        ${this._renderPersonActionEditors(index)}
+                      </div>
+                    </details>
                   </div>
                 `;
               })}
@@ -6957,7 +7028,7 @@ class HkiHeaderCardEditor extends LitElement {
                       <span>Enable Pill Style</span>
                     </div>
                     ${this._config.info_pill ? html`
-                      <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config.info_pill_background || "rgba(0,0,0,0.25)"} data-field="info_pill_background" @input=${this._changed}></ha-textfield>
+                      ${this._renderTemplateEditor("Pill Background (Jinja)", "info_pill_background")}
                       <div class="inline-fields-2">
                         <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.info_pill_padding_x ?? 12)} data-field="info_pill_padding_x" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.info_pill_padding_y ?? 8)} data-field="info_pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -7034,7 +7105,7 @@ class HkiHeaderCardEditor extends LitElement {
                     <span>Enable Pill Style</span>
                   </div>
                   ${this._config.bottom_info_pill ? html`
-                    <ha-textfield label="Pill Background (Jinja supported)" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    ${this._renderTemplateEditor("Pill Background (Jinja)", "bottom_info_pill_background")}
                     <div class="inline-fields-2">
                       <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -21631,11 +21702,25 @@ window.customCards.push({
                             while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                             this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
                           };
+                          const moveEntry = (toIndex) => {
+                            const src = this._config.popup_bottom_bar_entities || [];
+                            if (toIndex < 0 || toIndex >= slots || toIndex === i) return;
+                            const arr = Array.from({ length: Math.max(src.length, slots) }, (_, j) => src[j] || null);
+                            [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                            while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                            this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
+                          };
                           const setTapAction = (actionPatch) => setEntry({ tap_action: { ...tapAction, ...actionPatch } });
 
                           return html`
                             <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                              <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                              <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                                <div style="display:flex;align-items:center;gap:2px;">
+                                  <mwc-icon-button ?disabled=${i === 0} @click=${() => moveEntry(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                                  <mwc-icon-button ?disabled=${i === slots - 1} @click=${() => moveEntry(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                                </div>
+                              </div>
                               <ha-entity-picker .hass=${this.hass} .value=${entry.entity||""} .label=${"Entity"}
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
