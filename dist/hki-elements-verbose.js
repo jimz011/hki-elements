@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.0 ',
+  '%c HKI-ELEMENTS %c v1.3.1-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1820,7 +1820,7 @@ class HkiHeaderCard extends LitElement {
 
       .info-icon {
         color: var(--hki-header-text-color, #fff);
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+        filter: var(--hki-info-icon-filter, drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -3367,6 +3367,7 @@ class HkiHeaderCard extends LitElement {
   _asIconFilterValue(rawValue) {
     const v = String(rawValue || "").trim();
     if (!v) return "";
+    if (v.toLowerCase() === "none") return "none";
     if (/[a-z-]+\(/i.test(v)) return v;
     return `drop-shadow(${v})`;
   }
@@ -3420,7 +3421,7 @@ class HkiHeaderCard extends LitElement {
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
     
-    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};${textShadow ? `text-shadow:${textShadow};` : ""}`;
+    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};${textShadow ? `text-shadow:${textShadow};` : ""}${iconShadowFilter ? `--hki-info-icon-filter:${iconShadowFilter};` : ""}`;
     
     const pillStyle = pill ? `--hki-info-pill-background:${pillBg};--hki-info-pill-padding-x:${pillPaddingX}px;--hki-info-pill-padding-y:${pillPaddingY}px;--hki-info-pill-radius:${pillRadius}px;--hki-info-pill-blur:${pillBlur}px;--hki-info-pill-border-style:${pillBorderStyle};--hki-info-pill-border-width:${pillBorderWidth}px;--hki-info-pill-border-color:${pillBorderColor}` : "";
     
@@ -3646,8 +3647,8 @@ class HkiHeaderCard extends LitElement {
 
           const isIconOnly = !name && !stateLabel;
           const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
-          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}${effectiveIconShadow ? `filter:${effectiveIconShadow};` : ""}`;
-          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}`;
+          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${iconShadowOverride ? `;--hki-info-icon-filter:${effectiveIconShadow};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const nameOffsetX = toNum(btn.name_offset_x, 0);
           const nameOffsetY = toNum(btn.name_offset_y, 0);
           const stateOffsetX = toNum(btn.state_offset_x, 0);
