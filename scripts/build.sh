@@ -27,6 +27,7 @@ CARDS=(
     "hki-header-card.js"
     "hki-button-card.js"
     "hki-navigation-card.js"
+    "hki-settings-card.js"
     "hki-notification-card.js"
     "hki-postnl-card.js"
 )

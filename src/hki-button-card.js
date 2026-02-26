@@ -192,6 +192,7 @@
       { value: "end", label: "End (right aligned)" },
     ],
   };
+  const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
   
 
@@ -643,7 +644,7 @@
       if (!config) throw new Error("Config is required");
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
-            this._config = {
+      this._config = {
         ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
@@ -732,6 +733,39 @@
         // Tile does not support label
         this._config.show_label = false;
       }
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "border_radius",
+          "box_shadow",
+          "border_width",
+          "border_style",
+          "border_color",
+          "name_font_family",
+          "name_font_custom",
+          "name_font_weight",
+          "size_name",
+          "name_color",
+          "state_font_family",
+          "state_font_custom",
+          "state_font_weight",
+          "size_state",
+          "state_color",
+          "label_font_family",
+          "label_font_custom",
+          "label_font_weight",
+          "size_label",
+          "label_color",
+          "brightness_font_family",
+          "brightness_font_custom",
+          "brightness_font_weight",
+          "size_brightness",
+          "brightness_color",
+        ],
+      });
       
       // Domain-specific action defaults
       const domain = this._config.entity ? this._config.entity.split('.')[0] : '';

@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.3.1-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.4.0 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -509,6 +509,96 @@ window.HKI.animatePopupClose = window.HKI.animatePopupClose || (({
   setTimeout(done, dur + fallbackDelayMs);
 });
 
+// HKI global card defaults (shared across card types)
+window.HKI.GLOBAL_SETTINGS_STORAGE_KEY = window.HKI.GLOBAL_SETTINGS_STORAGE_KEY || "hki_elements_global_settings_v1";
+window.HKI._globalSettingsCache = window.HKI._globalSettingsCache || null;
+
+window.HKI.isUnsetValue = window.HKI.isUnsetValue || ((value) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === "string" && value.trim() === "") return true;
+  return false;
+});
+
+window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
+  const key = window.HKI.GLOBAL_SETTINGS_STORAGE_KEY;
+  if (window.HKI._globalSettingsCache) return window.HKI._globalSettingsCache;
+  try {
+    const raw = window.localStorage?.getItem(key);
+    if (!raw) {
+      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+      return window.HKI._globalSettingsCache;
+    }
+    const parsed = JSON.parse(raw);
+    const next = {
+      button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
+      header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
+      navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
+    };
+    window.HKI._globalSettingsCache = next;
+    return next;
+  } catch (_) {
+    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+    return window.HKI._globalSettingsCache;
+  }
+});
+
+window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) => {
+  const current = window.HKI.getGlobalSettings();
+  const next = {
+    ...current,
+    ...(settings || {}),
+    button: { ...(current.button || {}), ...((settings && settings.button) || {}) },
+    header: { ...(current.header || {}), ...((settings && settings.header) || {}) },
+    navigation: { ...(current.navigation || {}), ...((settings && settings.navigation) || {}) },
+  };
+  window.HKI._globalSettingsCache = next;
+  try {
+    window.localStorage?.setItem(window.HKI.GLOBAL_SETTINGS_STORAGE_KEY, JSON.stringify(next));
+  } catch (_) {
+    // Ignore storage write failures (private mode / quota / restricted env).
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("hki-global-settings-changed", { detail: { settings: next } }));
+  } catch (_) {
+    // Ignore event dispatch failures.
+  }
+  return next;
+});
+
+window.HKI.getGlobalDefaultsFor = window.HKI.getGlobalDefaultsFor || ((scope) => {
+  const settings = window.HKI.getGlobalSettings();
+  if (!scope) return {};
+  const scoped = settings?.[scope];
+  return (scoped && typeof scoped === "object") ? scoped : {};
+});
+
+window.HKI.applyGlobalDefaultsToConfig = window.HKI.applyGlobalDefaultsToConfig || (({
+  scope,
+  config,
+  sourceConfig = {},
+  fields = [],
+} = {}) => {
+  if (!scope || !config || typeof config !== "object" || !Array.isArray(fields) || !fields.length) return config;
+  const scopedDefaults = window.HKI.getGlobalDefaultsFor(scope);
+  if (!scopedDefaults || typeof scopedDefaults !== "object") return config;
+
+  fields.forEach((entry) => {
+    const targetKey = (typeof entry === "string") ? entry : entry?.target;
+    const sourceKey = (typeof entry === "string") ? entry : (entry?.source || entry?.target);
+    const globalKey = (typeof entry === "string") ? entry : (entry?.global || entry?.target);
+    if (!targetKey || !globalKey) return;
+
+    const sourceValue = sourceConfig ? sourceConfig[sourceKey] : undefined;
+    if (!window.HKI.isUnsetValue(sourceValue)) return;
+
+    const globalValue = scopedDefaults[globalKey];
+    if (window.HKI.isUnsetValue(globalValue)) return;
+    config[targetKey] = globalValue;
+  });
+
+  return config;
+});
+
 // ============================================================
 // hki-header-card
 // ============================================================
@@ -680,6 +770,7 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
     { value: "end", label: "End (right aligned)" },
   ],
 };
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
 const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon",
@@ -2308,6 +2399,30 @@ class HkiHeaderCard extends LitElement {
     }
 
     const m = { ...DEFAULTS, ...workingConfig };
+
+    applyGlobalDefaultsToConfig({
+      scope: "header",
+      config: m,
+      sourceConfig: workingConfig,
+      fields: [
+        "card_border_radius",
+        "card_border_radius_top",
+        "card_border_radius_bottom",
+        "card_box_shadow",
+        "card_border_style",
+        "card_border_width",
+        "card_border_color",
+        "font_family",
+        "font_family_custom",
+        "font_style",
+        "title_size_px",
+        "subtitle_size_px",
+        "title_weight",
+        "subtitle_weight",
+        "title_color",
+        "subtitle_color",
+      ],
+    });
 
     // Numeric clamping
     m.height_vh = clamp(+m.height_vh, 10, 100);
@@ -8055,6 +8170,7 @@ window.customCards.push({
       { value: "end", label: "End (right aligned)" },
     ],
   };
+  const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
   
 
@@ -8506,7 +8622,7 @@ window.customCards.push({
       if (!config) throw new Error("Config is required");
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
-            this._config = {
+      this._config = {
         ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
@@ -8595,6 +8711,39 @@ window.customCards.push({
         // Tile does not support label
         this._config.show_label = false;
       }
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "border_radius",
+          "box_shadow",
+          "border_width",
+          "border_style",
+          "border_color",
+          "name_font_family",
+          "name_font_custom",
+          "name_font_weight",
+          "size_name",
+          "name_color",
+          "state_font_family",
+          "state_font_custom",
+          "state_font_weight",
+          "size_state",
+          "state_color",
+          "label_font_family",
+          "label_font_custom",
+          "label_font_weight",
+          "size_label",
+          "label_color",
+          "brightness_font_family",
+          "brightness_font_custom",
+          "brightness_font_weight",
+          "size_brightness",
+          "brightness_color",
+        ],
+      });
       
       // Domain-specific action defaults
       const domain = this._config.entity ? this._config.entity.split('.')[0] : '';
@@ -23373,6 +23522,9 @@ const EDITOR_TAG = "hki-navigation-card-editor";
 
 const INHERIT = "__inherit__";
 const MIN_PILL_WIDTH = 85;
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
+const getGlobalDefaultsFor = window.HKI?.getGlobalDefaultsFor || (() => ({}));
+const isUnsetValue = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
 
 // Static Constants
 const BUTTON_TYPES = [
@@ -24085,7 +24237,37 @@ function normalizeConfig(cfg) {
   // Clean up and validate config
   cfg = cleanupAndValidateConfig(cfg);
 
-  const raw = { ...DEFAULTS, ...(cfg || {}) };
+  const sourceCfg = cfg || {};
+  const raw = { ...DEFAULTS, ...sourceCfg };
+  applyGlobalDefaultsToConfig({
+    scope: "navigation",
+    config: raw,
+    sourceConfig: sourceCfg,
+    fields: [
+      "default_border_radius",
+      "default_border_width",
+      "default_border_style",
+      "default_border_color",
+      "button_box_shadow",
+      "button_box_shadow_hover",
+      "default_button_opacity",
+      "default_background",
+      "default_icon_color",
+      "bottom_bar_border_radius",
+      "bottom_bar_box_shadow",
+      "bottom_bar_border_width",
+      "bottom_bar_border_style",
+      "bottom_bar_border_color",
+    ],
+  });
+  const navGlobals = getGlobalDefaultsFor("navigation");
+  if (!raw.label_style || typeof raw.label_style !== "object") raw.label_style = {};
+  const sourceLabelStyle = (sourceCfg.label_style && typeof sourceCfg.label_style === "object") ? sourceCfg.label_style : {};
+  if (isUnsetValue(sourceLabelStyle.font_size) && !isUnsetValue(navGlobals.label_font_size)) raw.label_style.font_size = Number(navGlobals.label_font_size);
+  if (isUnsetValue(sourceLabelStyle.font_weight) && !isUnsetValue(navGlobals.label_font_weight)) raw.label_style.font_weight = Number(navGlobals.label_font_weight);
+  if (isUnsetValue(sourceLabelStyle.letter_spacing) && !isUnsetValue(navGlobals.label_letter_spacing)) raw.label_style.letter_spacing = Number(navGlobals.label_letter_spacing);
+  if (isUnsetValue(sourceLabelStyle.text_transform) && !isUnsetValue(navGlobals.label_text_transform)) raw.label_style.text_transform = navGlobals.label_text_transform;
+  if (isUnsetValue(sourceLabelStyle.color) && !isUnsetValue(navGlobals.label_color)) raw.label_style.color = navGlobals.label_color;
   const base = { ...(raw.base || {}) };
   base.button = { ...DEFAULT_BUTTON(), ...(base.button || {}) };
   if (!base.button.id) base.button.id = _uid();
@@ -26160,6 +26342,380 @@ window.customCards.push({
   description: "Highly Customizable Navigation Bar.",
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
+});
+
+})();
+
+// ============================================================
+// hki-settings-card
+// ============================================================
+
+(() => {
+// HKI Settings Card
+
+const { LitElement, html, css } = window.HKI.getLit();
+const CARD_TYPE = "hki-settings-card";
+const EDITOR_TAG = "hki-settings-card-editor";
+
+const BORDER_STYLES = (window.HKI?.EDITOR_OPTIONS?.borderStyles || [
+  { value: "solid", label: "solid" },
+  { value: "dashed", label: "dashed" },
+  { value: "dotted", label: "dotted" },
+  { value: "double", label: "double" },
+  { value: "none", label: "none" },
+]).map((x) => ({ value: x.value, label: x.label }));
+
+const FONT_FAMILIES = [
+  { value: "inherit", label: "inherit" },
+  { value: "system", label: "system" },
+  { value: "roboto", label: "roboto" },
+  { value: "inter", label: "inter" },
+  { value: "arial", label: "arial" },
+  { value: "georgia", label: "georgia" },
+  { value: "mono", label: "mono" },
+  { value: "custom", label: "custom" },
+];
+
+const FONT_WEIGHTS = [
+  { value: "lighter", label: "lighter" },
+  { value: "normal", label: "normal" },
+  { value: "bold", label: "bold" },
+  { value: "bolder", label: "bolder" },
+  { value: "300", label: "300" },
+  { value: "400", label: "400" },
+  { value: "500", label: "500" },
+  { value: "600", label: "600" },
+  { value: "700", label: "700" },
+  { value: "800", label: "800" },
+];
+
+const NAV_TEXT_TRANSFORM = [
+  { value: "none", label: "none" },
+  { value: "uppercase", label: "uppercase" },
+  { value: "lowercase", label: "lowercase" },
+  { value: "capitalize", label: "capitalize" },
+];
+
+const DEFAULT_CONFIG = Object.freeze({
+  type: `custom:${CARD_TYPE}`,
+  title: "HKI Global Settings",
+  button: {},
+  header: {},
+  navigation: {},
+});
+
+const isUnset = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
+
+function sanitizeScope(scopeObj) {
+  const next = {};
+  if (!scopeObj || typeof scopeObj !== "object") return next;
+  Object.entries(scopeObj).forEach(([k, v]) => {
+    if (isUnset(v)) return;
+    next[k] = v;
+  });
+  return next;
+}
+
+function normalizeConfig(config) {
+  const c = { ...DEFAULT_CONFIG, ...(config || {}) };
+  c.button = (c.button && typeof c.button === "object") ? { ...c.button } : {};
+  c.header = (c.header && typeof c.header === "object") ? { ...c.header } : {};
+  c.navigation = (c.navigation && typeof c.navigation === "object") ? { ...c.navigation } : {};
+  return c;
+}
+
+class HkiSettingsBase extends LitElement {
+  static get properties() {
+    return {
+      hass: {},
+      _config: { state: true },
+    };
+  }
+
+  setConfig(config) {
+    this._config = normalizeConfig(config);
+    this._publishGlobals();
+  }
+
+  _publishGlobals() {
+    const cfg = this._config || DEFAULT_CONFIG;
+    window.HKI?.setGlobalSettings?.({
+      button: sanitizeScope(cfg.button),
+      header: sanitizeScope(cfg.header),
+      navigation: sanitizeScope(cfg.navigation),
+    });
+  }
+
+  _emitChanged(next) {
+    this._config = next;
+    this._publishGlobals();
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: next },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _setText(scope, key, value) {
+    const next = normalizeConfig(this._config);
+    if (!value || value.trim() === "") delete next[scope][key];
+    else next[scope][key] = value.trim();
+    this._emitChanged(next);
+  }
+
+  _setNumber(scope, key, value) {
+    const next = normalizeConfig(this._config);
+    const raw = String(value ?? "").trim();
+    if (raw === "") delete next[scope][key];
+    else {
+      const n = Number(raw);
+      if (Number.isFinite(n)) next[scope][key] = n;
+      else delete next[scope][key];
+    }
+    this._emitChanged(next);
+  }
+
+  _setSelect(scope, key, value) {
+    const next = normalizeConfig(this._config);
+    if (!value || value === "__inherit__") delete next[scope][key];
+    else next[scope][key] = value;
+    this._emitChanged(next);
+  }
+
+  _resetScope(scope) {
+    const next = normalizeConfig(this._config);
+    next[scope] = {};
+    this._emitChanged(next);
+  }
+
+  _resetAll() {
+    this._emitChanged(normalizeConfig({ type: `custom:${CARD_TYPE}` }));
+  }
+
+  _renderSelect(scope, key, label, options) {
+    const current = this._config?.[scope]?.[key];
+    return html`
+      <ha-select
+        .label=${label}
+        .value=${current !== undefined ? String(current) : "__inherit__"}
+        @selected=${(e) => this._setSelect(scope, key, e.target.value)}
+        @closed=${(e) => e.stopPropagation()}
+      >
+        <mwc-list-item .value=${"__inherit__"}>(inherit)</mwc-list-item>
+        ${options.map((opt) => html`<mwc-list-item .value=${String(opt.value)}>${opt.label}</mwc-list-item>`)}
+      </ha-select>
+    `;
+  }
+
+  _renderInput(scope, key, label, type = "text", placeholder = "") {
+    const current = this._config?.[scope]?.[key];
+    return html`
+      <ha-textfield
+        .label=${label}
+        .type=${type}
+        .value=${current !== undefined ? String(current) : ""}
+        .placeholder=${placeholder}
+        @change=${(e) => (type === "number"
+          ? this._setNumber(scope, key, e.target.value)
+          : this._setText(scope, key, e.target.value))}
+      ></ha-textfield>
+    `;
+  }
+
+  _renderScopeHeader(title, scope, subtitle) {
+    return html`
+      <div class="scope-head">
+        <div>
+          <div class="scope-title">${title}</div>
+          <div class="scope-sub">${subtitle}</div>
+        </div>
+        <mwc-button @click=${() => this._resetScope(scope)}>Reset ${scope}</mwc-button>
+      </div>
+    `;
+  }
+
+  _renderForm() {
+    const cfg = this._config || DEFAULT_CONFIG;
+    return html`
+      <div class="wrap">
+        <div class="intro">
+          <div class="title">${cfg.title || "HKI Global Settings"}</div>
+          <div class="sub">
+            Global defaults for HKI Button, Header, and Navigation cards.
+            Card-level values still win. Blank values inherit these globals.
+          </div>
+        </div>
+
+        <section class="scope">
+          ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
+          <div class="grid">
+            ${this._renderInput("button", "border_radius", "Border radius (px or CSS)")}
+            ${this._renderInput("button", "box_shadow", "Box shadow")}
+            ${this._renderInput("button", "border_width", "Border width")}
+            ${this._renderSelect("button", "border_style", "Border style", BORDER_STYLES)}
+            ${this._renderInput("button", "border_color", "Border color")}
+            ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
+            ${this._renderInput("button", "name_font_custom", "Name custom font")}
+            ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
+            ${this._renderInput("button", "size_name", "Name size", "number")}
+            ${this._renderInput("button", "name_color", "Name color")}
+            ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
+            ${this._renderInput("button", "state_font_custom", "State custom font")}
+            ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
+            ${this._renderInput("button", "size_state", "State size", "number")}
+            ${this._renderInput("button", "state_color", "State color")}
+            ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
+            ${this._renderInput("button", "label_font_custom", "Label custom font")}
+            ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
+            ${this._renderInput("button", "size_label", "Label size", "number")}
+            ${this._renderInput("button", "label_color", "Label color")}
+          </div>
+        </section>
+
+        <section class="scope">
+          ${this._renderScopeHeader("Header Card Defaults", "header", "Applied to hki-header-card when a field is empty.")}
+          <div class="grid">
+            ${this._renderInput("header", "card_border_radius", "Card border radius")}
+            ${this._renderInput("header", "card_border_radius_top", "Top border radius")}
+            ${this._renderInput("header", "card_border_radius_bottom", "Bottom border radius")}
+            ${this._renderInput("header", "card_box_shadow", "Card box shadow")}
+            ${this._renderInput("header", "card_border_width", "Card border width", "number")}
+            ${this._renderSelect("header", "card_border_style", "Card border style", BORDER_STYLES)}
+            ${this._renderInput("header", "card_border_color", "Card border color")}
+            ${this._renderSelect("header", "font_family", "Font family", FONT_FAMILIES)}
+            ${this._renderInput("header", "font_family_custom", "Custom font")}
+            ${this._renderSelect("header", "font_style", "Font style", [{ value: "normal", label: "normal" }, { value: "italic", label: "italic" }])}
+            ${this._renderInput("header", "title_size_px", "Title size", "number")}
+            ${this._renderInput("header", "subtitle_size_px", "Subtitle size", "number")}
+            ${this._renderInput("header", "title_color", "Title color")}
+            ${this._renderInput("header", "subtitle_color", "Subtitle color")}
+          </div>
+        </section>
+
+        <section class="scope">
+          ${this._renderScopeHeader("Navigation Card Defaults", "navigation", "Applied to hki-navigation-card when a field is empty.")}
+          <div class="grid">
+            ${this._renderInput("navigation", "default_border_radius", "Default border radius", "number")}
+            ${this._renderInput("navigation", "default_border_width", "Default border width", "number")}
+            ${this._renderSelect("navigation", "default_border_style", "Default border style", BORDER_STYLES)}
+            ${this._renderInput("navigation", "default_border_color", "Default border color")}
+            ${this._renderInput("navigation", "button_box_shadow", "Button box shadow")}
+            ${this._renderInput("navigation", "button_box_shadow_hover", "Button box shadow hover")}
+            ${this._renderInput("navigation", "label_font_size", "Label font size", "number")}
+            ${this._renderInput("navigation", "label_font_weight", "Label font weight", "number")}
+            ${this._renderInput("navigation", "label_letter_spacing", "Label letter spacing", "number")}
+            ${this._renderSelect("navigation", "label_text_transform", "Label text transform", NAV_TEXT_TRANSFORM)}
+            ${this._renderInput("navigation", "label_color", "Label color")}
+          </div>
+        </section>
+
+        <div class="footer">
+          <mwc-button @click=${this._resetAll}>Reset all globals</mwc-button>
+        </div>
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return css`
+      .wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 14px;
+      }
+      .intro {
+        border-radius: 12px;
+        padding: 14px;
+        background: linear-gradient(135deg, rgba(34, 49, 63, 0.9), rgba(33, 110, 160, 0.55));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .title {
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .sub {
+        margin-top: 6px;
+        font-size: 12px;
+        opacity: 0.85;
+      }
+      .scope {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.08);
+        padding: 12px;
+      }
+      .scope-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .scope-title {
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .scope-sub {
+        font-size: 11px;
+        opacity: 0.75;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      ha-textfield, ha-select {
+        width: 100%;
+      }
+      .footer {
+        display: flex;
+        justify-content: flex-end;
+      }
+      @media (max-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    `;
+  }
+}
+
+class HkiSettingsCard extends HkiSettingsBase {
+  static getConfigElement() {
+    return document.createElement(EDITOR_TAG);
+  }
+
+  static getStubConfig() {
+    return { ...DEFAULT_CONFIG };
+  }
+
+  render() {
+    if (!this._config) this._config = normalizeConfig({});
+    return html`<ha-card>${this._renderForm()}</ha-card>`;
+  }
+}
+
+class HkiSettingsCardEditor extends HkiSettingsBase {
+  render() {
+    if (!this._config) this._config = normalizeConfig({});
+    return this._renderForm();
+  }
+}
+
+if (!customElements.get(CARD_TYPE)) {
+  customElements.define(CARD_TYPE, HkiSettingsCard);
+}
+if (!customElements.get(EDITOR_TAG)) {
+  customElements.define(EDITOR_TAG, HkiSettingsCardEditor);
+}
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: CARD_TYPE,
+  name: "HKI Settings Card",
+  description: "Global style defaults for HKI cards.",
+  preview: true,
 });
 
 })();

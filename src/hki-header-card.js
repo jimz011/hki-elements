@@ -164,6 +164,7 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
     { value: "end", label: "End (right aligned)" },
   ],
 };
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
 const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon",
@@ -1792,6 +1793,30 @@ class HkiHeaderCard extends LitElement {
     }
 
     const m = { ...DEFAULTS, ...workingConfig };
+
+    applyGlobalDefaultsToConfig({
+      scope: "header",
+      config: m,
+      sourceConfig: workingConfig,
+      fields: [
+        "card_border_radius",
+        "card_border_radius_top",
+        "card_border_radius_bottom",
+        "card_box_shadow",
+        "card_border_style",
+        "card_border_width",
+        "card_border_color",
+        "font_family",
+        "font_family_custom",
+        "font_style",
+        "title_size_px",
+        "subtitle_size_px",
+        "title_weight",
+        "subtitle_weight",
+        "title_color",
+        "subtitle_color",
+      ],
+    });
 
     // Numeric clamping
     m.height_vh = clamp(+m.height_vh, 10, 100);
