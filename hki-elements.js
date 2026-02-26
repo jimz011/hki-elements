@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1-dev-07 ',
+  '%c HKI-ELEMENTS %c v1.2.1-dev-08 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -692,6 +692,9 @@ const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
 const createDefaultSlotButton = () => ({
   icon: "mdi:gesture-tap",
   name: "",
+  tap_action: { action: "none" },
+  hold_action: { action: "none" },
+  double_tap_action: { action: "none" },
   show_badge: false,
   badge_source: "entity",
   badge_entity: "",
@@ -744,6 +747,23 @@ function cleanupSlotButton(btn) {
   }
 
   if (!cleaned.icon) cleaned.icon = "mdi:gesture-tap";
+  const normalizeAction = (action) => {
+    if (!action || typeof action !== "object") return null;
+    const actionType = action.action || "none";
+    const out = { action: actionType };
+    if (actionType === "navigate" && action.navigation_path) out.navigation_path = action.navigation_path;
+    else if (actionType === "url" && action.url_path) out.url_path = action.url_path;
+    else if ((actionType === "more-info" || actionType === "toggle" || actionType === "hki-more-info") && action.entity) out.entity = action.entity;
+    else if (actionType === "perform-action") {
+      if (action.perform_action) out.perform_action = action.perform_action;
+      if (action.target) out.target = action.target;
+      if (action.data) out.data = action.data;
+    }
+    return out;
+  };
+  cleaned.tap_action = normalizeAction(normalized.tap_action) || { action: "none" };
+  cleaned.hold_action = normalizeAction(normalized.hold_action) || { action: "none" };
+  cleaned.double_tap_action = normalizeAction(normalized.double_tap_action) || { action: "none" };
   return cleaned;
 }
 
@@ -1610,8 +1630,8 @@ class HkiHeaderCard extends LitElement {
 
       .hki-slot-button-badge {
         position: absolute;
-        top: -4px;
-        right: -4px;
+        top: 2px;
+        right: 2px;
         min-width: 16px;
         height: 16px;
         padding: 0 5px;
@@ -1623,6 +1643,8 @@ class HkiHeaderCard extends LitElement {
         line-height: 16px;
         text-align: center;
         box-sizing: border-box;
+        z-index: 10;
+        pointer-events: none;
       }
 
       .info-clickable {
@@ -3295,9 +3317,6 @@ class HkiHeaderCard extends LitElement {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
     const buttons = this._getSlotButtons(prefix);
-    const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
-    const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
-    const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
     const slotPopupConfig = this._getSlotPopupConfig(prefix);
     
     const pillClass = slotStyle.pill ? "info-pill" : "";
@@ -3327,10 +3346,12 @@ class HkiHeaderCard extends LitElement {
           const showBadge = btn.show_badge && !!badgeText;
 
           const isIconOnly = !name;
-          const referenceLineHeight = Math.max(slotStyle.iconSize, Math.round(slotStyle.sizePx * 1.15));
-          const circleSize = referenceLineHeight + (buttonPaddingY * 2);
+          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2) - 2));
           const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;`;
           const buttonStyle = `${combinedStyle}${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const tapAction = btn.tap_action || { action: "none" };
+          const holdAction = btn.hold_action || { action: "none" };
+          const doubleTapAction = btn.double_tap_action || { action: "none" };
 
           const key = `${stateKey}_${idx}`;
           if (!this._slotHoldState) this._slotHoldState = {};
@@ -3754,9 +3775,9 @@ class HkiHeaderCard extends LitElement {
       const rightEmpty = cfg.top_bar_right === "none";
       
       // Determine overflow
-      const leftOverflow = !!cfg.top_bar_left_overflow;
-      const centerOverflow = !!cfg.top_bar_center_overflow;
-      const rightOverflow = !!cfg.top_bar_right_overflow;
+      const leftOverflow = !!cfg.top_bar_left_overflow || cfg.top_bar_left === "button";
+      const centerOverflow = !!cfg.top_bar_center_overflow || cfg.top_bar_center === "button";
+      const rightOverflow = !!cfg.top_bar_right_overflow || cfg.top_bar_right === "button";
 
       const leftAlign = cfg.top_bar_left_align || 'start';
       const centerAlign = cfg.top_bar_center_align || 'center';
@@ -3821,9 +3842,9 @@ class HkiHeaderCard extends LitElement {
       const centerEmpty = cfg.bottom_bar_center === "none";
       const rightEmpty = cfg.bottom_bar_right === "none";
 
-      const leftOverflow = !!cfg.bottom_bar_left_overflow;
-      const centerOverflow = !!cfg.bottom_bar_center_overflow;
-      const rightOverflow = !!cfg.bottom_bar_right_overflow;
+      const leftOverflow = !!cfg.bottom_bar_left_overflow || cfg.bottom_bar_left === "button";
+      const centerOverflow = !!cfg.bottom_bar_center_overflow || cfg.bottom_bar_center === "button";
+      const rightOverflow = !!cfg.bottom_bar_right_overflow || cfg.bottom_bar_right === "button";
 
       const leftAlign = cfg.bottom_bar_left_align || 'start';
       const centerAlign = cfg.bottom_bar_center_align || 'center';
@@ -5258,6 +5279,29 @@ class HkiHeaderCardEditor extends LitElement {
 
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              const tapAction = btn.tap_action || { action: "none" };
+              const holdAction = btn.hold_action || { action: "none" };
+              const doubleTapAction = btn.double_tap_action || { action: "none" };
+              const renderActionEditor = (actionLabel, actionObj, setAction) => html`
+                <div style="margin-top:6px;">
+                  <p style="font-size:11px;opacity:0.7;margin:0 0 4px 0;">${actionLabel}</p>
+                  <ha-select .value=${actionObj.action || "none"}
+                    @selected=${(e) => setAction({ action: e.target.value || "none" })}
+                    @closed=${(e) => e.stopPropagation()}>
+                    ${HKI_EDITOR_OPTIONS.headerActionOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
+                  </ha-select>
+                  ${(actionObj.action === "navigate") ? html`
+                    ${this._renderNavigationPathPicker("Navigation path", actionObj.navigation_path || "", (v) => setAction({ ...actionObj, navigation_path: v }))}
+                  ` : ''}
+                  ${(actionObj.action === "url") ? html`
+                    <ha-textfield label="URL" .value=${actionObj.url_path || ""} @input=${(e) => setAction({ ...actionObj, url_path: e.target.value || "" })}></ha-textfield>
+                  ` : ''}
+                  ${(actionObj.action === "more-info" || actionObj.action === "toggle" || actionObj.action === "hki-more-info") ? html`
+                    <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
+                      @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                  ` : ''}
+                </div>
+              `;
               return html`
                 <details class="box-section" style="margin-top:8px;" open>
                   <summary>Button ${idx + 1}</summary>
@@ -5323,6 +5367,15 @@ class HkiHeaderCardEditor extends LitElement {
                       ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
                     </div>
                   ` : ''}
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>Actions</summary>
+                    <div class="box-content">
+                      ${renderActionEditor("Tap action", tapAction, (v) => setButton(idx, { tap_action: v }))}
+                      ${renderActionEditor("Hold action", holdAction, (v) => setButton(idx, { hold_action: v }))}
+                      ${renderActionEditor("Double tap action", doubleTapAction, (v) => setButton(idx, { double_tap_action: v }))}
+                    </div>
+                  </details>
                   </div>
                 </details>
               `;
@@ -5374,7 +5427,7 @@ class HkiHeaderCardEditor extends LitElement {
         </details>
       ` : ''}
       
-      ${(type === "weather" || type === "datetime" || type === "button") ? html`
+      ${(type === "weather" || type === "datetime") ? html`
         <div class="section" style="margin-top: 12px;">Actions</div>
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
         ${this._renderActionEditor("Hold action", prefix + "hold_action")}
@@ -6133,14 +6186,21 @@ class HkiHeaderCardEditor extends LitElement {
     const popupBottomBarAlignOptions = HKI_EDITOR_OPTIONS.popupBottomBarAlignOptions;
 
     return html`
-      ${renderPersonAction('Tap action', 'tap_action')}
-      ${renderPersonAction('Hold action', 'hold_action')}
-      ${renderPersonAction('Double tap action', 'double_tap_action')}
-
-      <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup triggered by actions on this person.</p>
+      <details class="box-section" open>
+        <summary>Actions</summary>
+        <div class="box-content">
+          ${renderPersonAction('Tap action', 'tap_action')}
+          ${renderPersonAction('Hold action', 'hold_action')}
+          ${renderPersonAction('Double tap action', 'double_tap_action')}
+        </div>
+      </details>
 
       <details class="box-section">
+        <summary>HKI Popup Settings</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Settings for the HKI More Info popup triggered by this person.</p>
+
+          <details class="box-section">
         <summary>Popup Header</summary>
         <div class="box-content">
           ${this._renderTemplateEditor('Name (optional, supports Jinja)', 'hki_popup_name_person_' + personIndex, { value: pv('popup_name') || '', onchange: (v) => pp({ popup_name: v || undefined }) })}
@@ -6455,6 +6515,8 @@ class HkiHeaderCardEditor extends LitElement {
           </div>
         </details>
       ` : ''}
+        </div>
+      </details>
     `;
   }
   _renderActionEditor(label, field) {
@@ -6737,12 +6799,7 @@ class HkiHeaderCardEditor extends LitElement {
                       </div>
                     </details>
 
-                    <details class="box-section" style="margin-top:8px;">
-                      <summary>HKI Popup Settings</summary>
-                      <div class="box-content">
-                        ${this._renderPersonActionEditors(index)}
-                      </div>
-                    </details>
+                    ${this._renderPersonActionEditors(index)}
                   </div>
                 `;
               })}
