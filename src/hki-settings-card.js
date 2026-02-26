@@ -168,10 +168,19 @@ class HkiSettingsBase extends LitElement {
         .type=${type}
         .value=${current !== undefined ? String(current) : ""}
         .placeholder=${placeholder}
-        @change=${(e) => (type === "number"
+        @input=${(e) => (type === "number"
           ? this._setNumber(scope, key, e.target.value)
           : this._setText(scope, key, e.target.value))}
       ></ha-textfield>
+    `;
+  }
+
+  _renderCategory(title, fields) {
+    return html`
+      <div class="category">
+        <div class="category-title">${title}</div>
+        <div class="grid">${fields}</div>
+      </div>
     `;
   }
 
@@ -203,28 +212,34 @@ class HkiSettingsBase extends LitElement {
           <summary>Button Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
-            <div class="grid">
+            ${this._renderCategory("Card Surface", html`
               ${this._renderInput("button", "border_radius", "Border radius (px or CSS)")}
               ${this._renderInput("button", "box_shadow", "Box shadow")}
               ${this._renderInput("button", "border_width", "Border width")}
               ${this._renderSelect("button", "border_style", "Border style", BORDER_STYLES)}
               ${this._renderInput("button", "border_color", "Border color")}
+            `)}
+            ${this._renderCategory("Name Typography", html`
               ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
               ${this._renderInput("button", "name_font_custom", "Name custom font")}
               ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_name", "Name size", "number")}
               ${this._renderInput("button", "name_color", "Name color")}
+            `)}
+            ${this._renderCategory("State Typography", html`
               ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
               ${this._renderInput("button", "state_font_custom", "State custom font")}
               ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_state", "State size", "number")}
               ${this._renderInput("button", "state_color", "State color")}
+            `)}
+            ${this._renderCategory("Label Typography", html`
               ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
               ${this._renderInput("button", "label_font_custom", "Label custom font")}
               ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_label", "Label size", "number")}
               ${this._renderInput("button", "label_color", "Label color")}
-            </div>
+            `)}
           </section>
         </details>
 
@@ -232,7 +247,7 @@ class HkiSettingsBase extends LitElement {
           <summary>Header Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Header Card Defaults", "header", "Applied to hki-header-card when a field is empty.")}
-            <div class="grid">
+            ${this._renderCategory("Card Surface", html`
               ${this._renderInput("header", "card_border_radius", "Card border radius")}
               ${this._renderInput("header", "card_border_radius_top", "Top border radius")}
               ${this._renderInput("header", "card_border_radius_bottom", "Bottom border radius")}
@@ -240,6 +255,8 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("header", "card_border_width", "Card border width", "number")}
               ${this._renderSelect("header", "card_border_style", "Card border style", BORDER_STYLES)}
               ${this._renderInput("header", "card_border_color", "Card border color")}
+            `)}
+            ${this._renderCategory("Typography", html`
               ${this._renderSelect("header", "font_family", "Font family", FONT_FAMILIES)}
               ${this._renderInput("header", "font_family_custom", "Custom font")}
               ${this._renderSelect("header", "font_style", "Font style", [{ value: "normal", label: "normal" }, { value: "italic", label: "italic" }])}
@@ -247,7 +264,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("header", "subtitle_size_px", "Subtitle size", "number")}
               ${this._renderInput("header", "title_color", "Title color")}
               ${this._renderInput("header", "subtitle_color", "Subtitle color")}
-            </div>
+            `)}
           </section>
         </details>
 
@@ -255,19 +272,21 @@ class HkiSettingsBase extends LitElement {
           <summary>Navigation Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Navigation Card Defaults", "navigation", "Applied to hki-navigation-card when a field is empty.")}
-            <div class="grid">
+            ${this._renderCategory("Button Surface", html`
               ${this._renderInput("navigation", "default_border_radius", "Default border radius", "number")}
               ${this._renderInput("navigation", "default_border_width", "Default border width", "number")}
               ${this._renderSelect("navigation", "default_border_style", "Default border style", BORDER_STYLES)}
               ${this._renderInput("navigation", "default_border_color", "Default border color")}
               ${this._renderInput("navigation", "button_box_shadow", "Button box shadow")}
               ${this._renderInput("navigation", "button_box_shadow_hover", "Button box shadow hover")}
+            `)}
+            ${this._renderCategory("Label Typography", html`
               ${this._renderInput("navigation", "label_font_size", "Label font size", "number")}
               ${this._renderInput("navigation", "label_font_weight", "Label font weight", "number")}
               ${this._renderInput("navigation", "label_letter_spacing", "Label letter spacing", "number")}
               ${this._renderSelect("navigation", "label_text_transform", "Label text transform", NAV_TEXT_TRANSFORM)}
               ${this._renderInput("navigation", "label_color", "Label color")}
-            </div>
+            `)}
           </section>
         </details>
 
@@ -302,10 +321,26 @@ class HkiSettingsBase extends LitElement {
         opacity: 0.85;
       }
       .scope {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(0, 0, 0, 0.08);
         padding: 12px;
+      }
+      .category {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .category-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        opacity: 0.9;
+        margin-bottom: 8px;
       }
       .scope-accordion {
         border-radius: 12px;
@@ -404,5 +439,5 @@ window.customCards.push({
   type: CARD_TYPE,
   name: "HKI Settings Card",
   description: "Global style defaults for HKI cards.",
-  preview: true,
+  preview: false,
 });

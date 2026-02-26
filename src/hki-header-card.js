@@ -1053,6 +1053,11 @@ class HkiHeaderCard extends LitElement {
   constructor() {
     super();
     this._config = {};
+    this._rawConfigInput = null;
+    this._onGlobalSettingsChanged = () => {
+      if (!this._rawConfigInput) return;
+      try { this.setConfig(this._rawConfigInput); } catch (_) {}
+    };
     this._offsetLeft = 0;
     this._viewportWidth = 0;
     this._contentWidth = 0;
@@ -1464,6 +1469,7 @@ class HkiHeaderCard extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     this._detectKioskMode();
     // Fix for template reactivity: re-establish subscriptions when reconnected to DOM
     this._scheduleTemplateSetup(0);
@@ -1471,6 +1477,7 @@ class HkiHeaderCard extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
 
     if (this._resizeHandler) {
       window.removeEventListener("resize", this._resizeHandler);
@@ -1779,6 +1786,7 @@ class HkiHeaderCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    this._rawConfigInput = config;
 
     // Detect format and convert if needed
     let workingConfig = config;

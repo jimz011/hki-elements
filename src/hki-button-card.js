@@ -545,6 +545,11 @@
     constructor() {
       super();
       this._paDomainCache = {};
+      this._rawConfigInput = null;
+      this._onGlobalSettingsChanged = () => {
+        if (!this._rawConfigInput) return;
+        try { this.setConfig(this._rawConfigInput); } catch (_) {}
+      };
 
       // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
       this._customPopupYamlDraft = null;
@@ -642,6 +647,7 @@
 
     setConfig(config) {
       if (!config) throw new Error("Config is required");
+      this._rawConfigInput = config;
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
       this._config = {
@@ -790,6 +796,7 @@
 
     connectedCallback() {
       super.connectedCallback();
+      window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Set up templates immediately when element connects (0ms = next tick)
       // This matches header card behavior for faster initial render
       if (this.hass && this._config) {
@@ -799,6 +806,7 @@
 
     disconnectedCallback() {
       super.disconnectedCallback();
+      window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Unsubscribe all templates
       if (this._tpl) {
         Object.keys(this._tpl).forEach(key => {

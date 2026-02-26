@@ -886,6 +886,7 @@ class HkiNavigationCard extends LitElement {
 
   constructor() {
     super();
+    this._rawConfigInput = null;
     this._groupOverride = { horizontal: null, vertical: null };
     this._tapState = { lastId: null, lastTime: 0, singleTimer: null };
     this._holdTimers = new Map();
@@ -945,6 +946,10 @@ class HkiNavigationCard extends LitElement {
       this._reconnectTemplates();
       this.requestUpdate();
     };
+    this._onGlobalSettingsChanged = () => {
+      if (!this._rawConfigInput) return;
+      try { this.setConfig(this._rawConfigInput); } catch (_) {}
+    };
   }
 
   connectedCallback() {
@@ -953,6 +958,7 @@ class HkiNavigationCard extends LitElement {
     window.addEventListener("location-changed", this._onLocationChange);
     document.addEventListener("visibilitychange", this._onVisibilityChange);
     window.addEventListener("connection-status", this._onConnectionChange);
+    window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     
     // Fix: Invalidate cached DOM references on reconnect to ensure we aren't holding onto stale views
     this._contentEl = null;
@@ -974,6 +980,7 @@ class HkiNavigationCard extends LitElement {
     window.removeEventListener("location-changed", this._onLocationChange);
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
     window.removeEventListener("connection-status", this._onConnectionChange);
+    window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     this._disconnectObservers();
     if (this._measureRaf) cancelAnimationFrame(this._measureRaf);
     if (this._bottomBarMeasureRaf) cancelAnimationFrame(this._bottomBarMeasureRaf);
@@ -1051,6 +1058,7 @@ class HkiNavigationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    this._rawConfigInput = config;
     this._config = normalizeConfig(config);
     this._layout = { ready: false, slots: {}, meta: {} };
 
