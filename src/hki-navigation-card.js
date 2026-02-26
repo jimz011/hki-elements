@@ -134,7 +134,7 @@ function removeDefaults(obj, defaults) {
   if (!obj || !defaults) return obj;
   
   // Critical properties that should always be preserved for config structure and Home Assistant compatibility
-  const criticalProps = ['type', 'base', 'horizontal', 'vertical', 'grid_options'];
+  const criticalProps = ['type', 'base', 'horizontal', 'vertical', 'grid_options', 'visibility'];
   
   const cleaned = {};
   for (const key in obj) {

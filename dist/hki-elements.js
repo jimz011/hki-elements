@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.2.1 ',
+  '%c HKI-ELEMENTS %c v1.3.0 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -681,6 +681,212 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
   ],
 };
 
+const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
+  "icon",
+  "name",
+  "state",
+  "card_color",
+  "icon_color",
+  "name_color",
+  "state_color",
+  "text_shadow",
+  "icon_shadow",
+  "badge_color",
+  "badge_text_color",
+  "badge_template",
+  "visibility_state",
+  "visibility_attribute_value",
+]);
+const SLOT_BUTTON_STYLE_FIELDS = Object.freeze([
+  "card_color",
+  "icon_color",
+  "name_color",
+  "state_color",
+  "text_shadow",
+  "icon_shadow",
+  "name_offset_x",
+  "name_offset_y",
+  "state_offset_x",
+  "state_offset_y",
+]);
+
+const PERSON_POPUP_FLAT_KEYS = Object.freeze([
+  "popup_name",
+  "popup_state",
+  "popup_icon",
+  "popup_use_entity_picture",
+  "custom_popup_enabled",
+  "custom_popup_card",
+  ...HKI_POPUP_CONFIG_KEYS,
+]);
+
+function popupFlatKeyToNestedKey(flatKey) {
+  if (flatKey === "popup_name") return "name";
+  if (flatKey === "popup_state") return "state";
+  if (flatKey === "popup_icon") return "icon";
+  if (flatKey === "popup_use_entity_picture") return "use_entity_picture";
+  if (flatKey === "custom_popup_enabled") return "custom_popup_enabled";
+  if (flatKey === "custom_popup_card") return "custom_popup_card";
+  if (flatKey.startsWith("popup_")) return flatKey.slice(6);
+  return flatKey;
+}
+
+function popupNestedKeyToFlatKey(nestedKey) {
+  if (nestedKey === "name") return "popup_name";
+  if (nestedKey === "state") return "popup_state";
+  if (nestedKey === "icon") return "popup_icon";
+  if (nestedKey === "use_entity_picture") return "popup_use_entity_picture";
+  if (nestedKey === "custom_popup_enabled") return "custom_popup_enabled";
+  if (nestedKey === "custom_popup_card") return "custom_popup_card";
+  if (nestedKey.startsWith("_")) return nestedKey;
+  return `popup_${nestedKey}`;
+}
+
+function popupAnyKeyToFlatKey(key) {
+  if (typeof key !== "string") return key;
+  if (PERSON_POPUP_FLAT_KEYS.includes(key) || HKI_POPUP_CONFIG_KEYS.includes(key)) return key;
+  return popupNestedKeyToFlatKey(key);
+}
+
+const createDefaultSlotButton = () => ({
+  icon: "",
+  name: "",
+  state: "",
+  entity: "",
+  card_color: "",
+  icon_color: "",
+  name_color: "",
+  state_color: "",
+  text_shadow: "",
+  icon_shadow: "",
+  name_offset_x: 0,
+  name_offset_y: 0,
+  state_offset_x: 0,
+  state_offset_y: 0,
+  tap_action: { action: "none" },
+  hold_action: { action: "none" },
+  double_tap_action: { action: "none" },
+  visibility_mode: "none", // none | state | attribute
+  visibility_entity: "",
+  visibility_state: "",
+  visibility_attribute: "",
+  visibility_attribute_value: "",
+  show_badge: false,
+  badge_source: "entity",
+  badge_entity: "",
+  badge_template: "",
+  badge_color: "",
+  badge_text_color: "",
+  popup: {},
+});
+
+function normalizeSlotButton(btn) {
+  const src = (btn && typeof btn === "object") ? btn : {};
+  const style = (src.style && typeof src.style === "object") ? src.style : {};
+  const normalized = {
+    ...createDefaultSlotButton(),
+    ...style,
+    ...src,
+  };
+  normalized.show_badge = !!normalized.show_badge;
+  normalized.badge_source = normalized.badge_source === "template" ? "template" : "entity";
+  normalized.visibility_mode = (normalized.visibility_mode === "state" || normalized.visibility_mode === "attribute") ? normalized.visibility_mode : "none";
+  const popupObj = {};
+  const nestedPopup = (src.popup && typeof src.popup === "object") ? src.popup : null;
+  if (nestedPopup) {
+    Object.entries(nestedPopup).forEach(([k, v]) => {
+      if (v !== undefined) popupObj[popupAnyKeyToFlatKey(k)] = v;
+    });
+  }
+  PERSON_POPUP_FLAT_KEYS.forEach((flatKey) => {
+    if (src[flatKey] === undefined) return;
+    popupObj[flatKey] = src[flatKey];
+  });
+  normalized.popup = popupObj;
+  return normalized;
+}
+
+function cleanupSlotButton(btn) {
+  if (!btn || typeof btn !== "object") return null;
+  const normalized = normalizeSlotButton(btn);
+  const cleaned = {};
+
+  SLOT_BUTTON_TEMPLATE_FIELDS.forEach((k) => {
+    const v = normalized[k];
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      if (trimmed) cleaned[k] = trimmed;
+    }
+  });
+  if (normalized.entity) cleaned.entity = normalized.entity;
+  const keepNum = (k) => {
+    const n = Number(normalized[k]);
+    if (Number.isFinite(n) && n !== 0) cleaned[k] = n;
+  };
+  keepNum("name_offset_x");
+  keepNum("name_offset_y");
+  keepNum("state_offset_x");
+  keepNum("state_offset_y");
+  if (normalized.visibility_mode && normalized.visibility_mode !== "none") {
+    cleaned.visibility_mode = normalized.visibility_mode;
+    if (normalized.visibility_entity) cleaned.visibility_entity = normalized.visibility_entity;
+    if (normalized.visibility_mode === "state") {
+      if (normalized.visibility_state) cleaned.visibility_state = normalized.visibility_state;
+      delete cleaned.visibility_attribute;
+      delete cleaned.visibility_attribute_value;
+    } else if (normalized.visibility_mode === "attribute") {
+      if (normalized.visibility_attribute) cleaned.visibility_attribute = normalized.visibility_attribute;
+      if (normalized.visibility_attribute_value) cleaned.visibility_attribute_value = normalized.visibility_attribute_value;
+      delete cleaned.visibility_state;
+    }
+  }
+
+  cleaned.show_badge = !!normalized.show_badge;
+  if (cleaned.show_badge) {
+    cleaned.badge_source = normalized.badge_source === "template" ? "template" : "entity";
+    if (cleaned.badge_source === "entity") {
+      if (normalized.badge_entity) cleaned.badge_entity = normalized.badge_entity;
+      delete cleaned.badge_template;
+    } else {
+      if (normalized.badge_template) cleaned.badge_template = normalized.badge_template;
+      delete cleaned.badge_entity;
+    }
+  } else {
+    delete cleaned.badge_source;
+    delete cleaned.badge_entity;
+    delete cleaned.badge_template;
+    delete cleaned.badge_color;
+    delete cleaned.badge_text_color;
+  }
+
+  const normalizeAction = (action) => {
+    if (!action || typeof action !== "object") return null;
+    const actionType = action.action || "none";
+    const out = { action: actionType };
+    if (actionType === "navigate" && action.navigation_path) out.navigation_path = action.navigation_path;
+    else if (actionType === "url" && action.url_path) out.url_path = action.url_path;
+    else if ((actionType === "more-info" || actionType === "toggle" || actionType === "hki-more-info") && action.entity) out.entity = action.entity;
+    else if (actionType === "perform-action") {
+      if (action.perform_action) out.perform_action = action.perform_action;
+      if (action.target) out.target = action.target;
+      if (action.data) out.data = action.data;
+    }
+    return out;
+  };
+  cleaned.tap_action = normalizeAction(normalized.tap_action) || { action: "none" };
+  cleaned.hold_action = normalizeAction(normalized.hold_action) || { action: "none" };
+  cleaned.double_tap_action = normalizeAction(normalized.double_tap_action) || { action: "none" };
+  if (normalized.popup && typeof normalized.popup === "object") {
+    const popup = {};
+    Object.entries(normalized.popup).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return;
+      popup[popupFlatKeyToNestedKey(popupAnyKeyToFlatKey(key))] = value;
+    });
+    if (Object.keys(popup).length) cleaned.popup = popup;
+  }
+  return cleaned;
+}
+
 // Shared defaults - single source of truth
 const DEFAULTS = Object.freeze({
   title: "Header",
@@ -793,6 +999,7 @@ const DEFAULTS = Object.freeze({
   info_size_px: 12,
   info_weight: "medium",
   info_color: "",
+  info_text_shadow: "",
   info_pill: true,
   info_pill_background: "rgba(0,0,0,0.25)",
   info_pill_padding_x: 12,
@@ -807,6 +1014,7 @@ const DEFAULTS = Object.freeze({
   bottom_info_size_px: 12,
   bottom_info_weight: "medium",
   bottom_info_color: "",
+  bottom_info_text_shadow: "",
   bottom_info_pill: true,
   bottom_info_pill_background: "rgba(0,0,0,0.25)",
   bottom_info_pill_padding_x: 12,
@@ -869,7 +1077,7 @@ function migrateToNestedFormat(oldConfig) {
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
     'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
-    'grid_options',
+    'grid_options', 'visibility',
     'blend_color', 'blend_stop', 'blend_enabled',
     'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
     'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -895,7 +1103,7 @@ function migrateToNestedFormat(oldConfig) {
   }
   
   // Migrate global info styling
-  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
+  const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
                     'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                     'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
   if (infoKeys.some(k => oldConfig[k] !== undefined)) {
@@ -903,6 +1111,7 @@ function migrateToNestedFormat(oldConfig) {
     if (oldConfig.info_size_px !== undefined) newConfig.info.size_px = oldConfig.info_size_px;
     if (oldConfig.info_weight !== undefined) newConfig.info.weight = oldConfig.info_weight;
     if (oldConfig.info_color !== undefined) newConfig.info.color = oldConfig.info_color;
+    if (oldConfig.info_text_shadow !== undefined) newConfig.info.text_shadow = oldConfig.info_text_shadow;
     if (oldConfig.info_pill !== undefined) newConfig.info.pill = oldConfig.info_pill;
     if (oldConfig.info_pill_background !== undefined) newConfig.info.pill_background = oldConfig.info_pill_background;
     if (oldConfig.info_pill_padding_x !== undefined) newConfig.info.pill_padding_x = oldConfig.info_pill_padding_x;
@@ -936,6 +1145,7 @@ function migrateToNestedFormat(oldConfig) {
         size_px: oldConfig[prefix + "size_px"],
         weight: oldConfig[prefix + "weight"],
         color: oldConfig[prefix + "color"],
+        text_shadow: oldConfig[prefix + "text_shadow"],
         pill: oldConfig[prefix + "pill"],
         pill_background: oldConfig[prefix + "pill_background"],
         pill_padding_x: oldConfig[prefix + "pill_padding_x"],
@@ -978,7 +1188,31 @@ function migrateToNestedFormat(oldConfig) {
     } else if (slotType === "button") {
       slotConfig.button = {
         icon: oldConfig[prefix + "icon"],
-        label: oldConfig[prefix + "label"]
+        name: oldConfig[prefix + "name"],
+        state: oldConfig[prefix + "state"],
+        entity: oldConfig[prefix + "entity"],
+        card_color: oldConfig[prefix + "card_color"],
+        icon_color: oldConfig[prefix + "icon_color"],
+        name_color: oldConfig[prefix + "name_color"],
+        state_color: oldConfig[prefix + "state_color"],
+        text_shadow: oldConfig[prefix + "text_shadow"],
+        icon_shadow: oldConfig[prefix + "icon_shadow"],
+        name_offset_x: oldConfig[prefix + "name_offset_x"],
+        name_offset_y: oldConfig[prefix + "name_offset_y"],
+        state_offset_x: oldConfig[prefix + "state_offset_x"],
+        state_offset_y: oldConfig[prefix + "state_offset_y"],
+        visibility_mode: oldConfig[prefix + "visibility_mode"],
+        visibility_entity: oldConfig[prefix + "visibility_entity"],
+        visibility_state: oldConfig[prefix + "visibility_state"],
+        visibility_attribute: oldConfig[prefix + "visibility_attribute"],
+        visibility_attribute_value: oldConfig[prefix + "visibility_attribute_value"],
+        show_badge: oldConfig[prefix + "show_badge"],
+        badge_source: oldConfig[prefix + "badge_source"],
+        badge_entity: oldConfig[prefix + "badge_entity"],
+        badge_template: oldConfig[prefix + "badge_template"],
+        badge_color: oldConfig[prefix + "badge_color"],
+        badge_text_color: oldConfig[prefix + "badge_text_color"],
+        buttons: oldConfig[prefix + "buttons"],
       };
     } else if (slotType === "custom" || slotType === "notifications") {
       slotConfig.custom = {
@@ -1037,7 +1271,7 @@ function flattenNestedFormat(nested) {
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
     'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
-    'grid_options',
+    'grid_options', 'visibility',
     'blend_color', 'blend_stop', 'blend_enabled',
     'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
     'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -1073,6 +1307,7 @@ function flattenNestedFormat(nested) {
     if (nested.info.size_px !== undefined) flat.info_size_px = nested.info.size_px;
     if (nested.info.weight !== undefined) flat.info_weight = nested.info.weight;
     if (nested.info.color !== undefined) flat.info_color = nested.info.color;
+    if (nested.info.text_shadow !== undefined) flat.info_text_shadow = nested.info.text_shadow;
     if (nested.info.pill !== undefined) flat.info_pill = nested.info.pill;
     if (nested.info.pill_background !== undefined) flat.info_pill_background = nested.info.pill_background;
     if (nested.info.pill_padding_x !== undefined) flat.info_pill_padding_x = nested.info.pill_padding_x;
@@ -1089,6 +1324,7 @@ function flattenNestedFormat(nested) {
     if (nested.bottom_info.size_px !== undefined) flat.bottom_info_size_px = nested.bottom_info.size_px;
     if (nested.bottom_info.weight !== undefined) flat.bottom_info_weight = nested.bottom_info.weight;
     if (nested.bottom_info.color !== undefined) flat.bottom_info_color = nested.bottom_info.color;
+    if (nested.bottom_info.text_shadow !== undefined) flat.bottom_info_text_shadow = nested.bottom_info.text_shadow;
     if (nested.bottom_info.pill !== undefined) flat.bottom_info_pill = nested.bottom_info.pill;
     if (nested.bottom_info.pill_background !== undefined) flat.bottom_info_pill_background = nested.bottom_info.pill_background;
     if (nested.bottom_info.pill_padding_x !== undefined) flat.bottom_info_pill_padding_x = nested.bottom_info.pill_padding_x;
@@ -1125,6 +1361,7 @@ function flattenNestedFormat(nested) {
       flat[prefix + "size_px"] = slotConfig.styling.size_px;
       flat[prefix + "weight"] = slotConfig.styling.weight;
       flat[prefix + "color"] = slotConfig.styling.color;
+      flat[prefix + "text_shadow"] = slotConfig.styling.text_shadow;
       flat[prefix + "pill"] = slotConfig.styling.pill;
       flat[prefix + "pill_background"] = slotConfig.styling.pill_background;
       flat[prefix + "pill_padding_x"] = slotConfig.styling.pill_padding_x;
@@ -1179,7 +1416,7 @@ function flattenNestedFormat(nested) {
     // HKI Popup config (nested sub-object → flat prefix keys)
     if (slotConfig.hki_popup && typeof slotConfig.hki_popup === 'object') {
       Object.entries(slotConfig.hki_popup).forEach(([k, v]) => {
-        if (v !== undefined) flat[prefix + k] = v;
+        if (v !== undefined) flat[prefix + popupNestedKeyToFlatKey(k)] = v;
       });
     }
     // Also support legacy flat popup keys directly on slotConfig (pre-hki_popup format)
@@ -1212,7 +1449,21 @@ function flattenNestedFormat(nested) {
     if (nested.persons.border_color_away !== undefined) flat.persons_border_color_away = nested.persons.border_color_away;
     if (nested.persons.box_shadow !== undefined) flat.persons_box_shadow = nested.persons.box_shadow;
     if (nested.persons.grayscale_away !== undefined) flat.persons_grayscale_away = nested.persons.grayscale_away;
-    if (nested.persons.entities !== undefined) flat.persons_entities = nested.persons.entities || [];
+    if (nested.persons.entities !== undefined) {
+      flat.persons_entities = (nested.persons.entities || []).map((person) => {
+        if (!person || typeof person !== "object") return person;
+        const out = { ...person };
+        const popup = (person.popup && typeof person.popup === "object") ? person.popup : null;
+        if (popup) {
+          Object.entries(popup).forEach(([k, v]) => {
+            if (v === undefined) return;
+            out[popupNestedKeyToFlatKey(k)] = v;
+          });
+          delete out.popup;
+        }
+        return out;
+      });
+    }
   }
   
   return flat;
@@ -1348,6 +1599,7 @@ class HkiHeaderCard extends LitElement {
     // Performance: Style caches
     this._slotStyleCache = new Map();
     this._lastConfigHash = null;
+    this._inlineTplSubs = new Map();
   }
 
   static get styles() {
@@ -1501,6 +1753,56 @@ class HkiHeaderCard extends LitElement {
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
+      }
+
+      .hki-slot-button {
+        position: relative;
+        overflow: visible !important;
+      }
+
+      .hki-slot-button-icon-only {
+        width: var(--hki-slot-circle-size, 34px) !important;
+        height: var(--hki-slot-circle-size, 34px) !important;
+        min-width: var(--hki-slot-circle-size, 34px) !important;
+        max-width: var(--hki-slot-circle-size, 34px) !important;
+        min-height: var(--hki-slot-circle-size, 34px) !important;
+        max-height: var(--hki-slot-circle-size, 34px) !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        aspect-ratio: 1 / 1;
+      }
+
+      .hki-slot-button-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: #ff4444;
+        color: #ffffff;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 16px;
+        text-align: center;
+        box-sizing: border-box;
+        z-index: 10;
+        pointer-events: none;
+      }
+
+      .hki-slot-button-text {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        line-height: 1.1;
+      }
+
+      .hki-slot-button-name,
+      .hki-slot-button-state {
+        display: block;
       }
 
       .info-clickable {
@@ -1702,6 +2004,7 @@ class HkiHeaderCard extends LitElement {
 
     this._unsubscribeTemplate("title");
     this._unsubscribeTemplate("subtitle");
+    this._clearInlineTemplateSubs();
     this._resetBadgesZIndex();
   }
 
@@ -2023,6 +2326,7 @@ class HkiHeaderCard extends LitElement {
       m.persons_entities = m.persons_entities.map(item => {
         // If it's already an object, ensure it has all required fields
         if (typeof item === 'object' && item !== null) {
+          const popup = (item.popup && typeof item.popup === 'object') ? item.popup : null;
           const normalized = {
             entity: item.entity || "",
             grayscale_entity: item.grayscale_entity || "",
@@ -2034,6 +2338,15 @@ class HkiHeaderCard extends LitElement {
             hold_action: item.hold_action || { action: "none" },
             double_tap_action: item.double_tap_action || { action: "none" }
           };
+          if (popup) {
+            Object.entries(popup).forEach(([k, v]) => {
+              if (v === undefined) return;
+              const flatKey = popupNestedKeyToFlatKey(k);
+              if (flatKey === "custom_popup_enabled" || flatKey === "custom_popup_card" || flatKey.startsWith("popup_") || HKI_POPUP_CONFIG_KEYS.includes(flatKey)) {
+                normalized[flatKey] = v;
+              }
+            });
+          }
           // Preserve popup settings (slot-level, shared across actions)
           if (item.custom_popup_enabled !== undefined) normalized.custom_popup_enabled = item.custom_popup_enabled;
           if (item.custom_popup_card !== undefined) normalized.custom_popup_card = item.custom_popup_card;
@@ -2137,11 +2450,48 @@ class HkiHeaderCard extends LitElement {
     m.top_bar_right = validSlotTypes.includes(m.top_bar_right) ? m.top_bar_right : "none";
     
     // Per-slot config processing for each slot
+    const normalizeSlotButtonConfig = (prefix) => {
+      const legacyButton = {
+        icon: m[prefix + "icon"],
+        name: m[prefix + "name"],
+        state: m[prefix + "state"],
+        entity: m[prefix + "entity"],
+        card_color: m[prefix + "card_color"],
+        icon_color: m[prefix + "icon_color"],
+        name_color: m[prefix + "name_color"],
+        state_color: m[prefix + "state_color"],
+        text_shadow: m[prefix + "text_shadow"],
+        icon_shadow: m[prefix + "icon_shadow"],
+        name_offset_x: m[prefix + "name_offset_x"],
+        name_offset_y: m[prefix + "name_offset_y"],
+        state_offset_x: m[prefix + "state_offset_x"],
+        state_offset_y: m[prefix + "state_offset_y"],
+        visibility_mode: m[prefix + "visibility_mode"],
+        visibility_entity: m[prefix + "visibility_entity"],
+        visibility_state: m[prefix + "visibility_state"],
+        visibility_attribute: m[prefix + "visibility_attribute"],
+        visibility_attribute_value: m[prefix + "visibility_attribute_value"],
+        show_badge: m[prefix + "show_badge"],
+        badge_source: m[prefix + "badge_source"],
+        badge_entity: m[prefix + "badge_entity"],
+        badge_template: m[prefix + "badge_template"],
+        badge_color: m[prefix + "badge_color"],
+        badge_text_color: m[prefix + "badge_text_color"],
+      };
+      const hasLegacyButtonConfig = Object.values(legacyButton).some((v) => v !== undefined && v !== null && v !== "");
+      const rawButtons = Array.isArray(m[prefix + "buttons"]) ? m[prefix + "buttons"] : [];
+      let buttons = rawButtons.map((btn) => normalizeSlotButton(btn)).filter(Boolean);
+      if (!buttons.length && hasLegacyButtonConfig) buttons = [normalizeSlotButton(legacyButton)];
+      if (!buttons.length) buttons = [createDefaultSlotButton()];
+      m[prefix + "buttons"] = buttons;
+      m[prefix + "icon"] = buttons[0]?.icon || "mdi:gesture-tap";
+      m[prefix + "name"] = buttons[0]?.name || "";
+    };
+
     ["left", "center", "right"].forEach(slot => {
       const prefix = `top_bar_${slot}_`;
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
-      m[prefix + "icon"] = m[prefix + "icon"] || "";
-      m[prefix + "label"] = m[prefix + "label"] || "";
+      normalizeSlotButtonConfig(prefix);
       // Alignment default differs per slot
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
       m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
@@ -2149,8 +2499,7 @@ class HkiHeaderCard extends LitElement {
     ["left", "center", "right"].forEach(slot => {
       const prefix = `bottom_bar_${slot}_`;
       m[prefix + "use_global"] = m[prefix + "use_global"] !== false;
-      m[prefix + "icon"] = m[prefix + "icon"] || "";
-      m[prefix + "label"] = m[prefix + "label"] || "";
+      normalizeSlotButtonConfig(prefix);
       const defaultAlign = slot === "left" ? "start" : (slot === "right" ? "end" : "center");
       m[prefix + "align"] = ["start", "center", "end", "stretch"].includes(m[prefix + "align"]) ? m[prefix + "align"] : defaultAlign;
       m[prefix + "tap_action"] = m[prefix + "tap_action"] || { action: "none" };
@@ -2162,6 +2511,7 @@ class HkiHeaderCard extends LitElement {
       m[prefix + "size_px"] = m[prefix + "size_px"] != null ? clamp(+m[prefix + "size_px"], 8, 64) : null;
       m[prefix + "weight"] = m[prefix + "weight"] ? normalizeWeightKey(m[prefix + "weight"], "medium") : null;
       m[prefix + "color"] = m[prefix + "color"] || null;
+      m[prefix + "text_shadow"] = m[prefix + "text_shadow"] || null;
       m[prefix + "pill"] = m[prefix + "pill"] != null ? !!m[prefix + "pill"] : null;
       m[prefix + "pill_background"] = m[prefix + "pill_background"] || null;
       m[prefix + "pill_padding_x"] = m[prefix + "pill_padding_x"] != null ? clamp(+m[prefix + "pill_padding_x"], 0, 80) : null;
@@ -2182,6 +2532,7 @@ class HkiHeaderCard extends LitElement {
     // Global info styling
     m.info_size_px = clamp(+m.info_size_px || 12, 8, 64);
     m.info_weight = normalizeWeightKey(m.info_weight ?? "medium", "medium");
+    m.info_text_shadow = m.info_text_shadow || "";
     m.info_pill = !!m.info_pill;
     m.info_pill_padding_x = clamp(+m.info_pill_padding_x || 12, 0, 80);
     m.info_pill_padding_y = clamp(+m.info_pill_padding_y || 8, 0, 80);
@@ -2257,6 +2608,7 @@ class HkiHeaderCard extends LitElement {
       }).filter(Boolean);
     }
 
+    this._clearInlineTemplateSubs();
     this._config = m;
     this._scheduleTemplateSetup(0);
     this._debouncedBadgesZIndex();
@@ -2445,6 +2797,123 @@ class HkiHeaderCard extends LitElement {
     } else if (key === "subtitle") {
       if (this._renderedSubtitle !== v) { this._renderedSubtitle = v; this.requestUpdate(); }
     }
+  }
+
+  _resolveInlineTemplate(raw, fallback = "") {
+    if (raw === undefined || raw === null || raw === "") return fallback;
+    const str = String(raw);
+    if (!this._isTemplateString(str)) return str.trim();
+
+    const vars = this._buildTemplateVariables();
+    const sig = cacheKey(`inline:${str}`, vars);
+    if (!this._inlineTplSubs.has(sig)) {
+      this._inlineTplSubs.set(sig, { value: fallback, unsub: null, pending: false });
+      this._subscribeInlineTemplate(sig, str, vars, fallback);
+    }
+    const current = this._inlineTplSubs.get(sig)?.value;
+    return (current == null ? fallback : String(current)).trim();
+  }
+
+  _subscribeInlineTemplate(sig, template, vars, fallback = "") {
+    const entry = this._inlineTplSubs.get(sig);
+    if (!entry || entry.pending) return;
+    entry.pending = true;
+
+    const done = () => {
+      const latest = this._inlineTplSubs.get(sig);
+      if (latest) latest.pending = false;
+    };
+
+    if (this.hass?.connection?.subscribeMessage) {
+      this.hass.connection.subscribeMessage(
+        (msg) => {
+          const e = this._inlineTplSubs.get(sig);
+          if (!e) return;
+          if (msg?.error) return;
+          const nextValue = msg?.result != null ? String(msg.result).trim() : "";
+          if (e.value !== nextValue) {
+            e.value = nextValue;
+            this.requestUpdate();
+          }
+        },
+        { type: "render_template", template, variables: vars, strict: false, report_errors: false }
+      ).then((unsub) => {
+        const e = this._inlineTplSubs.get(sig);
+        if (!e) {
+          try { unsub?.(); } catch (_) {}
+          return;
+        }
+        e.unsub = unsub;
+        done();
+      }).catch(async () => {
+        await this._renderInlineTemplateOnce(sig, template, vars, fallback);
+        done();
+      });
+      return;
+    }
+
+    this._renderInlineTemplateOnce(sig, template, vars, fallback).finally(done);
+  }
+
+  async _renderInlineTemplateOnce(sig, template, vars, fallback = "") {
+    const entry = this._inlineTplSubs.get(sig);
+    if (!entry) return;
+    if (!this.hass?.callWS) {
+      entry.value = fallback;
+      return;
+    }
+    try {
+      const res = await this.hass.callWS({ type: "render_template", template, variables: vars, strict: false });
+      const value = res?.result != null ? String(res.result).trim() : "";
+      if (entry.value !== value) {
+        entry.value = value;
+        this.requestUpdate();
+      }
+    } catch (_) {
+      entry.value = fallback;
+    }
+  }
+
+  _clearInlineTemplateSubs() {
+    if (!this._inlineTplSubs || !this._inlineTplSubs.size) return;
+    this._inlineTplSubs.forEach((entry) => {
+      if (entry?.unsub) {
+        try { entry.unsub(); } catch (_) {}
+      }
+    });
+    this._inlineTplSubs.clear();
+  }
+
+  _getSlotButtons(prefix) {
+    const configured = Array.isArray(this._config?.[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
+    if (configured.length) return configured.map((btn) => normalizeSlotButton(btn));
+    return [normalizeSlotButton({
+      icon: this._config?.[prefix + "icon"] || "",
+      name: this._config?.[prefix + "name"] ?? "",
+      state: this._config?.[prefix + "state"] || "",
+      entity: this._config?.[prefix + "entity"] || "",
+      card_color: this._config?.[prefix + "card_color"] || "",
+      icon_color: this._config?.[prefix + "icon_color"] || "",
+      name_color: this._config?.[prefix + "name_color"] || "",
+      state_color: this._config?.[prefix + "state_color"] || "",
+      text_shadow: this._config?.[prefix + "text_shadow"] || "",
+      icon_shadow: this._config?.[prefix + "icon_shadow"] || "",
+      name_offset_x: this._config?.[prefix + "name_offset_x"] ?? 0,
+      name_offset_y: this._config?.[prefix + "name_offset_y"] ?? 0,
+      state_offset_x: this._config?.[prefix + "state_offset_x"] ?? 0,
+      state_offset_y: this._config?.[prefix + "state_offset_y"] ?? 0,
+      visibility_mode: this._config?.[prefix + "visibility_mode"] || "none",
+      visibility_entity: this._config?.[prefix + "visibility_entity"] || "",
+      visibility_state: this._config?.[prefix + "visibility_state"] || "",
+      visibility_attribute: this._config?.[prefix + "visibility_attribute"] || "",
+      visibility_attribute_value: this._config?.[prefix + "visibility_attribute_value"] || "",
+      show_badge: this._config?.[prefix + "show_badge"] === true,
+      badge_source: this._config?.[prefix + "badge_source"] || "entity",
+      badge_entity: this._config?.[prefix + "badge_entity"] || "",
+      badge_template: this._config?.[prefix + "badge_template"] || "",
+      badge_color: this._config?.[prefix + "badge_color"] || "",
+      badge_text_color: this._config?.[prefix + "badge_text_color"] || "",
+    })];
   }
 
   _unsubscribeTemplate(key) {
@@ -2891,24 +3360,33 @@ class HkiHeaderCard extends LitElement {
     // Pick the right set of global defaults depending on which bar this slot belongs to
     const gp = bar === "bottom_bar" ? "bottom_info_" : "info_";
     
-    // Generate cache key based on relevant config values
-    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "pill"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "pill"]}:${cfg.font_family}:${cfg.font_style}`;
-    
-    const cached = this._slotStyleCache.get(cacheKey);
-    if (cached) return cached;
-    
     const useGlobal = cfg[prefix + "use_global"] !== false;
+    const rawColorForTpl = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"] || "");
+    const rawTextShadowForTpl = (!useGlobal && cfg[prefix + "text_shadow"]) ? cfg[prefix + "text_shadow"] : (cfg[gp + "text_shadow"] || "");
+    const rawPillBgForTpl = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : (cfg[gp + "pill_background"] || "");
+    const hasTemplateDrivenStyle = this._isTemplateString(rawColorForTpl) || this._isTemplateString(rawTextShadowForTpl) || this._isTemplateString(rawPillBgForTpl);
+
+    // Generate cache key based on relevant config values
+    const cacheKey = `${bar}:${slotName}:${cfg[prefix + "use_global"]}:${cfg[prefix + "size_px"]}:${cfg[prefix + "weight"]}:${cfg[prefix + "color"]}:${cfg[prefix + "text_shadow"]}:${cfg[prefix + "pill"]}:${cfg[prefix + "pill_background"]}:${cfg[gp + "size_px"]}:${cfg[gp + "weight"]}:${cfg[gp + "color"]}:${cfg[gp + "text_shadow"]}:${cfg[gp + "pill"]}:${cfg[gp + "pill_background"]}:${cfg.font_family}:${cfg.font_style}`;
+    if (!hasTemplateDrivenStyle) {
+      const cached = this._slotStyleCache.get(cacheKey);
+      if (cached) return cached;
+    }
     
     const fontFamily = this._resolveFontFamily();
     
     // Get values, preferring per-slot if not using global, otherwise use bar-specific global
     const sizePx = (!useGlobal && cfg[prefix + "size_px"] != null) ? cfg[prefix + "size_px"] : cfg[gp + "size_px"];
     const weight = (!useGlobal && cfg[prefix + "weight"] != null) ? cfg[prefix + "weight"] : cfg[gp + "weight"];
-    const color = (!useGlobal && cfg[prefix + "color"]) ? cfg[prefix + "color"] : (cfg[gp + "color"]?.trim() || "var(--hki-header-text-color, #fff)");
+    const rawColor = rawColorForTpl;
+    const color = this._resolveInlineTemplate(rawColor, "").trim() || "var(--hki-header-text-color, #fff)";
+    const rawTextShadow = rawTextShadowForTpl;
+    const textShadow = this._resolveInlineTemplate(rawTextShadow, "").trim();
     const iconSize = Math.round(sizePx * 2);
     
     const pill = (!useGlobal && cfg[prefix + "pill"] != null) ? cfg[prefix + "pill"] : cfg[gp + "pill"];
-    const pillBg = (!useGlobal && cfg[prefix + "pill_background"]) ? cfg[prefix + "pill_background"] : cfg[gp + "pill_background"];
+    const rawPillBg = rawPillBgForTpl;
+    const pillBg = this._resolveInlineTemplate(rawPillBg, "").trim() || "rgba(0,0,0,0.25)";
     const pillPaddingX = (!useGlobal && cfg[prefix + "pill_padding_x"] != null) ? cfg[prefix + "pill_padding_x"] : cfg[gp + "pill_padding_x"];
     const pillPaddingY = (!useGlobal && cfg[prefix + "pill_padding_y"] != null) ? cfg[prefix + "pill_padding_y"] : cfg[gp + "pill_padding_y"];
     const pillRadius = (!useGlobal && cfg[prefix + "pill_radius"] != null) ? cfg[prefix + "pill_radius"] : cfg[gp + "pill_radius"];
@@ -2920,7 +3398,7 @@ class HkiHeaderCard extends LitElement {
     const weightValue = this._resolveWeightValue(weight);
     const fontStyleValue = cfg.font_style || "normal";
     
-    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};`;
+    const inlineStyle = `font-family:${fontFamily};font-style:${fontStyleValue};font-size:${sizePx}px;font-weight:${weightValue};color:${color};${textShadow ? `text-shadow:${textShadow};` : ""}`;
     
     const pillStyle = pill ? `--hki-info-pill-background:${pillBg};--hki-info-pill-padding-x:${pillPaddingX}px;--hki-info-pill-padding-y:${pillPaddingY}px;--hki-info-pill-radius:${pillRadius}px;--hki-info-pill-blur:${pillBlur}px;--hki-info-pill-border-style:${pillBorderStyle};--hki-info-pill-border-width:${pillBorderWidth}px;--hki-info-pill-border-color:${pillBorderColor}` : "";
     
@@ -2935,6 +3413,7 @@ class HkiHeaderCard extends LitElement {
       pill, 
       sizePx, 
       color,
+      textShadow,
       pillBg,
       pillPaddingX,
       pillPaddingY,
@@ -2946,8 +3425,10 @@ class HkiHeaderCard extends LitElement {
     };
     
     // Cache the result (limit cache size)
-    if (this._slotStyleCache.size > 20) this._slotStyleCache.clear();
-    this._slotStyleCache.set(cacheKey, result);
+    if (!hasTemplateDrivenStyle) {
+      if (this._slotStyleCache.size > 20) this._slotStyleCache.clear();
+      this._slotStyleCache.set(cacheKey, result);
+    }
     
     return result;
   }
@@ -3033,14 +3514,44 @@ class HkiHeaderCard extends LitElement {
     `;
   }
 
+  _getDomainDefaultIcon(domain) {
+    const iconMap = {
+      light: "mdi:lightbulb",
+      switch: "mdi:toggle-switch",
+      fan: "mdi:fan",
+      cover: "mdi:window-shutter",
+      lock: "mdi:lock",
+      climate: "mdi:thermostat",
+      alarm_control_panel: "mdi:shield-home",
+      media_player: "mdi:speaker",
+      vacuum: "mdi:robot-vacuum",
+      camera: "mdi:camera",
+      sensor: "mdi:gauge",
+      binary_sensor: "mdi:checkbox-marked-circle",
+      input_boolean: "mdi:toggle-switch",
+      input_number: "mdi:ray-vertex",
+      input_select: "mdi:format-list-bulleted",
+      automation: "mdi:robot",
+      script: "mdi:script-text",
+      scene: "mdi:palette",
+      remote: "mdi:remote",
+      humidifier: "mdi:air-humidifier",
+    };
+    return iconMap[domain] || "mdi:gesture-tap";
+  }
+
+  _getEntityDefaultIcon(entity) {
+    if (!entity || typeof entity !== "object") return "";
+    if (entity.attributes?.icon) return String(entity.attributes.icon);
+    const entityId = entity.entity_id || "";
+    const domain = entityId.includes(".") ? entityId.split(".")[0] : "";
+    return this._getDomainDefaultIcon(domain);
+  }
+
   _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
-    const icon = cfg[prefix + "icon"] || "mdi:gesture-tap";
-    const label = cfg[prefix + "label"] || "";
-    const tapAction = cfg[prefix + "tap_action"] || { action: "none" };
-    const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
-    const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+    const buttons = this._getSlotButtons(prefix);
     const slotPopupConfig = this._getSlotPopupConfig(prefix);
     
     const pillClass = slotStyle.pill ? "info-pill" : "";
@@ -3050,74 +3561,175 @@ class HkiHeaderCard extends LitElement {
     const buttonPillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${buttonPaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${buttonPillStyle}`;
     
-    // Hold/click state lives on the instance (keyed by slot) so it survives re-renders
-    // triggered by the 1-second datetime tick, which would otherwise reset local closure vars.
-    if (!this._slotHoldState) this._slotHoldState = {};
-    if (!this._slotHoldState[stateKey]) this._slotHoldState[stateKey] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
-    const state = this._slotHoldState[stateKey];
-
-    const startHold = () => {
-      state.holdActive = false;
-      // Always set timer so a long-press is recognized even when holdAction is "none"
-      state.holdTimer = setTimeout(() => {
-        state.holdActive = true;
-        if (holdAction && holdAction.action !== "none") {
-          this._handleSlotTapAction(holdAction, slotName, null, slotPopupConfig);
-        }
-      }, 500);
-    };
-
-    const endHold = () => {
-      if (state.holdTimer) {
-        clearTimeout(state.holdTimer);
-        state.holdTimer = null;
-      }
-      if (!state.holdActive) {
-        // Use click debouncing for double-tap detection
-        state.clickCount++;
-        if (state.clickCount === 1) {
-          state.clickTimer = setTimeout(() => {
-            if (state.clickCount === 1) {
-              this._handleSlotTapAction(tapAction, slotName, null, slotPopupConfig);
-            }
-            state.clickCount = 0;
-          }, 250);
-        } else if (state.clickCount === 2) {
-          clearTimeout(state.clickTimer);
-          state.clickCount = 0;
-          this._handleSlotTapAction(doubleTapAction, slotName, null, slotPopupConfig);
-        }
-      }
-      state.holdActive = false;
-    };
-
-    const cancelHold = () => {
-      if (state.holdTimer) {
-        clearTimeout(state.holdTimer);
-        state.holdTimer = null;
-      }
-      state.holdActive = false;
-    };
-    
-    const handleTouchStart = () => { state.touchHandled = true; startHold(); };
-    const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
-    const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
-    const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
-    const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
-    
     return html`
-      <div 
-        class="info-item ${pillClass}" 
-        style="${combinedStyle}"
-        @mousedown=${handleMouseDown}
-        @mouseup=${handleMouseUp}
-        @mouseleave=${handleMouseLeave}
-        @touchstart=${handleTouchStart}
-        @touchend=${handleTouchEnd}
-        @contextmenu=${(e) => e.preventDefault()}
-      >
-        <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon} style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;"></ha-icon></div>
-        ${label ? html`<span>${label}</span>` : ''}
+      <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        ${buttons.map((rawBtn, idx) => {
+          const btn = normalizeSlotButton(rawBtn);
+          const buttonEntityId = btn.entity || "";
+          const buttonEntity = buttonEntityId && this.hass?.states?.[buttonEntityId] ? this.hass.states[buttonEntityId] : null;
+          const entityName = buttonEntity?.attributes?.friendly_name ? String(buttonEntity.attributes.friendly_name) : "";
+          const entityIcon = buttonEntity ? this._getEntityDefaultIcon(buttonEntity) : "";
+          const entityState = buttonEntity ? String(buttonEntity.state ?? "") : "";
+
+          const iconOverride = this._resolveInlineTemplate(btn.icon || "", "");
+          const nameOverride = this._resolveInlineTemplate(btn.name || "", "");
+          const stateOverride = this._resolveInlineTemplate(btn.state || "", "");
+
+          const icon = iconOverride || entityIcon || "mdi:gesture-tap";
+          const name = nameOverride || entityName || "";
+          const stateLabel = stateOverride || entityState || "";
+          const badgeColor = this._resolveInlineTemplate(btn.badge_color || "", "");
+          const badgeTextColor = this._resolveInlineTemplate(btn.badge_text_color || "", "");
+          const cardColorOverride = this._resolveInlineTemplate(btn.card_color || "", "");
+          const iconColorOverride = this._resolveInlineTemplate(btn.icon_color || "", "");
+          const nameColorOverride = this._resolveInlineTemplate(btn.name_color || "", "");
+          const stateColorOverride = this._resolveInlineTemplate(btn.state_color || "", "");
+          const textShadowOverride = this._resolveInlineTemplate(btn.text_shadow || "", "");
+          const iconShadowOverride = this._resolveInlineTemplate(btn.icon_shadow || "", "");
+
+          const conditionMode = btn.visibility_mode || "none";
+          const conditionEntityId = btn.visibility_entity || buttonEntityId;
+          const conditionEntity = conditionEntityId && this.hass?.states?.[conditionEntityId] ? this.hass.states[conditionEntityId] : null;
+          const readAttributePath = (attributes, path) => {
+            if (!attributes || !path) return undefined;
+            return String(path).split(".").reduce((acc, key) => {
+              if (acc == null || typeof acc !== "object") return undefined;
+              return acc[key];
+            }, attributes);
+          };
+          let isVisible = true;
+          if (conditionMode === "state") {
+            const expectedState = this._resolveInlineTemplate(btn.visibility_state || "", "");
+            isVisible = !!(conditionEntity && expectedState !== "" && String(conditionEntity.state ?? "") === String(expectedState));
+          } else if (conditionMode === "attribute") {
+            const attrName = (btn.visibility_attribute || "").trim();
+            const expectedAttrValue = this._resolveInlineTemplate(btn.visibility_attribute_value || "", "");
+            const currentAttrValue = readAttributePath(conditionEntity?.attributes || null, attrName);
+            isVisible = !!(conditionEntity && attrName && expectedAttrValue !== "" && String(currentAttrValue ?? "") === String(expectedAttrValue));
+          }
+          if (!isVisible) return html``;
+
+          let badgeText = "";
+          if (btn.show_badge) {
+            if (btn.badge_source === "template") {
+              badgeText = this._resolveInlineTemplate(btn.badge_template || "", "");
+            } else if (btn.badge_entity && this.hass?.states?.[btn.badge_entity]) {
+              badgeText = String(this.hass.states[btn.badge_entity].state ?? "");
+            }
+          }
+          const showBadge = btn.show_badge && !!badgeText;
+
+          const isIconOnly = !name && !stateLabel;
+          const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
+          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}${iconShadowOverride ? `filter:${iconShadowOverride};` : ""}`;
+          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const nameOffsetX = toNum(btn.name_offset_x, 0);
+          const nameOffsetY = toNum(btn.name_offset_y, 0);
+          const stateOffsetX = toNum(btn.state_offset_x, 0);
+          const stateOffsetY = toNum(btn.state_offset_y, 0);
+          const nameStyle = `${nameColorOverride ? `color:${nameColorOverride};` : ""}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(nameOffsetX || nameOffsetY) ? `position:relative;left:${nameOffsetX}px;top:${nameOffsetY}px;` : ""}`;
+          const stateStyle = `${stateColorOverride ? `color:${stateColorOverride};` : ""}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(stateOffsetX || stateOffsetY) ? `position:relative;left:${stateOffsetX}px;top:${stateOffsetY}px;` : ""}`;
+          const tapAction = btn.tap_action || { action: "none" };
+          const holdAction = btn.hold_action || { action: "none" };
+          const doubleTapAction = btn.double_tap_action || { action: "none" };
+          const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
+          const buttonPopupOverrides = {};
+          const buttonPopup = (btn.popup && typeof btn.popup === "object") ? btn.popup : null;
+          if (buttonPopup) {
+            Object.entries(buttonPopup).forEach(([key, value]) => {
+              if (value === undefined) return;
+              buttonPopupOverrides[popupAnyKeyToFlatKey(key)] = value;
+            });
+          }
+          const buttonPopupConfig = {
+            ...(slotPopupConfig || {}),
+            ...buttonPopupOverrides,
+            ...(name ? { popup_name: name } : {}),
+            ...(stateLabel ? { popup_state: stateLabel } : {}),
+            ...(icon ? { popup_icon: icon } : {}),
+          };
+          const effectivePopupConfig = Object.keys(buttonPopupConfig).length ? buttonPopupConfig : null;
+
+          const key = `${stateKey}_${idx}`;
+          if (!this._slotHoldState) this._slotHoldState = {};
+          if (!this._slotHoldState[key]) this._slotHoldState[key] = { holdTimer: null, holdActive: false, clickTimer: null, clickCount: 0, touchHandled: false };
+          const state = this._slotHoldState[key];
+
+          const startHold = () => {
+            state.holdActive = false;
+            state.holdTimer = setTimeout(() => {
+              state.holdActive = true;
+              if (holdAction && holdAction.action !== "none") {
+                this._handleSlotTapAction(holdAction, slotName, buttonEntityId || null, effectivePopupConfig);
+              }
+            }, 500);
+          };
+
+          const endHold = () => {
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
+            }
+            if (!state.holdActive) {
+              state.clickCount++;
+              if (state.clickCount === 1) {
+                state.clickTimer = setTimeout(() => {
+                  if (state.clickCount === 1) {
+                    this._handleSlotTapAction(tapAction, slotName, buttonEntityId || null, effectivePopupConfig);
+                  }
+                  state.clickCount = 0;
+                }, 250);
+              } else if (state.clickCount === 2) {
+                clearTimeout(state.clickTimer);
+                state.clickCount = 0;
+                this._handleSlotTapAction(doubleTapAction, slotName, buttonEntityId || null, effectivePopupConfig);
+              }
+            }
+            state.holdActive = false;
+          };
+
+          const cancelHold = () => {
+            if (state.holdTimer) {
+              clearTimeout(state.holdTimer);
+              state.holdTimer = null;
+            }
+            state.holdActive = false;
+          };
+
+          const handleTouchStart = () => { state.touchHandled = true; startHold(); };
+          const handleTouchEnd = () => { endHold(); setTimeout(() => { state.touchHandled = false; }, 500); };
+          const handleMouseDown = () => { if (state.touchHandled) return; startHold(); };
+          const handleMouseUp = () => { if (state.touchHandled) return; endHold(); };
+          const handleMouseLeave = () => { if (!state.touchHandled) cancelHold(); };
+
+          return html`
+            <div
+              class="info-item ${pillClass} hki-slot-button ${isIconOnly ? 'hki-slot-button-icon-only' : ''} ${hasAnyAction ? 'info-clickable' : ''}"
+              style="${buttonStyle}"
+              @mousedown=${handleMouseDown}
+              @mouseup=${handleMouseUp}
+              @mouseleave=${handleMouseLeave}
+              @touchstart=${handleTouchStart}
+              @touchend=${handleTouchEnd}
+              @contextmenu=${(e) => e.preventDefault()}
+            >
+              <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
+                <ha-icon .icon=${icon} style="${iconStyle}"></ha-icon>
+              </div>
+              ${(name || stateLabel) ? html`
+                <span class="hki-slot-button-text">
+                  ${name ? html`<span class="hki-slot-button-name" style="${nameStyle}">${name}</span>` : ''}
+                  ${stateLabel ? html`<span class="hki-slot-button-state" style="${stateStyle}">${stateLabel}</span>` : ''}
+                </span>
+              ` : ''}
+              ${showBadge ? html`
+                <span class="hki-slot-button-badge" style="${badgeColor ? `background:${badgeColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}">
+                  ${badgeText}
+                </span>
+              ` : ''}
+            </div>
+          `;
+        })}
       </div>
     `;
   }
@@ -3201,6 +3813,7 @@ class HkiHeaderCard extends LitElement {
     const tapAction = cfg[prefix + "tap_action"] || cfg.info_tap_action || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+    const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
@@ -3257,7 +3870,7 @@ class HkiHeaderCard extends LitElement {
 
     return html`
       <div 
-        class="info-item ${pillClass}" 
+        class="info-item ${pillClass} ${hasAnyAction ? 'info-clickable' : ''}" 
         style="${combinedStyle}"
         @mousedown=${handleMouseDown}
         @mouseup=${handleMouseUp}
@@ -3320,6 +3933,7 @@ class HkiHeaderCard extends LitElement {
     const tapAction = cfg[prefix + "tap_action"] || cfg.info_tap_action || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
     const doubleTapAction = cfg[prefix + "double_tap_action"] || { action: "none" };
+    const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
 
     // Hold state lives on the instance (keyed by slot) so it survives re-renders
     if (!this._slotHoldState) this._slotHoldState = {};
@@ -3376,7 +3990,7 @@ class HkiHeaderCard extends LitElement {
 
     return html`
       <div 
-        class="info-item ${pillClass}" 
+        class="info-item ${pillClass} ${hasAnyAction ? 'info-clickable' : ''}" 
         style="${combinedStyle}"
         @mousedown=${handleMouseDown}
         @mouseup=${handleMouseUp}
@@ -3465,9 +4079,9 @@ class HkiHeaderCard extends LitElement {
       const rightEmpty = cfg.top_bar_right === "none";
       
       // Determine overflow
-      const leftOverflow = !!cfg.top_bar_left_overflow;
-      const centerOverflow = !!cfg.top_bar_center_overflow;
-      const rightOverflow = !!cfg.top_bar_right_overflow;
+      const leftOverflow = !!cfg.top_bar_left_overflow || cfg.top_bar_left === "button";
+      const centerOverflow = !!cfg.top_bar_center_overflow || cfg.top_bar_center === "button";
+      const rightOverflow = !!cfg.top_bar_right_overflow || cfg.top_bar_right === "button";
 
       const leftAlign = cfg.top_bar_left_align || 'start';
       const centerAlign = cfg.top_bar_center_align || 'center';
@@ -3532,9 +4146,9 @@ class HkiHeaderCard extends LitElement {
       const centerEmpty = cfg.bottom_bar_center === "none";
       const rightEmpty = cfg.bottom_bar_right === "none";
 
-      const leftOverflow = !!cfg.bottom_bar_left_overflow;
-      const centerOverflow = !!cfg.bottom_bar_center_overflow;
-      const rightOverflow = !!cfg.bottom_bar_right_overflow;
+      const leftOverflow = !!cfg.bottom_bar_left_overflow || cfg.bottom_bar_left === "button";
+      const centerOverflow = !!cfg.bottom_bar_center_overflow || cfg.bottom_bar_center === "button";
+      const rightOverflow = !!cfg.bottom_bar_right_overflow || cfg.bottom_bar_right === "button";
 
       const leftAlign = cfg.bottom_bar_left_align || 'start';
       const centerAlign = cfg.bottom_bar_center_align || 'center';
@@ -4247,7 +4861,7 @@ class HkiHeaderCardEditor extends LitElement {
     const alwaysInclude = [
       'height_vh', 'min_height', 'max_height', 'background',
       'persons_enabled',
-      'top_bar_enabled', 'top_bar_left', 'top_bar_center', 'top_bar_right'
+      'top_bar_enabled'
     ];
     
     alwaysInclude.forEach(key => {
@@ -4271,6 +4885,7 @@ class HkiHeaderCardEditor extends LitElement {
       
       // Skip deprecated keys
       if (deprecatedKeys.includes(key)) continue;
+      if (/^(top_bar|bottom_bar)_(left|center|right)_(card_color|icon_color|label_color)$/.test(key)) continue;
       
       const defaultValue = DEFAULTS[key];
       
@@ -4341,6 +4956,13 @@ class HkiHeaderCardEditor extends LitElement {
         }
         continue;
       }
+
+      // Clean up slot button arrays
+      if (key.endsWith('_buttons') && Array.isArray(value)) {
+        const cleanedButtons = value.map((btn) => cleanupSlotButton(btn)).filter(Boolean);
+        if (cleanedButtons.length > 0) stripped[key] = cleanedButtons;
+        continue;
+      }
       
       // Handle deep equality for objects
       if (typeof value === 'object' && value !== null && typeof defaultValue === 'object' && defaultValue !== null) {
@@ -4363,7 +4985,7 @@ class HkiHeaderCardEditor extends LitElement {
       'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
       'background', 'background_color', 'background_position', 'background_repeat',
       'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
-      'grid_options',
+      'grid_options', 'visibility',
       'blend_color', 'blend_stop', 'blend_enabled',
       'card_border_radius', 'card_border_radius_top', 'card_border_radius_bottom',
       'card_box_shadow', 'card_border_style', 'card_border_width', 'card_border_color',
@@ -4399,7 +5021,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
     
     // Nest info if any settings exist
-    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_pill', 'info_pill_background',
+    const infoKeys = ['info_size_px', 'info_weight', 'info_color', 'info_text_shadow', 'info_pill', 'info_pill_background',
                       'info_pill_padding_x', 'info_pill_padding_y', 'info_pill_radius', 'info_pill_blur',
                       'info_pill_border_style', 'info_pill_border_width', 'info_pill_border_color'];
     const hasInfoConfig = infoKeys.some(k => flat[k] !== undefined);
@@ -4408,6 +5030,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.info_size_px !== undefined) nested.info.size_px = flat.info_size_px;
       if (flat.info_weight !== undefined) nested.info.weight = flat.info_weight;
       if (flat.info_color !== undefined) nested.info.color = flat.info_color;
+      if (flat.info_text_shadow !== undefined) nested.info.text_shadow = flat.info_text_shadow;
       if (flat.info_pill !== undefined) nested.info.pill = flat.info_pill;
       if (flat.info_pill_background !== undefined) nested.info.pill_background = flat.info_pill_background;
       if (flat.info_pill_padding_x !== undefined) nested.info.pill_padding_x = flat.info_pill_padding_x;
@@ -4420,7 +5043,7 @@ class HkiHeaderCardEditor extends LitElement {
     }
 
     // Nest bottom_info if any settings exist
-    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_pill', 'bottom_info_pill_background',
+    const bottomInfoKeys = ['bottom_info_size_px', 'bottom_info_weight', 'bottom_info_color', 'bottom_info_text_shadow', 'bottom_info_pill', 'bottom_info_pill_background',
                       'bottom_info_pill_padding_x', 'bottom_info_pill_padding_y', 'bottom_info_pill_radius', 'bottom_info_pill_blur',
                       'bottom_info_pill_border_style', 'bottom_info_pill_border_width', 'bottom_info_pill_border_color'];
     const hasBottomInfoConfig = bottomInfoKeys.some(k => flat[k] !== undefined);
@@ -4429,6 +5052,7 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.bottom_info_size_px !== undefined) nested.bottom_info.size_px = flat.bottom_info_size_px;
       if (flat.bottom_info_weight !== undefined) nested.bottom_info.weight = flat.bottom_info_weight;
       if (flat.bottom_info_color !== undefined) nested.bottom_info.color = flat.bottom_info_color;
+      if (flat.bottom_info_text_shadow !== undefined) nested.bottom_info.text_shadow = flat.bottom_info_text_shadow;
       if (flat.bottom_info_pill !== undefined) nested.bottom_info.pill = flat.bottom_info_pill;
       if (flat.bottom_info_pill_background !== undefined) nested.bottom_info.pill_background = flat.bottom_info_pill_background;
       if (flat.bottom_info_pill_padding_x !== undefined) nested.bottom_info.pill_padding_x = flat.bottom_info_pill_padding_x;
@@ -4440,18 +5064,21 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.bottom_info_pill_border_color !== undefined) nested.bottom_info.pill_border_color = flat.bottom_info_pill_border_color;
     }
     
-    // Nest slots - always include them even if "none" for clarity
+    // Nest slots when they are explicitly configured
     ['top_bar', 'bottom_bar'].forEach(bar => {
     ['left', 'center', 'right'].forEach(slot => {
+      const prefix = `${bar}_${slot}_`;
       const slotType = flat[`${bar}_${slot}`];
+      const hasAnySlotField = Object.keys(flat).some((k) => k.startsWith(prefix));
       
-      // If slot is "none" or undefined, just set type: "none"
+      // Skip untouched slots entirely so we don't write unused keys.
+      if (slotType === undefined && !hasAnySlotField) return;
+
       if (!slotType || slotType === "none") {
         nested[`${bar}_${slot}`] = { type: "none" };
         return;
       }
       
-      const prefix = `${bar}_${slot}_`;
       const slotConfig = { type: slotType };
       
       // Common properties
@@ -4465,7 +5092,7 @@ class HkiHeaderCardEditor extends LitElement {
       // Styling (only if not using global)
       if (flat[prefix + "use_global"] === false) {
         slotConfig.styling = {};
-        const stylingKeys = ['size_px', 'weight', 'color', 'pill', 'pill_background', 'pill_padding_x',
+        const stylingKeys = ['size_px', 'weight', 'color', 'text_shadow', 'pill', 'pill_background', 'pill_padding_x',
                             'pill_padding_y', 'pill_radius', 'pill_blur', 'pill_border_style',
                             'pill_border_width', 'pill_border_color'];
         stylingKeys.forEach(key => {
@@ -4513,11 +5140,56 @@ class HkiHeaderCardEditor extends LitElement {
           });
         }
       } else if (slotType === "button") {
-        const hasButtonConfig = flat[prefix + "icon"] !== undefined || flat[prefix + "label"] !== undefined;
+        const buttonKeys = [
+          "icon", "name", "state", "entity",
+          "card_color", "icon_color", "name_color", "state_color", "text_shadow", "icon_shadow",
+          "name_offset_x", "name_offset_y", "state_offset_x", "state_offset_y",
+          "visibility_mode", "visibility_entity", "visibility_state", "visibility_attribute", "visibility_attribute_value",
+          "show_badge", "badge_source", "badge_entity", "badge_template",
+          "badge_color", "badge_text_color", "buttons",
+        ];
+        const hasButtonConfig = buttonKeys.some((k) => flat[prefix + k] !== undefined);
         if (hasButtonConfig) {
           slotConfig.button = {};
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
-          if (flat[prefix + "label"] !== undefined) slotConfig.button.label = flat[prefix + "label"];
+          if (flat[prefix + "name"] !== undefined) slotConfig.button.name = flat[prefix + "name"];
+          if (flat[prefix + "state"] !== undefined) slotConfig.button.state = flat[prefix + "state"];
+          if (flat[prefix + "entity"] !== undefined) slotConfig.button.entity = flat[prefix + "entity"];
+          if (flat[prefix + "card_color"] !== undefined) slotConfig.button.card_color = flat[prefix + "card_color"];
+          if (flat[prefix + "icon_color"] !== undefined) slotConfig.button.icon_color = flat[prefix + "icon_color"];
+          if (flat[prefix + "name_color"] !== undefined) slotConfig.button.name_color = flat[prefix + "name_color"];
+          if (flat[prefix + "state_color"] !== undefined) slotConfig.button.state_color = flat[prefix + "state_color"];
+          if (flat[prefix + "text_shadow"] !== undefined) slotConfig.button.text_shadow = flat[prefix + "text_shadow"];
+          if (flat[prefix + "icon_shadow"] !== undefined) slotConfig.button.icon_shadow = flat[prefix + "icon_shadow"];
+          if (flat[prefix + "name_offset_x"] !== undefined) slotConfig.button.name_offset_x = flat[prefix + "name_offset_x"];
+          if (flat[prefix + "name_offset_y"] !== undefined) slotConfig.button.name_offset_y = flat[prefix + "name_offset_y"];
+          if (flat[prefix + "state_offset_x"] !== undefined) slotConfig.button.state_offset_x = flat[prefix + "state_offset_x"];
+          if (flat[prefix + "state_offset_y"] !== undefined) slotConfig.button.state_offset_y = flat[prefix + "state_offset_y"];
+          if (flat[prefix + "visibility_mode"] !== undefined) slotConfig.button.visibility_mode = flat[prefix + "visibility_mode"];
+          if (flat[prefix + "visibility_entity"] !== undefined) slotConfig.button.visibility_entity = flat[prefix + "visibility_entity"];
+          if (flat[prefix + "visibility_state"] !== undefined) slotConfig.button.visibility_state = flat[prefix + "visibility_state"];
+          if (flat[prefix + "visibility_attribute"] !== undefined) slotConfig.button.visibility_attribute = flat[prefix + "visibility_attribute"];
+          if (flat[prefix + "visibility_attribute_value"] !== undefined) slotConfig.button.visibility_attribute_value = flat[prefix + "visibility_attribute_value"];
+          if (flat[prefix + "show_badge"] !== undefined) slotConfig.button.show_badge = flat[prefix + "show_badge"];
+          if (flat[prefix + "badge_source"] !== undefined) slotConfig.button.badge_source = flat[prefix + "badge_source"];
+          if (flat[prefix + "badge_entity"] !== undefined) slotConfig.button.badge_entity = flat[prefix + "badge_entity"];
+          if (flat[prefix + "badge_template"] !== undefined) slotConfig.button.badge_template = flat[prefix + "badge_template"];
+          if (flat[prefix + "badge_color"] !== undefined) slotConfig.button.badge_color = flat[prefix + "badge_color"];
+          if (flat[prefix + "badge_text_color"] !== undefined) slotConfig.button.badge_text_color = flat[prefix + "badge_text_color"];
+          if (Array.isArray(flat[prefix + "buttons"])) {
+            slotConfig.button.buttons = flat[prefix + "buttons"].map((b) => cleanupSlotButton(b)).filter(Boolean).map((b) => {
+              const out = { ...b };
+              const style = {};
+              SLOT_BUTTON_STYLE_FIELDS.forEach((k) => {
+                if (out[k] !== undefined) {
+                  style[k] = out[k];
+                  delete out[k];
+                }
+              });
+              if (Object.keys(style).length) out.style = style;
+              return out;
+            });
+          }
         }
       } else if (slotType === "notifications" || slotType === "custom" || slotType === "card") {
         if (flat[prefix + "card"] !== undefined) {
@@ -4544,6 +5216,13 @@ class HkiHeaderCardEditor extends LitElement {
         srcPrefix: prefix,
       });
       if (Object.keys(_slotPopupConfig).length) slotConfig.hki_popup = _slotPopupConfig;
+      if (slotConfig.hki_popup) {
+        const nestedPopup = {};
+        Object.entries(slotConfig.hki_popup).forEach(([k, v]) => {
+          if (v !== undefined) nestedPopup[popupFlatKeyToNestedKey(k)] = v;
+        });
+        slotConfig.hki_popup = nestedPopup;
+      }
 
       nested[`${bar}_${slot}`] = slotConfig;
     });
@@ -4575,7 +5254,21 @@ class HkiHeaderCardEditor extends LitElement {
       if (flat.persons_border_color_away !== undefined) nested.persons.border_color_away = flat.persons_border_color_away;
       if (flat.persons_box_shadow !== undefined) nested.persons.box_shadow = flat.persons_box_shadow;
       if (flat.persons_grayscale_away !== undefined) nested.persons.grayscale_away = flat.persons_grayscale_away;
-      if (flat.persons_entities) nested.persons.entities = flat.persons_entities;
+      if (flat.persons_entities) {
+        nested.persons.entities = flat.persons_entities.map((person) => {
+          if (!person || typeof person !== "object") return person;
+          const out = { ...person };
+          const popup = {};
+          PERSON_POPUP_FLAT_KEYS.forEach((k) => {
+            if (out[k] === undefined) return;
+            const v = out[k];
+            popup[popupFlatKeyToNestedKey(k)] = v;
+            delete out[k];
+          });
+          if (Object.keys(popup).length) out.popup = popup;
+          return out;
+        });
+      }
     }
     
     return nested;
@@ -4745,6 +5438,7 @@ class HkiHeaderCardEditor extends LitElement {
         .value=${value}
         mode="jinja2"
         autocomplete-entities
+        autocomplete-icons
         @value-changed=${(ev) => {
           ev.stopPropagation();
           const newValue = ev.detail?.value ?? "";
@@ -4762,6 +5456,21 @@ class HkiHeaderCardEditor extends LitElement {
     `;
   }
 
+  _renderTemplateTextField(label, value, onInput, placeholder = "") {
+    return html`
+      <ha-textfield
+        .label=${label}
+        .value=${value || ""}
+        .placeholder=${placeholder}
+        helper="Jinja supported"
+        @input=${(ev) => {
+          ev.stopPropagation();
+          onInput(ev.target.value ?? "");
+        }}
+      ></ha-textfield>
+    `;
+  }
+
   // Removed - using ha-yaml-editor inline instead
 
   _getSlotLabel(type) {
@@ -4773,7 +5482,7 @@ class HkiHeaderCardEditor extends LitElement {
       notifications: "Notifications",
       custom: "Notifications",
       card: "Custom Card",
-      button: "Button"
+      button: "Badge"
     };
     return labels[type] || "Empty";
   }
@@ -4792,7 +5501,7 @@ class HkiHeaderCardEditor extends LitElement {
         <mwc-list-item value="datetime">Date/Time</mwc-list-item>
         <mwc-list-item value="notifications">Notifications</mwc-list-item>
         <mwc-list-item value="card">Custom Card</mwc-list-item>
-        <mwc-list-item value="button">Button</mwc-list-item>
+        <mwc-list-item value="button">Badge</mwc-list-item>
       </ha-select>
       
       ${type !== "none" && type !== "spacer" ? html`
@@ -4881,9 +5590,275 @@ class HkiHeaderCardEditor extends LitElement {
       ` : ''}
       
       ${type === "button" ? html`
-        <div class="section" style="margin-top: 12px;">Button Settings</div>
-        <ha-icon-picker label="Icon" .value=${this._config[prefix + "icon"] || "mdi:gesture-tap"} data-field="${prefix}icon" @value-changed=${(e) => this._changed({target: {value: e.detail.value, dataset: {field: prefix + "icon"}}})}></ha-icon-picker>
-        <ha-textfield label="Label (optional)" .value=${this._config[prefix + "label"] || ""} data-field="${prefix}label" @input=${this._changed}></ha-textfield>
+        <div class="section" style="margin-top: 12px;">Badge Settings</div>
+        ${(() => {
+          const configured = Array.isArray(this._config[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
+          const fallback = normalizeSlotButton({
+            icon: this._config[prefix + "icon"] || "",
+            name: this._config[prefix + "name"] ?? "",
+            state: this._config[prefix + "state"] || "",
+            entity: this._config[prefix + "entity"] || "",
+            card_color: this._config[prefix + "card_color"] || "",
+            icon_color: this._config[prefix + "icon_color"] || "",
+            name_color: this._config[prefix + "name_color"] || "",
+            state_color: this._config[prefix + "state_color"] || "",
+            text_shadow: this._config[prefix + "text_shadow"] || "",
+            icon_shadow: this._config[prefix + "icon_shadow"] || "",
+            name_offset_x: this._config[prefix + "name_offset_x"] ?? 0,
+            name_offset_y: this._config[prefix + "name_offset_y"] ?? 0,
+            state_offset_x: this._config[prefix + "state_offset_x"] ?? 0,
+            state_offset_y: this._config[prefix + "state_offset_y"] ?? 0,
+            visibility_mode: this._config[prefix + "visibility_mode"] || "none",
+            visibility_entity: this._config[prefix + "visibility_entity"] || "",
+            visibility_state: this._config[prefix + "visibility_state"] || "",
+            visibility_attribute: this._config[prefix + "visibility_attribute"] || "",
+            visibility_attribute_value: this._config[prefix + "visibility_attribute_value"] || "",
+            show_badge: this._config[prefix + "show_badge"] === true,
+            badge_source: this._config[prefix + "badge_source"] || "entity",
+            badge_entity: this._config[prefix + "badge_entity"] || "",
+            badge_template: this._config[prefix + "badge_template"] || "",
+            badge_color: this._config[prefix + "badge_color"] || "",
+            badge_text_color: this._config[prefix + "badge_text_color"] || "",
+          });
+          const buttons = configured.length ? configured.map((b) => normalizeSlotButton(b)) : [fallback];
+
+          const saveButtons = (nextButtons) => {
+            const cleaned = nextButtons.map((b) => cleanupSlotButton(b)).filter(Boolean);
+            const first = cleaned[0] || createDefaultSlotButton();
+            this._config = {
+              ...this._config,
+              [prefix + "buttons"]: cleaned,
+              [prefix + "icon"]: first.icon || "mdi:gesture-tap",
+              [prefix + "name"]: first.name || "",
+              [prefix + "state"]: first.state || "",
+              [prefix + "entity"]: first.entity || "",
+            };
+            const strippedConfig = this._stripDefaults(this._config);
+            this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+            this.requestUpdate();
+          };
+
+          const setButton = (idx, patch) => {
+            const next = buttons.map((b, i) => (i === idx ? normalizeSlotButton({ ...b, ...patch }) : b));
+            saveButtons(next);
+          };
+
+          return html`
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
+              ${buttons.map((_, idx) => html`<span style="padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.08);font-size:12px;">${idx + 1}</span>`)}
+              <button type="button"
+                style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--primary-text-color);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"
+                @click=${(e) => { e.stopPropagation(); saveButtons([...buttons, createDefaultSlotButton()]); }}>
+                <ha-icon icon="mdi:plus"></ha-icon>
+              </button>
+            </div>
+
+            ${buttons.map((btn, idx) => {
+              const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              const tapAction = btn.tap_action || { action: "none" };
+              const holdAction = btn.hold_action || { action: "none" };
+              const doubleTapAction = btn.double_tap_action || { action: "none" };
+              const popupEntity = tapAction.entity || holdAction.entity || doubleTapAction.entity || btn.entity || "";
+              const renderActionEditor = (actionLabel, actionObj, setAction) => html`
+                <div style="margin-top:6px;">
+                  <p style="font-size:11px;opacity:0.7;margin:0 0 4px 0;">${actionLabel}</p>
+                  <ha-select .value=${actionObj.action || "none"}
+                    @selected=${(e) => setAction({ action: e.target.value || "none" })}
+                    @closed=${(e) => e.stopPropagation()}>
+                    ${HKI_EDITOR_OPTIONS.headerActionOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
+                  </ha-select>
+                  ${(actionObj.action === "navigate") ? html`
+                    ${this._renderNavigationPathPicker("Navigation path", actionObj.navigation_path || "", (v) => setAction({ ...actionObj, navigation_path: v }))}
+                  ` : ''}
+                  ${(actionObj.action === "url") ? html`
+                    <ha-textfield label="URL" .value=${actionObj.url_path || ""} @input=${(e) => setAction({ ...actionObj, url_path: e.target.value || "" })}></ha-textfield>
+                  ` : ''}
+                  ${(actionObj.action === "more-info" || actionObj.action === "toggle" || actionObj.action === "hki-more-info") ? html`
+                    <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
+                      @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                  ` : ''}
+                </div>
+              `;
+              return html`
+                <details class="box-section" style="margin-top:8px;" open>
+                  <summary>Badge ${idx + 1}</summary>
+                  <div class="box-content" style="padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
+                    <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:2px;">
+                      <mwc-icon-button ?disabled=${idx === 0} @click=${() => {
+                        if (idx === 0) return;
+                        const next = [...buttons];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        saveButtons(next);
+                      }}>
+                        <ha-icon icon="mdi:chevron-up"></ha-icon>
+                      </mwc-icon-button>
+                      <mwc-icon-button ?disabled=${idx === buttons.length - 1} @click=${() => {
+                        if (idx >= buttons.length - 1) return;
+                        const next = [...buttons];
+                        [next[idx + 1], next[idx]] = [next[idx], next[idx + 1]];
+                        saveButtons(next);
+                      }}>
+                        <ha-icon icon="mdi:chevron-down"></ha-icon>
+                      </mwc-icon-button>
+                      ${buttons.length > 1 ? html`
+                        <mwc-icon-button @click=${() => saveButtons(buttons.filter((_, i) => i !== idx))}>
+                          <ha-icon icon="mdi:delete"></ha-icon>
+                        </mwc-icon-button>
+                      ` : ''}
+                    </div>
+                    </div>
+
+                  <ha-entity-picker .hass=${this.hass} .value=${btn.entity || ""} label="Entity (optional)"
+                    @value-changed=${(e) => setButton(idx, { entity: e.detail.value || "" })}></ha-entity-picker>
+                  ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
+                    value: btn.icon || "",
+                    onchange: (v) => setButton(idx, { icon: v || "" }),
+                  })}
+                  ${this._renderTemplateEditor("Name Override (optional, Jinja)", `${prefix}btn_${idx}_name`, {
+                    value: btn.name || "",
+                    onchange: (v) => setButton(idx, { name: v || "" }),
+                  })}
+                  ${this._renderTemplateEditor("State Override (optional, Jinja)", `${prefix}btn_${idx}_state`, {
+                    value: btn.state || "",
+                    onchange: (v) => setButton(idx, { state: v || "" }),
+                  })}
+
+                  <div class="switch-row" style="margin-top: 6px;">
+                    <ha-switch .checked=${btn.show_badge === true} @change=${(e) => setButton(idx, { show_badge: e.target.checked })}></ha-switch>
+                    <span>Show badge</span>
+                  </div>
+
+                  ${btn.show_badge ? html`
+                    <ha-select label="Badge Source" .value=${badgeSource}
+                      @selected=${(e) => setButton(idx, { badge_source: e.target.value || "entity" })}
+                      @closed=${(e) => e.stopPropagation()}>
+                      <mwc-list-item value="entity">Entity state</mwc-list-item>
+                      <mwc-list-item value="template">Jinja template</mwc-list-item>
+                    </ha-select>
+                    ${badgeSource === "entity" ? html`
+                      <ha-entity-picker .hass=${this.hass} .value=${btn.badge_entity || ""} label="Badge Entity"
+                        @value-changed=${(e) => setButton(idx, { badge_entity: e.detail.value || "" })}></ha-entity-picker>
+                    ` : html`
+                      ${this._renderTemplateEditor("Badge Template (Jinja)", `${prefix}btn_${idx}_badge_template`, {
+                        value: btn.badge_template || "",
+                        onchange: (v) => setButton(idx, { badge_template: v || "" }),
+                      })}
+                    `}
+                    <div class="inline-fields-2">
+                      ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}
+                      ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
+                    </div>
+                  ` : ''}
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>Actions</summary>
+                    <div class="box-content">
+                      ${renderActionEditor("Tap action", tapAction, (v) => setButton(idx, { tap_action: v }))}
+                      ${renderActionEditor("Hold action", holdAction, (v) => setButton(idx, { hold_action: v }))}
+                      ${renderActionEditor("Double tap action", doubleTapAction, (v) => setButton(idx, { double_tap_action: v }))}
+                    </div>
+                  </details>
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>HKI Popup Settings</summary>
+                    <div class="box-content">
+                      ${this._renderSlotPopupEditor(`${prefix}btn_${idx}_popup_`, popupEntity, {
+                        actions: [tapAction, holdAction, doubleTapAction],
+                        popupGetter: () => btn.popup || {},
+                        popupSetter: (patch) => {
+                          const prev = (btn.popup && typeof btn.popup === "object") ? btn.popup : {};
+                          const nextPopup = { ...prev, ...patch };
+                          Object.keys(nextPopup).forEach((k) => {
+                            if (nextPopup[k] === undefined || nextPopup[k] === null || nextPopup[k] === "") delete nextPopup[k];
+                          });
+                          setButton(idx, { popup: nextPopup });
+                        },
+                      })}
+                    </div>
+                  </details>
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>Style Overrides</summary>
+                    <div class="box-content">
+                      ${this._renderTemplateEditor("Badge Background (Jinja)", `${prefix}btn_${idx}_card_color`, {
+                        value: btn.card_color || "",
+                        onchange: (v) => setButton(idx, { card_color: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Icon Color (Jinja)", `${prefix}btn_${idx}_icon_color`, {
+                        value: btn.icon_color || "",
+                        onchange: (v) => setButton(idx, { icon_color: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Name Color (Jinja)", `${prefix}btn_${idx}_name_color`, {
+                        value: btn.name_color || "",
+                        onchange: (v) => setButton(idx, { name_color: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("State Color (Jinja)", `${prefix}btn_${idx}_state_color`, {
+                        value: btn.state_color || "",
+                        onchange: (v) => setButton(idx, { state_color: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Text Shadow (CSS/Jinja)", `${prefix}btn_${idx}_text_shadow`, {
+                        value: btn.text_shadow || "",
+                        onchange: (v) => setButton(idx, { text_shadow: v || "" }),
+                      })}
+                      ${this._renderTemplateEditor("Icon Shadow (CSS/Jinja)", `${prefix}btn_${idx}_icon_shadow`, {
+                        value: btn.icon_shadow || "",
+                        onchange: (v) => setButton(idx, { icon_shadow: v || "" }),
+                      })}
+                      <div class="inline-fields-2">
+                        <ha-textfield label="Name Offset X" type="number" .value=${String(btn.name_offset_x ?? 0)}
+                          @input=${(e) => setButton(idx, { name_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
+                        <ha-textfield label="Name Offset Y" type="number" .value=${String(btn.name_offset_y ?? 0)}
+                          @input=${(e) => setButton(idx, { name_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
+                      </div>
+                      <div class="inline-fields-2">
+                        <ha-textfield label="State Offset X" type="number" .value=${String(btn.state_offset_x ?? 0)}
+                          @input=${(e) => setButton(idx, { state_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
+                        <ha-textfield label="State Offset Y" type="number" .value=${String(btn.state_offset_y ?? 0)}
+                          @input=${(e) => setButton(idx, { state_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="box-section" style="margin-top:8px;">
+                    <summary>Visibility Conditions</summary>
+                    <div class="box-content">
+                      <ha-select label="Show badge when" .value=${btn.visibility_mode || "none"}
+                        @selected=${(e) => setButton(idx, { visibility_mode: e.target.value || "none" })}
+                        @closed=${(e) => e.stopPropagation()}>
+                        <mwc-list-item value="none">Always show</mwc-list-item>
+                        <mwc-list-item value="state">Entity state equals</mwc-list-item>
+                        <mwc-list-item value="attribute">Entity attribute equals</mwc-list-item>
+                      </ha-select>
+
+                      ${btn.visibility_mode && btn.visibility_mode !== "none" ? html`
+                        <ha-entity-picker .hass=${this.hass} .value=${btn.visibility_entity || btn.entity || ""} label="Condition Entity"
+                          @value-changed=${(e) => setButton(idx, { visibility_entity: e.detail.value || "" })}></ha-entity-picker>
+                      ` : ''}
+
+                      ${btn.visibility_mode === "state" ? html`
+                        ${this._renderTemplateEditor("Expected State (Jinja supported)", `${prefix}btn_${idx}_visibility_state`, {
+                          value: btn.visibility_state || "",
+                          onchange: (v) => setButton(idx, { visibility_state: v || "" }),
+                        })}
+                      ` : ''}
+
+                      ${btn.visibility_mode === "attribute" ? html`
+                        <ha-textfield label="Attribute path" .value=${btn.visibility_attribute || ""} placeholder="friendly_name or nested.path"
+                          @input=${(e) => setButton(idx, { visibility_attribute: e.target.value || "" })}></ha-textfield>
+                        ${this._renderTemplateEditor("Expected Attribute Value (Jinja supported)", `${prefix}btn_${idx}_visibility_attribute_value`, {
+                          value: btn.visibility_attribute_value || "",
+                          onchange: (v) => setButton(idx, { visibility_attribute_value: v || "" }),
+                        })}
+                      ` : ''}
+                    </div>
+                  </details>
+                  </div>
+                </details>
+              `;
+            })}
+          `;
+        })()}
       ` : ''}
       
       ${(type === "notifications" || type === "custom") ? html`
@@ -4923,15 +5898,21 @@ class HkiHeaderCardEditor extends LitElement {
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
         ${this._renderActionEditor("Hold action", prefix + "hold_action")}
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
-        ${this._renderSlotPopupEditor(prefix)}
+        <details class="box-section" style="margin-top:8px;">
+          <summary>HKI Popup Settings</summary>
+          <div class="box-content">${this._renderSlotPopupEditor(prefix)}</div>
+        </details>
       ` : ''}
       
-      ${(type === "weather" || type === "datetime" || type === "button") ? html`
+      ${(type === "weather" || type === "datetime") ? html`
         <div class="section" style="margin-top: 12px;">Actions</div>
         ${this._renderActionEditor("Tap action", prefix + "tap_action")}
         ${this._renderActionEditor("Hold action", prefix + "hold_action")}
         ${this._renderActionEditor("Double tap action", prefix + "double_tap_action")}
-        ${this._renderSlotPopupEditor(prefix)}
+        <details class="box-section" style="margin-top:8px;">
+          <summary>HKI Popup Settings</summary>
+          <div class="box-content">${this._renderSlotPopupEditor(prefix)}</div>
+        </details>
       ` : ''}
       
       ${type !== "none" && type !== "notifications" && type !== "custom" && type !== "card" && type !== "spacer" ? html`
@@ -4949,14 +5930,15 @@ class HkiHeaderCardEditor extends LitElement {
               ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
             </ha-select>
           </div>
-          <ha-textfield label="Text Color" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
+          <ha-textfield label="Text Color (Jinja supported)" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
+          <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config[prefix + "text_shadow"] || ""} data-field="${prefix}text_shadow" @input=${this._changed}></ha-textfield>
           
           <div class="switch-row">
             <ha-switch .checked=${this._config[prefix + "pill"] === true} data-field="${prefix}pill" @change=${this._changed}></ha-switch>
             <span>Enable Pill Style</span>
           </div>
           ${this._config[prefix + "pill"] ? html`
-            <ha-textfield label="Pill Background" .value=${this._config[prefix + "pill_background"] || ""} data-field="${prefix}pill_background" @input=${this._changed}></ha-textfield>
+            ${this._renderTemplateEditor("Pill Background (Jinja)", `${prefix}pill_background`)}
             <div class="inline-fields-2">
               <ha-textfield label="Padding X" type="number" .value=${String(this._config[prefix + "pill_padding_x"] ?? "")} data-field="${prefix}pill_padding_x" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Padding Y" type="number" .value=${String(this._config[prefix + "pill_padding_y"] ?? "")} data-field="${prefix}pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -4971,20 +5953,34 @@ class HkiHeaderCardEditor extends LitElement {
     `;
   }
 
-  _renderSlotPopupEditor(prefix, entityId = null) {
+  _renderSlotPopupEditor(prefix, entityId = null, options = {}) {
     const cfg = this._config;
+    const boundPopup = (options.popupGetter && typeof options.popupGetter === "function")
+      ? (options.popupGetter() || {})
+      : null;
+    const slotActions = Array.isArray(options.actions) && options.actions.length
+      ? options.actions.filter(Boolean)
+      : [
+          cfg[prefix + "tap_action"],
+          cfg[prefix + "hold_action"],
+          cfg[prefix + "double_tap_action"],
+        ].filter(Boolean);
     const effectiveEntity = entityId
-      || cfg[prefix + "tap_action"]?.entity
-      || cfg[prefix + "hold_action"]?.entity
+      || slotActions.find((a) => a?.action === "hki-more-info" && a?.entity)?.entity
+      || slotActions.find((a) => a?.entity)?.entity
       || null;
     const domain = effectiveEntity ? effectiveEntity.split('.')[0] : null;
     const selectedEntity = (effectiveEntity && this.hass?.states?.[effectiveEntity]) || null;
     const hasChildren = selectedEntity?.attributes?.entity_id && Array.isArray(selectedEntity.attributes.entity_id);
     const isLightGroup = domain === 'light' && hasChildren;
 
-    const enabled = !!cfg[prefix + "custom_popup_enabled"];
-    const p = (k) => cfg[prefix + k];
+    const enabled = boundPopup ? !!boundPopup.custom_popup_enabled : !!cfg[prefix + "custom_popup_enabled"];
+    const p = (k) => boundPopup ? boundPopup[k] : cfg[prefix + k];
     const pp = (patch) => {
+      if (boundPopup && options.popupSetter && typeof options.popupSetter === "function") {
+        options.popupSetter(patch);
+        return;
+      }
       const mapped = {};
       Object.keys(patch).forEach(k => mapped[prefix + k] = patch[k]);
       this._config = { ...this._config, ...mapped };
@@ -5296,10 +6292,24 @@ class HkiHeaderCardEditor extends LitElement {
                     while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                     pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
                   };
+                  const moveSlot = (toIndex) => {
+                    const src = (p('popup_bottom_bar_entities') || []);
+                    if (toIndex < 0 || toIndex >= _bbSlots || toIndex === i) return;
+                    const arr = Array.from({ length: Math.max(src.length, _bbSlots) }, (_, j) => src[j] || null);
+                    [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                    while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                    pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+                  };
                   const setTap = (tap) => setSlot({ tap_action: { ..._tap, ...tap } });
                   return html`
                     <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                      <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                        <div style="display:flex;align-items:center;gap:2px;">
+                          <mwc-icon-button ?disabled=${i === 0} @click=${() => moveSlot(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                          <mwc-icon-button ?disabled=${i === _bbSlots - 1} @click=${() => moveSlot(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                        </div>
+                      </div>
                       <ha-entity-picker .hass=${this.hass} .value=${_ent.entity||''} .label=${"Entity"}
                         @value-changed=${(ev) => setSlot({ entity: ev.detail.value || undefined })}
                         allow-custom-entity></ha-entity-picker>
@@ -5642,7 +6652,11 @@ class HkiHeaderCardEditor extends LitElement {
     const pc = personConfig;
     const pv = (k) => pc[k];
     const pp = patchPerson;
-    const p_ent = pc.entity || '';
+    const personActions = [pc.tap_action, pc.hold_action, pc.double_tap_action].filter(Boolean);
+    const p_ent = personActions.find((a) => a?.action === "hki-more-info" && a?.entity)?.entity
+      || personActions.find((a) => a?.entity)?.entity
+      || pc.entity
+      || '';
     const p_domain = p_ent ? p_ent.split('.')[0] : null;
     const p_entState = (p_ent && this.hass?.states?.[p_ent]) || null;
     const p_hasChildren = p_entState?.attributes?.entity_id && Array.isArray(p_entState.attributes.entity_id);
@@ -5658,14 +6672,21 @@ class HkiHeaderCardEditor extends LitElement {
     const popupBottomBarAlignOptions = HKI_EDITOR_OPTIONS.popupBottomBarAlignOptions;
 
     return html`
-      ${renderPersonAction('Tap action', 'tap_action')}
-      ${renderPersonAction('Hold action', 'hold_action')}
-      ${renderPersonAction('Double tap action', 'double_tap_action')}
-
-      <div class="section" style="margin-top: 12px;">HKI More Info Popup</div>
-      <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 8px 0;">Settings for the HKI More Info popup triggered by actions on this person.</p>
+      <details class="box-section" open>
+        <summary>Actions</summary>
+        <div class="box-content">
+          ${renderPersonAction('Tap action', 'tap_action')}
+          ${renderPersonAction('Hold action', 'hold_action')}
+          ${renderPersonAction('Double tap action', 'double_tap_action')}
+        </div>
+      </details>
 
       <details class="box-section">
+        <summary>HKI Popup Settings</summary>
+        <div class="box-content">
+          <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Settings for the HKI More Info popup triggered by this person.</p>
+
+          <details class="box-section">
         <summary>Popup Header</summary>
         <div class="box-content">
           ${this._renderTemplateEditor('Name (optional, supports Jinja)', 'hki_popup_name_person_' + personIndex, { value: pv('popup_name') || '', onchange: (v) => pp({ popup_name: v || undefined }) })}
@@ -5835,6 +6856,17 @@ class HkiHeaderCardEditor extends LitElement {
           </details>
         ` : ''}
 
+        ${p_domain === 'person' ? html`
+          <details class="box-section">
+            <summary>Person Map Options</summary>
+            <div class="box-content">
+              <ha-entity-picker .hass=${this.hass} label="Geocoded Address Entity" .value=${pv('person_geocoded_entity') || ""}
+                @value-changed=${(ev) => pp({ person_geocoded_entity: ev.detail.value || undefined })}
+              ></ha-entity-picker>
+            </div>
+          </details>
+        ` : ''}
+
         <details class="box-section">
           <summary>Content Display</summary>
           <div class="box-content">
@@ -5927,10 +6959,24 @@ class HkiHeaderCardEditor extends LitElement {
                     while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                     pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
                   };
+                  const moveSlot = (toIndex) => {
+                    const src = (pv('popup_bottom_bar_entities') || []);
+                    if (toIndex < 0 || toIndex >= _bbSlots || toIndex === i) return;
+                    const arr = Array.from({ length: Math.max(src.length, _bbSlots) }, (_, j) => src[j] || null);
+                    [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                    while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                    pp({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+                  };
                   const setTap = (tap) => setSlot({ tap_action: { ..._tap, ...tap } });
                   return html`
                     <div style="margin-top:8px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                      <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                      <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                        <div style="display:flex;align-items:center;gap:2px;">
+                          <mwc-icon-button ?disabled=${i === 0} @click=${() => moveSlot(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                          <mwc-icon-button ?disabled=${i === _bbSlots - 1} @click=${() => moveSlot(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                        </div>
+                      </div>
                       <ha-entity-picker .hass=${this.hass} .value=${_ent.entity||''} .label=${"Entity"}
                         @value-changed=${(ev) => setSlot({ entity: ev.detail.value || undefined })}
                         allow-custom-entity></ha-entity-picker>
@@ -5955,6 +7001,8 @@ class HkiHeaderCardEditor extends LitElement {
           </div>
         </details>
       ` : ''}
+        </div>
+      </details>
     `;
   }
   _renderActionEditor(label, field) {
@@ -6042,18 +7090,43 @@ class HkiHeaderCardEditor extends LitElement {
                   <div style="border: 1px solid var(--divider-color); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                       <strong>Person ${index + 1}</strong>
-                      <mwc-icon-button 
-                        @click=${() => {
+                      <div style="display:flex;align-items:center;gap:2px;">
+                        <mwc-icon-button ?disabled=${index === 0} @click=${() => {
+                          if (index === 0) return;
                           const updated = [...this._config.persons_entities];
-                          updated.splice(index, 1);
+                          [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
                           this._config = { ...this._config, persons_entities: updated };
                           const strippedConfig = this._stripDefaults(this._config);
                           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                           this.requestUpdate();
-                        }}
-                      >
-                        <ha-icon icon="mdi:delete"></ha-icon>
-                      </mwc-icon-button>
+                        }}>
+                          <ha-icon icon="mdi:chevron-up"></ha-icon>
+                        </mwc-icon-button>
+                        <mwc-icon-button ?disabled=${index === (this._config.persons_entities || []).length - 1} @click=${() => {
+                          const arr = this._config.persons_entities || [];
+                          if (index >= arr.length - 1) return;
+                          const updated = [...arr];
+                          [updated[index + 1], updated[index]] = [updated[index], updated[index + 1]];
+                          this._config = { ...this._config, persons_entities: updated };
+                          const strippedConfig = this._stripDefaults(this._config);
+                          this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+                          this.requestUpdate();
+                        }}>
+                          <ha-icon icon="mdi:chevron-down"></ha-icon>
+                        </mwc-icon-button>
+                        <mwc-icon-button 
+                          @click=${() => {
+                            const updated = [...this._config.persons_entities];
+                            updated.splice(index, 1);
+                            this._config = { ...this._config, persons_entities: updated };
+                            const strippedConfig = this._stripDefaults(this._config);
+                            this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
+                            this.requestUpdate();
+                          }}
+                        >
+                          <ha-icon icon="mdi:delete"></ha-icon>
+                        </mwc-icon-button>
+                      </div>
                     </div>
                     
                     <ha-entity-picker
@@ -6107,9 +7180,9 @@ class HkiHeaderCardEditor extends LitElement {
                       ></ha-entity-picker>
                     ` : ''}
 
-                    <details style="margin-top: 8px;">
-                      <summary style="cursor: pointer; font-weight: 500; padding: 8px 0;">Custom Icons & Pictures</summary>
-                      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
+                    <details class="box-section" style="margin-top: 8px;">
+                      <summary>Custom Icons & Pictures</summary>
+                      <div class="box-content" style="display: flex; flex-direction: column; gap: 8px;">
                         <ha-icon-picker
                           .hass=${this.hass}
                           .value=${typeof personConfig !== 'string' ? (personConfig.icon_home || "") : ""}
@@ -6490,14 +7563,15 @@ class HkiHeaderCardEditor extends LitElement {
                         ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
                       </ha-select>
                     </div>
-                    <ha-textfield label="Text Color" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
+                    <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.info_text_shadow || ""} data-field="info_text_shadow" @input=${this._changed}></ha-textfield>
                     
                     <div class="switch-row">
                       <ha-switch .checked=${!!this._config.info_pill} data-field="info_pill" @change=${this._changed}></ha-switch>
                       <span>Enable Pill Style</span>
                     </div>
                     ${this._config.info_pill ? html`
-                      <ha-textfield label="Pill Background" .value=${this._config.info_pill_background || "rgba(0,0,0,0.25)"} data-field="info_pill_background" @input=${this._changed}></ha-textfield>
+                      ${this._renderTemplateEditor("Pill Background (Jinja)", "info_pill_background")}
                       <div class="inline-fields-2">
                         <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.info_pill_padding_x ?? 12)} data-field="info_pill_padding_x" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.info_pill_padding_y ?? 8)} data-field="info_pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -6566,14 +7640,15 @@ class HkiHeaderCardEditor extends LitElement {
                       ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<mwc-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</mwc-list-item>`)}
                     </ha-select>
                   </div>
-                  <ha-textfield label="Text Color" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
+                  <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.bottom_info_text_shadow || ""} data-field="bottom_info_text_shadow" @input=${this._changed}></ha-textfield>
                   
                   <div class="switch-row">
                     <ha-switch .checked=${!!this._config.bottom_info_pill} data-field="bottom_info_pill" @change=${this._changed}></ha-switch>
                     <span>Enable Pill Style</span>
                   </div>
                   ${this._config.bottom_info_pill ? html`
-                    <ha-textfield label="Pill Background" .value=${this._config.bottom_info_pill_background || "rgba(0,0,0,0.25)"} data-field="bottom_info_pill_background" @input=${this._changed}></ha-textfield>
+                    ${this._renderTemplateEditor("Pill Background (Jinja)", "bottom_info_pill_background")}
                     <div class="inline-fields-2">
                       <ha-textfield label="Padding X (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_x ?? 12)} data-field="bottom_info_pill_padding_x" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Padding Y (px)" type="number" .value=${String(this._config.bottom_info_pill_padding_y ?? 8)} data-field="bottom_info_pill_padding_y" @input=${this._changed}></ha-textfield>
@@ -7218,7 +8293,7 @@ window.customCards.push({
       // Custom popup
       'custom_popup',
       // Home Assistant layout metadata (must be preserved)
-      'grid_options',
+      'grid_options', 'visibility',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
@@ -21170,11 +22245,25 @@ window.customCards.push({
                             while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                             this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
                           };
+                          const moveEntry = (toIndex) => {
+                            const src = this._config.popup_bottom_bar_entities || [];
+                            if (toIndex < 0 || toIndex >= slots || toIndex === i) return;
+                            const arr = Array.from({ length: Math.max(src.length, slots) }, (_, j) => src[j] || null);
+                            [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                            while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                            this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
+                          };
                           const setTapAction = (actionPatch) => setEntry({ tap_action: { ...tapAction, ...actionPatch } });
 
                           return html`
                             <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                              <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                              <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                                <div style="display:flex;align-items:center;gap:2px;">
+                                  <mwc-icon-button ?disabled=${i === 0} @click=${() => moveEntry(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                                  <mwc-icon-button ?disabled=${i === slots - 1} @click=${() => moveEntry(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                                </div>
+                              </div>
                               <ha-entity-picker .hass=${this.hass} .value=${entry.entity||""} .label=${"Entity"}
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
@@ -22379,7 +23468,7 @@ function removeDefaults(obj, defaults) {
   if (!obj || !defaults) return obj;
   
   // Critical properties that should always be preserved for config structure and Home Assistant compatibility
-  const criticalProps = ['type', 'base', 'horizontal', 'vertical', 'grid_options'];
+  const criticalProps = ['type', 'base', 'horizontal', 'vertical', 'grid_options', 'visibility'];
   
   const cleaned = {};
   for (const key in obj) {

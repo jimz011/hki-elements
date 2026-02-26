@@ -460,7 +460,7 @@
       // Custom popup
       'custom_popup',
       // Home Assistant layout metadata (must be preserved)
-      'grid_options',
+      'grid_options', 'visibility',
       '_bb_slots',
       // Layout / canvas
       'element_order', 'element_grid', 'grid_rows', 'grid_columns',
@@ -14412,11 +14412,25 @@
                             while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
                             this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
                           };
+                          const moveEntry = (toIndex) => {
+                            const src = this._config.popup_bottom_bar_entities || [];
+                            if (toIndex < 0 || toIndex >= slots || toIndex === i) return;
+                            const arr = Array.from({ length: Math.max(src.length, slots) }, (_, j) => src[j] || null);
+                            [arr[toIndex], arr[i]] = [arr[i], arr[toIndex]];
+                            while (arr.length > 0 && !arr[arr.length - 1]?.entity) arr.pop();
+                            this._fireChanged({ ...this._config, popup_bottom_bar_entities: arr.length ? arr : undefined });
+                          };
                           const setTapAction = (actionPatch) => setEntry({ tap_action: { ...tapAction, ...actionPatch } });
 
                           return html`
                             <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:10px;">
-                              <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                              <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <p style="font-size:11px;opacity:0.7;margin:0 0 6px 0;font-weight:600;">Button ${i+1}</p>
+                                <div style="display:flex;align-items:center;gap:2px;">
+                                  <mwc-icon-button ?disabled=${i === 0} @click=${() => moveEntry(i - 1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                                  <mwc-icon-button ?disabled=${i === slots - 1} @click=${() => moveEntry(i + 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                                </div>
+                              </div>
                               <ha-entity-picker .hass=${this.hass} .value=${entry.entity||""} .label=${"Entity"}
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
