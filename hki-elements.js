@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-15 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-16 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -24144,6 +24144,7 @@ const ACTIONS = [
   { value: "toggle", label: "Toggle entity" },
   { value: "more-info", label: "More info" },
   { value: "perform-action", label: "Perform action" },
+  { value: "fire-dom-event", label: "Fire DOM Event" },
   { value: "back", label: "Back" },
   { value: "toggle-group", label: "Show/Hide Group" },
   { value: "none", label: "None" },

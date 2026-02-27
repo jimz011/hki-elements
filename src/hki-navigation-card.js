@@ -38,6 +38,7 @@ const ACTIONS = [
   { value: "toggle", label: "Toggle entity" },
   { value: "more-info", label: "More info" },
   { value: "perform-action", label: "Perform action" },
+  { value: "fire-dom-event", label: "Fire DOM Event" },
   { value: "back", label: "Back" },
   { value: "toggle-group", label: "Show/Hide Group" },
   { value: "none", label: "None" },
