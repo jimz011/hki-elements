@@ -124,6 +124,8 @@ function normalizeConfig(config) {
   else delete c.header;
   if (c.navigation && typeof c.navigation === "object") c.navigation = { ...c.navigation };
   else delete c.navigation;
+  if (c.popup && typeof c.popup === "object") c.popup = { ...c.popup };
+  else delete c.popup;
   return c;
 }
 
@@ -249,6 +251,9 @@ class HkiSettingsBase extends LitElement {
     if (!normalized.navigation && persisted.navigation && Object.keys(persisted.navigation).length) {
       normalized.navigation = { ...persisted.navigation };
     }
+    if (!normalized.popup && persisted.popup && Object.keys(persisted.popup).length) {
+      normalized.popup = { ...persisted.popup };
+    }
     this._config = normalized;
   }
 
@@ -279,6 +284,7 @@ class HkiSettingsBase extends LitElement {
         button: sanitizeScope(next.button || {}),
         header: sanitizeScope(next.header || {}),
         navigation: sanitizeScope(next.navigation || {}),
+        popup: sanitizeScope(next.popup || {}),
       });
     } catch (_) {}
     try {
@@ -297,6 +303,7 @@ class HkiSettingsBase extends LitElement {
       button: sanitizeScope(cfg.button || {}),
       header: sanitizeScope(cfg.header || {}),
       navigation: sanitizeScope(cfg.navigation || {}),
+      popup: sanitizeScope(cfg.popup || {}),
     });
   }
 
@@ -629,83 +636,94 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("button", "temp_badge_offset_x", "Temp badge offset X", "number")}
               ${this._renderInput("button", "temp_badge_offset_y", "Temp badge offset Y", "number")}
             `, "Global element positioning offsets.")}
-            ${this._renderCategoryAccordion("HKI Popup", html`
-              ${this._renderSwitch("button", "custom_popup_enabled", "Enable custom popup card")}
-              ${this._renderObjectInput("button", "custom_popup_card", "Custom popup card config (YAML/JSON)")}
-              ${this._renderTemplateInput("button", "popup_name", "Popup name (Template/Jinja)")}
-              ${this._renderTemplateInput("button", "popup_state", "Popup state (Template/Jinja)")}
-              ${this._renderTemplateInput("button", "popup_icon", "Popup icon (Template/Jinja)")}
-              ${this._renderSwitch("button", "popup_use_entity_picture", "Use entity picture in popup")}
-              ${this._renderInput("button", "popup_border_radius", "Popup border radius", "number")}
-              ${this._renderSelect("button", "popup_width", "Popup width mode", POPUP_WIDTH_OPTIONS)}
-              ${this._renderInput("button", "popup_width_custom", "Popup width custom (px)", "number")}
-              ${this._renderSelect("button", "popup_height", "Popup height mode", POPUP_HEIGHT_OPTIONS)}
-              ${this._renderInput("button", "popup_height_custom", "Popup height custom (px)", "number")}
-              ${this._renderSelect("button", "popup_open_animation", "Popup open animation", POPUP_ANIMATION_OPTIONS)}
-              ${this._renderSelect("button", "popup_close_animation", "Popup close animation", POPUP_ANIMATION_OPTIONS)}
-              ${this._renderInput("button", "popup_animation_duration", "Popup animation duration (ms)", "number")}
-              ${this._renderSwitch("button", "popup_blur_enabled", "Popup backdrop blur enabled")}
-              ${this._renderInput("button", "popup_blur_amount", "Popup blur amount", "number")}
-              ${this._renderSwitch("button", "popup_card_blur_enabled", "Popup card blur enabled")}
-              ${this._renderInput("button", "popup_card_blur_amount", "Popup card blur amount", "number")}
-              ${this._renderInput("button", "popup_card_opacity", "Popup card opacity", "number")}
-              ${this._renderSwitch("button", "popup_show_favorites", "Show favorites section")}
-              ${this._renderSwitch("button", "popup_show_effects", "Show effects section")}
-              ${this._renderSwitch("button", "popup_show_presets", "Show presets section")}
-              ${this._renderInput("button", "popup_slider_radius", "Popup slider radius", "number")}
-              ${this._renderSwitch("button", "popup_hide_button_text", "Hide popup button text")}
-              ${this._renderInput("button", "popup_value_font_size", "Popup value font size", "number")}
-              ${this._renderInput("button", "popup_value_font_weight", "Popup value font weight", "number")}
-              ${this._renderInput("button", "popup_label_font_size", "Popup label font size", "number")}
-              ${this._renderInput("button", "popup_label_font_weight", "Popup label font weight", "number")}
-              ${this._renderSelect("button", "popup_time_format", "Popup time format", POPUP_TIME_FORMAT_OPTIONS)}
-              ${this._renderSelect("button", "popup_default_view", "Popup default view", POPUP_DEFAULT_VIEW_OPTIONS)}
-              ${this._renderSelect("button", "popup_default_section", "Popup default section", POPUP_DEFAULT_SECTION_OPTIONS)}
-              ${this._renderInput("button", "popup_highlight_color", "Popup highlight color")}
-              ${this._renderInput("button", "popup_highlight_text_color", "Popup highlight text color")}
-              ${this._renderInput("button", "popup_highlight_radius", "Popup highlight radius", "number")}
-              ${this._renderInput("button", "popup_highlight_opacity", "Popup highlight opacity", "number")}
-              ${this._renderInput("button", "popup_highlight_border_color", "Popup highlight border color")}
-              ${this._renderSelect("button", "popup_highlight_border_style", "Popup highlight border style", BORDER_STYLES)}
-              ${this._renderInput("button", "popup_highlight_border_width", "Popup highlight border width", "number")}
-              ${this._renderInput("button", "popup_highlight_box_shadow", "Popup highlight box shadow")}
-              ${this._renderInput("button", "popup_button_bg", "Popup button background")}
-              ${this._renderInput("button", "popup_button_text_color", "Popup button text color")}
-              ${this._renderInput("button", "popup_button_radius", "Popup button radius", "number")}
-              ${this._renderInput("button", "popup_button_opacity", "Popup button opacity", "number")}
-              ${this._renderInput("button", "popup_button_border_color", "Popup button border color")}
-              ${this._renderSelect("button", "popup_button_border_style", "Popup button border style", BORDER_STYLES)}
-              ${this._renderInput("button", "popup_button_border_width", "Popup button border width", "number")}
-              ${this._renderListInput("button", "popup_bottom_bar_entities", "Popup bottom bar entities (one entity per line)")}
-              ${this._renderSelect("button", "popup_bottom_bar_align", "Popup bottom bar align", POPUP_BOTTOM_BAR_ALIGN_OPTIONS)}
-              ${this._renderSwitch("button", "popup_hide_bottom_bar", "Hide popup bottom bar")}
-              ${this._renderInput("button", "person_geocoded_entity", "Person geocoded entity")}
-              ${this._renderInput("button", "sensor_graph_color", "Sensor graph color")}
-              ${this._renderInput("button", "sensor_graph_gradient", "Sensor graph gradient")}
-              ${this._renderInput("button", "sensor_line_width", "Sensor line width", "number")}
-              ${this._renderInput("button", "sensor_hours", "Sensor hours", "number")}
-              ${this._renderInput("button", "sensor_graph_style", "Sensor graph style")}
-              ${this._renderInput("button", "climate_temp_step", "Climate temp step", "number")}
-              ${this._renderSwitch("button", "climate_use_circular_slider", "Climate circular slider")}
-              ${this._renderSwitch("button", "climate_show_plus_minus", "Climate show plus/minus")}
-              ${this._renderSwitch("button", "climate_show_gradient", "Climate show gradient")}
-              ${this._renderSwitch("button", "climate_show_target_range", "Climate show target range")}
-              ${this._renderInput("button", "climate_humidity_entity", "Climate humidity entity")}
-              ${this._renderInput("button", "climate_humidity_name", "Climate humidity label")}
-              ${this._renderInput("button", "climate_pressure_entity", "Climate pressure entity")}
-              ${this._renderInput("button", "climate_pressure_name", "Climate pressure label")}
-              ${this._renderInput("button", "climate_current_temperature_entity", "Climate current temp entity")}
-              ${this._renderInput("button", "climate_temperature_name", "Climate temperature label")}
-              ${this._renderInput("button", "humidifier_humidity_step", "Humidifier humidity step", "number")}
-              ${this._renderSwitch("button", "humidifier_use_circular_slider", "Humidifier circular slider")}
-              ${this._renderSwitch("button", "humidifier_show_plus_minus", "Humidifier show plus/minus")}
-              ${this._renderSwitch("button", "humidifier_show_gradient", "Humidifier show gradient")}
-              ${this._renderInput("button", "humidifier_fan_entity", "Humidifier fan entity")}
-            `, "Global HKI popup defaults (button domain popups).")}
+          </section>
+        </details>
+
+        <details class="scope-accordion">
+          <summary>HKI Popup Defaults</summary>
+          <section class="scope">
+            ${this._renderScopeHeader("HKI Popup Defaults", "popup", "Shared popup styling defaults for all HKI cards that support popups.")}
+            ${this._renderCategoryAccordion("Card", html`
+              ${this._renderInput("popup", "popup_border_radius", "Popup border radius", "number")}
+              ${this._renderSelect("popup", "popup_width", "Popup width mode", POPUP_WIDTH_OPTIONS)}
+              ${this._renderInput("popup", "popup_width_custom", "Popup width custom (px)", "number")}
+              ${this._renderSelect("popup", "popup_height", "Popup height mode", POPUP_HEIGHT_OPTIONS)}
+              ${this._renderInput("popup", "popup_height_custom", "Popup height custom (px)", "number")}
+              ${this._renderSwitch("popup", "popup_blur_enabled", "Popup backdrop blur enabled")}
+              ${this._renderInput("popup", "popup_blur_amount", "Popup blur amount", "number")}
+              ${this._renderSwitch("popup", "popup_card_blur_enabled", "Popup card blur enabled")}
+              ${this._renderInput("popup", "popup_card_blur_amount", "Popup card blur amount", "number")}
+              ${this._renderInput("popup", "popup_card_opacity", "Popup card opacity", "number")}
+            `, "Container and glass styling for popup surfaces.")}
+            ${this._renderCategoryAccordion("Animation", html`
+              ${this._renderSelect("popup", "popup_open_animation", "Popup open animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderSelect("popup", "popup_close_animation", "Popup close animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderInput("popup", "popup_animation_duration", "Popup animation duration (ms)", "number")}
+            `, "Open/close animation style for popup transitions.")}
+            ${this._renderCategoryAccordion("Features", html`
+              ${this._renderSwitch("popup", "popup_show_favorites", "Show favorites section")}
+              ${this._renderSwitch("popup", "popup_show_effects", "Show effects section")}
+              ${this._renderSwitch("popup", "popup_show_presets", "Show presets section")}
+              ${this._renderSwitch("popup", "popup_hide_bottom_bar", "Hide popup bottom bar")}
+              ${this._renderSwitch("popup", "popup_hide_top_bar", "Hide popup top bar")}
+              ${(this._config?.popup?.popup_hide_top_bar === true)
+                ? this._renderSwitch("popup", "popup_show_close_button", "Show close button when top bar is hidden")
+                : ""}
+              ${this._renderSwitch("popup", "popup_close_on_action", "Close popup after perform-action")}
+              ${this._renderSelect("popup", "popup_bottom_bar_align", "Popup bottom bar align", POPUP_BOTTOM_BAR_ALIGN_OPTIONS)}
+              ${this._renderSelect("popup", "popup_default_view", "Popup default view", POPUP_DEFAULT_VIEW_OPTIONS)}
+              ${this._renderSelect("popup", "popup_default_section", "Popup default section", POPUP_DEFAULT_SECTION_OPTIONS)}
+            `, "Global popup feature toggles and navigation behavior.")}
+            ${this._renderCategoryAccordion("Typography", html`
+              ${this._renderInput("popup", "popup_slider_radius", "Popup slider radius", "number")}
+              ${this._renderSwitch("popup", "popup_hide_button_text", "Hide popup button text")}
+              ${this._renderInput("popup", "popup_value_font_size", "Popup value font size", "number")}
+              ${this._renderInput("popup", "popup_value_font_weight", "Popup value font weight", "number")}
+              ${this._renderInput("popup", "popup_label_font_size", "Popup label font size", "number")}
+              ${this._renderInput("popup", "popup_label_font_weight", "Popup label font weight", "number")}
+              ${this._renderSelect("popup", "popup_time_format", "Popup time format", POPUP_TIME_FORMAT_OPTIONS)}
+            `, "Text and slider display style inside popups.")}
+            ${this._renderCategoryAccordion("Buttons", html`
+              ${this._renderInput("popup", "popup_highlight_color", "Active button color")}
+              ${this._renderInput("popup", "popup_highlight_text_color", "Active button text color")}
+              ${this._renderInput("popup", "popup_highlight_radius", "Active button border radius", "number")}
+              ${this._renderInput("popup", "popup_highlight_opacity", "Active button opacity", "number")}
+              ${this._renderInput("popup", "popup_highlight_border_color", "Active button border color")}
+              ${this._renderSelect("popup", "popup_highlight_border_style", "Active button border style", BORDER_STYLES)}
+              ${this._renderInput("popup", "popup_highlight_border_width", "Active button border width", "number")}
+              ${this._renderInput("popup", "popup_highlight_box_shadow", "Active button box shadow")}
+              ${this._renderInput("popup", "popup_button_bg", "Inactive button background")}
+              ${this._renderInput("popup", "popup_button_text_color", "Inactive button text color")}
+              ${this._renderInput("popup", "popup_button_radius", "Inactive button border radius", "number")}
+              ${this._renderInput("popup", "popup_button_opacity", "Inactive button opacity", "number")}
+              ${this._renderInput("popup", "popup_button_border_color", "Inactive button border color")}
+              ${this._renderSelect("popup", "popup_button_border_style", "Inactive button border style", BORDER_STYLES)}
+              ${this._renderInput("popup", "popup_button_border_width", "Inactive button border width", "number")}
+            `, "Styling for active/inactive popup action buttons.")}
+            ${this._renderCategoryAccordion("Climate", html`
+              ${this._renderSwitch("popup", "climate_use_circular_slider", "Climate circular slider")}
+              ${this._renderSwitch("popup", "climate_show_plus_minus", "Climate show plus/minus")}
+              ${this._renderSwitch("popup", "climate_show_gradient", "Climate show gradient")}
+              ${this._renderSwitch("popup", "climate_show_target_range", "Climate show target range")}
+              ${this._renderInput("popup", "climate_temp_step", "Climate temperature step", "number")}
+            `, "Domain-specific climate popup display style.")}
+            ${this._renderCategoryAccordion("Humidifier", html`
+              ${this._renderSwitch("popup", "humidifier_use_circular_slider", "Humidifier circular slider")}
+              ${this._renderSwitch("popup", "humidifier_show_plus_minus", "Humidifier show plus/minus")}
+              ${this._renderSwitch("popup", "humidifier_show_gradient", "Humidifier show gradient")}
+              ${this._renderInput("popup", "humidifier_humidity_step", "Humidifier humidity step", "number")}
+            `, "Domain-specific humidifier popup display style.")}
+            ${this._renderCategoryAccordion("Sensor", html`
+              ${this._renderInput("popup", "sensor_graph_style", "Sensor graph style")}
+              ${this._renderInput("popup", "sensor_graph_color", "Sensor graph color")}
+              ${this._renderInput("popup", "sensor_line_width", "Sensor line width", "number")}
+              ${this._renderInput("popup", "sensor_hours", "Sensor default range (hours)", "number")}
+              ${this._renderSwitch("popup", "sensor_graph_gradient", "Sensor graph gradient")}
+            `, "Domain-specific graph style for sensor/input_number popups.")}
             ${this._renderCategoryAccordion("Lock", html`
-              ${this._renderInput("button", "lock_contact_sensor_entity", "Contact sensor entity")}
-              ${this._renderInput("button", "lock_contact_sensor_label", "Contact open label")}
-            `, "Defaults for lock-specific details in the popup.")}
+              ${this._renderInput("popup", "popup_button_radius", "Action button radius", "number")}
+              ${this._renderInput("popup", "popup_highlight_radius", "Active action radius", "number")}
+            `, "Lock popup uses the shared popup button styles.")}
           </section>
         </details>
 

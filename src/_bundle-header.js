@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -71,6 +71,9 @@ window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [
   "popup_bottom_bar_entities",
   "popup_bottom_bar_align",
   "popup_hide_bottom_bar",
+  "popup_hide_top_bar",
+  "popup_show_close_button",
+  "popup_close_on_action",
   "_bb_slots",
   "person_geocoded_entity",
   "sensor_graph_color",
@@ -525,7 +528,7 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
   try {
     const raw = window.localStorage?.getItem(key);
     if (!raw) {
-      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
       return window.HKI._globalSettingsCache;
     }
     const parsed = JSON.parse(raw);
@@ -533,11 +536,12 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
       button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
       header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
       navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
+      popup: (parsed?.popup && typeof parsed.popup === "object") ? parsed.popup : {},
     };
     window.HKI._globalSettingsCache = next;
     return next;
   } catch (_) {
-    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
     return window.HKI._globalSettingsCache;
   }
 });
@@ -557,6 +561,9 @@ window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) 
     navigation: hasOwn(settings, "navigation")
       ? (((settings && settings.navigation) && typeof settings.navigation === "object") ? { ...settings.navigation } : {})
       : { ...(current.navigation || {}) },
+    popup: hasOwn(settings, "popup")
+      ? (((settings && settings.popup) && typeof settings.popup === "object") ? { ...settings.popup } : {})
+      : { ...(current.popup || {}) },
   };
   window.HKI._globalSettingsCache = next;
   try {

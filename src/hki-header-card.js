@@ -1115,9 +1115,9 @@ class HkiHeaderCard extends LitElement {
       ha-card.header {
         position: relative;
         width: 100vw;
-        height: 35vh;
-        min-height: 180px;
-        max-height: 340px;
+        height: 240px;
+        min-height: 240px;
+        max-height: 240px;
         margin: 0;
         border-radius: 0; /* Overridden by inline style */
         overflow: visible; /* Allow box-shadow to show when fixed */
@@ -2582,16 +2582,18 @@ class HkiHeaderCard extends LitElement {
 
   // Build a flat object of all popup fields from a merged popup config to spread into btn.setConfig()
   _buildPopupConfig(p, resolvedName, resolvedState, resolvedIcon = '') {
+    const popupGlobals = window.HKI?.getGlobalDefaultsFor?.("popup") || {};
+    const mergedPopup = { ...(popupGlobals || {}), ...(p || {}) };
     const cfg = {};
     const _copyTruthy = (keys) => {
       keys.forEach((k) => {
-        if (p[k]) cfg[k] = p[k];
+        if (mergedPopup[k]) cfg[k] = mergedPopup[k];
       });
     };
     if (resolvedName) cfg.name = resolvedName;
     if (resolvedState) cfg.state_label = resolvedState;
     copyDefinedKeys({
-      src: p,
+      src: mergedPopup,
       dst: cfg,
       keys: [
         "popup_border_radius",
@@ -2633,6 +2635,9 @@ class HkiHeaderCard extends LitElement {
         "popup_bottom_bar_entities",
         "popup_bottom_bar_align",
         "popup_hide_bottom_bar",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
         "_bb_slots",
       ],
     });
@@ -2666,7 +2671,7 @@ class HkiHeaderCard extends LitElement {
     ]);
     // Icon & entity picture
     if (resolvedIcon) cfg.icon = resolvedIcon;
-    if (p.popup_use_entity_picture !== undefined) cfg.use_entity_picture = p.popup_use_entity_picture;
+    if (mergedPopup.popup_use_entity_picture !== undefined) cfg.use_entity_picture = mergedPopup.popup_use_entity_picture;
     return cfg;
   }
 
@@ -4076,12 +4081,15 @@ class HkiHeaderCard extends LitElement {
       borderStyle = "border:none";
     }
 
+    // Keep header height fixed in pixels so bars/slots do not shift on viewport height changes.
+    const fixedHeaderHeight = clamp(+cfg.max_height, 60, 4000);
+
     const cardStyle = [
       `width:${cardWidth}`,
       (!effectiveFixed && nonFixedBleedStyle) ? nonFixedBleedStyle : "",
-      `height:${cfg.height_vh}vh`,
-      `min-height:${cfg.min_height}px`,
-      `max-height:${cfg.max_height}px`,
+      `height:${fixedHeaderHeight}px`,
+      `min-height:${fixedHeaderHeight}px`,
+      `max-height:${fixedHeaderHeight}px`,
       (bgColor || cfg.background_color) ? `background-color:${bgColor || cfg.background_color}` : "",
       bgImage ? `background-image:${bgImage}` : "",
       cfg.background_position ? `background-position:${cfg.background_position}` : "",
@@ -5677,6 +5685,12 @@ class HkiHeaderCardEditor extends LitElement {
             <div class="box-content">
               <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
               ${domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${p("popup_show_effects") !== false} @change=${(ev) => pp({ "popup_show_effects": ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+              <div class="switch-row"><ha-switch .checked=${p("popup_hide_bottom_bar") !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("popup_hide_top_bar") !== true} @change=${(ev) => pp({ popup_hide_top_bar: !ev.target.checked })}></ha-switch><span>Show top bar</span></div>
+              ${p("popup_hide_top_bar") === true ? html`
+                <div class="switch-row"><ha-switch .checked=${p("popup_show_close_button") !== false} @change=${(ev) => pp({ popup_show_close_button: ev.target.checked })}></ha-switch><span>Show close button</span></div>
+              ` : ''}
+              <div class="switch-row"><ha-switch .checked=${p("popup_close_on_action") === true} @change=${(ev) => pp({ popup_close_on_action: ev.target.checked })}></ha-switch><span>Close popup after perform-action</span></div>
             </div>
           </details>
         ` : ''}
@@ -5814,7 +5828,6 @@ class HkiHeaderCardEditor extends LitElement {
               @closed=${(ev) => ev.stopPropagation()}>
               ${popupBottomBarAlignOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
             </ha-select>
-            <div class="switch-row"><ha-switch .checked=${p('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, p('_bb_slots') ?? Math.max(1, (p('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`
@@ -6363,6 +6376,12 @@ class HkiHeaderCardEditor extends LitElement {
             <div class="box-content">
               <div class="switch-row"><ha-switch .checked=${pv('popup_show_favorites') !== false} @change=${(ev) => pp({ popup_show_favorites: ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
               ${p_domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${pv('popup_show_effects') !== false} @change=${(ev) => pp({ popup_show_effects: ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+              <div class="switch-row"><ha-switch .checked=${pv('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('popup_hide_top_bar') !== true} @change=${(ev) => pp({ popup_hide_top_bar: !ev.target.checked })}></ha-switch><span>Show top bar</span></div>
+              ${pv('popup_hide_top_bar') === true ? html`
+                <div class="switch-row"><ha-switch .checked=${pv('popup_show_close_button') !== false} @change=${(ev) => pp({ popup_show_close_button: ev.target.checked })}></ha-switch><span>Show close button</span></div>
+              ` : ''}
+              <div class="switch-row"><ha-switch .checked=${pv('popup_close_on_action') === true} @change=${(ev) => pp({ popup_close_on_action: ev.target.checked })}></ha-switch><span>Close popup after perform-action</span></div>
             </div>
           </details>
         ` : ''}
@@ -6481,7 +6500,6 @@ class HkiHeaderCardEditor extends LitElement {
               @closed=${(ev) => ev.stopPropagation()}>
               ${popupBottomBarAlignOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
             </ha-select>
-            <div class="switch-row"><ha-switch .checked=${pv('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, pv('_bb_slots') ?? Math.max(1, (pv('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`

@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -71,6 +71,9 @@ window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [
   "popup_bottom_bar_entities",
   "popup_bottom_bar_align",
   "popup_hide_bottom_bar",
+  "popup_hide_top_bar",
+  "popup_show_close_button",
+  "popup_close_on_action",
   "_bb_slots",
   "person_geocoded_entity",
   "sensor_graph_color",
@@ -525,7 +528,7 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
   try {
     const raw = window.localStorage?.getItem(key);
     if (!raw) {
-      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
       return window.HKI._globalSettingsCache;
     }
     const parsed = JSON.parse(raw);
@@ -533,11 +536,12 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
       button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
       header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
       navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
+      popup: (parsed?.popup && typeof parsed.popup === "object") ? parsed.popup : {},
     };
     window.HKI._globalSettingsCache = next;
     return next;
   } catch (_) {
-    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {} };
+    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
     return window.HKI._globalSettingsCache;
   }
 });
@@ -557,6 +561,9 @@ window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) 
     navigation: hasOwn(settings, "navigation")
       ? (((settings && settings.navigation) && typeof settings.navigation === "object") ? { ...settings.navigation } : {})
       : { ...(current.navigation || {}) },
+    popup: hasOwn(settings, "popup")
+      ? (((settings && settings.popup) && typeof settings.popup === "object") ? { ...settings.popup } : {})
+      : { ...(current.popup || {}) },
   };
   window.HKI._globalSettingsCache = next;
   try {
@@ -1728,9 +1735,9 @@ class HkiHeaderCard extends LitElement {
       ha-card.header {
         position: relative;
         width: 100vw;
-        height: 35vh;
-        min-height: 180px;
-        max-height: 340px;
+        height: 240px;
+        min-height: 240px;
+        max-height: 240px;
         margin: 0;
         border-radius: 0; /* Overridden by inline style */
         overflow: visible; /* Allow box-shadow to show when fixed */
@@ -3195,16 +3202,18 @@ class HkiHeaderCard extends LitElement {
 
   // Build a flat object of all popup fields from a merged popup config to spread into btn.setConfig()
   _buildPopupConfig(p, resolvedName, resolvedState, resolvedIcon = '') {
+    const popupGlobals = window.HKI?.getGlobalDefaultsFor?.("popup") || {};
+    const mergedPopup = { ...(popupGlobals || {}), ...(p || {}) };
     const cfg = {};
     const _copyTruthy = (keys) => {
       keys.forEach((k) => {
-        if (p[k]) cfg[k] = p[k];
+        if (mergedPopup[k]) cfg[k] = mergedPopup[k];
       });
     };
     if (resolvedName) cfg.name = resolvedName;
     if (resolvedState) cfg.state_label = resolvedState;
     copyDefinedKeys({
-      src: p,
+      src: mergedPopup,
       dst: cfg,
       keys: [
         "popup_border_radius",
@@ -3246,6 +3255,9 @@ class HkiHeaderCard extends LitElement {
         "popup_bottom_bar_entities",
         "popup_bottom_bar_align",
         "popup_hide_bottom_bar",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
         "_bb_slots",
       ],
     });
@@ -3279,7 +3291,7 @@ class HkiHeaderCard extends LitElement {
     ]);
     // Icon & entity picture
     if (resolvedIcon) cfg.icon = resolvedIcon;
-    if (p.popup_use_entity_picture !== undefined) cfg.use_entity_picture = p.popup_use_entity_picture;
+    if (mergedPopup.popup_use_entity_picture !== undefined) cfg.use_entity_picture = mergedPopup.popup_use_entity_picture;
     return cfg;
   }
 
@@ -4689,12 +4701,15 @@ class HkiHeaderCard extends LitElement {
       borderStyle = "border:none";
     }
 
+    // Keep header height fixed in pixels so bars/slots do not shift on viewport height changes.
+    const fixedHeaderHeight = clamp(+cfg.max_height, 60, 4000);
+
     const cardStyle = [
       `width:${cardWidth}`,
       (!effectiveFixed && nonFixedBleedStyle) ? nonFixedBleedStyle : "",
-      `height:${cfg.height_vh}vh`,
-      `min-height:${cfg.min_height}px`,
-      `max-height:${cfg.max_height}px`,
+      `height:${fixedHeaderHeight}px`,
+      `min-height:${fixedHeaderHeight}px`,
+      `max-height:${fixedHeaderHeight}px`,
       (bgColor || cfg.background_color) ? `background-color:${bgColor || cfg.background_color}` : "",
       bgImage ? `background-image:${bgImage}` : "",
       cfg.background_position ? `background-position:${cfg.background_position}` : "",
@@ -6290,6 +6305,12 @@ class HkiHeaderCardEditor extends LitElement {
             <div class="box-content">
               <div class="switch-row"><ha-switch .checked=${p("popup_show_favorites") !== false} @change=${(ev) => pp({ "popup_show_favorites": ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
               ${domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${p("popup_show_effects") !== false} @change=${(ev) => pp({ "popup_show_effects": ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+              <div class="switch-row"><ha-switch .checked=${p("popup_hide_bottom_bar") !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
+              <div class="switch-row"><ha-switch .checked=${p("popup_hide_top_bar") !== true} @change=${(ev) => pp({ popup_hide_top_bar: !ev.target.checked })}></ha-switch><span>Show top bar</span></div>
+              ${p("popup_hide_top_bar") === true ? html`
+                <div class="switch-row"><ha-switch .checked=${p("popup_show_close_button") !== false} @change=${(ev) => pp({ popup_show_close_button: ev.target.checked })}></ha-switch><span>Show close button</span></div>
+              ` : ''}
+              <div class="switch-row"><ha-switch .checked=${p("popup_close_on_action") === true} @change=${(ev) => pp({ popup_close_on_action: ev.target.checked })}></ha-switch><span>Close popup after perform-action</span></div>
             </div>
           </details>
         ` : ''}
@@ -6427,7 +6448,6 @@ class HkiHeaderCardEditor extends LitElement {
               @closed=${(ev) => ev.stopPropagation()}>
               ${popupBottomBarAlignOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
             </ha-select>
-            <div class="switch-row"><ha-switch .checked=${p('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, p('_bb_slots') ?? Math.max(1, (p('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`
@@ -6976,6 +6996,12 @@ class HkiHeaderCardEditor extends LitElement {
             <div class="box-content">
               <div class="switch-row"><ha-switch .checked=${pv('popup_show_favorites') !== false} @change=${(ev) => pp({ popup_show_favorites: ev.target.checked })}></ha-switch><span>Show Favorites</span></div>
               ${p_domain === 'light' ? html`<div class="switch-row"><ha-switch .checked=${pv('popup_show_effects') !== false} @change=${(ev) => pp({ popup_show_effects: ev.target.checked })}></ha-switch><span>Show Effects</span></div>` : ''}
+              <div class="switch-row"><ha-switch .checked=${pv('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
+              <div class="switch-row"><ha-switch .checked=${pv('popup_hide_top_bar') !== true} @change=${(ev) => pp({ popup_hide_top_bar: !ev.target.checked })}></ha-switch><span>Show top bar</span></div>
+              ${pv('popup_hide_top_bar') === true ? html`
+                <div class="switch-row"><ha-switch .checked=${pv('popup_show_close_button') !== false} @change=${(ev) => pp({ popup_show_close_button: ev.target.checked })}></ha-switch><span>Show close button</span></div>
+              ` : ''}
+              <div class="switch-row"><ha-switch .checked=${pv('popup_close_on_action') === true} @change=${(ev) => pp({ popup_close_on_action: ev.target.checked })}></ha-switch><span>Close popup after perform-action</span></div>
             </div>
           </details>
         ` : ''}
@@ -7094,7 +7120,6 @@ class HkiHeaderCardEditor extends LitElement {
               @closed=${(ev) => ev.stopPropagation()}>
               ${popupBottomBarAlignOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
             </ha-select>
-            <div class="switch-row"><ha-switch .checked=${pv('popup_hide_bottom_bar') !== true} @change=${(ev) => pp({ popup_hide_bottom_bar: !ev.target.checked })}></ha-switch><span>Show bottom bar</span></div>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, pv('_bb_slots') ?? Math.max(1, (pv('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`
@@ -8415,6 +8440,9 @@ window.customCards.push({
       ['popup_animation_duration',  'hki_popup','animation_duration'],
       // bottom bar & person popup (new)
       ['popup_hide_bottom_bar',     'hki_popup','hide_bottom_bar'],
+      ['popup_hide_top_bar',        'hki_popup','hide_top_bar'],
+      ['popup_show_close_button',   'hki_popup','show_close_button'],
+      ['popup_close_on_action',     'hki_popup','close_on_action'],
       ['popup_bottom_bar_align',    'hki_popup','bottom_bar_align'],
       ['popup_bottom_bar_entities', 'hki_popup','bottom_bar_entities'],
       ['person_geocoded_entity',    'hki_popup','person_geocoded_entity'],
@@ -8824,10 +8852,13 @@ window.customCards.push({
           "show_tile_slider",
           "tile_slider_fill_color",
           "tile_slider_track_color",
-          "popup_name",
-          "popup_state",
-          "popup_icon",
-          "popup_use_entity_picture",
+        ],
+      });
+      applyGlobalDefaultsToConfig({
+        scope: "popup",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
           "popup_border_radius",
           "popup_width",
           "popup_width_custom",
@@ -8868,12 +8899,11 @@ window.customCards.push({
           "popup_button_border_color",
           "popup_button_border_style",
           "popup_button_border_width",
-          "popup_bottom_bar_entities",
           "popup_bottom_bar_align",
           "popup_hide_bottom_bar",
-          "custom_popup_enabled",
-          "custom_popup_card",
-          "person_geocoded_entity",
+          "popup_hide_top_bar",
+          "popup_show_close_button",
+          "popup_close_on_action",
           "sensor_graph_color",
           "sensor_graph_gradient",
           "sensor_line_width",
@@ -8884,19 +8914,10 @@ window.customCards.push({
           "climate_show_plus_minus",
           "climate_show_gradient",
           "climate_show_target_range",
-          "climate_humidity_entity",
-          "climate_humidity_name",
-          "climate_pressure_entity",
-          "climate_pressure_name",
-          "climate_current_temperature_entity",
-          "climate_temperature_name",
           "humidifier_humidity_step",
           "humidifier_use_circular_slider",
           "humidifier_show_plus_minus",
           "humidifier_show_gradient",
-          "humidifier_fan_entity",
-          "lock_contact_sensor_entity",
-          "lock_contact_sensor_label",
         ],
       });
       
@@ -10287,6 +10308,9 @@ window.customCards.push({
         if (domain && service) {
           this.hass.callService(domain, service, actionConfig.service_data || {});
         }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
         return;
       }
     
@@ -10307,6 +10331,9 @@ window.customCards.push({
               target?.entity_id ? { ...data, entity_id: target.entity_id } : data;
             this.hass.callService(domain, service, merged);
           }
+        }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
         }
         return;
       }
@@ -10561,6 +10588,7 @@ window.customCards.push({
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
+        this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
         __hkiUnlockScroll();
@@ -10592,6 +10620,7 @@ window.customCards.push({
     }
 
     _applyOpenAnimation(portal) {
+      this._attachPopupChromeObserver(portal);
       window.HKI?.animatePopupOpen?.({
         portal,
         config: this._config,
@@ -11064,6 +11093,64 @@ window.customCards.push({
         
         return styles.length ? styles.join('; ') + ';' : '';
       }
+    }
+
+    _applyPopupChromeToPortal(portal) {
+      if (!portal) return;
+      const hideTopBar = this._config?.popup_hide_top_bar === true;
+      const showCloseWhenHidden = hideTopBar && this._config?.popup_show_close_button !== false;
+      const headerSelectors = ".hki-popup-header, .hki-light-popup-header, .popup-header";
+      portal.querySelectorAll(headerSelectors).forEach((el) => {
+        el.style.display = hideTopBar ? "none" : "";
+      });
+      const existingFloat = portal.querySelector(".hki-floating-popup-close");
+      if (existingFloat) existingFloat.remove();
+      if (!showCloseWhenHidden) return;
+      const container = portal.querySelector(".hki-light-popup-container, .hki-popup-container, .popup-container");
+      if (!container) return;
+      if (!container.style.position) container.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.className = "hki-floating-popup-close";
+      btn.type = "button";
+      btn.innerHTML = '<ha-icon icon="mdi:close"></ha-icon>';
+      btn.style.cssText = "position:absolute;top:12px;right:12px;z-index:30;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.22);color:var(--primary-text-color);display:flex;align-items:center;justify-content:center;cursor:pointer;";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._closePopup();
+      });
+      container.appendChild(btn);
+    }
+
+    _attachPopupChromeObserver(portal) {
+      if (!portal) return;
+      this._applyPopupChromeToPortal(portal);
+      if (portal.__hkiPopupChromeObserverAttached) return;
+      portal.__hkiPopupChromeObserverAttached = true;
+      const observer = new MutationObserver(() => this._applyPopupChromeToPortal(portal));
+      observer.observe(portal, { childList: true, subtree: true });
+      portal.__hkiPopupChromeObserver = observer;
+      const actionHandler = (ev) => {
+        if (this._config?.popup_close_on_action !== true) return;
+        const action = ev?.detail?.config?.action || ev?.detail?.action;
+        if (action === "perform-action" || action === "call-service") {
+          setTimeout(() => this._closePopup(), 0);
+        }
+      };
+      portal.addEventListener("hass-action", actionHandler);
+      portal.__hkiPopupActionHandler = actionHandler;
+    }
+
+    _detachPopupChromeObserver(portal) {
+      if (!portal) return;
+      try {
+        portal.__hkiPopupChromeObserver?.disconnect?.();
+      } catch (_) {}
+      if (portal.__hkiPopupActionHandler) {
+        portal.removeEventListener("hass-action", portal.__hkiPopupActionHandler);
+      }
+      delete portal.__hkiPopupChromeObserver;
+      delete portal.__hkiPopupChromeObserverAttached;
+      delete portal.__hkiPopupActionHandler;
     }
 
 
@@ -17327,6 +17414,9 @@ window.customCards.push({
         const serviceStr = action.service || action.perform_action || '';
         const [d, s] = serviceStr.split('.');
         if (d && s) this.hass.callService(d, s, { entity_id: entityId, ...(action.service_data || action.data || {}) });
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       } else if (act === 'url') {
         if (action.url_path) window.open(action.url_path, '_blank');
       }
@@ -22417,15 +22507,12 @@ window.customCards.push({
                   const showClimateOptions = isClimate;
                   const showAlarmOptions = domain === 'alarm_control_panel';
                   const showCoverOptions = domain === 'cover';
-                  const hasDomainFeatures = showLightOptions || showClimateOptions || showAlarmOptions || showCoverOptions;
+                  const hasDomainFeatures = true;
 
                   return html`
                     <div class="sub-accordion">
                       ${renderHeader("Popup Card", "popup_card")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_card'] ? 'hidden' : ''}">
-                        <ha-formfield .label=${"Hide bottom bar (save vertical space)"}>
-                          <ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch>
-                        </ha-formfield>
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
                         <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${isCustomPopup} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                         ${isCustomPopup ? html`
@@ -22724,6 +22811,12 @@ window.customCards.push({
                               ${showCoverOptions ? html`
                                 <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
                               ` : ''}
+                              <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                              <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                              ${this._config.popup_hide_top_bar === true ? html`
+                                <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                              ` : ''}
+                              <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
                             </div>
                           </div>
                         </div>
@@ -26642,6 +26735,8 @@ function normalizeConfig(config) {
   else delete c.header;
   if (c.navigation && typeof c.navigation === "object") c.navigation = { ...c.navigation };
   else delete c.navigation;
+  if (c.popup && typeof c.popup === "object") c.popup = { ...c.popup };
+  else delete c.popup;
   return c;
 }
 
@@ -26767,6 +26862,9 @@ class HkiSettingsBase extends LitElement {
     if (!normalized.navigation && persisted.navigation && Object.keys(persisted.navigation).length) {
       normalized.navigation = { ...persisted.navigation };
     }
+    if (!normalized.popup && persisted.popup && Object.keys(persisted.popup).length) {
+      normalized.popup = { ...persisted.popup };
+    }
     this._config = normalized;
   }
 
@@ -26797,6 +26895,7 @@ class HkiSettingsBase extends LitElement {
         button: sanitizeScope(next.button || {}),
         header: sanitizeScope(next.header || {}),
         navigation: sanitizeScope(next.navigation || {}),
+        popup: sanitizeScope(next.popup || {}),
       });
     } catch (_) {}
     try {
@@ -26815,6 +26914,7 @@ class HkiSettingsBase extends LitElement {
       button: sanitizeScope(cfg.button || {}),
       header: sanitizeScope(cfg.header || {}),
       navigation: sanitizeScope(cfg.navigation || {}),
+      popup: sanitizeScope(cfg.popup || {}),
     });
   }
 
@@ -27147,83 +27247,94 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("button", "temp_badge_offset_x", "Temp badge offset X", "number")}
               ${this._renderInput("button", "temp_badge_offset_y", "Temp badge offset Y", "number")}
             `, "Global element positioning offsets.")}
-            ${this._renderCategoryAccordion("HKI Popup", html`
-              ${this._renderSwitch("button", "custom_popup_enabled", "Enable custom popup card")}
-              ${this._renderObjectInput("button", "custom_popup_card", "Custom popup card config (YAML/JSON)")}
-              ${this._renderTemplateInput("button", "popup_name", "Popup name (Template/Jinja)")}
-              ${this._renderTemplateInput("button", "popup_state", "Popup state (Template/Jinja)")}
-              ${this._renderTemplateInput("button", "popup_icon", "Popup icon (Template/Jinja)")}
-              ${this._renderSwitch("button", "popup_use_entity_picture", "Use entity picture in popup")}
-              ${this._renderInput("button", "popup_border_radius", "Popup border radius", "number")}
-              ${this._renderSelect("button", "popup_width", "Popup width mode", POPUP_WIDTH_OPTIONS)}
-              ${this._renderInput("button", "popup_width_custom", "Popup width custom (px)", "number")}
-              ${this._renderSelect("button", "popup_height", "Popup height mode", POPUP_HEIGHT_OPTIONS)}
-              ${this._renderInput("button", "popup_height_custom", "Popup height custom (px)", "number")}
-              ${this._renderSelect("button", "popup_open_animation", "Popup open animation", POPUP_ANIMATION_OPTIONS)}
-              ${this._renderSelect("button", "popup_close_animation", "Popup close animation", POPUP_ANIMATION_OPTIONS)}
-              ${this._renderInput("button", "popup_animation_duration", "Popup animation duration (ms)", "number")}
-              ${this._renderSwitch("button", "popup_blur_enabled", "Popup backdrop blur enabled")}
-              ${this._renderInput("button", "popup_blur_amount", "Popup blur amount", "number")}
-              ${this._renderSwitch("button", "popup_card_blur_enabled", "Popup card blur enabled")}
-              ${this._renderInput("button", "popup_card_blur_amount", "Popup card blur amount", "number")}
-              ${this._renderInput("button", "popup_card_opacity", "Popup card opacity", "number")}
-              ${this._renderSwitch("button", "popup_show_favorites", "Show favorites section")}
-              ${this._renderSwitch("button", "popup_show_effects", "Show effects section")}
-              ${this._renderSwitch("button", "popup_show_presets", "Show presets section")}
-              ${this._renderInput("button", "popup_slider_radius", "Popup slider radius", "number")}
-              ${this._renderSwitch("button", "popup_hide_button_text", "Hide popup button text")}
-              ${this._renderInput("button", "popup_value_font_size", "Popup value font size", "number")}
-              ${this._renderInput("button", "popup_value_font_weight", "Popup value font weight", "number")}
-              ${this._renderInput("button", "popup_label_font_size", "Popup label font size", "number")}
-              ${this._renderInput("button", "popup_label_font_weight", "Popup label font weight", "number")}
-              ${this._renderSelect("button", "popup_time_format", "Popup time format", POPUP_TIME_FORMAT_OPTIONS)}
-              ${this._renderSelect("button", "popup_default_view", "Popup default view", POPUP_DEFAULT_VIEW_OPTIONS)}
-              ${this._renderSelect("button", "popup_default_section", "Popup default section", POPUP_DEFAULT_SECTION_OPTIONS)}
-              ${this._renderInput("button", "popup_highlight_color", "Popup highlight color")}
-              ${this._renderInput("button", "popup_highlight_text_color", "Popup highlight text color")}
-              ${this._renderInput("button", "popup_highlight_radius", "Popup highlight radius", "number")}
-              ${this._renderInput("button", "popup_highlight_opacity", "Popup highlight opacity", "number")}
-              ${this._renderInput("button", "popup_highlight_border_color", "Popup highlight border color")}
-              ${this._renderSelect("button", "popup_highlight_border_style", "Popup highlight border style", BORDER_STYLES)}
-              ${this._renderInput("button", "popup_highlight_border_width", "Popup highlight border width", "number")}
-              ${this._renderInput("button", "popup_highlight_box_shadow", "Popup highlight box shadow")}
-              ${this._renderInput("button", "popup_button_bg", "Popup button background")}
-              ${this._renderInput("button", "popup_button_text_color", "Popup button text color")}
-              ${this._renderInput("button", "popup_button_radius", "Popup button radius", "number")}
-              ${this._renderInput("button", "popup_button_opacity", "Popup button opacity", "number")}
-              ${this._renderInput("button", "popup_button_border_color", "Popup button border color")}
-              ${this._renderSelect("button", "popup_button_border_style", "Popup button border style", BORDER_STYLES)}
-              ${this._renderInput("button", "popup_button_border_width", "Popup button border width", "number")}
-              ${this._renderListInput("button", "popup_bottom_bar_entities", "Popup bottom bar entities (one entity per line)")}
-              ${this._renderSelect("button", "popup_bottom_bar_align", "Popup bottom bar align", POPUP_BOTTOM_BAR_ALIGN_OPTIONS)}
-              ${this._renderSwitch("button", "popup_hide_bottom_bar", "Hide popup bottom bar")}
-              ${this._renderInput("button", "person_geocoded_entity", "Person geocoded entity")}
-              ${this._renderInput("button", "sensor_graph_color", "Sensor graph color")}
-              ${this._renderInput("button", "sensor_graph_gradient", "Sensor graph gradient")}
-              ${this._renderInput("button", "sensor_line_width", "Sensor line width", "number")}
-              ${this._renderInput("button", "sensor_hours", "Sensor hours", "number")}
-              ${this._renderInput("button", "sensor_graph_style", "Sensor graph style")}
-              ${this._renderInput("button", "climate_temp_step", "Climate temp step", "number")}
-              ${this._renderSwitch("button", "climate_use_circular_slider", "Climate circular slider")}
-              ${this._renderSwitch("button", "climate_show_plus_minus", "Climate show plus/minus")}
-              ${this._renderSwitch("button", "climate_show_gradient", "Climate show gradient")}
-              ${this._renderSwitch("button", "climate_show_target_range", "Climate show target range")}
-              ${this._renderInput("button", "climate_humidity_entity", "Climate humidity entity")}
-              ${this._renderInput("button", "climate_humidity_name", "Climate humidity label")}
-              ${this._renderInput("button", "climate_pressure_entity", "Climate pressure entity")}
-              ${this._renderInput("button", "climate_pressure_name", "Climate pressure label")}
-              ${this._renderInput("button", "climate_current_temperature_entity", "Climate current temp entity")}
-              ${this._renderInput("button", "climate_temperature_name", "Climate temperature label")}
-              ${this._renderInput("button", "humidifier_humidity_step", "Humidifier humidity step", "number")}
-              ${this._renderSwitch("button", "humidifier_use_circular_slider", "Humidifier circular slider")}
-              ${this._renderSwitch("button", "humidifier_show_plus_minus", "Humidifier show plus/minus")}
-              ${this._renderSwitch("button", "humidifier_show_gradient", "Humidifier show gradient")}
-              ${this._renderInput("button", "humidifier_fan_entity", "Humidifier fan entity")}
-            `, "Global HKI popup defaults (button domain popups).")}
+          </section>
+        </details>
+
+        <details class="scope-accordion">
+          <summary>HKI Popup Defaults</summary>
+          <section class="scope">
+            ${this._renderScopeHeader("HKI Popup Defaults", "popup", "Shared popup styling defaults for all HKI cards that support popups.")}
+            ${this._renderCategoryAccordion("Card", html`
+              ${this._renderInput("popup", "popup_border_radius", "Popup border radius", "number")}
+              ${this._renderSelect("popup", "popup_width", "Popup width mode", POPUP_WIDTH_OPTIONS)}
+              ${this._renderInput("popup", "popup_width_custom", "Popup width custom (px)", "number")}
+              ${this._renderSelect("popup", "popup_height", "Popup height mode", POPUP_HEIGHT_OPTIONS)}
+              ${this._renderInput("popup", "popup_height_custom", "Popup height custom (px)", "number")}
+              ${this._renderSwitch("popup", "popup_blur_enabled", "Popup backdrop blur enabled")}
+              ${this._renderInput("popup", "popup_blur_amount", "Popup blur amount", "number")}
+              ${this._renderSwitch("popup", "popup_card_blur_enabled", "Popup card blur enabled")}
+              ${this._renderInput("popup", "popup_card_blur_amount", "Popup card blur amount", "number")}
+              ${this._renderInput("popup", "popup_card_opacity", "Popup card opacity", "number")}
+            `, "Container and glass styling for popup surfaces.")}
+            ${this._renderCategoryAccordion("Animation", html`
+              ${this._renderSelect("popup", "popup_open_animation", "Popup open animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderSelect("popup", "popup_close_animation", "Popup close animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderInput("popup", "popup_animation_duration", "Popup animation duration (ms)", "number")}
+            `, "Open/close animation style for popup transitions.")}
+            ${this._renderCategoryAccordion("Features", html`
+              ${this._renderSwitch("popup", "popup_show_favorites", "Show favorites section")}
+              ${this._renderSwitch("popup", "popup_show_effects", "Show effects section")}
+              ${this._renderSwitch("popup", "popup_show_presets", "Show presets section")}
+              ${this._renderSwitch("popup", "popup_hide_bottom_bar", "Hide popup bottom bar")}
+              ${this._renderSwitch("popup", "popup_hide_top_bar", "Hide popup top bar")}
+              ${(this._config?.popup?.popup_hide_top_bar === true)
+                ? this._renderSwitch("popup", "popup_show_close_button", "Show close button when top bar is hidden")
+                : ""}
+              ${this._renderSwitch("popup", "popup_close_on_action", "Close popup after perform-action")}
+              ${this._renderSelect("popup", "popup_bottom_bar_align", "Popup bottom bar align", POPUP_BOTTOM_BAR_ALIGN_OPTIONS)}
+              ${this._renderSelect("popup", "popup_default_view", "Popup default view", POPUP_DEFAULT_VIEW_OPTIONS)}
+              ${this._renderSelect("popup", "popup_default_section", "Popup default section", POPUP_DEFAULT_SECTION_OPTIONS)}
+            `, "Global popup feature toggles and navigation behavior.")}
+            ${this._renderCategoryAccordion("Typography", html`
+              ${this._renderInput("popup", "popup_slider_radius", "Popup slider radius", "number")}
+              ${this._renderSwitch("popup", "popup_hide_button_text", "Hide popup button text")}
+              ${this._renderInput("popup", "popup_value_font_size", "Popup value font size", "number")}
+              ${this._renderInput("popup", "popup_value_font_weight", "Popup value font weight", "number")}
+              ${this._renderInput("popup", "popup_label_font_size", "Popup label font size", "number")}
+              ${this._renderInput("popup", "popup_label_font_weight", "Popup label font weight", "number")}
+              ${this._renderSelect("popup", "popup_time_format", "Popup time format", POPUP_TIME_FORMAT_OPTIONS)}
+            `, "Text and slider display style inside popups.")}
+            ${this._renderCategoryAccordion("Buttons", html`
+              ${this._renderInput("popup", "popup_highlight_color", "Active button color")}
+              ${this._renderInput("popup", "popup_highlight_text_color", "Active button text color")}
+              ${this._renderInput("popup", "popup_highlight_radius", "Active button border radius", "number")}
+              ${this._renderInput("popup", "popup_highlight_opacity", "Active button opacity", "number")}
+              ${this._renderInput("popup", "popup_highlight_border_color", "Active button border color")}
+              ${this._renderSelect("popup", "popup_highlight_border_style", "Active button border style", BORDER_STYLES)}
+              ${this._renderInput("popup", "popup_highlight_border_width", "Active button border width", "number")}
+              ${this._renderInput("popup", "popup_highlight_box_shadow", "Active button box shadow")}
+              ${this._renderInput("popup", "popup_button_bg", "Inactive button background")}
+              ${this._renderInput("popup", "popup_button_text_color", "Inactive button text color")}
+              ${this._renderInput("popup", "popup_button_radius", "Inactive button border radius", "number")}
+              ${this._renderInput("popup", "popup_button_opacity", "Inactive button opacity", "number")}
+              ${this._renderInput("popup", "popup_button_border_color", "Inactive button border color")}
+              ${this._renderSelect("popup", "popup_button_border_style", "Inactive button border style", BORDER_STYLES)}
+              ${this._renderInput("popup", "popup_button_border_width", "Inactive button border width", "number")}
+            `, "Styling for active/inactive popup action buttons.")}
+            ${this._renderCategoryAccordion("Climate", html`
+              ${this._renderSwitch("popup", "climate_use_circular_slider", "Climate circular slider")}
+              ${this._renderSwitch("popup", "climate_show_plus_minus", "Climate show plus/minus")}
+              ${this._renderSwitch("popup", "climate_show_gradient", "Climate show gradient")}
+              ${this._renderSwitch("popup", "climate_show_target_range", "Climate show target range")}
+              ${this._renderInput("popup", "climate_temp_step", "Climate temperature step", "number")}
+            `, "Domain-specific climate popup display style.")}
+            ${this._renderCategoryAccordion("Humidifier", html`
+              ${this._renderSwitch("popup", "humidifier_use_circular_slider", "Humidifier circular slider")}
+              ${this._renderSwitch("popup", "humidifier_show_plus_minus", "Humidifier show plus/minus")}
+              ${this._renderSwitch("popup", "humidifier_show_gradient", "Humidifier show gradient")}
+              ${this._renderInput("popup", "humidifier_humidity_step", "Humidifier humidity step", "number")}
+            `, "Domain-specific humidifier popup display style.")}
+            ${this._renderCategoryAccordion("Sensor", html`
+              ${this._renderInput("popup", "sensor_graph_style", "Sensor graph style")}
+              ${this._renderInput("popup", "sensor_graph_color", "Sensor graph color")}
+              ${this._renderInput("popup", "sensor_line_width", "Sensor line width", "number")}
+              ${this._renderInput("popup", "sensor_hours", "Sensor default range (hours)", "number")}
+              ${this._renderSwitch("popup", "sensor_graph_gradient", "Sensor graph gradient")}
+            `, "Domain-specific graph style for sensor/input_number popups.")}
             ${this._renderCategoryAccordion("Lock", html`
-              ${this._renderInput("button", "lock_contact_sensor_entity", "Contact sensor entity")}
-              ${this._renderInput("button", "lock_contact_sensor_label", "Contact open label")}
-            `, "Defaults for lock-specific details in the popup.")}
+              ${this._renderInput("popup", "popup_button_radius", "Action button radius", "number")}
+              ${this._renderInput("popup", "popup_highlight_radius", "Active action radius", "number")}
+            `, "Lock popup uses the shared popup button styles.")}
           </section>
         </details>
 
@@ -27570,6 +27681,56 @@ const FONTS = [
   "JetBrains Mono, monospace",
   "Custom"
 ];
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
+const NOTIFICATION_POPUP_NESTED_KEYS = Object.freeze([
+  ["popup_enabled", "enabled"],
+  ["popup_title", "title"],
+  ["popup_open_animation", "open_animation"],
+  ["popup_close_animation", "close_animation"],
+  ["popup_animation_duration", "animation_duration"],
+  ["popup_blur_enabled", "blur_enabled"],
+  ["popup_blur_amount", "blur_amount"],
+  ["popup_card_blur_enabled", "card_blur_enabled"],
+  ["popup_card_blur_amount", "card_blur_amount"],
+  ["popup_card_opacity", "card_opacity"],
+  ["popup_border_radius", "border_radius"],
+  ["popup_width", "width"],
+  ["popup_width_custom", "width_custom"],
+  ["popup_height", "height"],
+  ["popup_height_custom", "height_custom"],
+  ["popup_hide_top_bar", "hide_top_bar"],
+  ["popup_show_close_button", "show_close_button"],
+  ["popup_close_on_action", "close_on_action"],
+]);
+
+function migrateNotificationConfig(config) {
+  const next = { ...(config || {}) };
+  const popup = (next.hki_popup && typeof next.hki_popup === "object") ? next.hki_popup : null;
+  if (!popup) return next;
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    if (next[flatKey] !== undefined) return;
+    if (popup[nestedKey] === undefined) return;
+    next[flatKey] = popup[nestedKey];
+  });
+  return next;
+}
+
+function serializeNotificationConfig(config) {
+  const output = { ...(config || {}) };
+  const popup = (output.hki_popup && typeof output.hki_popup === "object") ? { ...output.hki_popup } : {};
+
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    const value = output[flatKey];
+    if (value !== undefined && value !== null && !(typeof value === "string" && value.trim() === "")) {
+      popup[nestedKey] = value;
+    }
+    delete output[flatKey];
+  });
+
+  if (Object.keys(popup).length) output.hki_popup = popup;
+  else delete output.hki_popup;
+  return output;
+}
 
 // --- MAIN CARD CLASS ---
 class HkiNotificationCard extends LitElement {
@@ -27633,6 +27794,7 @@ class HkiNotificationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    const flatInput = migrateNotificationConfig(config);
     this._config = {
       entity: "", 
       attribute: "messages",
@@ -27687,6 +27849,9 @@ class HkiNotificationCard extends LitElement {
       popup_width_custom: 400,
       popup_height: "auto",
       popup_height_custom: 600,
+      popup_hide_top_bar: false,
+      popup_show_close_button: true,
+      popup_close_on_action: false,
       // Timestamp options
       show_list_timestamp: false,
       show_popup_timestamp: true,
@@ -27712,8 +27877,31 @@ class HkiNotificationCard extends LitElement {
       button_pill_border_color: "rgba(255,255,255,0.08)",
       button_pill_border_radius: 99,
       button_pill_badge_position: "inside",
-      ...config,
+      ...flatInput,
     };
+    applyGlobalDefaultsToConfig({
+      scope: "popup",
+      config: this._config,
+      sourceConfig: flatInput,
+      fields: [
+        "popup_border_radius",
+        "popup_width",
+        "popup_width_custom",
+        "popup_height",
+        "popup_height_custom",
+        "popup_open_animation",
+        "popup_close_animation",
+        "popup_animation_duration",
+        "popup_blur_enabled",
+        "popup_blur_amount",
+        "popup_card_blur_enabled",
+        "popup_card_blur_amount",
+        "popup_card_opacity",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
+      ],
+    });
     this._resetTicker();
   }
 
@@ -28052,6 +28240,9 @@ class HkiNotificationCard extends LitElement {
           ...(action.target || {}) 
         };
         this.hass.callService(domain, service, serviceData);
+        if (this._config?.popup_close_on_action === true && this._popupOpen && (action.action === "perform-action" || action.action === "call-service")) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       }
     }
   }
@@ -28328,6 +28519,8 @@ const messages = this._getMessages();
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
     const c = this._config;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     
         const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -28357,6 +28550,7 @@ const portal = document.createElement('div');
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
           display: flex;
           flex-direction: column;
+          position: relative;
           overflow: hidden;
           transition: height 0.2s;
         }
@@ -28555,15 +28749,22 @@ const portal = document.createElement('div');
         }
       </style>
       <div class="hki-popup-container">
-        <div class="hki-popup-header">
-          <span class="hki-popup-title">
-            ${c.popup_title || 'Notifications'}
-            <span class="hki-popup-count-badge">${count}</span>
-          </span>
-          <button class="hki-popup-close-btn">
+        ${hideTopBar ? '' : `
+          <div class="hki-popup-header">
+            <span class="hki-popup-title">
+              ${c.popup_title || 'Notifications'}
+              <span class="hki-popup-count-badge">${count}</span>
+            </span>
+            <button class="hki-popup-close-btn">
+              <ha-icon icon="mdi:close"></ha-icon>
+            </button>
+          </div>
+        `}
+        ${showCloseWhenTopHidden ? `
+          <button class="hki-popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;">
             <ha-icon icon="mdi:close"></ha-icon>
           </button>
-        </div>
+        ` : ''}
         <div class="hki-popup-content">
           ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPillHTML(msg)).join('') : `
             <div class="hki-popup-empty">No notifications</div>
@@ -29110,23 +29311,32 @@ const portal = document.createElement('div');
     const c = this._config;
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
     const backdropStyle = this._getPopupPortalStyle();
-    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column;`;
+    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column; position: relative;`;
 
     return html`
       <div class="popup-backdrop" style="${backdropStyle}" @click=${(e) => this._handlePopupBackdropClick(e)}>
         <div class="popup-container" style="${containerStyle}">
-          <div class="popup-header">
-            <span class="popup-title">
-              ${c.popup_title || 'Notifications'}
-              <span class="popup-count-badge">${count}</span>
-            </span>
-            <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+          ${hideTopBar ? '' : html`
+            <div class="popup-header">
+              <span class="popup-title">
+                ${c.popup_title || 'Notifications'}
+                <span class="popup-count-badge">${count}</span>
+              </span>
+              <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+                <ha-icon icon="mdi:close"></ha-icon>
+              </button>
+            </div>
+          `}
+          ${showCloseWhenTopHidden ? html`
+            <button class="popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;" @click=${(e) => this._closePopup(e)}>
               <ha-icon icon="mdi:close"></ha-icon>
             </button>
-          </div>
+          ` : ''}
           <div class="popup-content">
             ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPill(msg)) : html`
               <div class="popup-empty">No notifications</div>
@@ -30067,7 +30277,7 @@ const portal = document.createElement('div');
 // --- EDITOR CLASS ---
 class HkiNotificationCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: { state: true } }; }
-  setConfig(config) { this._config = config; }
+  setConfig(config) { this._config = migrateNotificationConfig(config || {}); }
   
   render() {
     if (!this.hass || !this._config) return html``;
@@ -30253,6 +30463,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
@@ -30378,6 +30591,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Tap Actions in Popup Only", "tap_action_popup_only", this._config.tap_action_popup_only)}
@@ -30630,7 +30846,7 @@ class HkiNotificationCardEditor extends LitElement {
 
   _fireChanged(newConfig) {
     this._config = newConfig;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig }, bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: serializeNotificationConfig(newConfig) }, bubbles: true, composed: true }));
   }
 
   static get styles() {
