@@ -32,6 +32,56 @@ const FONTS = [
   "JetBrains Mono, monospace",
   "Custom"
 ];
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
+const NOTIFICATION_POPUP_NESTED_KEYS = Object.freeze([
+  ["popup_enabled", "enabled"],
+  ["popup_title", "title"],
+  ["popup_open_animation", "open_animation"],
+  ["popup_close_animation", "close_animation"],
+  ["popup_animation_duration", "animation_duration"],
+  ["popup_blur_enabled", "blur_enabled"],
+  ["popup_blur_amount", "blur_amount"],
+  ["popup_card_blur_enabled", "card_blur_enabled"],
+  ["popup_card_blur_amount", "card_blur_amount"],
+  ["popup_card_opacity", "card_opacity"],
+  ["popup_border_radius", "border_radius"],
+  ["popup_width", "width"],
+  ["popup_width_custom", "width_custom"],
+  ["popup_height", "height"],
+  ["popup_height_custom", "height_custom"],
+  ["popup_hide_top_bar", "hide_top_bar"],
+  ["popup_show_close_button", "show_close_button"],
+  ["popup_close_on_action", "close_on_action"],
+]);
+
+function migrateNotificationConfig(config) {
+  const next = { ...(config || {}) };
+  const popup = (next.hki_popup && typeof next.hki_popup === "object") ? next.hki_popup : null;
+  if (!popup) return next;
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    if (next[flatKey] !== undefined) return;
+    if (popup[nestedKey] === undefined) return;
+    next[flatKey] = popup[nestedKey];
+  });
+  return next;
+}
+
+function serializeNotificationConfig(config) {
+  const output = { ...(config || {}) };
+  const popup = (output.hki_popup && typeof output.hki_popup === "object") ? { ...output.hki_popup } : {};
+
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    const value = output[flatKey];
+    if (value !== undefined && value !== null && !(typeof value === "string" && value.trim() === "")) {
+      popup[nestedKey] = value;
+    }
+    delete output[flatKey];
+  });
+
+  if (Object.keys(popup).length) output.hki_popup = popup;
+  else delete output.hki_popup;
+  return output;
+}
 
 // --- MAIN CARD CLASS ---
 class HkiNotificationCard extends LitElement {
@@ -95,6 +145,7 @@ class HkiNotificationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    const flatInput = migrateNotificationConfig(config);
     this._config = {
       entity: "", 
       attribute: "messages",
@@ -149,6 +200,9 @@ class HkiNotificationCard extends LitElement {
       popup_width_custom: 400,
       popup_height: "auto",
       popup_height_custom: 600,
+      popup_hide_top_bar: false,
+      popup_show_close_button: true,
+      popup_close_on_action: false,
       // Timestamp options
       show_list_timestamp: false,
       show_popup_timestamp: true,
@@ -174,8 +228,31 @@ class HkiNotificationCard extends LitElement {
       button_pill_border_color: "rgba(255,255,255,0.08)",
       button_pill_border_radius: 99,
       button_pill_badge_position: "inside",
-      ...config,
+      ...flatInput,
     };
+    applyGlobalDefaultsToConfig({
+      scope: "popup",
+      config: this._config,
+      sourceConfig: flatInput,
+      fields: [
+        "popup_border_radius",
+        "popup_width",
+        "popup_width_custom",
+        "popup_height",
+        "popup_height_custom",
+        "popup_open_animation",
+        "popup_close_animation",
+        "popup_animation_duration",
+        "popup_blur_enabled",
+        "popup_blur_amount",
+        "popup_card_blur_enabled",
+        "popup_card_blur_amount",
+        "popup_card_opacity",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
+      ],
+    });
     this._resetTicker();
   }
 
@@ -514,6 +591,9 @@ class HkiNotificationCard extends LitElement {
           ...(action.target || {}) 
         };
         this.hass.callService(domain, service, serviceData);
+        if (this._config?.popup_close_on_action === true && this._popupOpen && (action.action === "perform-action" || action.action === "call-service")) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       }
     }
   }
@@ -790,6 +870,8 @@ const messages = this._getMessages();
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
     const c = this._config;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     
         const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -819,6 +901,7 @@ const portal = document.createElement('div');
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
           display: flex;
           flex-direction: column;
+          position: relative;
           overflow: hidden;
           transition: height 0.2s;
         }
@@ -1017,15 +1100,22 @@ const portal = document.createElement('div');
         }
       </style>
       <div class="hki-popup-container">
-        <div class="hki-popup-header">
-          <span class="hki-popup-title">
-            ${c.popup_title || 'Notifications'}
-            <span class="hki-popup-count-badge">${count}</span>
-          </span>
-          <button class="hki-popup-close-btn">
+        ${hideTopBar ? '' : `
+          <div class="hki-popup-header">
+            <span class="hki-popup-title">
+              ${c.popup_title || 'Notifications'}
+              <span class="hki-popup-count-badge">${count}</span>
+            </span>
+            <button class="hki-popup-close-btn">
+              <ha-icon icon="mdi:close"></ha-icon>
+            </button>
+          </div>
+        `}
+        ${showCloseWhenTopHidden ? `
+          <button class="hki-popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;">
             <ha-icon icon="mdi:close"></ha-icon>
           </button>
-        </div>
+        ` : ''}
         <div class="hki-popup-content">
           ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPillHTML(msg)).join('') : `
             <div class="hki-popup-empty">No notifications</div>
@@ -1572,23 +1662,32 @@ const portal = document.createElement('div');
     const c = this._config;
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
     const backdropStyle = this._getPopupPortalStyle();
-    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column;`;
+    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column; position: relative;`;
 
     return html`
       <div class="popup-backdrop" style="${backdropStyle}" @click=${(e) => this._handlePopupBackdropClick(e)}>
         <div class="popup-container" style="${containerStyle}">
-          <div class="popup-header">
-            <span class="popup-title">
-              ${c.popup_title || 'Notifications'}
-              <span class="popup-count-badge">${count}</span>
-            </span>
-            <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+          ${hideTopBar ? '' : html`
+            <div class="popup-header">
+              <span class="popup-title">
+                ${c.popup_title || 'Notifications'}
+                <span class="popup-count-badge">${count}</span>
+              </span>
+              <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+                <ha-icon icon="mdi:close"></ha-icon>
+              </button>
+            </div>
+          `}
+          ${showCloseWhenTopHidden ? html`
+            <button class="popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;" @click=${(e) => this._closePopup(e)}>
               <ha-icon icon="mdi:close"></ha-icon>
             </button>
-          </div>
+          ` : ''}
           <div class="popup-content">
             ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPill(msg)) : html`
               <div class="popup-empty">No notifications</div>
@@ -2529,7 +2628,7 @@ const portal = document.createElement('div');
 // --- EDITOR CLASS ---
 class HkiNotificationCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: { state: true } }; }
-  setConfig(config) { this._config = config; }
+  setConfig(config) { this._config = migrateNotificationConfig(config || {}); }
   
   render() {
     if (!this.hass || !this._config) return html``;
@@ -2715,6 +2814,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
@@ -2840,6 +2942,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Tap Actions in Popup Only", "tap_action_popup_only", this._config.tap_action_popup_only)}
@@ -3092,7 +3197,7 @@ class HkiNotificationCardEditor extends LitElement {
 
   _fireChanged(newConfig) {
     this._config = newConfig;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig }, bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: serializeNotificationConfig(newConfig) }, bubbles: true, composed: true }));
   }
 
   static get styles() {

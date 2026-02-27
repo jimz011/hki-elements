@@ -192,6 +192,7 @@
       { value: "end", label: "End (right aligned)" },
     ],
   };
+  const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
   
 
@@ -421,6 +422,9 @@
       ['popup_animation_duration',  'hki_popup','animation_duration'],
       // bottom bar & person popup (new)
       ['popup_hide_bottom_bar',     'hki_popup','hide_bottom_bar'],
+      ['popup_hide_top_bar',        'hki_popup','hide_top_bar'],
+      ['popup_show_close_button',   'hki_popup','show_close_button'],
+      ['popup_close_on_action',     'hki_popup','close_on_action'],
       ['popup_bottom_bar_align',    'hki_popup','bottom_bar_align'],
       ['popup_bottom_bar_entities', 'hki_popup','bottom_bar_entities'],
       ['person_geocoded_entity',    'hki_popup','person_geocoded_entity'],
@@ -544,6 +548,11 @@
     constructor() {
       super();
       this._paDomainCache = {};
+      this._rawConfigInput = null;
+      this._onGlobalSettingsChanged = () => {
+        if (!this._rawConfigInput) return;
+        try { this.setConfig(this._rawConfigInput); } catch (_) {}
+      };
 
       // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
       this._customPopupYamlDraft = null;
@@ -641,9 +650,10 @@
 
     setConfig(config) {
       if (!config) throw new Error("Config is required");
+      this._rawConfigInput = config;
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
-            this._config = {
+      this._config = {
         ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
@@ -732,6 +742,166 @@
         // Tile does not support label
         this._config.show_label = false;
       }
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "card_color",
+          "card_opacity",
+          "border_radius",
+          "box_shadow",
+          "border_width",
+          "border_style",
+          "border_color",
+          "icon_color",
+          "icon_animation",
+          "size_icon",
+          "icon_circle_bg",
+          "icon_circle_border_style",
+          "icon_circle_border_width",
+          "icon_circle_border_color",
+          "badge_bg",
+          "badge_border_style",
+          "badge_border_width",
+          "badge_border_color",
+          "badge_border_radius",
+          "badge_box_shadow",
+          "size_badge",
+          "badge_font_family",
+          "badge_font_weight",
+          "temp_badge_text_color",
+          "temp_badge_border_color",
+          "temp_badge_border_style",
+          "temp_badge_border_width",
+          "temp_badge_border_radius",
+          "temp_badge_box_shadow",
+          "temp_badge_font_family",
+          "temp_badge_font_custom",
+          "temp_badge_font_weight",
+          "size_temp_badge",
+          "temp_badge_size",
+          "name_font_family",
+          "name_font_custom",
+          "name_font_weight",
+          "size_name",
+          "name_color",
+          "state_font_family",
+          "state_font_custom",
+          "state_font_weight",
+          "size_state",
+          "state_color",
+          "label_font_family",
+          "label_font_custom",
+          "label_font_weight",
+          "size_label",
+          "label_color",
+          "brightness_font_family",
+          "brightness_font_custom",
+          "brightness_font_weight",
+          "size_brightness",
+          "brightness_color",
+          "brightness_color_on",
+          "brightness_color_off",
+          "name_text_align",
+          "state_text_align",
+          "label_text_align",
+          "brightness_text_align",
+          "name_offset_x",
+          "name_offset_y",
+          "state_offset_x",
+          "state_offset_y",
+          "label_offset_x",
+          "label_offset_y",
+          "icon_offset_x",
+          "icon_offset_y",
+          "icon_circle_offset_x",
+          "icon_circle_offset_y",
+          "icon_badge_offset_x",
+          "icon_badge_offset_y",
+          "badge_offset_x",
+          "badge_offset_y",
+          "brightness_offset_x",
+          "brightness_offset_y",
+          "temp_badge_offset_x",
+          "temp_badge_offset_y",
+          "badge_circle",
+          "badge_size",
+          "icon_align",
+          "enable_icon_animation",
+          "tile_height",
+          "show_tile_slider",
+          "tile_slider_fill_color",
+          "tile_slider_track_color",
+        ],
+      });
+      applyGlobalDefaultsToConfig({
+        scope: "popup",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "popup_border_radius",
+          "popup_width",
+          "popup_width_custom",
+          "popup_height",
+          "popup_height_custom",
+          "popup_open_animation",
+          "popup_close_animation",
+          "popup_animation_duration",
+          "popup_blur_enabled",
+          "popup_blur_amount",
+          "popup_card_blur_enabled",
+          "popup_card_blur_amount",
+          "popup_card_opacity",
+          "popup_show_favorites",
+          "popup_show_effects",
+          "popup_show_presets",
+          "popup_slider_radius",
+          "popup_hide_button_text",
+          "popup_value_font_size",
+          "popup_value_font_weight",
+          "popup_label_font_size",
+          "popup_label_font_weight",
+          "popup_time_format",
+          "popup_default_view",
+          "popup_default_section",
+          "popup_highlight_color",
+          "popup_highlight_text_color",
+          "popup_highlight_radius",
+          "popup_highlight_opacity",
+          "popup_highlight_border_color",
+          "popup_highlight_border_style",
+          "popup_highlight_border_width",
+          "popup_highlight_box_shadow",
+          "popup_button_bg",
+          "popup_button_text_color",
+          "popup_button_radius",
+          "popup_button_opacity",
+          "popup_button_border_color",
+          "popup_button_border_style",
+          "popup_button_border_width",
+          "popup_bottom_bar_align",
+          "popup_hide_bottom_bar",
+          "popup_hide_top_bar",
+          "popup_show_close_button",
+          "popup_close_on_action",
+          "sensor_graph_color",
+          "sensor_graph_gradient",
+          "sensor_line_width",
+          "sensor_hours",
+          "sensor_graph_style",
+          "climate_temp_step",
+          "climate_use_circular_slider",
+          "climate_show_plus_minus",
+          "climate_show_gradient",
+          "climate_show_target_range",
+          "humidifier_humidity_step",
+          "humidifier_use_circular_slider",
+          "humidifier_show_plus_minus",
+          "humidifier_show_gradient",
+        ],
+      });
       
       // Domain-specific action defaults
       const domain = this._config.entity ? this._config.entity.split('.')[0] : '';
@@ -756,6 +926,7 @@
 
     connectedCallback() {
       super.connectedCallback();
+      window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Set up templates immediately when element connects (0ms = next tick)
       // This matches header card behavior for faster initial render
       if (this.hass && this._config) {
@@ -765,6 +936,7 @@
 
     disconnectedCallback() {
       super.disconnectedCallback();
+      window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Unsubscribe all templates
       if (this._tpl) {
         Object.keys(this._tpl).forEach(key => {
@@ -2118,6 +2290,9 @@
         if (domain && service) {
           this.hass.callService(domain, service, actionConfig.service_data || {});
         }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
         return;
       }
     
@@ -2138,6 +2313,9 @@
               target?.entity_id ? { ...data, entity_id: target.entity_id } : data;
             this.hass.callService(domain, service, merged);
           }
+        }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
         }
         return;
       }
@@ -2392,6 +2570,7 @@
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
+        this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
         __hkiUnlockScroll();
@@ -2423,6 +2602,7 @@
     }
 
     _applyOpenAnimation(portal) {
+      this._attachPopupChromeObserver(portal);
       window.HKI?.animatePopupOpen?.({
         portal,
         config: this._config,
@@ -2895,6 +3075,64 @@
         
         return styles.length ? styles.join('; ') + ';' : '';
       }
+    }
+
+    _applyPopupChromeToPortal(portal) {
+      if (!portal) return;
+      const hideTopBar = this._config?.popup_hide_top_bar === true;
+      const showCloseWhenHidden = hideTopBar && this._config?.popup_show_close_button !== false;
+      const headerSelectors = ".hki-popup-header, .hki-light-popup-header, .popup-header";
+      portal.querySelectorAll(headerSelectors).forEach((el) => {
+        el.style.display = hideTopBar ? "none" : "";
+      });
+      const existingFloat = portal.querySelector(".hki-floating-popup-close");
+      if (existingFloat) existingFloat.remove();
+      if (!showCloseWhenHidden) return;
+      const container = portal.querySelector(".hki-light-popup-container, .hki-popup-container, .popup-container");
+      if (!container) return;
+      if (!container.style.position) container.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.className = "hki-floating-popup-close";
+      btn.type = "button";
+      btn.innerHTML = '<ha-icon icon="mdi:close"></ha-icon>';
+      btn.style.cssText = "position:absolute;top:12px;right:12px;z-index:30;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.22);color:var(--primary-text-color);display:flex;align-items:center;justify-content:center;cursor:pointer;";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._closePopup();
+      });
+      container.appendChild(btn);
+    }
+
+    _attachPopupChromeObserver(portal) {
+      if (!portal) return;
+      this._applyPopupChromeToPortal(portal);
+      if (portal.__hkiPopupChromeObserverAttached) return;
+      portal.__hkiPopupChromeObserverAttached = true;
+      const observer = new MutationObserver(() => this._applyPopupChromeToPortal(portal));
+      observer.observe(portal, { childList: true, subtree: true });
+      portal.__hkiPopupChromeObserver = observer;
+      const actionHandler = (ev) => {
+        if (this._config?.popup_close_on_action !== true) return;
+        const action = ev?.detail?.config?.action || ev?.detail?.action;
+        if (action === "perform-action" || action === "call-service") {
+          setTimeout(() => this._closePopup(), 0);
+        }
+      };
+      portal.addEventListener("hass-action", actionHandler);
+      portal.__hkiPopupActionHandler = actionHandler;
+    }
+
+    _detachPopupChromeObserver(portal) {
+      if (!portal) return;
+      try {
+        portal.__hkiPopupChromeObserver?.disconnect?.();
+      } catch (_) {}
+      if (portal.__hkiPopupActionHandler) {
+        portal.removeEventListener("hass-action", portal.__hkiPopupActionHandler);
+      }
+      delete portal.__hkiPopupChromeObserver;
+      delete portal.__hkiPopupChromeObserverAttached;
+      delete portal.__hkiPopupActionHandler;
     }
 
 
@@ -9158,6 +9396,9 @@
         const serviceStr = action.service || action.perform_action || '';
         const [d, s] = serviceStr.split('.');
         if (d && s) this.hass.callService(d, s, { entity_id: entityId, ...(action.service_data || action.data || {}) });
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       } else if (act === 'url') {
         if (action.url_path) window.open(action.url_path, '_blank');
       }
@@ -14248,15 +14489,12 @@
                   const showClimateOptions = isClimate;
                   const showAlarmOptions = domain === 'alarm_control_panel';
                   const showCoverOptions = domain === 'cover';
-                  const hasDomainFeatures = showLightOptions || showClimateOptions || showAlarmOptions || showCoverOptions;
+                  const hasDomainFeatures = true;
 
                   return html`
                     <div class="sub-accordion">
                       ${renderHeader("Popup Card", "popup_card")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_card'] ? 'hidden' : ''}">
-                        <ha-formfield .label=${"Hide bottom bar (save vertical space)"}>
-                          <ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch>
-                        </ha-formfield>
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
                         <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${isCustomPopup} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                         ${isCustomPopup ? html`
@@ -14555,6 +14793,12 @@
                               ${showCoverOptions ? html`
                                 <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
                               ` : ''}
+                              <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                              <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                              ${this._config.popup_hide_top_bar === true ? html`
+                                <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                              ` : ''}
+                              <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
                             </div>
                           </div>
                         </div>
