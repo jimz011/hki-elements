@@ -5212,6 +5212,14 @@ class HkiHeaderCardEditor extends LitElement {
     return labels[type] || "Empty";
   }
 
+  _supportsHkiPopupForDomain(domain) {
+    return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(String(domain || ""));
+  }
+
+  _defaultInfoActionForDomain(domain) {
+    return this._supportsHkiPopupForDomain(domain) ? "hki-more-info" : "more-info";
+  }
+
   _renderSlotEditor(slotName, bar = "top_bar") {
     const prefix = `${bar}_${slotName}_`;
     const type = this._config[`${bar}_${slotName}`] || "none";

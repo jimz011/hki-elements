@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-17 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-18 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5832,6 +5832,14 @@ class HkiHeaderCardEditor extends LitElement {
       button: "Badge"
     };
     return labels[type] || "Empty";
+  }
+
+  _supportsHkiPopupForDomain(domain) {
+    return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(String(domain || ""));
+  }
+
+  _defaultInfoActionForDomain(domain) {
+    return this._supportsHkiPopupForDomain(domain) ? "hki-more-info" : "more-info";
   }
 
   _renderSlotEditor(slotName, bar = "top_bar") {
