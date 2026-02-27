@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-10 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-11 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -8794,6 +8794,109 @@ window.customCards.push({
           "brightness_color",
           "brightness_color_on",
           "brightness_color_off",
+          "name_text_align",
+          "state_text_align",
+          "label_text_align",
+          "brightness_text_align",
+          "name_offset_x",
+          "name_offset_y",
+          "state_offset_x",
+          "state_offset_y",
+          "label_offset_x",
+          "label_offset_y",
+          "icon_offset_x",
+          "icon_offset_y",
+          "icon_circle_offset_x",
+          "icon_circle_offset_y",
+          "icon_badge_offset_x",
+          "icon_badge_offset_y",
+          "badge_offset_x",
+          "badge_offset_y",
+          "brightness_offset_x",
+          "brightness_offset_y",
+          "temp_badge_offset_x",
+          "temp_badge_offset_y",
+          "badge_circle",
+          "badge_size",
+          "icon_align",
+          "enable_icon_animation",
+          "tile_height",
+          "show_tile_slider",
+          "tile_slider_fill_color",
+          "tile_slider_track_color",
+          "popup_name",
+          "popup_state",
+          "popup_icon",
+          "popup_use_entity_picture",
+          "popup_border_radius",
+          "popup_width",
+          "popup_width_custom",
+          "popup_height",
+          "popup_height_custom",
+          "popup_open_animation",
+          "popup_close_animation",
+          "popup_animation_duration",
+          "popup_blur_enabled",
+          "popup_blur_amount",
+          "popup_card_blur_enabled",
+          "popup_card_blur_amount",
+          "popup_card_opacity",
+          "popup_show_favorites",
+          "popup_show_effects",
+          "popup_show_presets",
+          "popup_slider_radius",
+          "popup_hide_button_text",
+          "popup_value_font_size",
+          "popup_value_font_weight",
+          "popup_label_font_size",
+          "popup_label_font_weight",
+          "popup_time_format",
+          "popup_default_view",
+          "popup_default_section",
+          "popup_highlight_color",
+          "popup_highlight_text_color",
+          "popup_highlight_radius",
+          "popup_highlight_opacity",
+          "popup_highlight_border_color",
+          "popup_highlight_border_style",
+          "popup_highlight_border_width",
+          "popup_highlight_box_shadow",
+          "popup_button_bg",
+          "popup_button_text_color",
+          "popup_button_radius",
+          "popup_button_opacity",
+          "popup_button_border_color",
+          "popup_button_border_style",
+          "popup_button_border_width",
+          "popup_bottom_bar_entities",
+          "popup_bottom_bar_align",
+          "popup_hide_bottom_bar",
+          "custom_popup_enabled",
+          "custom_popup_card",
+          "person_geocoded_entity",
+          "sensor_graph_color",
+          "sensor_graph_gradient",
+          "sensor_line_width",
+          "sensor_hours",
+          "sensor_graph_style",
+          "climate_temp_step",
+          "climate_use_circular_slider",
+          "climate_show_plus_minus",
+          "climate_show_gradient",
+          "climate_show_target_range",
+          "climate_humidity_entity",
+          "climate_humidity_name",
+          "climate_pressure_entity",
+          "climate_pressure_name",
+          "climate_current_temperature_entity",
+          "climate_temperature_name",
+          "humidifier_humidity_step",
+          "humidifier_use_circular_slider",
+          "humidifier_show_plus_minus",
+          "humidifier_show_gradient",
+          "humidifier_fan_entity",
+          "lock_contact_sensor_entity",
+          "lock_contact_sensor_label",
         ],
       });
       
@@ -26465,6 +26568,53 @@ const NAV_TEXT_TRANSFORM = [
   { value: "lowercase", label: "lowercase" },
   { value: "capitalize", label: "capitalize" },
 ];
+const TEXT_ALIGN_OPTIONS = [
+  { value: "left", label: "left" },
+  { value: "center", label: "center" },
+  { value: "right", label: "right" },
+];
+const ICON_ALIGN_OPTIONS = [
+  { value: "left", label: "left" },
+  { value: "center", label: "center" },
+  { value: "right", label: "right" },
+];
+const POPUP_EDITOR_OPTIONS = window.HKI?.POPUP_EDITOR_OPTIONS || {};
+const POPUP_WIDTH_OPTIONS = POPUP_EDITOR_OPTIONS.width || [
+  { value: "auto", label: "Auto" },
+  { value: "default", label: "Default" },
+  { value: "custom", label: "Custom" },
+];
+const POPUP_HEIGHT_OPTIONS = POPUP_EDITOR_OPTIONS.height || [
+  { value: "auto", label: "Auto" },
+  { value: "default", label: "Default" },
+  { value: "custom", label: "Custom" },
+];
+const POPUP_ANIMATION_OPTIONS = POPUP_EDITOR_OPTIONS.animations || [
+  { value: "none", label: "None" },
+  { value: "fade", label: "Fade" },
+  { value: "scale", label: "Scale" },
+];
+const POPUP_TIME_FORMAT_OPTIONS = POPUP_EDITOR_OPTIONS.timeFormats || [
+  { value: "auto", label: "Auto" },
+  { value: "12", label: "12-Hour Clock" },
+  { value: "24", label: "24-Hour Clock" },
+];
+const POPUP_DEFAULT_VIEW_OPTIONS = window.HKI?.EDITOR_OPTIONS?.popupDefaultViewOptions || [
+  { value: "main", label: "Main (Group Controls)" },
+  { value: "individual", label: "Individual Entities" },
+];
+const POPUP_DEFAULT_SECTION_OPTIONS = window.HKI?.EDITOR_OPTIONS?.popupDefaultSectionOptions || [
+  { value: "last", label: "Last Used" },
+  { value: "brightness", label: "Always Brightness" },
+  { value: "color", label: "Always Color" },
+  { value: "temperature", label: "Always Temperature" },
+];
+const POPUP_BOTTOM_BAR_ALIGN_OPTIONS = window.HKI?.EDITOR_OPTIONS?.popupBottomBarAlignOptions || [
+  { value: "spread", label: "Spread" },
+  { value: "start", label: "Start" },
+  { value: "center", label: "Center" },
+  { value: "end", label: "End" },
+];
 
 const DEFAULT_CONFIG = Object.freeze({
   type: `custom:${CARD_TYPE}`,
@@ -26512,6 +26662,10 @@ class HkiSettingsBase extends LitElement {
     return `${scope}.${key}`;
   }
 
+  _objFieldKey(scope, key) {
+    return `obj:${scope}.${key}`;
+  }
+
   _getTemplateFieldValue(scope, key) {
     const k = this._tplFieldKey(scope, key);
     if (Object.prototype.hasOwnProperty.call(this._templateDrafts, k)) {
@@ -26539,6 +26693,56 @@ class HkiSettingsBase extends LitElement {
     const next = { ...this._templateDrafts };
     delete next[k];
     this._templateDrafts = next;
+    this.requestUpdate();
+  }
+
+  _getObjectFieldValue(scope, key) {
+    const k = this._objFieldKey(scope, key);
+    if (Object.prototype.hasOwnProperty.call(this._templateDrafts, k)) {
+      return this._templateDrafts[k];
+    }
+    const current = this._config?.[scope]?.[key];
+    if (current === undefined || current === null) return "";
+    try {
+      if (window.jsyaml?.dump) return String(window.jsyaml.dump(current) || "").trim();
+      return JSON.stringify(current, null, 2);
+    } catch (_) {
+      return "";
+    }
+  }
+
+  _onObjectValueChanged(scope, key, value) {
+    const k = this._objFieldKey(scope, key);
+    this._templateDrafts = {
+      ...this._templateDrafts,
+      [k]: String(value ?? ""),
+    };
+    this.requestUpdate();
+  }
+
+  _onObjectBlur(scope, key) {
+    const k = this._objFieldKey(scope, key);
+    const raw = Object.prototype.hasOwnProperty.call(this._templateDrafts, k)
+      ? this._templateDrafts[k]
+      : "";
+    const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
+    const text = String(raw ?? "").trim();
+    if (!text) {
+      delete next[scope][key];
+    } else {
+      try {
+        const parsed = window.jsyaml?.load ? window.jsyaml.load(text) : JSON.parse(text);
+        if (parsed && typeof parsed === "object") next[scope][key] = parsed;
+      } catch (_) {
+        // Keep existing value if parsing fails while user is still editing.
+      }
+    }
+    if (!Object.keys(next[scope]).length) delete next[scope];
+    this._emitChanged(next);
+    const drafts = { ...this._templateDrafts };
+    delete drafts[k];
+    this._templateDrafts = drafts;
     this.requestUpdate();
   }
 
@@ -26573,6 +26777,7 @@ class HkiSettingsBase extends LitElement {
       if (dot <= 0) return;
       const scope = compound.slice(0, dot);
       const key = compound.slice(dot + 1);
+      if (scope.includes(":")) return;
       if (!scope || !key) return;
       if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
       const text = String(value ?? "").trim();
@@ -26655,6 +26860,28 @@ class HkiSettingsBase extends LitElement {
     this._emitChanged(next);
   }
 
+  _setBool(scope, key, checked) {
+    const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
+    if (checked === undefined || checked === null) delete next[scope][key];
+    else next[scope][key] = !!checked;
+    if (!Object.keys(next[scope]).length) delete next[scope];
+    this._emitChanged(next);
+  }
+
+  _setList(scope, key, rawValue) {
+    const next = normalizeConfig(this._config);
+    if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
+    const values = String(rawValue ?? "")
+      .split(/\r?\n|,/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (!values.length) delete next[scope][key];
+    else next[scope][key] = values;
+    if (!Object.keys(next[scope]).length) delete next[scope];
+    this._emitChanged(next);
+  }
+
   _resetScope(scope) {
     const next = this._withPreservedHaKeys(normalizeConfig(this._config));
     delete next[scope];
@@ -26720,6 +26947,55 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
+  _renderSwitch(scope, key, label) {
+    return html`
+      <ha-formfield .label=${label}>
+        <ha-switch
+          .checked=${!!this._config?.[scope]?.[key]}
+          @change=${(e) => this._setBool(scope, key, e.target.checked)}
+        ></ha-switch>
+      </ha-formfield>
+    `;
+  }
+
+  _renderListInput(scope, key, label) {
+    const value = this._config?.[scope]?.[key];
+    const text = Array.isArray(value) ? value.join("\n") : "";
+    return html`
+      <div class="tpl-field">
+        <div class="tpl-title">${label}</div>
+        <ha-code-editor
+          .hass=${this.hass}
+          mode="yaml"
+          .value=${text}
+          @blur=${(e) => this._setList(scope, key, e.target?.value ?? text)}
+        ></ha-code-editor>
+      </div>
+    `;
+  }
+
+  _renderObjectInput(scope, key, label) {
+    return html`
+      <div class="tpl-field">
+        <div class="tpl-title">${label}</div>
+        <ha-code-editor
+          .hass=${this.hass}
+          mode="yaml"
+          autocomplete-entities
+          autocomplete-icons
+          .autocompleteEntities=${true}
+          .autocompleteIcons=${true}
+          .value=${this._getObjectFieldValue(scope, key)}
+          @value-changed=${(ev) => {
+            ev.stopPropagation();
+            this._onObjectValueChanged(scope, key, ev.detail?.value ?? "");
+          }}
+          @blur=${() => this._onObjectBlur(scope, key)}
+        ></ha-code-editor>
+      </div>
+    `;
+  }
+
   _renderCategoryAccordion(title, fields, description = "") {
     return html`
       <details class="category-accordion">
@@ -26763,7 +27039,7 @@ class HkiSettingsBase extends LitElement {
           <summary>Button Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
-            ${this._renderCategoryAccordion("Card Surface", html`
+            ${this._renderCategoryAccordion("Card", html`
               ${this._renderTemplateInput("button", "card_color", "Card color (Template/CSS)")}
               ${this._renderTemplateInput("button", "card_opacity", "Card opacity (Template/CSS)")}
               ${this._renderTemplateInput("button", "border_radius", "Border radius (Template/CSS)")}
@@ -26775,6 +27051,8 @@ class HkiSettingsBase extends LitElement {
             ${this._renderCategoryAccordion("Icon", html`
               ${this._renderTemplateInput("button", "icon_color", "Icon color (Template/CSS/Jinja)")}
               ${this._renderTemplateInput("button", "icon_animation", "Icon animation (Template/Jinja)")}
+              ${this._renderSwitch("button", "enable_icon_animation", "Enable icon animation")}
+              ${this._renderSelect("button", "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
               ${this._renderInput("button", "size_icon", "Icon size (px)", "number")}
             `, "Global icon style for button cards.")}
             ${this._renderCategoryAccordion("Icon Circle", html`
@@ -26790,6 +27068,8 @@ class HkiSettingsBase extends LitElement {
               ${this._renderTemplateInput("button", "badge_border_color", "Badge border color (Template/CSS/Jinja)")}
               ${this._renderInput("button", "badge_border_radius", "Badge border radius", "number")}
               ${this._renderInput("button", "badge_box_shadow", "Badge box shadow")}
+              ${this._renderSwitch("button", "badge_circle", "Badge circle")}
+              ${this._renderInput("button", "badge_size", "Badge size (px)", "number")}
               ${this._renderInput("button", "size_badge", "Badge font size", "number")}
               ${this._renderSelect("button", "badge_font_family", "Badge font family", FONT_FAMILIES)}
               ${this._renderSelect("button", "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
@@ -26811,6 +27091,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
               ${this._renderInput("button", "name_font_custom", "Name custom font")}
               ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
+              ${this._renderSelect("button", "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput("button", "size_name", "Name size", "number")}
               ${this._renderTemplateInput("button", "name_color", "Name color (Template/CSS)")}
             `, "Applies to the entity name text.")}
@@ -26818,6 +27099,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
               ${this._renderInput("button", "state_font_custom", "State custom font")}
               ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
+              ${this._renderSelect("button", "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput("button", "size_state", "State size", "number")}
               ${this._renderTemplateInput("button", "state_color", "State color (Template/CSS)")}
             `, "Applies to the entity state text.")}
@@ -26825,6 +27107,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
               ${this._renderInput("button", "label_font_custom", "Label custom font")}
               ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
+              ${this._renderSelect("button", "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput("button", "size_label", "Label size", "number")}
               ${this._renderTemplateInput("button", "label_color", "Label color (Template/CSS)")}
             `, "Applies to optional label text.")}
@@ -26832,11 +27115,115 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("button", "brightness_font_family", "Info font family", FONT_FAMILIES)}
               ${this._renderInput("button", "brightness_font_custom", "Info custom font")}
               ${this._renderSelect("button", "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
+              ${this._renderSelect("button", "brightness_text_align", "Info text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput("button", "size_brightness", "Info size", "number")}
               ${this._renderTemplateInput("button", "brightness_color", "Info color (Template/CSS)")}
               ${this._renderTemplateInput("button", "brightness_color_on", "Info color (On) (Template/CSS)")}
               ${this._renderTemplateInput("button", "brightness_color_off", "Info color (Off) (Template/CSS)")}
             `, "Applies to info/brightness line text.")}
+            ${this._renderCategoryAccordion("Tile", html`
+              ${this._renderInput("button", "tile_height", "Tile height", "number")}
+              ${this._renderSwitch("button", "show_tile_slider", "Show tile slider")}
+              ${this._renderTemplateInput("button", "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput("button", "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
+            `, "Global defaults for hki_tile layout.")}
+            ${this._renderCategoryAccordion("Offsets", html`
+              ${this._renderInput("button", "name_offset_x", "Name offset X", "number")}
+              ${this._renderInput("button", "name_offset_y", "Name offset Y", "number")}
+              ${this._renderInput("button", "state_offset_x", "State offset X", "number")}
+              ${this._renderInput("button", "state_offset_y", "State offset Y", "number")}
+              ${this._renderInput("button", "label_offset_x", "Label offset X", "number")}
+              ${this._renderInput("button", "label_offset_y", "Label offset Y", "number")}
+              ${this._renderInput("button", "icon_offset_x", "Icon offset X", "number")}
+              ${this._renderInput("button", "icon_offset_y", "Icon offset Y", "number")}
+              ${this._renderInput("button", "icon_circle_offset_x", "Icon circle offset X", "number")}
+              ${this._renderInput("button", "icon_circle_offset_y", "Icon circle offset Y", "number")}
+              ${this._renderInput("button", "icon_badge_offset_x", "Icon badge offset X", "number")}
+              ${this._renderInput("button", "icon_badge_offset_y", "Icon badge offset Y", "number")}
+              ${this._renderInput("button", "badge_offset_x", "Badge offset X", "number")}
+              ${this._renderInput("button", "badge_offset_y", "Badge offset Y", "number")}
+              ${this._renderInput("button", "brightness_offset_x", "Info offset X", "number")}
+              ${this._renderInput("button", "brightness_offset_y", "Info offset Y", "number")}
+              ${this._renderInput("button", "temp_badge_offset_x", "Temp badge offset X", "number")}
+              ${this._renderInput("button", "temp_badge_offset_y", "Temp badge offset Y", "number")}
+            `, "Global element positioning offsets.")}
+            ${this._renderCategoryAccordion("HKI Popup", html`
+              ${this._renderSwitch("button", "custom_popup_enabled", "Enable custom popup card")}
+              ${this._renderObjectInput("button", "custom_popup_card", "Custom popup card config (YAML/JSON)")}
+              ${this._renderTemplateInput("button", "popup_name", "Popup name (Template/Jinja)")}
+              ${this._renderTemplateInput("button", "popup_state", "Popup state (Template/Jinja)")}
+              ${this._renderTemplateInput("button", "popup_icon", "Popup icon (Template/Jinja)")}
+              ${this._renderSwitch("button", "popup_use_entity_picture", "Use entity picture in popup")}
+              ${this._renderInput("button", "popup_border_radius", "Popup border radius", "number")}
+              ${this._renderSelect("button", "popup_width", "Popup width mode", POPUP_WIDTH_OPTIONS)}
+              ${this._renderInput("button", "popup_width_custom", "Popup width custom (px)", "number")}
+              ${this._renderSelect("button", "popup_height", "Popup height mode", POPUP_HEIGHT_OPTIONS)}
+              ${this._renderInput("button", "popup_height_custom", "Popup height custom (px)", "number")}
+              ${this._renderSelect("button", "popup_open_animation", "Popup open animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderSelect("button", "popup_close_animation", "Popup close animation", POPUP_ANIMATION_OPTIONS)}
+              ${this._renderInput("button", "popup_animation_duration", "Popup animation duration (ms)", "number")}
+              ${this._renderSwitch("button", "popup_blur_enabled", "Popup backdrop blur enabled")}
+              ${this._renderInput("button", "popup_blur_amount", "Popup blur amount", "number")}
+              ${this._renderSwitch("button", "popup_card_blur_enabled", "Popup card blur enabled")}
+              ${this._renderInput("button", "popup_card_blur_amount", "Popup card blur amount", "number")}
+              ${this._renderInput("button", "popup_card_opacity", "Popup card opacity", "number")}
+              ${this._renderSwitch("button", "popup_show_favorites", "Show favorites section")}
+              ${this._renderSwitch("button", "popup_show_effects", "Show effects section")}
+              ${this._renderSwitch("button", "popup_show_presets", "Show presets section")}
+              ${this._renderInput("button", "popup_slider_radius", "Popup slider radius", "number")}
+              ${this._renderSwitch("button", "popup_hide_button_text", "Hide popup button text")}
+              ${this._renderInput("button", "popup_value_font_size", "Popup value font size", "number")}
+              ${this._renderInput("button", "popup_value_font_weight", "Popup value font weight", "number")}
+              ${this._renderInput("button", "popup_label_font_size", "Popup label font size", "number")}
+              ${this._renderInput("button", "popup_label_font_weight", "Popup label font weight", "number")}
+              ${this._renderSelect("button", "popup_time_format", "Popup time format", POPUP_TIME_FORMAT_OPTIONS)}
+              ${this._renderSelect("button", "popup_default_view", "Popup default view", POPUP_DEFAULT_VIEW_OPTIONS)}
+              ${this._renderSelect("button", "popup_default_section", "Popup default section", POPUP_DEFAULT_SECTION_OPTIONS)}
+              ${this._renderInput("button", "popup_highlight_color", "Popup highlight color")}
+              ${this._renderInput("button", "popup_highlight_text_color", "Popup highlight text color")}
+              ${this._renderInput("button", "popup_highlight_radius", "Popup highlight radius", "number")}
+              ${this._renderInput("button", "popup_highlight_opacity", "Popup highlight opacity", "number")}
+              ${this._renderInput("button", "popup_highlight_border_color", "Popup highlight border color")}
+              ${this._renderSelect("button", "popup_highlight_border_style", "Popup highlight border style", BORDER_STYLES)}
+              ${this._renderInput("button", "popup_highlight_border_width", "Popup highlight border width", "number")}
+              ${this._renderInput("button", "popup_highlight_box_shadow", "Popup highlight box shadow")}
+              ${this._renderInput("button", "popup_button_bg", "Popup button background")}
+              ${this._renderInput("button", "popup_button_text_color", "Popup button text color")}
+              ${this._renderInput("button", "popup_button_radius", "Popup button radius", "number")}
+              ${this._renderInput("button", "popup_button_opacity", "Popup button opacity", "number")}
+              ${this._renderInput("button", "popup_button_border_color", "Popup button border color")}
+              ${this._renderSelect("button", "popup_button_border_style", "Popup button border style", BORDER_STYLES)}
+              ${this._renderInput("button", "popup_button_border_width", "Popup button border width", "number")}
+              ${this._renderListInput("button", "popup_bottom_bar_entities", "Popup bottom bar entities (one entity per line)")}
+              ${this._renderSelect("button", "popup_bottom_bar_align", "Popup bottom bar align", POPUP_BOTTOM_BAR_ALIGN_OPTIONS)}
+              ${this._renderSwitch("button", "popup_hide_bottom_bar", "Hide popup bottom bar")}
+              ${this._renderInput("button", "person_geocoded_entity", "Person geocoded entity")}
+              ${this._renderInput("button", "sensor_graph_color", "Sensor graph color")}
+              ${this._renderInput("button", "sensor_graph_gradient", "Sensor graph gradient")}
+              ${this._renderInput("button", "sensor_line_width", "Sensor line width", "number")}
+              ${this._renderInput("button", "sensor_hours", "Sensor hours", "number")}
+              ${this._renderInput("button", "sensor_graph_style", "Sensor graph style")}
+              ${this._renderInput("button", "climate_temp_step", "Climate temp step", "number")}
+              ${this._renderSwitch("button", "climate_use_circular_slider", "Climate circular slider")}
+              ${this._renderSwitch("button", "climate_show_plus_minus", "Climate show plus/minus")}
+              ${this._renderSwitch("button", "climate_show_gradient", "Climate show gradient")}
+              ${this._renderSwitch("button", "climate_show_target_range", "Climate show target range")}
+              ${this._renderInput("button", "climate_humidity_entity", "Climate humidity entity")}
+              ${this._renderInput("button", "climate_humidity_name", "Climate humidity label")}
+              ${this._renderInput("button", "climate_pressure_entity", "Climate pressure entity")}
+              ${this._renderInput("button", "climate_pressure_name", "Climate pressure label")}
+              ${this._renderInput("button", "climate_current_temperature_entity", "Climate current temp entity")}
+              ${this._renderInput("button", "climate_temperature_name", "Climate temperature label")}
+              ${this._renderInput("button", "humidifier_humidity_step", "Humidifier humidity step", "number")}
+              ${this._renderSwitch("button", "humidifier_use_circular_slider", "Humidifier circular slider")}
+              ${this._renderSwitch("button", "humidifier_show_plus_minus", "Humidifier show plus/minus")}
+              ${this._renderSwitch("button", "humidifier_show_gradient", "Humidifier show gradient")}
+              ${this._renderInput("button", "humidifier_fan_entity", "Humidifier fan entity")}
+            `, "Global HKI popup defaults (button domain popups).")}
+            ${this._renderCategoryAccordion("Lock", html`
+              ${this._renderInput("button", "lock_contact_sensor_entity", "Contact sensor entity")}
+              ${this._renderInput("button", "lock_contact_sensor_label", "Contact open label")}
+            `, "Defaults for lock-specific details in the popup.")}
           </section>
         </details>
 
@@ -26844,7 +27231,7 @@ class HkiSettingsBase extends LitElement {
           <summary>Header Card Defaults</summary>
           <section class="scope">
             ${this._renderScopeHeader("Header Card Defaults", "header", "Applied to hki-header-card when a field is empty.")}
-            ${this._renderCategoryAccordion("Card Surface", html`
+            ${this._renderCategoryAccordion("Card", html`
               ${this._renderTemplateInput("header", "card_border_radius", "Card border radius (Template/CSS)")}
               ${this._renderTemplateInput("header", "card_border_radius_top", "Top border radius (Template/CSS)")}
               ${this._renderTemplateInput("header", "card_border_radius_bottom", "Bottom border radius (Template/CSS)")}
@@ -26916,6 +27303,10 @@ class HkiSettingsBase extends LitElement {
         flex-direction: column;
         gap: 14px;
         padding: 14px;
+        overflow: visible;
+      }
+      :host, ha-card {
+        overflow: visible;
       }
       .intro {
         border-radius: 12px;
@@ -26940,6 +27331,7 @@ class HkiSettingsBase extends LitElement {
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(0, 0, 0, 0.08);
         padding: 12px;
+        overflow: visible;
       }
       .category {
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -26951,7 +27343,7 @@ class HkiSettingsBase extends LitElement {
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 10px;
         background: rgba(255, 255, 255, 0.03);
-        overflow: hidden;
+        overflow: visible;
       }
       .category-accordion > summary {
         list-style: none;
@@ -26995,7 +27387,7 @@ class HkiSettingsBase extends LitElement {
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.14);
         background: rgba(0, 0, 0, 0.06);
-        overflow: hidden;
+        overflow: visible;
       }
       .scope-accordion > summary {
         list-style: none;
