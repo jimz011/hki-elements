@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-13 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-14 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -181,6 +181,7 @@ window.HKI.EDITOR_OPTIONS = window.HKI.EDITOR_OPTIONS || Object.freeze({
     Object.freeze({ value: "hki-more-info", label: "HKI More Info" }),
     Object.freeze({ value: "toggle", label: "Toggle Entity" }),
     Object.freeze({ value: "perform-action", label: "Perform Action" }),
+    Object.freeze({ value: "fire-dom-event", label: "Fire DOM Event" }),
   ]),
   popupBottomBarActionOptions: Object.freeze([
     Object.freeze({ value: "toggle", label: "Toggle" }),
@@ -188,6 +189,7 @@ window.HKI.EDITOR_OPTIONS = window.HKI.EDITOR_OPTIONS || Object.freeze({
     Object.freeze({ value: "hki-more-info", label: "HKI More Info" }),
     Object.freeze({ value: "navigate", label: "Navigate" }),
     Object.freeze({ value: "perform-action", label: "Perform Action" }),
+    Object.freeze({ value: "fire-dom-event", label: "Fire DOM Event" }),
     Object.freeze({ value: "url", label: "URL" }),
     Object.freeze({ value: "none", label: "None" }),
   ]),

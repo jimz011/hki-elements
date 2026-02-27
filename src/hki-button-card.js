@@ -903,13 +903,18 @@
         ],
       });
       
-      // Domain-specific action defaults
+      // Domain-specific action defaults (only when user did not explicitly configure the action)
       const domain = this._config.entity ? this._config.entity.split('.')[0] : '';
-      if (domain === 'alarm_control_panel') {
-        // Alarm entities: default tap to hki-more-info
-        if (!Object.prototype.hasOwnProperty.call(cfg, 'tap_action')) {
-          this._config.tap_action = { action: 'hki-more-info' };
-        }
+      const toggleDomains = new Set(['switch', 'climate', 'input_boolean', 'automation', 'light']);
+      const infoAction = this._supportsHkiPopup() ? 'hki-more-info' : 'more-info';
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'tap_action')) {
+        this._config.tap_action = toggleDomains.has(domain) ? { action: 'toggle' } : { action: infoAction };
+      }
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'hold_action')) {
+        this._config.hold_action = { action: infoAction };
+      }
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'double_tap_action')) {
+        this._config.double_tap_action = { action: infoAction };
       }
       
       // Setup templates when config changes (use longer delay to debounce editor changes)
@@ -2182,7 +2187,7 @@
       //   that support the HKI popup, otherwise treat as no double-tap.
       const effectiveDta = doubleTapAction !== undefined
         ? doubleTapAction
-        : (this._supportsHkiPopup() ? { action: 'hki-more-info' } : null);
+        : { action: this._defaultInfoActionType() };
 
       // If no double tap action is configured (or set to none), fire immediately to keep it snappy
       if (!effectiveDta || effectiveDta.action === 'none') {
@@ -2216,11 +2221,21 @@
       // ✅ NEW: fire-dom-event (like custom:button-card / core cards)
       // Fires `ll-custom` with the entire action config in `detail`.
       if (actionConfig.action === "fire-dom-event") {
+        const detail = { ...actionConfig };
+        const rawEventData = typeof actionConfig.event_data === "string" ? actionConfig.event_data.trim() : "";
+        if (rawEventData) {
+          try {
+            const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+            if (parsed !== undefined) detail.data = parsed;
+          } catch (_) {
+            detail.data = rawEventData;
+          }
+        }
         this.dispatchEvent(
           new CustomEvent("ll-custom", {
             bubbles: true,
             composed: true,
-            detail: actionConfig,
+            detail,
           })
         );
         return;
@@ -2380,6 +2395,16 @@
 
       const domain = this._getDomain();
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
+    }
+
+    _defaultInfoActionType() {
+      return this._supportsHkiPopup() ? "hki-more-info" : "more-info";
+    }
+
+    _defaultTapActionConfig() {
+      const domain = this._getDomain();
+      const toggleDomains = new Set(["switch", "climate", "input_boolean", "automation", "light"]);
+      return toggleDomains.has(domain) ? { action: "toggle" } : { action: this._defaultInfoActionType() };
     }
 
     _getPopupPortalStyle() {
@@ -9401,6 +9426,18 @@
         }
       } else if (act === 'url') {
         if (action.url_path) window.open(action.url_path, '_blank');
+      } else if (act === 'fire-dom-event') {
+        const detail = { ...action };
+        const rawEventData = typeof action.event_data === 'string' ? action.event_data.trim() : '';
+        if (rawEventData) {
+          try {
+            const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+            if (parsed !== undefined) detail.data = parsed;
+          } catch (_) {
+            detail.data = rawEventData;
+          }
+        }
+        this.dispatchEvent(new CustomEvent('ll-custom', { bubbles: true, composed: true, detail }));
       }
     }
 
@@ -11118,7 +11155,7 @@
                             border: ${this._config.show_icon_circle !== false ? iconCircleBorder : 'none'};
                             transform: ${getTransform(this._config.icon_offset_x, this._config.icon_offset_y)};
                         "
-                        @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || { action: "hki-more-info" }, this._config.icon_double_tap_action); }}
+                        @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || this._config.tap_action || this._defaultTapActionConfig(), this._config.icon_double_tap_action || this._config.double_tap_action || { action: this._defaultInfoActionType() }); }}
                           
                         @mousedown=${(e) => { e.stopPropagation(); this._startHold(e, this._config.icon_hold_action); }}
                         @mouseup=${(e) => { e.stopPropagation(); this._clearHold(); }}
@@ -11307,7 +11344,7 @@
               // Don't handle if slider is active (let slider handle it)
               if (showBrightnessSlider) return;
               e.stopPropagation(); 
-              this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action); 
+              this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() }); 
             }}
             @mousedown=${(e) => {
               // Don't handle if slider is active
@@ -11340,8 +11377,8 @@
                 @click=${(e) => { 
                   e.stopPropagation();
                   // When slider is enabled, the card itself ignores taps; so the icon handles them.
-                  const ta = (this._config.icon_tap_action || this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }));
-                  const dta = (this._config.icon_double_tap_action || this._config.double_tap_action);
+                  const ta = (this._config.icon_tap_action || this._config.tap_action || this._defaultTapActionConfig());
+                  const dta = (this._config.icon_double_tap_action || this._config.double_tap_action || { action: this._defaultInfoActionType() });
                   this._handleDelayClick(ta, dta);
                 }}
                 @mousedown=${(e) => { 
@@ -11554,12 +11591,12 @@
               margin: 0 !important;
               ${iconColor ? `            --icon-color: ${iconColor} !important;\n` : ''}            "
 
-            @click=${() => this._handleDelayClick(this._config.tap_action || { action: "hki-more-info" }, this._config.double_tap_action || { action: "hki-more-info" })}
+            @click=${() => this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() })}
               
-            @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+            @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
             @mouseup=${() => this._clearHold()}
             @mouseleave=${() => this._clearHold()}
-            @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+            @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
             @touchend=${() => this._clearHold()}
             @touchcancel=${() => this._clearHold()}
           >
@@ -11627,12 +11664,12 @@
             --hki-icon-circle-size: calc(var(--hki-icon-size) + 16px);
             
           "
-          @click=${() => this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action || { action: "hki-more-info" })}
+          @click=${() => this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() })}
             
-          @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+          @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
           @mouseup=${() => this._clearHold()}
           @mouseleave=${() => this._clearHold()}
-          @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+          @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
           @touchend=${() => this._clearHold()}
           @touchcancel=${() => this._clearHold()}
         >
@@ -13538,6 +13575,25 @@
                   ` : ''}
                 </div>
               ` : ""}
+
+              ${currentAction === "fire-dom-event" ? html`
+                <ha-textfield
+                  label="Event Name (optional)"
+                  .value=${actionConfig.event_name || ""}
+                  @input=${(ev) => this._actionFieldChanged(ev, configKey, "event_name")}
+                  placeholder="browser_mod"
+                ></ha-textfield>
+                <div class="tpl-field">
+                  <div class="tpl-title">Event Data (YAML/JSON text)</div>
+                  <ha-code-editor
+                    .hass=${this.hass}
+                    .value=${actionConfig.event_data || ""}
+                    mode="yaml"
+                    @value-changed=${(ev) => this._actionFieldChanged(ev, configKey, "event_data")}
+                    @click=${(e) => e.stopPropagation()}
+                  ></ha-code-editor>
+                </div>
+              ` : ""}
               
               ${currentAction === 'more-info' ? html`
                 <ha-selector 
@@ -14744,6 +14800,13 @@
                                       @value-changed=${(ev) => { ev.stopPropagation(); const d = ev.detail?.value; const upd = { ...tapAction }; if (d && typeof d === 'object' && Object.keys(d).length) upd.data = d; else delete upd.data; setEntry({ tap_action: upd }); }}
                                       @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-yaml-editor>
                                   ` : ''}
+                                ` : ''}
+                                ${currentAction === 'fire-dom-event' ? html`
+                                  <ha-textfield label="Event Name (optional)" .value=${tapAction.event_name||""}
+                                    @input=${(ev) => setTapAction({ event_name: ev.target.value || "" })} style="margin-top:6px;"></ha-textfield>
+                                  <ha-code-editor .hass=${this.hass} mode="yaml" .value=${tapAction.event_data||""}
+                                    @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ event_data: ev.detail?.value || "" }); }}
+                                    @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-code-editor>
                                 ` : ''}
                               ` : ''}
                             </div>`;

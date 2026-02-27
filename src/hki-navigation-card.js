@@ -1895,6 +1895,15 @@ class HkiNavigationCard extends LitElement {
           eventDetail[key] = action[key];
         }
       });
+      const rawEventData = typeof action.event_data === "string" ? action.event_data.trim() : "";
+      if (rawEventData) {
+        try {
+          const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+          if (parsed !== undefined) eventDetail.data = parsed;
+        } catch (_) {
+          eventDetail.data = rawEventData;
+        }
+      }
       fireEvent(this, "ll-custom", eventDetail);
       this._autoCloseTempMenus();
       return;
@@ -2417,6 +2426,11 @@ class HkiNavigationCardEditor extends LitElement {
             @click=${(e) => e.stopPropagation()}
           ></ha-yaml-editor>
         ` : html``}
+        ${type === "fire-dom-event" ? html`
+          <ha-textfield .label=${"Event Name (optional)"} .value=${act.event_name || ""} @change=${(e) => update({ event_name: e.target.value || "" })}></ha-textfield>
+          ${this._yamlEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
+        ` : html``}
+
         ${type === "toggle" || type === "more-info" ? html`<div class="hint">Uses the button’s <b>Entity</b> field (set above in Interaction & Data).</div>` : html``}
         ${type === "back" ? html`<div class="hint">Back uses browser history. (Tap action forces icon to mdi:chevron-left.)</div>` : html``}
       </div>`;
@@ -2838,3 +2852,4 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
 });
+

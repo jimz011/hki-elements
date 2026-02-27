@@ -125,6 +125,7 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
     { value: "hki-more-info", label: "HKI More Info" },
     { value: "toggle", label: "Toggle Entity" },
     { value: "perform-action", label: "Perform Action" },
+    { value: "fire-dom-event", label: "Fire DOM Event" },
   ],
   popupBottomBarActionOptions: [
     { value: "toggle", label: "Toggle" },
@@ -132,6 +133,7 @@ const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
     { value: "hki-more-info", label: "HKI More Info" },
     { value: "navigate", label: "Navigate" },
     { value: "perform-action", label: "Perform Action" },
+    { value: "fire-dom-event", label: "Fire DOM Event" },
     { value: "url", label: "URL" },
     { value: "none", label: "None" },
   ],
@@ -171,6 +173,10 @@ const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "name",
   "state",
   "card_color",
+  "text_color",
+  "button_border_style",
+  "button_border_color",
+  "button_box_shadow",
   "icon_color",
   "name_color",
   "state_color",
@@ -178,12 +184,24 @@ const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon_shadow",
   "badge_color",
   "badge_text_color",
+  "badge_border_style",
+  "badge_border_color",
+  "badge_box_shadow",
+  "badge_font_family",
+  "badge_font_custom",
+  "badge_font_weight",
   "badge_template",
   "visibility_state",
   "visibility_attribute_value",
 ]);
 const SLOT_BUTTON_STYLE_FIELDS = Object.freeze([
   "card_color",
+  "text_color",
+  "button_border_radius",
+  "button_box_shadow",
+  "button_border_style",
+  "button_border_width",
+  "button_border_color",
   "icon_color",
   "name_color",
   "state_color",
@@ -193,6 +211,15 @@ const SLOT_BUTTON_STYLE_FIELDS = Object.freeze([
   "name_offset_y",
   "state_offset_x",
   "state_offset_y",
+  "badge_border_radius",
+  "badge_box_shadow",
+  "badge_border_style",
+  "badge_border_width",
+  "badge_border_color",
+  "badge_font_size",
+  "badge_font_weight",
+  "badge_font_family",
+  "badge_font_custom",
 ]);
 
 const PERSON_POPUP_FLAT_KEYS = Object.freeze([
@@ -239,6 +266,12 @@ const createDefaultSlotButton = () => ({
   state: "",
   entity: "",
   card_color: "",
+  text_color: "",
+  button_border_radius: "",
+  button_box_shadow: "",
+  button_border_style: "",
+  button_border_width: "",
+  button_border_color: "",
   icon_color: "",
   name_color: "",
   state_color: "",
@@ -262,6 +295,18 @@ const createDefaultSlotButton = () => ({
   badge_template: "",
   badge_color: "",
   badge_text_color: "",
+  badge_border_radius: "",
+  badge_box_shadow: "",
+  badge_border_style: "",
+  badge_border_width: "",
+  badge_border_color: "",
+  badge_font_size: "",
+  badge_font_weight: "",
+  badge_font_family: "",
+  badge_font_custom: "",
+  show_icon: true,
+  show_name: true,
+  show_state: true,
   popup: {},
 });
 
@@ -274,6 +319,9 @@ function normalizeSlotButton(btn) {
     ...src,
   };
   normalized.show_badge = !!normalized.show_badge;
+  normalized.show_icon = normalized.show_icon !== false;
+  normalized.show_name = normalized.show_name !== false;
+  normalized.show_state = normalized.show_state !== false;
   normalized.badge_source = normalized.badge_source === "template" ? "template" : "entity";
   normalized.visibility_mode = (normalized.visibility_mode === "state" || normalized.visibility_mode === "attribute") ? normalized.visibility_mode : "none";
   const popupObj = {};
@@ -312,6 +360,14 @@ function cleanupSlotButton(btn) {
   keepNum("name_offset_y");
   keepNum("state_offset_x");
   keepNum("state_offset_y");
+  keepNum("button_border_radius");
+  keepNum("button_border_width");
+  keepNum("badge_border_radius");
+  keepNum("badge_border_width");
+  keepNum("badge_font_size");
+  if (normalized.show_icon === false) cleaned.show_icon = false;
+  if (normalized.show_name === false) cleaned.show_name = false;
+  if (normalized.show_state === false) cleaned.show_state = false;
   if (normalized.visibility_mode && normalized.visibility_mode !== "none") {
     cleaned.visibility_mode = normalized.visibility_mode;
     if (normalized.visibility_entity) cleaned.visibility_entity = normalized.visibility_entity;
@@ -355,6 +411,9 @@ function cleanupSlotButton(btn) {
       if (action.perform_action) out.perform_action = action.perform_action;
       if (action.target) out.target = action.target;
       if (action.data) out.data = action.data;
+    } else if (actionType === "fire-dom-event") {
+      if (action.event_data !== undefined) out.event_data = action.event_data;
+      if (action.event_name) out.event_name = action.event_name;
     }
     return out;
   };
@@ -2810,6 +2869,15 @@ class HkiHeaderCard extends LitElement {
             eventDetail[key] = finalAction[key];
           }
         });
+        const rawEventData = (typeof finalAction.event_data === "string") ? finalAction.event_data.trim() : "";
+        if (rawEventData) {
+          try {
+            const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+            if (parsed !== undefined) eventDetail.data = parsed;
+          } catch (_) {
+            eventDetail.data = rawEventData;
+          }
+        }
         this.dispatchEvent(new CustomEvent("ll-custom", { 
           bubbles: true, 
           composed: true, 
@@ -3095,6 +3163,27 @@ class HkiHeaderCard extends LitElement {
     return this._getDomainDefaultIcon(domain);
   }
 
+  _getStateDomainColorVar(entityId, state) {
+    const domain = String(entityId || "").split(".")[0] || "default";
+    const stateKey = String(state ?? "unknown").toLowerCase().replace(/\s+/g, "-");
+    const active = ["on", "open", "unlocked", "home", "heat", "cool", "auto", "playing"].includes(stateKey) ? "active" : "inactive";
+    return `var(--state-${domain}-${stateKey}-color, var(--state-${domain}-${active}-color, var(--state-${active}-color, var(--primary-text-color))))`;
+  }
+
+  _getAutoEntityColor(entity) {
+    if (!entity?.entity_id) return "";
+    return this._getStateDomainColorVar(entity.entity_id, entity.state);
+  }
+
+  _supportsHkiPopupForDomain(domain, popupConfig = null) {
+    if (popupConfig?.custom_popup_enabled === true || popupConfig?.custom_popup_card) return true;
+    return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(String(domain || ""));
+  }
+
+  _defaultInfoActionForDomain(domain, popupConfig = null) {
+    return this._supportsHkiPopupForDomain(domain, popupConfig) ? "hki-more-info" : "more-info";
+  }
+
   _renderButtonSlot(slotName, slotStyle, stateKey, bar = "top_bar") {
     const cfg = this._config;
     const prefix = `${bar}_${slotName}_`;
@@ -3117,6 +3206,7 @@ class HkiHeaderCard extends LitElement {
           const entityName = buttonEntity?.attributes?.friendly_name ? String(buttonEntity.attributes.friendly_name) : "";
           const entityIcon = buttonEntity ? this._getEntityDefaultIcon(buttonEntity) : "";
           const entityState = buttonEntity ? String(buttonEntity.state ?? "") : "";
+          const autoColor = buttonEntity ? this._getAutoEntityColor(buttonEntity) : "";
 
           const iconOverride = this._resolveInlineTemplate(btn.icon || "", "");
           const nameOverride = this._resolveInlineTemplate(btn.name || "", "");
@@ -3128,11 +3218,21 @@ class HkiHeaderCard extends LitElement {
           const badgeColor = this._resolveInlineTemplate(btn.badge_color || "", "");
           const badgeTextColor = this._resolveInlineTemplate(btn.badge_text_color || "", "");
           const cardColorOverride = this._resolveInlineTemplate(btn.card_color || "", "");
+          const textColorOverride = this._resolveInlineTemplate(btn.text_color || "", "");
+          const buttonBorderStyle = this._resolveInlineTemplate(btn.button_border_style || "", "");
+          const buttonBorderColor = this._resolveInlineTemplate(btn.button_border_color || "", "");
+          const buttonBoxShadow = this._resolveInlineTemplate(btn.button_box_shadow || "", "");
           const iconColorOverride = this._resolveInlineTemplate(btn.icon_color || "", "");
           const nameColorOverride = this._resolveInlineTemplate(btn.name_color || "", "");
           const stateColorOverride = this._resolveInlineTemplate(btn.state_color || "", "");
           const textShadowOverride = this._resolveInlineTemplate(btn.text_shadow || "", "");
           const iconShadowOverride = this._resolveInlineTemplate(btn.icon_shadow || "", "");
+          const badgeBorderStyle = this._resolveInlineTemplate(btn.badge_border_style || "", "");
+          const badgeBorderColor = this._resolveInlineTemplate(btn.badge_border_color || "", "");
+          const badgeBoxShadow = this._resolveInlineTemplate(btn.badge_box_shadow || "", "");
+          const badgeFontFamily = (btn.badge_font_family === "custom")
+            ? this._resolveInlineTemplate(btn.badge_font_custom || "", "")
+            : (btn.badge_font_family || "");
           const effectiveIconShadow = this._asIconFilterValue(iconShadowOverride || slotStyle.iconShadow || "");
 
           const conditionMode = btn.visibility_mode || "none";
@@ -3167,20 +3267,30 @@ class HkiHeaderCard extends LitElement {
           }
           const showBadge = btn.show_badge && !!badgeText;
 
-          const isIconOnly = !name && !stateLabel;
+          const showIcon = btn.show_icon !== false;
+          const showName = btn.show_name !== false;
+          const showState = btn.show_state !== false;
+          const isIconOnly = !showName && !showState;
           const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
-          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${iconColorOverride ? `color:${iconColorOverride};` : ""}`;
-          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${iconShadowOverride ? `;--hki-info-icon-filter:${effectiveIconShadow};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColorOverride || autoColor || "inherit"};`;
+          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${iconShadowOverride ? `;--hki-info-icon-filter:${effectiveIconShadow};` : ""}${buttonBoxShadow ? `;box-shadow:${buttonBoxShadow};` : ""}${buttonBorderStyle ? `;border-style:${buttonBorderStyle};` : ""}${buttonBorderColor ? `;border-color:${buttonBorderColor};` : ""}${btn.button_border_width !== "" && btn.button_border_width != null ? `;border-width:${Number(btn.button_border_width) || 0}px;` : ""}${btn.button_border_radius !== "" && btn.button_border_radius != null ? `;border-radius:${Number(btn.button_border_radius) || 0}px;` : ""}${textColorOverride ? `;color:${textColorOverride};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const nameOffsetX = toNum(btn.name_offset_x, 0);
           const nameOffsetY = toNum(btn.name_offset_y, 0);
           const stateOffsetX = toNum(btn.state_offset_x, 0);
           const stateOffsetY = toNum(btn.state_offset_y, 0);
-          const nameStyle = `${nameColorOverride ? `color:${nameColorOverride};` : ""}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(nameOffsetX || nameOffsetY) ? `position:relative;left:${nameOffsetX}px;top:${nameOffsetY}px;` : ""}`;
-          const stateStyle = `${stateColorOverride ? `color:${stateColorOverride};` : ""}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(stateOffsetX || stateOffsetY) ? `position:relative;left:${stateOffsetX}px;top:${stateOffsetY}px;` : ""}`;
+          const nameStyle = `${nameColorOverride ? `color:${nameColorOverride};` : (textColorOverride ? `color:${textColorOverride};` : "")}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(nameOffsetX || nameOffsetY) ? `position:relative;left:${nameOffsetX}px;top:${nameOffsetY}px;` : ""}`;
+          const stateStyle = `${stateColorOverride ? `color:${stateColorOverride};` : (textColorOverride ? `color:${textColorOverride};` : "")}${textShadowOverride ? `text-shadow:${textShadowOverride};` : ""}${(stateOffsetX || stateOffsetY) ? `position:relative;left:${stateOffsetX}px;top:${stateOffsetY}px;` : ""}`;
           const tapAction = btn.tap_action || { action: "none" };
-          const holdAction = btn.hold_action || { action: "none" };
-          const doubleTapAction = btn.double_tap_action || { action: "none" };
-          const hasAnyAction = (tapAction.action !== "none") || (holdAction.action !== "none") || (doubleTapAction.action !== "none");
+          const buttonDomain = buttonEntityId ? buttonEntityId.split(".")[0] : "";
+          const defaultInfoAction = this._defaultInfoActionForDomain(buttonDomain, slotPopupConfig);
+          const toggleDomains = ["switch", "climate", "input_boolean", "automation", "light"];
+          const defaultTapAction = toggleDomains.includes(buttonDomain) ? { action: "toggle" } : { action: defaultInfoAction };
+          const holdAction = btn.hold_action || { action: defaultInfoAction };
+          const doubleTapAction = btn.double_tap_action || { action: defaultInfoAction };
+          const effectiveTapAction = (!tapAction || !tapAction.action || tapAction.action === "none") ? defaultTapAction : tapAction;
+          const effectiveHoldAction = (!holdAction || !holdAction.action || holdAction.action === "none") ? { action: defaultInfoAction } : holdAction;
+          const effectiveDoubleTapAction = (!doubleTapAction || !doubleTapAction.action || doubleTapAction.action === "none") ? { action: defaultInfoAction } : doubleTapAction;
+          const hasAnyAction = (effectiveTapAction.action !== "none") || (effectiveHoldAction.action !== "none") || (effectiveDoubleTapAction.action !== "none");
           const buttonPopupOverrides = {};
           const buttonPopup = (btn.popup && typeof btn.popup === "object") ? btn.popup : null;
           if (buttonPopup) {
@@ -3208,7 +3318,7 @@ class HkiHeaderCard extends LitElement {
             state.holdTimer = setTimeout(() => {
               state.holdActive = true;
               if (holdAction && holdAction.action !== "none") {
-                this._handleSlotTapAction(holdAction, slotName, buttonEntityId || null, effectivePopupConfig);
+                this._handleSlotTapAction(effectiveHoldAction, slotName, buttonEntityId || null, effectivePopupConfig);
               }
             }, 500);
           };
@@ -3223,14 +3333,14 @@ class HkiHeaderCard extends LitElement {
               if (state.clickCount === 1) {
                 state.clickTimer = setTimeout(() => {
                   if (state.clickCount === 1) {
-                    this._handleSlotTapAction(tapAction, slotName, buttonEntityId || null, effectivePopupConfig);
+                    this._handleSlotTapAction(effectiveTapAction, slotName, buttonEntityId || null, effectivePopupConfig);
                   }
                   state.clickCount = 0;
                 }, 250);
               } else if (state.clickCount === 2) {
                 clearTimeout(state.clickTimer);
                 state.clickCount = 0;
-                this._handleSlotTapAction(doubleTapAction, slotName, buttonEntityId || null, effectivePopupConfig);
+                this._handleSlotTapAction(effectiveDoubleTapAction, slotName, buttonEntityId || null, effectivePopupConfig);
               }
             }
             state.holdActive = false;
@@ -3261,17 +3371,18 @@ class HkiHeaderCard extends LitElement {
               @touchend=${handleTouchEnd}
               @contextmenu=${(e) => e.preventDefault()}
             >
+              ${showIcon ? html`
               <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
                 <ha-icon .icon=${icon} style="${iconStyle}"></ha-icon>
-              </div>
-              ${(name || stateLabel) ? html`
+              </div>` : ''}
+              ${(showName || showState) ? html`
                 <span class="hki-slot-button-text">
-                  ${name ? html`<span class="hki-slot-button-name" style="${nameStyle}">${name}</span>` : ''}
-                  ${stateLabel ? html`<span class="hki-slot-button-state" style="${stateStyle}">${stateLabel}</span>` : ''}
+                  ${showName && name ? html`<span class="hki-slot-button-name" style="${nameStyle}">${name}</span>` : ''}
+                  ${showState && stateLabel ? html`<span class="hki-slot-button-state" style="${stateStyle}">${stateLabel}</span>` : ''}
                 </span>
               ` : ''}
               ${showBadge ? html`
-                <span class="hki-slot-button-badge" style="${badgeColor ? `background:${badgeColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}">
+                <span class="hki-slot-button-badge" style="${(badgeColor || autoColor) ? `background:${badgeColor || autoColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}${badgeBorderStyle ? `border-style:${badgeBorderStyle};` : ""}${btn.badge_border_width !== "" && btn.badge_border_width != null ? `border-width:${Number(btn.badge_border_width) || 0}px;` : ""}${badgeBorderColor ? `border-color:${badgeBorderColor};` : ""}${btn.badge_border_radius !== "" && btn.badge_border_radius != null ? `border-radius:${Number(btn.badge_border_radius) || 0}px;` : ""}${badgeBoxShadow ? `box-shadow:${badgeBoxShadow};` : ""}${btn.badge_font_size !== "" && btn.badge_font_size != null ? `font-size:${Number(btn.badge_font_size) || 10}px;` : ""}${btn.badge_font_weight ? `font-weight:${btn.badge_font_weight};` : ""}${badgeFontFamily ? `font-family:${badgeFontFamily};` : ""}">
                   ${badgeText}
                 </span>
               ` : ''}
@@ -4699,7 +4810,12 @@ class HkiHeaderCardEditor extends LitElement {
           "name_offset_x", "name_offset_y", "state_offset_x", "state_offset_y",
           "visibility_mode", "visibility_entity", "visibility_state", "visibility_attribute", "visibility_attribute_value",
           "show_badge", "badge_source", "badge_entity", "badge_template",
-          "badge_color", "badge_text_color", "buttons",
+          "badge_color", "badge_text_color",
+          "text_color", "button_border_radius", "button_box_shadow", "button_border_style", "button_border_width", "button_border_color",
+          "badge_border_radius", "badge_box_shadow", "badge_border_style", "badge_border_width", "badge_border_color",
+          "badge_font_size", "badge_font_weight", "badge_font_family", "badge_font_custom",
+          "show_icon", "show_name", "show_state",
+          "buttons",
         ];
         const hasButtonConfig = buttonKeys.some((k) => flat[prefix + k] !== undefined);
         if (hasButtonConfig) {
@@ -4729,6 +4845,24 @@ class HkiHeaderCardEditor extends LitElement {
           if (flat[prefix + "badge_template"] !== undefined) slotConfig.button.badge_template = flat[prefix + "badge_template"];
           if (flat[prefix + "badge_color"] !== undefined) slotConfig.button.badge_color = flat[prefix + "badge_color"];
           if (flat[prefix + "badge_text_color"] !== undefined) slotConfig.button.badge_text_color = flat[prefix + "badge_text_color"];
+          if (flat[prefix + "text_color"] !== undefined) slotConfig.button.text_color = flat[prefix + "text_color"];
+          if (flat[prefix + "button_border_radius"] !== undefined) slotConfig.button.button_border_radius = flat[prefix + "button_border_radius"];
+          if (flat[prefix + "button_box_shadow"] !== undefined) slotConfig.button.button_box_shadow = flat[prefix + "button_box_shadow"];
+          if (flat[prefix + "button_border_style"] !== undefined) slotConfig.button.button_border_style = flat[prefix + "button_border_style"];
+          if (flat[prefix + "button_border_width"] !== undefined) slotConfig.button.button_border_width = flat[prefix + "button_border_width"];
+          if (flat[prefix + "button_border_color"] !== undefined) slotConfig.button.button_border_color = flat[prefix + "button_border_color"];
+          if (flat[prefix + "badge_border_radius"] !== undefined) slotConfig.button.badge_border_radius = flat[prefix + "badge_border_radius"];
+          if (flat[prefix + "badge_box_shadow"] !== undefined) slotConfig.button.badge_box_shadow = flat[prefix + "badge_box_shadow"];
+          if (flat[prefix + "badge_border_style"] !== undefined) slotConfig.button.badge_border_style = flat[prefix + "badge_border_style"];
+          if (flat[prefix + "badge_border_width"] !== undefined) slotConfig.button.badge_border_width = flat[prefix + "badge_border_width"];
+          if (flat[prefix + "badge_border_color"] !== undefined) slotConfig.button.badge_border_color = flat[prefix + "badge_border_color"];
+          if (flat[prefix + "badge_font_size"] !== undefined) slotConfig.button.badge_font_size = flat[prefix + "badge_font_size"];
+          if (flat[prefix + "badge_font_weight"] !== undefined) slotConfig.button.badge_font_weight = flat[prefix + "badge_font_weight"];
+          if (flat[prefix + "badge_font_family"] !== undefined) slotConfig.button.badge_font_family = flat[prefix + "badge_font_family"];
+          if (flat[prefix + "badge_font_custom"] !== undefined) slotConfig.button.badge_font_custom = flat[prefix + "badge_font_custom"];
+          if (flat[prefix + "show_icon"] !== undefined) slotConfig.button.show_icon = flat[prefix + "show_icon"];
+          if (flat[prefix + "show_name"] !== undefined) slotConfig.button.show_name = flat[prefix + "show_name"];
+          if (flat[prefix + "show_state"] !== undefined) slotConfig.button.show_state = flat[prefix + "show_state"];
           if (Array.isArray(flat[prefix + "buttons"])) {
             slotConfig.button.buttons = flat[prefix + "buttons"].map((b) => cleanupSlotButton(b)).filter(Boolean).map((b) => {
               const out = { ...b };
@@ -5230,6 +5364,18 @@ class HkiHeaderCardEditor extends LitElement {
                     <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
                       @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
                   ` : ''}
+                  ${(actionObj.action === "fire-dom-event") ? html`
+                    <ha-textfield label="Event Name (optional)" .value=${actionObj.event_name || ""}
+                      @input=${(e) => setAction({ ...actionObj, event_name: e.target.value || "" })}></ha-textfield>
+                    <div class="section">Event Data (YAML/JSON text)</div>
+                    <ha-code-editor
+                      .hass=${this.hass}
+                      .value=${actionObj.event_data || ""}
+                      mode="yaml"
+                      @value-changed=${(e) => setAction({ ...actionObj, event_data: e.detail?.value || "" })}
+                      @click=${(e) => e.stopPropagation()}
+                    ></ha-code-editor>
+                  ` : ''}
                 </div>
               `;
               return html`
@@ -5334,48 +5480,109 @@ class HkiHeaderCardEditor extends LitElement {
                   <details class="box-section" style="margin-top:8px;">
                     <summary>Style Overrides</summary>
                     <div class="box-content">
-                      ${this._renderTemplateEditor("Badge Background (Jinja)", `${prefix}btn_${idx}_card_color`, {
-                        value: btn.card_color || "",
-                        onchange: (v) => setButton(idx, { card_color: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("Icon Color (Jinja)", `${prefix}btn_${idx}_icon_color`, {
-                        value: btn.icon_color || "",
-                        onchange: (v) => setButton(idx, { icon_color: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("Name Color (Jinja)", `${prefix}btn_${idx}_name_color`, {
-                        value: btn.name_color || "",
-                        onchange: (v) => setButton(idx, { name_color: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("State Color (Jinja)", `${prefix}btn_${idx}_state_color`, {
-                        value: btn.state_color || "",
-                        onchange: (v) => setButton(idx, { state_color: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("Text Shadow (CSS/Jinja)", `${prefix}btn_${idx}_text_shadow`, {
-                        value: btn.text_shadow || "",
-                        onchange: (v) => setButton(idx, { text_shadow: v || "" }),
-                      })}
-                      ${this._renderTemplateEditor("Icon Shadow (CSS/Jinja)", `${prefix}btn_${idx}_icon_shadow`, {
-                        value: btn.icon_shadow || "",
-                        onchange: (v) => setButton(idx, { icon_shadow: v || "" }),
-                      })}
-                      <div class="inline-fields-2">
-                        <ha-textfield label="Name Offset X" type="number" .value=${String(btn.name_offset_x ?? 0)}
-                          @input=${(e) => setButton(idx, { name_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
-                        <ha-textfield label="Name Offset Y" type="number" .value=${String(btn.name_offset_y ?? 0)}
-                          @input=${(e) => setButton(idx, { name_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
-                      </div>
-                      <div class="inline-fields-2">
-                        <ha-textfield label="State Offset X" type="number" .value=${String(btn.state_offset_x ?? 0)}
-                          @input=${(e) => setButton(idx, { state_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
-                        <ha-textfield label="State Offset Y" type="number" .value=${String(btn.state_offset_y ?? 0)}
-                          @input=${(e) => setButton(idx, { state_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
-                      </div>
+                      <details class="box-section" open>
+                        <summary>Card / Badge Button Surface</summary>
+                        <div class="box-content">
+                          ${this._renderTemplateEditor("Button Background (Jinja)", `${prefix}btn_${idx}_card_color`, {
+                            value: btn.card_color || "",
+                            onchange: (v) => setButton(idx, { card_color: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("Text Color (Jinja)", `${prefix}btn_${idx}_text_color`, {
+                            value: btn.text_color || "",
+                            onchange: (v) => setButton(idx, { text_color: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("Icon Color (Jinja)", `${prefix}btn_${idx}_icon_color`, {
+                            value: btn.icon_color || "",
+                            onchange: (v) => setButton(idx, { icon_color: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("Name Color (Jinja)", `${prefix}btn_${idx}_name_color`, {
+                            value: btn.name_color || "",
+                            onchange: (v) => setButton(idx, { name_color: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("State Color (Jinja)", `${prefix}btn_${idx}_state_color`, {
+                            value: btn.state_color || "",
+                            onchange: (v) => setButton(idx, { state_color: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("Text Shadow (CSS/Jinja)", `${prefix}btn_${idx}_text_shadow`, {
+                            value: btn.text_shadow || "",
+                            onchange: (v) => setButton(idx, { text_shadow: v || "" }),
+                          })}
+                          ${this._renderTemplateEditor("Icon Shadow (CSS/Jinja)", `${prefix}btn_${idx}_icon_shadow`, {
+                            value: btn.icon_shadow || "",
+                            onchange: (v) => setButton(idx, { icon_shadow: v || "" }),
+                          })}
+                          ${this._renderTemplateTextField("Border Style", btn.button_border_style || "", (v) => setButton(idx, { button_border_style: v || "" }), "solid / dashed / none")}
+                          ${this._renderTemplateTextField("Border Color", btn.button_border_color || "", (v) => setButton(idx, { button_border_color: v || "" }), "{{ ... }} / #ffffff")}
+                          ${this._renderTemplateTextField("Box Shadow", btn.button_box_shadow || "", (v) => setButton(idx, { button_box_shadow: v || "" }), "0 2px 8px rgba(...)")}
+                          <div class="inline-fields-2">
+                            <ha-textfield label="Border Width (px)" type="number" .value=${String(btn.button_border_width ?? "")}
+                              @input=${(e) => setButton(idx, { button_border_width: e.target.value === "" ? "" : Number(e.target.value) || 0 })}></ha-textfield>
+                            <ha-textfield label="Border Radius (px)" type="number" .value=${String(btn.button_border_radius ?? "")}
+                              @input=${(e) => setButton(idx, { button_border_radius: e.target.value === "" ? "" : Number(e.target.value) || 0 })}></ha-textfield>
+                          </div>
+                          <div class="inline-fields-2">
+                            <ha-textfield label="Name Offset X" type="number" .value=${String(btn.name_offset_x ?? 0)}
+                              @input=${(e) => setButton(idx, { name_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
+                            <ha-textfield label="Name Offset Y" type="number" .value=${String(btn.name_offset_y ?? 0)}
+                              @input=${(e) => setButton(idx, { name_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
+                          </div>
+                          <div class="inline-fields-2">
+                            <ha-textfield label="State Offset X" type="number" .value=${String(btn.state_offset_x ?? 0)}
+                              @input=${(e) => setButton(idx, { state_offset_x: Number(e.target.value) || 0 })}></ha-textfield>
+                            <ha-textfield label="State Offset Y" type="number" .value=${String(btn.state_offset_y ?? 0)}
+                              @input=${(e) => setButton(idx, { state_offset_y: Number(e.target.value) || 0 })}></ha-textfield>
+                          </div>
+                        </div>
+                      </details>
+
+                      <details class="box-section" open>
+                        <summary>Top-right Corner Badge (notification badge)</summary>
+                        <div class="box-content">
+                          ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}
+                          ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
+                          ${this._renderTemplateTextField("Badge Border Style", btn.badge_border_style || "", (v) => setButton(idx, { badge_border_style: v || "" }), "solid / dashed / none")}
+                          ${this._renderTemplateTextField("Badge Border Color", btn.badge_border_color || "", (v) => setButton(idx, { badge_border_color: v || "" }), "{{ ... }} / #ffffff")}
+                          ${this._renderTemplateTextField("Badge Box Shadow", btn.badge_box_shadow || "", (v) => setButton(idx, { badge_box_shadow: v || "" }), "0 2px 8px rgba(...)")}
+                          <div class="inline-fields-3">
+                            <ha-textfield label="Badge Border Width (px)" type="number" .value=${String(btn.badge_border_width ?? "")}
+                              @input=${(e) => setButton(idx, { badge_border_width: e.target.value === "" ? "" : Number(e.target.value) || 0 })}></ha-textfield>
+                            <ha-textfield label="Badge Border Radius (px)" type="number" .value=${String(btn.badge_border_radius ?? "")}
+                              @input=${(e) => setButton(idx, { badge_border_radius: e.target.value === "" ? "" : Number(e.target.value) || 0 })}></ha-textfield>
+                            <ha-textfield label="Badge Font Size (px)" type="number" .value=${String(btn.badge_font_size ?? "")}
+                              @input=${(e) => setButton(idx, { badge_font_size: e.target.value === "" ? "" : Number(e.target.value) || 0 })}></ha-textfield>
+                          </div>
+                          <div class="inline-fields-2">
+                            <ha-select label="Badge Font Family" .value=${btn.badge_font_family || "inherit"}
+                              @selected=${(e) => setButton(idx, { badge_font_family: e.target.value || "inherit" })}
+                              @closed=${(e) => e.stopPropagation()}>
+                              <mwc-list-item value="inherit">inherit</mwc-list-item>
+                              <mwc-list-item value="system">system</mwc-list-item>
+                              <mwc-list-item value="roboto">roboto</mwc-list-item>
+                              <mwc-list-item value="inter">inter</mwc-list-item>
+                              <mwc-list-item value="arial">arial</mwc-list-item>
+                              <mwc-list-item value="georgia">georgia</mwc-list-item>
+                              <mwc-list-item value="mono">mono</mwc-list-item>
+                              <mwc-list-item value="custom">custom</mwc-list-item>
+                            </ha-select>
+                            <ha-textfield label="Badge Font Weight" .value=${String(btn.badge_font_weight ?? "")}
+                              @input=${(e) => setButton(idx, { badge_font_weight: e.target.value || "" })} placeholder="400 / semibold"></ha-textfield>
+                          </div>
+                          ${btn.badge_font_family === "custom" ? html`
+                            ${this._renderTemplateTextField("Badge Custom Font Family", btn.badge_font_custom || "", (v) => setButton(idx, { badge_font_custom: v || "" }), "'My Font', sans-serif")}
+                          ` : ''}
+                        </div>
+                      </details>
                     </div>
                   </details>
 
                   <details class="box-section" style="margin-top:8px;">
                     <summary>Visibility Conditions</summary>
                     <div class="box-content">
+                      <div class="inline-fields-3">
+                        <div class="switch-row"><ha-switch .checked=${btn.show_icon !== false} @change=${(e) => setButton(idx, { show_icon: e.target.checked })}></ha-switch><span>Show icon</span></div>
+                        <div class="switch-row"><ha-switch .checked=${btn.show_name !== false} @change=${(e) => setButton(idx, { show_name: e.target.checked })}></ha-switch><span>Show name</span></div>
+                        <div class="switch-row"><ha-switch .checked=${btn.show_state !== false} @change=${(e) => setButton(idx, { show_state: e.target.checked })}></ha-switch><span>Show state</span></div>
+                      </div>
                       <ha-select label="Show badge when" .value=${btn.visibility_mode || "none"}
                         @selected=${(e) => setButton(idx, { visibility_mode: e.target.value || "none" })}
                         @closed=${(e) => e.stopPropagation()}>
@@ -5884,6 +6091,12 @@ class HkiHeaderCardEditor extends LitElement {
                         ${_act==='navigate'?html`<ha-textfield label="Navigation Path" .value=${_tap.navigation_path||''} @input=${(ev)=>setTap({navigation_path:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='url'?html`<ha-textfield label="URL" .value=${_tap.url_path||''} @input=${(ev)=>setTap({url_path:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='perform-action'?html`<ha-textfield label="Action (domain.service)" .value=${_tap.perform_action||''} @input=${(ev)=>setTap({perform_action:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
+                        ${_act==='fire-dom-event'?html`
+                          <ha-textfield label="Event Name (optional)" .value=${_tap.event_name||''} @input=${(ev)=>setTap({event_name:ev.target.value})} style="margin-top:6px;"></ha-textfield>
+                          <ha-code-editor .hass=${this.hass} .value=${_tap.event_data||''} mode="yaml"
+                            @value-changed=${(ev)=>setTap({event_data:ev.detail?.value||''})}
+                            @click=${(e)=>e.stopPropagation()}></ha-code-editor>
+                        `:''}
                       ` : ''}
                     </div>`;
                 })}
@@ -5933,6 +6146,17 @@ class HkiHeaderCardEditor extends LitElement {
       ${actionType === "hki-more-info" ? html`
         <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
+      ` : ''}
+      ${actionType === "fire-dom-event" ? html`
+        <ha-textfield label="Event Name (optional)" .value=${action.event_name || ""} @input=${(e) => patchAction({ event_name: e.target.value || "" })}></ha-textfield>
+        <div class="section">Event Data (YAML/JSON text)</div>
+        <ha-code-editor
+          .hass=${this.hass}
+          .value=${action.event_data || ""}
+          mode="yaml"
+          @value-changed=${(e) => patchAction({ event_data: e.detail?.value || "" })}
+          @click=${(e) => e.stopPropagation()}
+        ></ha-code-editor>
       ` : ''}
       ${actionType === "perform-action" ? html`
         ${customElements.get("ha-service-picker") ? html`
@@ -6085,6 +6309,17 @@ class HkiHeaderCardEditor extends LitElement {
           ${actionValue === "hki-more-info" ? html`
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
+          ` : ''}
+          ${actionValue === "fire-dom-event" ? html`
+            <ha-textfield label="Event Name (optional)" .value=${action.event_name || ""} @input=${(e) => patchAction({ event_name: e.target.value || "" })}></ha-textfield>
+            <div class="section">Event Data (YAML/JSON text)</div>
+            <ha-code-editor
+              .hass=${this.hass}
+              .value=${action.event_data || ""}
+              mode="yaml"
+              @value-changed=${(e) => patchAction({ event_data: e.detail?.value || "" })}
+              @click=${(e) => e.stopPropagation()}
+            ></ha-code-editor>
           ` : ''}
           ${actionValue === "perform-action" ? html`
             ${customElements.get("ha-service-picker") ? html`
@@ -6556,6 +6791,12 @@ class HkiHeaderCardEditor extends LitElement {
                         ${_act==='navigate'?html`<ha-textfield label="Navigation Path" .value=${_tap.navigation_path||''} @input=${(ev)=>setTap({navigation_path:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='url'?html`<ha-textfield label="URL" .value=${_tap.url_path||''} @input=${(ev)=>setTap({url_path:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='perform-action'?html`<ha-textfield label="Action (domain.service)" .value=${_tap.perform_action||''} @input=${(ev)=>setTap({perform_action:ev.target.value})} style="margin-top:6px;"></ha-textfield>`:''}
+                        ${_act==='fire-dom-event'?html`
+                          <ha-textfield label="Event Name (optional)" .value=${_tap.event_name||''} @input=${(ev)=>setTap({event_name:ev.target.value})} style="margin-top:6px;"></ha-textfield>
+                          <ha-code-editor .hass=${this.hass} .value=${_tap.event_data||''} mode="yaml"
+                            @value-changed=${(ev)=>setTap({event_data:ev.detail?.value||''})}
+                            @click=${(e)=>e.stopPropagation()}></ha-code-editor>
+                        `:''}
                       ` : ''}
                     </div>`;
                 })}
