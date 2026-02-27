@@ -79,6 +79,45 @@ class HkiSettingsBase extends LitElement {
     };
   }
 
+  constructor() {
+    super();
+    this._templateDrafts = {};
+  }
+
+  _tplFieldKey(scope, key) {
+    return `${scope}.${key}`;
+  }
+
+  _getTemplateFieldValue(scope, key) {
+    const k = this._tplFieldKey(scope, key);
+    if (Object.prototype.hasOwnProperty.call(this._templateDrafts, k)) {
+      return this._templateDrafts[k];
+    }
+    const current = this._config?.[scope]?.[key];
+    return current !== undefined ? String(current) : "";
+  }
+
+  _onTemplateValueChanged(scope, key, value) {
+    const k = this._tplFieldKey(scope, key);
+    this._templateDrafts = {
+      ...this._templateDrafts,
+      [k]: String(value ?? ""),
+    };
+    this.requestUpdate();
+  }
+
+  _onTemplateBlur(scope, key) {
+    const k = this._tplFieldKey(scope, key);
+    const draft = Object.prototype.hasOwnProperty.call(this._templateDrafts, k)
+      ? this._templateDrafts[k]
+      : "";
+    this._setText(scope, key, draft);
+    const next = { ...this._templateDrafts };
+    delete next[k];
+    this._templateDrafts = next;
+    this.requestUpdate();
+  }
+
   setConfig(config) {
     this._config = normalizeConfig(config);
     this._publishGlobals();
@@ -175,8 +214,25 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
-  _renderTemplateInput(scope, key, label, placeholder = "{{ ... }} or CSS value") {
-    return this._renderInput(scope, key, label, "text", placeholder);
+  _renderTemplateInput(scope, key, label) {
+    return html`
+      <ha-code-editor
+        .hass=${this.hass}
+        mode="yaml"
+        autocomplete-entities
+        autocomplete-icons
+        .autocompleteEntities=${true}
+        .autocompleteIcons=${true}
+        .label=${label}
+        .value=${this._getTemplateFieldValue(scope, key)}
+        @value-changed=${(ev) => {
+          ev.stopPropagation();
+          this._onTemplateValueChanged(scope, key, ev.detail?.value ?? "");
+        }}
+        @blur=${() => this._onTemplateBlur(scope, key)}
+        @click=${(e) => e.stopPropagation()}
+      ></ha-code-editor>
+    `;
   }
 
   _renderCategory(title, fields) {
@@ -195,7 +251,10 @@ class HkiSettingsBase extends LitElement {
           <div class="scope-title">${title}</div>
           <div class="scope-sub">${subtitle}</div>
         </div>
-        <mwc-button raised class="reset-btn" @click=${() => this._resetScope(scope)}>Reset ${scope}</mwc-button>
+        <button type="button" class="hki-reset-btn" @click=${() => this._resetScope(scope)}>
+          <ha-icon icon="mdi:restore"></ha-icon>
+          <span>Reset ${scope}</span>
+        </button>
       </div>
     `;
   }
@@ -314,7 +373,10 @@ class HkiSettingsBase extends LitElement {
         </details>
 
         <div class="footer">
-          <mwc-button raised class="reset-btn reset-all-btn" @click=${this._resetAll}>Reset all globals</mwc-button>
+          <button type="button" class="hki-reset-btn hki-reset-btn-danger" @click=${this._resetAll}>
+            <ha-icon icon="mdi:restore-alert"></ha-icon>
+            <span>Reset all globals</span>
+          </button>
         </div>
       </div>
     `;
@@ -411,20 +473,48 @@ class HkiSettingsBase extends LitElement {
         font-size: 11px;
         opacity: 0.75;
       }
-      .reset-btn {
-        --mdc-theme-primary: var(--primary-color);
-        --mdc-theme-on-primary: var(--text-primary-color, #fff);
-      }
-      .reset-all-btn {
-        --mdc-theme-primary: var(--error-color, #d32f2f);
-      }
       .grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
       }
-      ha-textfield, ha-select {
+      ha-textfield, ha-select, ha-code-editor {
         width: 100%;
+      }
+      ha-code-editor {
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .hki-reset-btn{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--primary-color);
+        background: var(--primary-color);
+        color: var(--text-primary-color, #fff);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+        transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+      }
+      .hki-reset-btn:hover{
+        background: rgba(255,255,255,0.14);
+        border-color: rgba(255,255,255,0.35);
+      }
+      .hki-reset-btn:active{
+        transform: translateY(1px);
+        background: rgba(255,255,255,0.18);
+      }
+      .hki-reset-btn ha-icon{
+        width: 18px;
+        height: 18px;
+      }
+      .hki-reset-btn-danger{
+        border-color: var(--error-color, #d32f2f);
+        background: var(--error-color, #d32f2f);
       }
       .footer {
         display: flex;
