@@ -46,6 +46,7 @@ const NAV_TEXT_TRANSFORM = [
 const DEFAULT_CONFIG = Object.freeze({
   type: `custom:${CARD_TYPE}`,
 });
+const HA_PRESERVE_KEYS = Object.freeze(["visibility", "grid_options"]);
 
 const isUnset = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
 
@@ -118,6 +119,15 @@ class HkiSettingsBase extends LitElement {
     this.requestUpdate();
   }
 
+  _withPreservedHaKeys(next) {
+    const out = normalizeConfig(next || {});
+    const prev = this._config || {};
+    HA_PRESERVE_KEYS.forEach((k) => {
+      if (prev[k] !== undefined && out[k] === undefined) out[k] = prev[k];
+    });
+    return out;
+  }
+
   setConfig(config) {
     const normalized = normalizeConfig(config);
     const persisted = window.HKI?.getGlobalSettings?.() || {};
@@ -152,8 +162,23 @@ class HkiSettingsBase extends LitElement {
   }
 
   _saveNow() {
-    const next = this._commitTemplateDrafts(this._config);
-    this._emitChanged(next);
+    const next = this._withPreservedHaKeys(this._commitTemplateDrafts(this._config));
+    this._config = next;
+    try {
+      window.HKI?.setGlobalSettings?.({
+        button: sanitizeScope(next.button || {}),
+        header: sanitizeScope(next.header || {}),
+        navigation: sanitizeScope(next.navigation || {}),
+      });
+    } catch (_) {}
+    try {
+      this.dispatchEvent(new CustomEvent("config-changed", {
+        detail: { config: next },
+        bubbles: true,
+        composed: true,
+      }));
+    } catch (_) {}
+    this.requestUpdate();
   }
 
   _publishGlobals() {
@@ -208,13 +233,14 @@ class HkiSettingsBase extends LitElement {
   }
 
   _resetScope(scope) {
-    const next = normalizeConfig(this._config);
+    const next = this._withPreservedHaKeys(normalizeConfig(this._config));
     delete next[scope];
     this._emitChanged(next);
   }
 
   _resetAll() {
-    this._emitChanged(normalizeConfig({ type: `custom:${CARD_TYPE}` }));
+    const next = this._withPreservedHaKeys(normalizeConfig({ type: `custom:${CARD_TYPE}` }));
+    this._emitChanged(next);
   }
 
   _renderSelect(scope, key, label, options) {
@@ -249,22 +275,25 @@ class HkiSettingsBase extends LitElement {
 
   _renderTemplateInput(scope, key, label) {
     return html`
-      <ha-code-editor
-        .hass=${this.hass}
-        mode="yaml"
-        autocomplete-entities
-        autocomplete-icons
-        .autocompleteEntities=${true}
-        .autocompleteIcons=${true}
-        .label=${label}
-        .value=${this._getTemplateFieldValue(scope, key)}
-        @value-changed=${(ev) => {
-          ev.stopPropagation();
-          this._onTemplateValueChanged(scope, key, ev.detail?.value ?? "");
-        }}
-        @blur=${() => this._onTemplateBlur(scope, key)}
-        @click=${(e) => e.stopPropagation()}
-      ></ha-code-editor>
+      <div class="tpl-field">
+        <div class="tpl-title">${label}</div>
+        <ha-code-editor
+          .hass=${this.hass}
+          mode="yaml"
+          autocomplete-entities
+          autocomplete-icons
+          .autocompleteEntities=${true}
+          .autocompleteIcons=${true}
+          .label=${label}
+          .value=${this._getTemplateFieldValue(scope, key)}
+          @value-changed=${(ev) => {
+            ev.stopPropagation();
+            this._onTemplateValueChanged(scope, key, ev.detail?.value ?? "");
+          }}
+          @blur=${() => this._onTemplateBlur(scope, key)}
+          @click=${(e) => e.stopPropagation()}
+        ></ha-code-editor>
+      </div>
     `;
   }
 
@@ -527,6 +556,16 @@ class HkiSettingsBase extends LitElement {
       ha-code-editor {
         border-radius: 8px;
         overflow: hidden;
+      }
+      .tpl-field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .tpl-title {
+        font-size: 12px;
+        font-weight: 600;
+        opacity: 0.9;
       }
       .hki-reset-btn{
         display: inline-flex;
