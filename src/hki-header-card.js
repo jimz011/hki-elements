@@ -1314,6 +1314,10 @@ class HkiHeaderCard extends LitElement {
       .hki-slot-button {
         position: relative;
         overflow: visible !important;
+        height: var(--hki-slot-badge-height, 34px);
+        min-height: var(--hki-slot-badge-height, 34px);
+        max-height: var(--hki-slot-badge-height, 34px);
+        box-sizing: border-box;
       }
 
       .hki-slot-button-icon-only {
@@ -3172,7 +3176,33 @@ class HkiHeaderCard extends LitElement {
 
   _getAutoEntityColor(entity) {
     if (!entity?.entity_id) return "";
-    return this._getStateDomainColorVar(entity.entity_id, entity.state);
+    const domain = String(entity.entity_id).split(".")[0];
+    const state = String(entity.state ?? "").toLowerCase();
+    const isOn = ["on", "open", "unlocked", "playing", "home"].includes(state);
+    const isUnavailable = ["unavailable", "unknown"].includes(state);
+    if (isUnavailable) return "var(--state-icon-unavailable-color)";
+    if (domain === "climate") {
+      const hvacAction = String(entity.attributes?.hvac_action || entity.state || "").toLowerCase();
+      if (["heating", "heat"].includes(hvacAction)) return "#ff9800";
+      if (["cooling", "cool"].includes(hvacAction)) return "#03a9f4";
+      if (["drying", "dry"].includes(hvacAction)) return "#9c27b0";
+      if (["fan", "fan_only"].includes(hvacAction)) return "#4caf50";
+      if (!isOn) return "var(--state-icon-color)";
+      return "var(--primary-color)";
+    }
+    if (domain === "light" && isOn) {
+      const attrs = entity.attributes || {};
+      if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
+        return `rgb(${attrs.rgb_color[0]}, ${attrs.rgb_color[1]}, ${attrs.rgb_color[2]})`;
+      }
+      if (Array.isArray(attrs.hs_color) && attrs.hs_color.length >= 2) {
+        const h = Number(attrs.hs_color[0]) || 0;
+        const s = (Number(attrs.hs_color[1]) || 0) / 100;
+        return `hsl(${h}, ${Math.round(s * 100)}%, 50%)`;
+      }
+      return "#ffc107";
+    }
+    return isOn ? "#ffc107" : "var(--state-icon-color)";
   }
 
   _supportsHkiPopupForDomain(domain, popupConfig = null) {
@@ -3273,7 +3303,7 @@ class HkiHeaderCard extends LitElement {
           const isIconOnly = !showName && !showState;
           const circleSize = Math.max(slotStyle.iconSize, (slotStyle.iconSize + (buttonPaddingY * 2)));
           const iconStyle = `width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;color:${iconColorOverride || autoColor || "inherit"};`;
-          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${iconShadowOverride ? `;--hki-info-icon-filter:${effectiveIconShadow};` : ""}${buttonBoxShadow ? `;box-shadow:${buttonBoxShadow};` : ""}${buttonBorderStyle ? `;border-style:${buttonBorderStyle};` : ""}${buttonBorderColor ? `;border-color:${buttonBorderColor};` : ""}${btn.button_border_width !== "" && btn.button_border_width != null ? `;border-width:${Number(btn.button_border_width) || 0}px;` : ""}${btn.button_border_radius !== "" && btn.button_border_radius != null ? `;border-radius:${Number(btn.button_border_radius) || 0}px;` : ""}${textColorOverride ? `;color:${textColorOverride};` : ""}${isIconOnly ? `;--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
+          const buttonStyle = `${combinedStyle}${cardColorOverride ? `;--hki-info-pill-background:${cardColorOverride};` : ""}${iconShadowOverride ? `;--hki-info-icon-filter:${effectiveIconShadow};` : ""}${buttonBoxShadow ? `;box-shadow:${buttonBoxShadow};` : ""}${buttonBorderStyle ? `;border-style:${buttonBorderStyle};` : ""}${buttonBorderColor ? `;border-color:${buttonBorderColor};` : ""}${btn.button_border_width !== "" && btn.button_border_width != null ? `;border-width:${Number(btn.button_border_width) || 0}px;` : ""}${btn.button_border_radius !== "" && btn.button_border_radius != null ? `;border-radius:${Number(btn.button_border_radius) || 0}px;` : ""}${textColorOverride ? `;color:${textColorOverride};` : ""};--hki-slot-badge-height:${circleSize}px;${isIconOnly ? `--hki-slot-circle-size:${circleSize}px;justify-content:center;` : ""}`;
           const nameOffsetX = toNum(btn.name_offset_x, 0);
           const nameOffsetY = toNum(btn.name_offset_y, 0);
           const stateOffsetX = toNum(btn.state_offset_x, 0);
@@ -3317,7 +3347,7 @@ class HkiHeaderCard extends LitElement {
             state.holdActive = false;
             state.holdTimer = setTimeout(() => {
               state.holdActive = true;
-              if (holdAction && holdAction.action !== "none") {
+              if (effectiveHoldAction && effectiveHoldAction.action !== "none") {
                 this._handleSlotTapAction(effectiveHoldAction, slotName, buttonEntityId || null, effectivePopupConfig);
               }
             }, 500);
@@ -5342,9 +5372,20 @@ class HkiHeaderCardEditor extends LitElement {
 
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
-              const tapAction = btn.tap_action || { action: "none" };
-              const holdAction = btn.hold_action || { action: "none" };
-              const doubleTapAction = btn.double_tap_action || { action: "none" };
+              const domain = (btn.entity || "").split(".")[0];
+              const defaultInfoAction = this._defaultInfoActionForDomain(domain);
+              const defaultTapAction = (["switch", "climate", "input_boolean", "automation", "light"].includes(domain))
+                ? { action: "toggle" }
+                : { action: defaultInfoAction };
+              const tapAction = (!btn.tap_action || !btn.tap_action.action || btn.tap_action.action === "none")
+                ? defaultTapAction
+                : btn.tap_action;
+              const holdAction = (!btn.hold_action || !btn.hold_action.action || btn.hold_action.action === "none")
+                ? { action: defaultInfoAction }
+                : btn.hold_action;
+              const doubleTapAction = (!btn.double_tap_action || !btn.double_tap_action.action || btn.double_tap_action.action === "none")
+                ? { action: defaultInfoAction }
+                : btn.double_tap_action;
               const popupEntity = tapAction.entity || holdAction.entity || doubleTapAction.entity || btn.entity || "";
               const renderActionEditor = (actionLabel, actionObj, setAction) => html`
                 <div style="margin-top:6px;">
@@ -5444,10 +5485,6 @@ class HkiHeaderCardEditor extends LitElement {
                         onchange: (v) => setButton(idx, { badge_template: v || "" }),
                       })}
                     `}
-                    <div class="inline-fields-2">
-                      ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}
-                      ${this._renderTemplateTextField("Badge Text Color", btn.badge_text_color || "", (v) => setButton(idx, { badge_text_color: v || "" }), "{{ ... }} / #ffffff")}
-                    </div>
                   ` : ''}
 
                   <details class="box-section" style="margin-top:8px;">
@@ -5480,7 +5517,7 @@ class HkiHeaderCardEditor extends LitElement {
                   <details class="box-section" style="margin-top:8px;">
                     <summary>Style Overrides</summary>
                     <div class="box-content">
-                      <details class="box-section" open>
+                      <details class="box-section">
                         <summary>Card / Badge Button Surface</summary>
                         <div class="box-content">
                           ${this._renderTemplateEditor("Button Background (Jinja)", `${prefix}btn_${idx}_card_color`, {
@@ -5535,7 +5572,7 @@ class HkiHeaderCardEditor extends LitElement {
                         </div>
                       </details>
 
-                      <details class="box-section" open>
+                      <details class="box-section">
                         <summary>Top-right Corner Badge (notification badge)</summary>
                         <div class="box-content">
                           ${this._renderTemplateTextField("Badge Color", btn.badge_color || "", (v) => setButton(idx, { badge_color: v || "" }), "{{ ... }} / #ff4444")}

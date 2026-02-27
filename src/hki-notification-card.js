@@ -3034,7 +3034,7 @@ class HkiNotificationCardEditor extends LitElement {
         <details class="box-section">
           <summary>Header Card Integration</summary>
           <div class="box-content">
-            ${this._renderSwitch("Use Header Styling", "use_header_styling", this._config.use_header_styling)}
+            ${this._renderSwitch("Use Header Styling", "use_header_styling", this._config.use_header_styling === true)}
             ${this._config.use_header_styling ? html`
               <ha-alert alert-type="info">
                 When inside hki-header-card, font size, weight, color, and pill styling will be inherited from the header card's Info Display settings.
