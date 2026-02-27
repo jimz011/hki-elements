@@ -119,8 +119,41 @@ class HkiSettingsBase extends LitElement {
   }
 
   setConfig(config) {
-    this._config = normalizeConfig(config);
-    this._publishGlobals();
+    const normalized = normalizeConfig(config);
+    const persisted = window.HKI?.getGlobalSettings?.() || {};
+    if (!normalized.button && persisted.button && Object.keys(persisted.button).length) {
+      normalized.button = { ...persisted.button };
+    }
+    if (!normalized.header && persisted.header && Object.keys(persisted.header).length) {
+      normalized.header = { ...persisted.header };
+    }
+    if (!normalized.navigation && persisted.navigation && Object.keys(persisted.navigation).length) {
+      normalized.navigation = { ...persisted.navigation };
+    }
+    this._config = normalized;
+  }
+
+  _commitTemplateDrafts(baseConfig) {
+    const next = normalizeConfig(baseConfig || this._config || DEFAULT_CONFIG);
+    Object.entries(this._templateDrafts || {}).forEach(([compound, value]) => {
+      const dot = compound.indexOf(".");
+      if (dot <= 0) return;
+      const scope = compound.slice(0, dot);
+      const key = compound.slice(dot + 1);
+      if (!scope || !key) return;
+      if (!next[scope] || typeof next[scope] !== "object") next[scope] = {};
+      const text = String(value ?? "").trim();
+      if (!text) delete next[scope][key];
+      else next[scope][key] = text;
+      if (next[scope] && !Object.keys(next[scope]).length) delete next[scope];
+    });
+    this._templateDrafts = {};
+    return next;
+  }
+
+  _saveNow() {
+    const next = this._commitTemplateDrafts(this._config);
+    this._emitChanged(next);
   }
 
   _publishGlobals() {
@@ -235,10 +268,11 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
-  _renderCategory(title, fields) {
+  _renderCategory(title, fields, description = "") {
     return html`
       <div class="category">
         <div class="category-title">${title}</div>
+        ${description ? html`<div class="category-sub">${description}</div>` : ""}
         <div class="grid">${fields}</div>
       </div>
     `;
@@ -281,35 +315,35 @@ class HkiSettingsBase extends LitElement {
               ${this._renderTemplateInput("button", "border_width", "Border width (Template/CSS)")}
               ${this._renderSelect("button", "border_style", "Border style", BORDER_STYLES)}
               ${this._renderTemplateInput("button", "border_color", "Border color (Template/CSS)")}
-            `)}
+            `, "Styles the outer button container.")}
             ${this._renderCategory("Name Typography", html`
               ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
               ${this._renderInput("button", "name_font_custom", "Name custom font")}
               ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_name", "Name size", "number")}
               ${this._renderTemplateInput("button", "name_color", "Name color (Template/CSS)")}
-            `)}
+            `, "Applies to the entity name text.")}
             ${this._renderCategory("State Typography", html`
               ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
               ${this._renderInput("button", "state_font_custom", "State custom font")}
               ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_state", "State size", "number")}
               ${this._renderTemplateInput("button", "state_color", "State color (Template/CSS)")}
-            `)}
+            `, "Applies to the entity state text.")}
             ${this._renderCategory("Label Typography", html`
               ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
               ${this._renderInput("button", "label_font_custom", "Label custom font")}
               ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_label", "Label size", "number")}
               ${this._renderTemplateInput("button", "label_color", "Label color (Template/CSS)")}
-            `)}
+            `, "Applies to optional label text.")}
             ${this._renderCategory("Info/Brightness Typography", html`
               ${this._renderSelect("button", "brightness_font_family", "Info font family", FONT_FAMILIES)}
               ${this._renderInput("button", "brightness_font_custom", "Info custom font")}
               ${this._renderSelect("button", "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
               ${this._renderInput("button", "size_brightness", "Info size", "number")}
               ${this._renderTemplateInput("button", "brightness_color", "Info color (Template/CSS)")}
-            `)}
+            `, "Applies to info/brightness line text.")}
           </section>
         </details>
 
@@ -325,7 +359,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("header", "card_border_width", "Card border width", "number")}
               ${this._renderSelect("header", "card_border_style", "Card border style", BORDER_STYLES)}
               ${this._renderTemplateInput("header", "card_border_color", "Card border color (Template/CSS)")}
-            `)}
+            `, "Styles the header card frame and border.")}
             ${this._renderCategory("Typography", html`
               ${this._renderSelect("header", "font_family", "Font family", FONT_FAMILIES)}
               ${this._renderInput("header", "font_family_custom", "Custom font")}
@@ -336,7 +370,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect("header", "subtitle_weight", "Subtitle weight", FONT_WEIGHTS)}
               ${this._renderTemplateInput("header", "title_color", "Title color (Template/CSS)")}
               ${this._renderTemplateInput("header", "subtitle_color", "Subtitle color (Template/CSS)")}
-            `)}
+            `, "Title/subtitle font and text color defaults.")}
           </section>
         </details>
 
@@ -354,25 +388,29 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput("navigation", "default_button_opacity", "Default button opacity (0-1)", "number")}
               ${this._renderTemplateInput("navigation", "default_background", "Default background (Template/CSS)")}
               ${this._renderTemplateInput("navigation", "default_icon_color", "Default icon color (Template/CSS)")}
-            `)}
+            `, "Default look for navigation buttons.")}
             ${this._renderCategory("Label Typography", html`
               ${this._renderInput("navigation", "label_font_size", "Label font size", "number")}
               ${this._renderInput("navigation", "label_font_weight", "Label font weight", "number")}
               ${this._renderInput("navigation", "label_letter_spacing", "Label letter spacing", "number")}
               ${this._renderSelect("navigation", "label_text_transform", "Label text transform", NAV_TEXT_TRANSFORM)}
               ${this._renderTemplateInput("navigation", "label_color", "Label color (Template/CSS)")}
-            `)}
+            `, "Typography for navigation button labels.")}
             ${this._renderCategory("Bottom Bar", html`
               ${this._renderInput("navigation", "bottom_bar_border_radius", "Bottom bar radius", "number")}
               ${this._renderTemplateInput("navigation", "bottom_bar_box_shadow", "Bottom bar box shadow (Template/CSS)")}
               ${this._renderInput("navigation", "bottom_bar_border_width", "Bottom bar border width", "number")}
               ${this._renderSelect("navigation", "bottom_bar_border_style", "Bottom bar border style", BORDER_STYLES)}
               ${this._renderTemplateInput("navigation", "bottom_bar_border_color", "Bottom bar border color (Template/CSS)")}
-            `)}
+            `, "Style for the optional bottom bar container.")}
           </section>
         </details>
 
         <div class="footer">
+          <button type="button" class="hki-reset-btn" @click=${() => this._saveNow()}>
+            <ha-icon icon="mdi:content-save"></ha-icon>
+            <span>Save settings</span>
+          </button>
           <button type="button" class="hki-reset-btn hki-reset-btn-danger" @click=${this._resetAll}>
             <ha-icon icon="mdi:restore-alert"></ha-icon>
             <span>Reset all globals</span>
@@ -426,6 +464,11 @@ class HkiSettingsBase extends LitElement {
         letter-spacing: 0.02em;
         opacity: 0.9;
         margin-bottom: 8px;
+      }
+      .category-sub {
+        font-size: 11px;
+        opacity: 0.75;
+        margin: 0 0 8px 0;
       }
       .scope-accordion {
         border-radius: 12px;
@@ -519,6 +562,7 @@ class HkiSettingsBase extends LitElement {
       .footer {
         display: flex;
         justify-content: flex-end;
+        gap: 10px;
       }
       @media (max-width: 720px) {
         .grid {
