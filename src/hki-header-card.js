@@ -1858,9 +1858,17 @@ class HkiHeaderCard extends LitElement {
     if (isOldFormat(config)) {
       const nested = migrateToNestedFormat(config);
       workingConfig = flattenNestedFormat(nested); // Flatten back for internal use
-    } else if (config.top_bar_left && typeof config.top_bar_left === 'object') {
-      // New nested format - flatten for internal use
-      workingConfig = flattenNestedFormat(config);
+    } else {
+      const hasNestedSlotConfig = [
+        "top_bar_left", "top_bar_center", "top_bar_right",
+        "bottom_bar_left", "bottom_bar_center", "bottom_bar_right",
+      ].some((key) => config[key] && typeof config[key] === "object" && !Array.isArray(config[key]));
+      const hasNestedSections = ["top_bar", "bottom_bar", "info", "bottom_info", "persons"]
+        .some((key) => config[key] && typeof config[key] === "object" && !Array.isArray(config[key]));
+      if (hasNestedSlotConfig || hasNestedSections) {
+        // New nested format - flatten for internal use
+        workingConfig = flattenNestedFormat(config);
+      }
     }
 
     const m = { ...DEFAULTS, ...workingConfig };
