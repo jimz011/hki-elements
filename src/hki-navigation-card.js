@@ -9,9 +9,6 @@ const EDITOR_TAG = "hki-navigation-card-editor";
 
 const INHERIT = "__inherit__";
 const MIN_PILL_WIDTH = 85;
-const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
-const getGlobalDefaultsFor = window.HKI?.getGlobalDefaultsFor || (() => ({}));
-const isUnsetValue = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
 
 // Static Constants
 const BUTTON_TYPES = [
@@ -724,37 +721,7 @@ function normalizeConfig(cfg) {
   // Clean up and validate config
   cfg = cleanupAndValidateConfig(cfg);
 
-  const sourceCfg = cfg || {};
-  const raw = { ...DEFAULTS, ...sourceCfg };
-  applyGlobalDefaultsToConfig({
-    scope: "navigation",
-    config: raw,
-    sourceConfig: sourceCfg,
-    fields: [
-      "default_border_radius",
-      "default_border_width",
-      "default_border_style",
-      "default_border_color",
-      "button_box_shadow",
-      "button_box_shadow_hover",
-      "default_button_opacity",
-      "default_background",
-      "default_icon_color",
-      "bottom_bar_border_radius",
-      "bottom_bar_box_shadow",
-      "bottom_bar_border_width",
-      "bottom_bar_border_style",
-      "bottom_bar_border_color",
-    ],
-  });
-  const navGlobals = getGlobalDefaultsFor("navigation");
-  if (!raw.label_style || typeof raw.label_style !== "object") raw.label_style = {};
-  const sourceLabelStyle = (sourceCfg.label_style && typeof sourceCfg.label_style === "object") ? sourceCfg.label_style : {};
-  if (isUnsetValue(sourceLabelStyle.font_size) && !isUnsetValue(navGlobals.label_font_size)) raw.label_style.font_size = Number(navGlobals.label_font_size);
-  if (isUnsetValue(sourceLabelStyle.font_weight) && !isUnsetValue(navGlobals.label_font_weight)) raw.label_style.font_weight = Number(navGlobals.label_font_weight);
-  if (isUnsetValue(sourceLabelStyle.letter_spacing) && !isUnsetValue(navGlobals.label_letter_spacing)) raw.label_style.letter_spacing = Number(navGlobals.label_letter_spacing);
-  if (isUnsetValue(sourceLabelStyle.text_transform) && !isUnsetValue(navGlobals.label_text_transform)) raw.label_style.text_transform = navGlobals.label_text_transform;
-  if (isUnsetValue(sourceLabelStyle.color) && !isUnsetValue(navGlobals.label_color)) raw.label_style.color = navGlobals.label_color;
+  const raw = { ...DEFAULTS, ...(cfg || {}) };
   const base = { ...(raw.base || {}) };
   base.button = { ...DEFAULT_BUTTON(), ...(base.button || {}) };
   if (!base.button.id) base.button.id = _uid();
@@ -886,7 +853,6 @@ class HkiNavigationCard extends LitElement {
 
   constructor() {
     super();
-    this._rawConfigInput = null;
     this._groupOverride = { horizontal: null, vertical: null };
     this._tapState = { lastId: null, lastTime: 0, singleTimer: null };
     this._holdTimers = new Map();
@@ -946,10 +912,6 @@ class HkiNavigationCard extends LitElement {
       this._reconnectTemplates();
       this.requestUpdate();
     };
-    this._onGlobalSettingsChanged = () => {
-      if (!this._rawConfigInput) return;
-      try { this.setConfig(this._rawConfigInput); } catch (_) {}
-    };
   }
 
   connectedCallback() {
@@ -958,7 +920,6 @@ class HkiNavigationCard extends LitElement {
     window.addEventListener("location-changed", this._onLocationChange);
     document.addEventListener("visibilitychange", this._onVisibilityChange);
     window.addEventListener("connection-status", this._onConnectionChange);
-    window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     
     // Fix: Invalidate cached DOM references on reconnect to ensure we aren't holding onto stale views
     this._contentEl = null;
@@ -980,7 +941,6 @@ class HkiNavigationCard extends LitElement {
     window.removeEventListener("location-changed", this._onLocationChange);
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
     window.removeEventListener("connection-status", this._onConnectionChange);
-    window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     this._disconnectObservers();
     if (this._measureRaf) cancelAnimationFrame(this._measureRaf);
     if (this._bottomBarMeasureRaf) cancelAnimationFrame(this._bottomBarMeasureRaf);
@@ -1058,7 +1018,6 @@ class HkiNavigationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
-    this._rawConfigInput = config;
     this._config = normalizeConfig(config);
     this._layout = { ready: false, slots: {}, meta: {} };
 

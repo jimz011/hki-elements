@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-12 ',
+  '%c HKI-ELEMENTS %c v1.3.0 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -71,9 +71,6 @@ window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [
   "popup_bottom_bar_entities",
   "popup_bottom_bar_align",
   "popup_hide_bottom_bar",
-  "popup_hide_top_bar",
-  "popup_show_close_button",
-  "popup_close_on_action",
   "_bb_slots",
   "person_geocoded_entity",
   "sensor_graph_color",
@@ -510,105 +507,4 @@ window.HKI.animatePopupClose = window.HKI.animatePopupClose || (({
   container.style.animation = `${window.HKI.getPopupCloseKeyframe(anim)} ${dur}ms ease forwards`;
   container.addEventListener("animationend", done, { once: true });
   setTimeout(done, dur + fallbackDelayMs);
-});
-
-// HKI global card defaults (shared across card types)
-window.HKI.GLOBAL_SETTINGS_STORAGE_KEY = window.HKI.GLOBAL_SETTINGS_STORAGE_KEY || "hki_elements_global_settings_v1";
-window.HKI._globalSettingsCache = window.HKI._globalSettingsCache || null;
-
-window.HKI.isUnsetValue = window.HKI.isUnsetValue || ((value) => {
-  if (value === undefined || value === null) return true;
-  if (typeof value === "string" && value.trim() === "") return true;
-  return false;
-});
-
-window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
-  const key = window.HKI.GLOBAL_SETTINGS_STORAGE_KEY;
-  if (window.HKI._globalSettingsCache) return window.HKI._globalSettingsCache;
-  try {
-    const raw = window.localStorage?.getItem(key);
-    if (!raw) {
-      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
-      return window.HKI._globalSettingsCache;
-    }
-    const parsed = JSON.parse(raw);
-    const next = {
-      button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
-      header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
-      navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
-      popup: (parsed?.popup && typeof parsed.popup === "object") ? parsed.popup : {},
-    };
-    window.HKI._globalSettingsCache = next;
-    return next;
-  } catch (_) {
-    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
-    return window.HKI._globalSettingsCache;
-  }
-});
-
-window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) => {
-  const current = window.HKI.getGlobalSettings();
-  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
-  const next = {
-    ...current,
-    ...(settings || {}),
-    button: hasOwn(settings, "button")
-      ? (((settings && settings.button) && typeof settings.button === "object") ? { ...settings.button } : {})
-      : { ...(current.button || {}) },
-    header: hasOwn(settings, "header")
-      ? (((settings && settings.header) && typeof settings.header === "object") ? { ...settings.header } : {})
-      : { ...(current.header || {}) },
-    navigation: hasOwn(settings, "navigation")
-      ? (((settings && settings.navigation) && typeof settings.navigation === "object") ? { ...settings.navigation } : {})
-      : { ...(current.navigation || {}) },
-    popup: hasOwn(settings, "popup")
-      ? (((settings && settings.popup) && typeof settings.popup === "object") ? { ...settings.popup } : {})
-      : { ...(current.popup || {}) },
-  };
-  window.HKI._globalSettingsCache = next;
-  try {
-    window.localStorage?.setItem(window.HKI.GLOBAL_SETTINGS_STORAGE_KEY, JSON.stringify(next));
-  } catch (_) {
-    // Ignore storage write failures (private mode / quota / restricted env).
-  }
-  try {
-    window.dispatchEvent(new CustomEvent("hki-global-settings-changed", { detail: { settings: next } }));
-  } catch (_) {
-    // Ignore event dispatch failures.
-  }
-  return next;
-});
-
-window.HKI.getGlobalDefaultsFor = window.HKI.getGlobalDefaultsFor || ((scope) => {
-  const settings = window.HKI.getGlobalSettings();
-  if (!scope) return {};
-  const scoped = settings?.[scope];
-  return (scoped && typeof scoped === "object") ? scoped : {};
-});
-
-window.HKI.applyGlobalDefaultsToConfig = window.HKI.applyGlobalDefaultsToConfig || (({
-  scope,
-  config,
-  sourceConfig = {},
-  fields = [],
-} = {}) => {
-  if (!scope || !config || typeof config !== "object" || !Array.isArray(fields) || !fields.length) return config;
-  const scopedDefaults = window.HKI.getGlobalDefaultsFor(scope);
-  if (!scopedDefaults || typeof scopedDefaults !== "object") return config;
-
-  fields.forEach((entry) => {
-    const targetKey = (typeof entry === "string") ? entry : entry?.target;
-    const sourceKey = (typeof entry === "string") ? entry : (entry?.source || entry?.target);
-    const globalKey = (typeof entry === "string") ? entry : (entry?.global || entry?.target);
-    if (!targetKey || !globalKey) return;
-
-    const sourceValue = sourceConfig ? sourceConfig[sourceKey] : undefined;
-    if (!window.HKI.isUnsetValue(sourceValue)) return;
-
-    const globalValue = scopedDefaults[globalKey];
-    if (window.HKI.isUnsetValue(globalValue)) return;
-    config[targetKey] = globalValue;
-  });
-
-  return config;
 });
