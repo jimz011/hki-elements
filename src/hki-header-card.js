@@ -2748,6 +2748,7 @@ class HkiHeaderCard extends LitElement {
 
   _handleAction(action, entityId = null, popupConfig = null) {
     if (!action || action.action === "none" || !this.hass) return;
+    if ((this._isEditMode() || this._editMode) && action.action === "hki-more-info") return;
 
     // If entityId is provided and action doesn't have entity, add it
     // For perform-action, add entity to target if not present

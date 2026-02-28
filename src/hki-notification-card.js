@@ -322,6 +322,88 @@ class HkiNotificationCard extends LitElement {
     this._isInBadgeSlot = false;
   }
 
+  _isEditMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("edit") === "1") return true;
+    } catch (_) {}
+    try {
+      if (document.body?.classList?.contains("edit-mode") || document.body?.classList?.contains("edit")) return true;
+      if (document.querySelector("hui-dialog-edit-card")) return true;
+      const huiRoot = document.querySelector("hui-root") || document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+      if (huiRoot?.lovelace?.editMode || huiRoot?.editMode) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  _getAutoColorEntity(msg = null) {
+    const entityId = msg?.entity || msg?.entity_id || this._config?.entity || "";
+    return entityId && this.hass?.states?.[entityId] ? this.hass.states[entityId] : null;
+  }
+
+  _getDefaultHaIconColor(entity = null) {
+    if (!entity) return "var(--state-icon-color)";
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const isOn = ["on", "open", "unlocked", "playing", "home", "heat", "cool", "auto", "heat_cool", "dry", "fan_only", "triggered"].includes(state);
+    if (domain === "climate") return this._getAutoEntityColor(entity) || "var(--state-icon-color)";
+    return isOn ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _getAutoEntityColor(entity = null) {
+    if (!entity) return null;
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+
+    if (domain === "climate") {
+      const hvacAction = String(entity.attributes?.hvac_action || entity.state || "").toLowerCase();
+      if (hvacAction === "heating" || hvacAction === "heat") return "darkorange";
+      if (hvacAction === "cooling" || hvacAction === "cool") return "#1E90FF";
+      if (hvacAction === "drying" || hvacAction === "dry") return "#FFC107";
+      if (hvacAction === "fan" || hvacAction === "fan_only") return "#9E9E9E";
+      const hvacMode = state;
+      if (hvacMode === "heat") return "darkorange";
+      if (hvacMode === "cool") return "#1E90FF";
+      if (hvacMode === "auto" || hvacMode === "heat_cool") return "#4CAF50";
+      if (hvacMode === "dry") return "#FFC107";
+      if (hvacMode === "fan_only") return "#9E9E9E";
+      return "var(--state-icon-color)";
+    }
+
+    if (domain === "light" && state === "on") {
+      const attrs = entity.attributes || {};
+      if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
+        return `rgb(${attrs.rgb_color[0]}, ${attrs.rgb_color[1]}, ${attrs.rgb_color[2]})`;
+      }
+      if (Array.isArray(attrs.hs_color) && attrs.hs_color.length >= 2) {
+        return `hsl(${attrs.hs_color[0]}, ${attrs.hs_color[1]}%, 50%)`;
+      }
+      return "#ffc107";
+    }
+
+    return ["on", "open", "unlocked", "playing", "home"].includes(state) ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _resolveAutoColorValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+    const str = String(value).trim();
+    if (!str) return fallback;
+    if (str.toLowerCase() !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    return this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+  }
+
+  _resolveAutoShadowValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null || value === "") return fallback;
+    const str = String(value).trim().toLowerCase();
+    if (str !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    const autoColor = this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+    return `0 8px 24px ${autoColor}`;
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
     this._stopTicker();
@@ -599,6 +681,7 @@ class HkiNotificationCard extends LitElement {
   }
 
 _openPopup() {
+  if (this._isEditMode()) return;
   if (this._popupOpen) return;
   this._popupOpen = true;
   this._popupClosing = false;
@@ -1472,15 +1555,18 @@ const portal = document.createElement('div');
       headerStyles = this._getHeaderCardStyles();
     }
 
-    const textColor = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
-    const iconColor = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
-    const borderColor = msg.border_color || msg.color_border || c.border_color;
+    const textColorRaw = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
+    const iconColorRaw = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
+    const borderColorRaw = msg.border_color || msg.color_border || c.border_color;
+    const textColor = this._resolveAutoColorValue(textColorRaw, msg, c.text_color);
+    const iconColor = this._resolveAutoColorValue(iconColorRaw, msg, this._getDefaultHaIconColor(this._getAutoColorEntity(msg)));
+    const borderColor = this._resolveAutoColorValue(borderColorRaw, msg, c.border_color);
 
     // Handle background & opacity
     // 1. Check message specific override first, then card config
     let showBg = msg.show_background !== undefined ? msg.show_background !== false : c.show_background !== false;
     
-    let bgColor = msg.bg_color || msg.color_bg || c.bg_color;
+    let bgColor = this._resolveAutoColorValue(msg.bg_color || msg.color_bg || c.bg_color, msg, c.bg_color);
     let backdropBlur = 'blur(12px)';
     let pillPadding = null;
     let borderRadius = msg.border_radius ?? c.border_radius;
@@ -1520,7 +1606,7 @@ const portal = document.createElement('div');
     const effectiveBorderWidth = pillBorderWidth ? parseInt(pillBorderWidth) : (showBg ? (msg.border_width ?? c.border_width) : 0);
     const effectiveBorderColor = pillBorderColor || (showBg ? borderColor : 'transparent');
     const effectiveBorderStyle = pillBorderStyle || 'solid';
-    const boxShadow = showBg ? (msg.box_shadow || c.box_shadow) : "none";
+    const boxShadow = showBg ? this._resolveAutoShadowValue(msg.box_shadow || c.box_shadow, msg, "none") : "none";
 
     const msgAlignment = msg.alignment || c.alignment || "left";
 
@@ -1593,26 +1679,33 @@ const portal = document.createElement('div');
     const buttonSize = c.button_size || 48;
     const badgeSize = c.button_badge_size > 0 ? c.button_badge_size : Math.max(16, Math.round(buttonSize * 0.4));
     
+    const buttonIconColor = this._resolveAutoColorValue(c.button_icon_color, null, "var(--state-icon-color)");
+    const buttonBadgeColor = this._resolveAutoColorValue(c.button_badge_color, null, c.button_badge_color);
+    const buttonBadgeTextColor = this._resolveAutoColorValue(c.button_badge_text_color, null, c.button_badge_text_color);
+    const buttonBgColor = this._resolveAutoColorValue(c.button_bg_color, null, c.button_bg_color);
+    const pillButtonBgColor = this._resolveAutoColorValue(c.button_pill_bg_color, null, c.button_pill_bg_color);
+    const pillButtonBorderColor = this._resolveAutoColorValue(c.button_pill_border_color, null, c.button_pill_border_color);
+
     const iconButtonStyles = [
       `--button-size: ${buttonSize}px`,
-      `--button-bg: ${c.button_bg_color}`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-bg: ${buttonBgColor}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");
     
     const pillButtonStyles = [
       `--pill-button-size: ${c.button_pill_size || 14}px`,
-      `--pill-button-bg: ${c.button_pill_bg_color}`,
+      `--pill-button-bg: ${pillButtonBgColor}`,
       `--pill-button-border-style: ${c.button_pill_border_style || 'solid'}`,
       `--pill-button-border-width: ${c.button_pill_border_width ?? 1}px`,
-      `--pill-button-border-color: ${c.button_pill_border_color}`,
+      `--pill-button-border-color: ${pillButtonBorderColor}`,
       `--pill-button-border-radius: ${c.button_pill_border_radius ?? 99}px`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");

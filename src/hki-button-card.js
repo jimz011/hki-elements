@@ -1944,7 +1944,7 @@
 
     _getCurrentColor() {
       const entity = this._getEntity();
-      if (!entity) return (this._config.icon_color || 'var(--primary-text-color)');
+      if (!entity) return 'var(--state-icon-color)';
     
       const domain = this._getDomain();
       const isActive = this._isOn(); // important: uses your domain-aware logic
@@ -1990,6 +1990,7 @@
     
       // --- Everything else (covers included): default to HA's built-in domain/state colors ---
       if (!isActive) return (this._config.icon_color || 'var(--primary-text-color)');
+      return this._stateColorToken(domain, entity.state, true);
     }
 
 
@@ -2420,6 +2421,7 @@
     }
 
     _openPopup() {
+      if (this._inEditorPreview() || this._isEditMode()) return;
       if (this._popupOpen) return;
       
       const domain = this._getDomain();
@@ -10871,8 +10873,22 @@
       // -- Colors --
       const haDefaultBg = 'var(--ha-card-background, var(--card-background-color))';
       
-      // Light color (only meaningful for light domain; safe to call anyway)
-      const currentLightColor = this._getCurrentColor?.() || null;
+      // Auto color used by style fields that are set to "auto"
+      const currentAutoColor = this._getCurrentColor?.() || null;
+      const defaultAutoColor = currentAutoColor || 'var(--state-icon-color)';
+      const resolveAutoColor = (value, fallback = '') => {
+        if (value === undefined || value === null) return fallback;
+        const str = String(value).trim();
+        if (!str) return fallback;
+        if (str.toLowerCase() === 'auto') return defaultAutoColor;
+        return value;
+      };
+      const resolveAutoShadow = (value, fallback = '') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        const str = String(value).trim().toLowerCase();
+        if (str === 'auto') return `0 8px 24px ${defaultAutoColor}`;
+        return value;
+      };
 
       // HKI Default on-state auto-theme: white card + black text when entity is active
       // Only applies to HKI Default layout (square / undefined), only when the user
@@ -10884,8 +10900,8 @@
       let bgColor = (_hkiOnActive && !this._config.card_color) ? 'white' : haDefaultBg;
       if (this._config.card_color) {
         const rendered = this.renderTemplate('cardColor', this._config.card_color);
-        if (rendered === 'auto' && this._getDomain() === 'light' && currentLightColor) {
-          bgColor = currentLightColor;
+        if (rendered === 'auto') {
+          bgColor = defaultAutoColor;
         } else if (rendered) {
           bgColor = rendered;
         }
@@ -10910,33 +10926,31 @@
           boxShadow = ''; // unset -> theme default
         } else if (rendered === 'none') {
           boxShadow = 'none';
-        } else if (rendered === 'auto') {
-          boxShadow = (currentLightColor) ? `0 8px 24px ${currentLightColor}` : '';
         } else if (rendered) {
-          boxShadow = rendered;
+          boxShadow = resolveAutoShadow(rendered, '');
         }
       }
 
       // Individual Element Colors with template support
-      const nameColor = this._config.name_color 
-        ? this.renderTemplate('nameColor', this._config.name_color) 
+      const nameColor = this._config.name_color
+        ? resolveAutoColor(this.renderTemplate('nameColor', this._config.name_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
       const stateColor = isUnavailable ? 'var(--error-color, red)' 
-        : (this._config.state_color ? this.renderTemplate('stateColor', this._config.state_color) : (_hkiOnActive ? '#000000' : 'inherit'));
-      const labelColor = this._config.label_color 
-        ? this.renderTemplate('labelColor', this._config.label_color) 
+        : (this._config.state_color ? resolveAutoColor(this.renderTemplate('stateColor', this._config.state_color), _hkiOnActive ? '#000000' : 'inherit') : (_hkiOnActive ? '#000000' : 'inherit'));
+      const labelColor = this._config.label_color
+        ? resolveAutoColor(this.renderTemplate('labelColor', this._config.label_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
 
       // Info display / brightness colors (template support; defaults follow theme)
       const brightnessColorBase = this._config.brightness_color
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color)
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), '')
         : '';
       const _infoDspDefault = _hkiOnActive ? '#000000' : 'inherit';
       const brightnessColorOn = this._config.brightness_color_on
-        ? this.renderTemplate('brightnessColorOn', this._config.brightness_color_on)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOn', this._config.brightness_color_on), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
       const brightnessColorOff = this._config.brightness_color_off
-        ? this.renderTemplate('brightnessColorOff', this._config.brightness_color_off)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOff', this._config.brightness_color_off), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
 
       // Icon color logic with template support and auto modes
@@ -10994,13 +11008,13 @@
       // Card Border
       const borderWidth = this._config.border_width ? this.renderTemplate('borderWidth', String(this._config.border_width)) : '0';
       const borderStyle = this._config.border_style ? this.renderTemplate('borderStyle', this._config.border_style) : 'none';
-      const borderColor = this._config.border_color ? this.renderTemplate('borderColor', this._config.border_color) : 'transparent';
+      const borderColor = this._config.border_color ? resolveAutoColor(this.renderTemplate('borderColor', this._config.border_color), 'transparent') : 'transparent';
       const cardBorder = `${_toUnit(borderWidth)} ${borderStyle} ${borderColor}`;
       
       // Icon Circle Styling with template support
       const iconCircleBorderWidth = this._config.icon_circle_border_width ? this.renderTemplate('iconCircleBorderWidth', String(this._config.icon_circle_border_width)) : '0';
       const iconCircleBorderStyle = this._config.icon_circle_border_style ? this.renderTemplate('iconCircleBorderStyle', this._config.icon_circle_border_style) : 'none';
-      const iconCircleBorderColor = this._config.icon_circle_border_color ? this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color) : 'transparent';
+      const iconCircleBorderColor = this._config.icon_circle_border_color ? resolveAutoColor(this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color), 'transparent') : 'transparent';
       const iconCircleBorder = `${_toUnit(iconCircleBorderWidth)} ${iconCircleBorderStyle} ${iconCircleBorderColor}`;
       const iconCircleBg = this._config.icon_circle_bg 
         ? this.renderTemplate('iconCircleBg', this._config.icon_circle_bg) 
@@ -11009,9 +11023,9 @@
       // Badge Styling with template support
       const badgeBorderWidth = this._config.badge_border_width ? this.renderTemplate('badgeBorderWidth', String(this._config.badge_border_width)) : '0';
       const badgeBorderStyle = this._config.badge_border_style ? this.renderTemplate('badgeBorderStyle', this._config.badge_border_style) : 'none';
-      const badgeBorderColor = this._config.badge_border_color ? this.renderTemplate('badgeBorderColor', this._config.badge_border_color) : 'transparent';
+      const badgeBorderColor = this._config.badge_border_color ? resolveAutoColor(this.renderTemplate('badgeBorderColor', this._config.badge_border_color), 'transparent') : 'transparent';
       const badgeBorder = `${_toUnit(badgeBorderWidth)} ${badgeBorderStyle} ${badgeBorderColor}`;
-      const badgeBg = this._config.badge_bg ? this.renderTemplate('badgeBg', this._config.badge_bg) : 'var(--primary-color)';
+      const badgeBg = this._config.badge_bg ? resolveAutoColor(this.renderTemplate('badgeBg', this._config.badge_bg), 'var(--primary-color)') : 'var(--primary-color)';
 
       // -- Offsets --
       const getTransform = (x, y) => `translate(${x || 0}px, ${y || 0}px)`;
@@ -11042,8 +11056,8 @@
       const infoText = this._isTemplate(this._config.info_display)
         ? (this._renderedInfo || '')
         : (this._config.info_display || '');
-      const brightnessColor = this._config.brightness_color 
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color) 
+      const brightnessColor = this._config.brightness_color
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), 'inherit')
         : 'inherit';
             
       const isGroup = !!(entity?.attributes?.entity_id && Array.isArray(entity.attributes.entity_id));

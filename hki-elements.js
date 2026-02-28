@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-18 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-19 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3370,6 +3370,7 @@ class HkiHeaderCard extends LitElement {
 
   _handleAction(action, entityId = null, popupConfig = null) {
     if (!action || action.action === "none" || !this.hass) return;
+    if ((this._isEditMode() || this._editMode) && action.action === "hki-more-info") return;
 
     // If entityId is provided and action doesn't have entity, add it
     // For perform-action, add entity to target if not present
@@ -10258,7 +10259,7 @@ window.customCards.push({
 
     _getCurrentColor() {
       const entity = this._getEntity();
-      if (!entity) return (this._config.icon_color || 'var(--primary-text-color)');
+      if (!entity) return 'var(--state-icon-color)';
     
       const domain = this._getDomain();
       const isActive = this._isOn(); // important: uses your domain-aware logic
@@ -10304,6 +10305,7 @@ window.customCards.push({
     
       // --- Everything else (covers included): default to HA's built-in domain/state colors ---
       if (!isActive) return (this._config.icon_color || 'var(--primary-text-color)');
+      return this._stateColorToken(domain, entity.state, true);
     }
 
 
@@ -10734,6 +10736,7 @@ window.customCards.push({
     }
 
     _openPopup() {
+      if (this._inEditorPreview() || this._isEditMode()) return;
       if (this._popupOpen) return;
       
       const domain = this._getDomain();
@@ -19185,8 +19188,22 @@ window.customCards.push({
       // -- Colors --
       const haDefaultBg = 'var(--ha-card-background, var(--card-background-color))';
       
-      // Light color (only meaningful for light domain; safe to call anyway)
-      const currentLightColor = this._getCurrentColor?.() || null;
+      // Auto color used by style fields that are set to "auto"
+      const currentAutoColor = this._getCurrentColor?.() || null;
+      const defaultAutoColor = currentAutoColor || 'var(--state-icon-color)';
+      const resolveAutoColor = (value, fallback = '') => {
+        if (value === undefined || value === null) return fallback;
+        const str = String(value).trim();
+        if (!str) return fallback;
+        if (str.toLowerCase() === 'auto') return defaultAutoColor;
+        return value;
+      };
+      const resolveAutoShadow = (value, fallback = '') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        const str = String(value).trim().toLowerCase();
+        if (str === 'auto') return `0 8px 24px ${defaultAutoColor}`;
+        return value;
+      };
 
       // HKI Default on-state auto-theme: white card + black text when entity is active
       // Only applies to HKI Default layout (square / undefined), only when the user
@@ -19198,8 +19215,8 @@ window.customCards.push({
       let bgColor = (_hkiOnActive && !this._config.card_color) ? 'white' : haDefaultBg;
       if (this._config.card_color) {
         const rendered = this.renderTemplate('cardColor', this._config.card_color);
-        if (rendered === 'auto' && this._getDomain() === 'light' && currentLightColor) {
-          bgColor = currentLightColor;
+        if (rendered === 'auto') {
+          bgColor = defaultAutoColor;
         } else if (rendered) {
           bgColor = rendered;
         }
@@ -19224,33 +19241,31 @@ window.customCards.push({
           boxShadow = ''; // unset -> theme default
         } else if (rendered === 'none') {
           boxShadow = 'none';
-        } else if (rendered === 'auto') {
-          boxShadow = (currentLightColor) ? `0 8px 24px ${currentLightColor}` : '';
         } else if (rendered) {
-          boxShadow = rendered;
+          boxShadow = resolveAutoShadow(rendered, '');
         }
       }
 
       // Individual Element Colors with template support
-      const nameColor = this._config.name_color 
-        ? this.renderTemplate('nameColor', this._config.name_color) 
+      const nameColor = this._config.name_color
+        ? resolveAutoColor(this.renderTemplate('nameColor', this._config.name_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
       const stateColor = isUnavailable ? 'var(--error-color, red)' 
-        : (this._config.state_color ? this.renderTemplate('stateColor', this._config.state_color) : (_hkiOnActive ? '#000000' : 'inherit'));
-      const labelColor = this._config.label_color 
-        ? this.renderTemplate('labelColor', this._config.label_color) 
+        : (this._config.state_color ? resolveAutoColor(this.renderTemplate('stateColor', this._config.state_color), _hkiOnActive ? '#000000' : 'inherit') : (_hkiOnActive ? '#000000' : 'inherit'));
+      const labelColor = this._config.label_color
+        ? resolveAutoColor(this.renderTemplate('labelColor', this._config.label_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
 
       // Info display / brightness colors (template support; defaults follow theme)
       const brightnessColorBase = this._config.brightness_color
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color)
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), '')
         : '';
       const _infoDspDefault = _hkiOnActive ? '#000000' : 'inherit';
       const brightnessColorOn = this._config.brightness_color_on
-        ? this.renderTemplate('brightnessColorOn', this._config.brightness_color_on)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOn', this._config.brightness_color_on), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
       const brightnessColorOff = this._config.brightness_color_off
-        ? this.renderTemplate('brightnessColorOff', this._config.brightness_color_off)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOff', this._config.brightness_color_off), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
 
       // Icon color logic with template support and auto modes
@@ -19308,13 +19323,13 @@ window.customCards.push({
       // Card Border
       const borderWidth = this._config.border_width ? this.renderTemplate('borderWidth', String(this._config.border_width)) : '0';
       const borderStyle = this._config.border_style ? this.renderTemplate('borderStyle', this._config.border_style) : 'none';
-      const borderColor = this._config.border_color ? this.renderTemplate('borderColor', this._config.border_color) : 'transparent';
+      const borderColor = this._config.border_color ? resolveAutoColor(this.renderTemplate('borderColor', this._config.border_color), 'transparent') : 'transparent';
       const cardBorder = `${_toUnit(borderWidth)} ${borderStyle} ${borderColor}`;
       
       // Icon Circle Styling with template support
       const iconCircleBorderWidth = this._config.icon_circle_border_width ? this.renderTemplate('iconCircleBorderWidth', String(this._config.icon_circle_border_width)) : '0';
       const iconCircleBorderStyle = this._config.icon_circle_border_style ? this.renderTemplate('iconCircleBorderStyle', this._config.icon_circle_border_style) : 'none';
-      const iconCircleBorderColor = this._config.icon_circle_border_color ? this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color) : 'transparent';
+      const iconCircleBorderColor = this._config.icon_circle_border_color ? resolveAutoColor(this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color), 'transparent') : 'transparent';
       const iconCircleBorder = `${_toUnit(iconCircleBorderWidth)} ${iconCircleBorderStyle} ${iconCircleBorderColor}`;
       const iconCircleBg = this._config.icon_circle_bg 
         ? this.renderTemplate('iconCircleBg', this._config.icon_circle_bg) 
@@ -19323,9 +19338,9 @@ window.customCards.push({
       // Badge Styling with template support
       const badgeBorderWidth = this._config.badge_border_width ? this.renderTemplate('badgeBorderWidth', String(this._config.badge_border_width)) : '0';
       const badgeBorderStyle = this._config.badge_border_style ? this.renderTemplate('badgeBorderStyle', this._config.badge_border_style) : 'none';
-      const badgeBorderColor = this._config.badge_border_color ? this.renderTemplate('badgeBorderColor', this._config.badge_border_color) : 'transparent';
+      const badgeBorderColor = this._config.badge_border_color ? resolveAutoColor(this.renderTemplate('badgeBorderColor', this._config.badge_border_color), 'transparent') : 'transparent';
       const badgeBorder = `${_toUnit(badgeBorderWidth)} ${badgeBorderStyle} ${badgeBorderColor}`;
-      const badgeBg = this._config.badge_bg ? this.renderTemplate('badgeBg', this._config.badge_bg) : 'var(--primary-color)';
+      const badgeBg = this._config.badge_bg ? resolveAutoColor(this.renderTemplate('badgeBg', this._config.badge_bg), 'var(--primary-color)') : 'var(--primary-color)';
 
       // -- Offsets --
       const getTransform = (x, y) => `translate(${x || 0}px, ${y || 0}px)`;
@@ -19356,8 +19371,8 @@ window.customCards.push({
       const infoText = this._isTemplate(this._config.info_display)
         ? (this._renderedInfo || '')
         : (this._config.info_display || '');
-      const brightnessColor = this._config.brightness_color 
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color) 
+      const brightnessColor = this._config.brightness_color
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), 'inherit')
         : 'inherit';
             
       const isGroup = !!(entity?.attributes?.entity_id && Array.isArray(entity.attributes.entity_id));
@@ -28346,6 +28361,88 @@ class HkiNotificationCard extends LitElement {
     this._isInBadgeSlot = false;
   }
 
+  _isEditMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("edit") === "1") return true;
+    } catch (_) {}
+    try {
+      if (document.body?.classList?.contains("edit-mode") || document.body?.classList?.contains("edit")) return true;
+      if (document.querySelector("hui-dialog-edit-card")) return true;
+      const huiRoot = document.querySelector("hui-root") || document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+      if (huiRoot?.lovelace?.editMode || huiRoot?.editMode) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  _getAutoColorEntity(msg = null) {
+    const entityId = msg?.entity || msg?.entity_id || this._config?.entity || "";
+    return entityId && this.hass?.states?.[entityId] ? this.hass.states[entityId] : null;
+  }
+
+  _getDefaultHaIconColor(entity = null) {
+    if (!entity) return "var(--state-icon-color)";
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const isOn = ["on", "open", "unlocked", "playing", "home", "heat", "cool", "auto", "heat_cool", "dry", "fan_only", "triggered"].includes(state);
+    if (domain === "climate") return this._getAutoEntityColor(entity) || "var(--state-icon-color)";
+    return isOn ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _getAutoEntityColor(entity = null) {
+    if (!entity) return null;
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+
+    if (domain === "climate") {
+      const hvacAction = String(entity.attributes?.hvac_action || entity.state || "").toLowerCase();
+      if (hvacAction === "heating" || hvacAction === "heat") return "darkorange";
+      if (hvacAction === "cooling" || hvacAction === "cool") return "#1E90FF";
+      if (hvacAction === "drying" || hvacAction === "dry") return "#FFC107";
+      if (hvacAction === "fan" || hvacAction === "fan_only") return "#9E9E9E";
+      const hvacMode = state;
+      if (hvacMode === "heat") return "darkorange";
+      if (hvacMode === "cool") return "#1E90FF";
+      if (hvacMode === "auto" || hvacMode === "heat_cool") return "#4CAF50";
+      if (hvacMode === "dry") return "#FFC107";
+      if (hvacMode === "fan_only") return "#9E9E9E";
+      return "var(--state-icon-color)";
+    }
+
+    if (domain === "light" && state === "on") {
+      const attrs = entity.attributes || {};
+      if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
+        return `rgb(${attrs.rgb_color[0]}, ${attrs.rgb_color[1]}, ${attrs.rgb_color[2]})`;
+      }
+      if (Array.isArray(attrs.hs_color) && attrs.hs_color.length >= 2) {
+        return `hsl(${attrs.hs_color[0]}, ${attrs.hs_color[1]}%, 50%)`;
+      }
+      return "#ffc107";
+    }
+
+    return ["on", "open", "unlocked", "playing", "home"].includes(state) ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _resolveAutoColorValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+    const str = String(value).trim();
+    if (!str) return fallback;
+    if (str.toLowerCase() !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    return this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+  }
+
+  _resolveAutoShadowValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null || value === "") return fallback;
+    const str = String(value).trim().toLowerCase();
+    if (str !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    const autoColor = this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+    return `0 8px 24px ${autoColor}`;
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
     this._stopTicker();
@@ -28623,6 +28720,7 @@ class HkiNotificationCard extends LitElement {
   }
 
 _openPopup() {
+  if (this._isEditMode()) return;
   if (this._popupOpen) return;
   this._popupOpen = true;
   this._popupClosing = false;
@@ -29496,15 +29594,18 @@ const portal = document.createElement('div');
       headerStyles = this._getHeaderCardStyles();
     }
 
-    const textColor = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
-    const iconColor = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
-    const borderColor = msg.border_color || msg.color_border || c.border_color;
+    const textColorRaw = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
+    const iconColorRaw = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
+    const borderColorRaw = msg.border_color || msg.color_border || c.border_color;
+    const textColor = this._resolveAutoColorValue(textColorRaw, msg, c.text_color);
+    const iconColor = this._resolveAutoColorValue(iconColorRaw, msg, this._getDefaultHaIconColor(this._getAutoColorEntity(msg)));
+    const borderColor = this._resolveAutoColorValue(borderColorRaw, msg, c.border_color);
 
     // Handle background & opacity
     // 1. Check message specific override first, then card config
     let showBg = msg.show_background !== undefined ? msg.show_background !== false : c.show_background !== false;
     
-    let bgColor = msg.bg_color || msg.color_bg || c.bg_color;
+    let bgColor = this._resolveAutoColorValue(msg.bg_color || msg.color_bg || c.bg_color, msg, c.bg_color);
     let backdropBlur = 'blur(12px)';
     let pillPadding = null;
     let borderRadius = msg.border_radius ?? c.border_radius;
@@ -29544,7 +29645,7 @@ const portal = document.createElement('div');
     const effectiveBorderWidth = pillBorderWidth ? parseInt(pillBorderWidth) : (showBg ? (msg.border_width ?? c.border_width) : 0);
     const effectiveBorderColor = pillBorderColor || (showBg ? borderColor : 'transparent');
     const effectiveBorderStyle = pillBorderStyle || 'solid';
-    const boxShadow = showBg ? (msg.box_shadow || c.box_shadow) : "none";
+    const boxShadow = showBg ? this._resolveAutoShadowValue(msg.box_shadow || c.box_shadow, msg, "none") : "none";
 
     const msgAlignment = msg.alignment || c.alignment || "left";
 
@@ -29617,26 +29718,33 @@ const portal = document.createElement('div');
     const buttonSize = c.button_size || 48;
     const badgeSize = c.button_badge_size > 0 ? c.button_badge_size : Math.max(16, Math.round(buttonSize * 0.4));
     
+    const buttonIconColor = this._resolveAutoColorValue(c.button_icon_color, null, "var(--state-icon-color)");
+    const buttonBadgeColor = this._resolveAutoColorValue(c.button_badge_color, null, c.button_badge_color);
+    const buttonBadgeTextColor = this._resolveAutoColorValue(c.button_badge_text_color, null, c.button_badge_text_color);
+    const buttonBgColor = this._resolveAutoColorValue(c.button_bg_color, null, c.button_bg_color);
+    const pillButtonBgColor = this._resolveAutoColorValue(c.button_pill_bg_color, null, c.button_pill_bg_color);
+    const pillButtonBorderColor = this._resolveAutoColorValue(c.button_pill_border_color, null, c.button_pill_border_color);
+
     const iconButtonStyles = [
       `--button-size: ${buttonSize}px`,
-      `--button-bg: ${c.button_bg_color}`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-bg: ${buttonBgColor}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");
     
     const pillButtonStyles = [
       `--pill-button-size: ${c.button_pill_size || 14}px`,
-      `--pill-button-bg: ${c.button_pill_bg_color}`,
+      `--pill-button-bg: ${pillButtonBgColor}`,
       `--pill-button-border-style: ${c.button_pill_border_style || 'solid'}`,
       `--pill-button-border-width: ${c.button_pill_border_width ?? 1}px`,
-      `--pill-button-border-color: ${c.button_pill_border_color}`,
+      `--pill-button-border-color: ${pillButtonBorderColor}`,
       `--pill-button-border-radius: ${c.button_pill_border_radius ?? 99}px`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");
