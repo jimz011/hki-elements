@@ -646,7 +646,6 @@
       // Tile slider throttling
       this._sliderThrottleTimer = null;
       this._sliderPendingValue = null;
-      this._popupRefreshTimer = null;
     }
 
     setConfig(config) {
@@ -963,8 +962,6 @@
         clearTimeout(this._sliderThrottleTimer);
         this._sliderThrottleTimer = null;
       }
-      this._stopPopupLiveRefresh();
-
     }
 
     updated(changedProps) {
@@ -1016,6 +1013,7 @@
       if (changedProps.has("hass")) {
         // Popup updates
         if (this._popupOpen) {
+          if (this._isDragging) return;
           const oldHass = changedProps.get("hass");
           const trackedId = this._popupEntityId || this._config.entity;
           const oldEntity = trackedId ? oldHass?.states[trackedId] : null;
@@ -1044,8 +1042,11 @@
               }
             }
           }
-          // Do not early-return here: popup content can depend on other entities/templates
-          // (custom popups, group members, helper entities), so keep popup in sync on hass updates.
+          if (!shouldUpdate && oldEntity && newEntity &&
+              oldEntity.state === newEntity.state &&
+              JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
+            return;
+          }
           
           const activeEl = this._popupPortal ? this._popupPortal.querySelector(':focus') : null;
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';
@@ -2423,9 +2424,6 @@
       
       const domain = this._getDomain();
       const entity = this._getEntity();
-      this._popupType = domain || null;
-      this._popupEntityId = entity?.entity_id || this._config?.entity || null;
-      this._startPopupLiveRefresh();
 
       // Check for custom popup first (support both nested and flat formats)
       const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
@@ -2597,9 +2595,6 @@
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
-        this._popupType = null;
-        this._popupEntityId = null;
-        this._stopPopupLiveRefresh();
         this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
@@ -2618,59 +2613,6 @@
       }
     }
 
-    _getLatestHassRef() {
-      try {
-        const ha = document.querySelector("home-assistant");
-        if (ha?.hass) return ha.hass;
-        const root = ha?.shadowRoot;
-        const main = root?.querySelector("home-assistant-main");
-        if (main?.hass) return main.hass;
-        const drawer = main?.shadowRoot?.querySelector("app-drawer-layout partial-panel-resolver");
-        if (drawer?.hass) return drawer.hass;
-      } catch (_) {}
-      return null;
-    }
-
-    _refreshOpenPopupNow() {
-      if (!this._popupOpen || !this._popupPortal || this._isDragging) return;
-      const latestHass = this._getLatestHassRef();
-      if (latestHass && latestHass !== this.hass) this.hass = latestHass;
-
-      const trackedId = this._popupEntityId || this._config.entity;
-      const newEntity = trackedId ? this.hass?.states?.[trackedId] : this._getEntity();
-      if (this._popupType === 'custom') {
-        const cardContainer = this._popupPortal?.querySelector('#customCardContainer');
-        const cardElement = cardContainer?.querySelector('*:not([style])');
-        if (cardElement && cardElement.hass !== this.hass) cardElement.hass = this.hass;
-        if (trackedId) this._renderCustomPopupPortal(newEntity);
-        return;
-      }
-      if (this._getDomain() === 'climate') { this._renderClimatePopupPortal(newEntity); return; }
-      if (this._getDomain() === 'alarm_control_panel') { this._renderAlarmPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'cover') { this._renderCoverPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'humidifier') { this._renderHumidifierPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'fan') { this._renderFanPopupPortal(newEntity); return; }
-      if (this._popupType === 'switch' || this._getDomain() === 'switch' || this._getDomain() === 'input_boolean') { this._renderSwitchPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'lock') { this._renderLockPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'sensor') { this._renderSensorPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'binary_sensor') { this._renderBinarySensorPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'select' || this._getDomain() === 'input_select') { this._renderSelectPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'number' || this._getDomain() === 'input_number') { this._renderNumberPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'text' || this._getDomain() === 'input_text') { this._renderTextPopupPortal(newEntity); return; }
-      if (this._getDomain() === 'person') { this._renderPersonPopupPortal(newEntity); return; }
-      this._renderPopupPortal();
-    }
-
-    _startPopupLiveRefresh() {
-      this._stopPopupLiveRefresh();
-      this._popupRefreshTimer = setInterval(() => this._refreshOpenPopupNow(), 500);
-    }
-
-    _stopPopupLiveRefresh() {
-      if (!this._popupRefreshTimer) return;
-      clearInterval(this._popupRefreshTimer);
-      this._popupRefreshTimer = null;
-    }
 
     _applyPopupNavVisibility(portal) {
       if (this._config.popup_hide_bottom_bar === true) {
