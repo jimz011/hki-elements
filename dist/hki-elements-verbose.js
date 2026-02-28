@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-28 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-29 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -18996,14 +18996,18 @@ window.customCards.push({
     }
 
     _formatLastTriggered(entity) {
-      if (!entity || !entity.last_changed) {
+      if (!entity) {
         return '';
       }
-      const lastChanged = new Date(entity.last_changed);
-      if (isNaN(lastChanged.getTime())) {
+      const ts = entity.last_updated || entity.last_changed;
+      if (!ts) {
         return '';
       }
-      return this._getTimeAgo(lastChanged);
+      const when = new Date(ts);
+      if (isNaN(when.getTime())) {
+        return '';
+      }
+      return this._getTimeAgo(when);
     }
 
     

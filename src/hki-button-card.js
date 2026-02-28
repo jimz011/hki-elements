@@ -10624,14 +10624,18 @@
     }
 
     _formatLastTriggered(entity) {
-      if (!entity || !entity.last_changed) {
+      if (!entity) {
         return '';
       }
-      const lastChanged = new Date(entity.last_changed);
-      if (isNaN(lastChanged.getTime())) {
+      const ts = entity.last_updated || entity.last_changed;
+      if (!ts) {
         return '';
       }
-      return this._getTimeAgo(lastChanged);
+      const when = new Date(ts);
+      if (isNaN(when.getTime())) {
+        return '';
+      }
+      return this._getTimeAgo(when);
     }
 
     
