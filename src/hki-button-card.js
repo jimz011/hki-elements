@@ -1412,10 +1412,17 @@
      * Return the resolved icon for popup headers.
      * Priority: configured icon (with template evaluation) → entity attribute icon → provided fallback
      */
+    _getConfiguredIcon() {
+      const rawIcon = typeof this._config?.icon === 'string' ? this._config.icon.trim() : '';
+      if (!rawIcon) return '';
+      if (!this._isTemplate(rawIcon)) return rawIcon;
+      const rendered = (this.renderTemplate('icon', rawIcon) || '').toString().trim();
+      if (!rendered || rendered === '[object Object]') return '';
+      return rendered;
+    }
+
     _getResolvedIcon(entity, fallback) {
-      const cfgIcon = this._config.icon
-        ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
-        : '';
+      const cfgIcon = this._getConfiguredIcon();
       return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
     }
 
@@ -3686,8 +3693,7 @@
         const slot = portal.querySelector('#hkiHeaderIconSlot');
         if (slot) {
           slot.innerHTML = '';
-          const __cfgIconRendered = ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim());
-          const cfgIcon = (__cfgIconRendered && __cfgIconRendered !== '[object Object]') ? __cfgIconRendered : null;
+          const cfgIcon = this._getConfiguredIcon() || null;
           {
             // Always use ha-state-icon so we can keep HA-native coloring behavior
             const el = document.createElement('ha-state-icon');
@@ -3979,7 +3985,7 @@
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              ${this._getPopupHeaderIconHtml(entity, ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || 'mdi:thermostat', this._getPopupIconColor(color))}
+              ${this._getPopupHeaderIconHtml(entity, this._getConfiguredIcon() || (entity.attributes && entity.attributes.icon) || 'mdi:thermostat', this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>

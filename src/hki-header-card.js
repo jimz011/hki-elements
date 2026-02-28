@@ -731,9 +731,7 @@ function migrateToNestedFormat(oldConfig) {
         show_time: oldConfig[prefix + "show_time"],
         time_format: oldConfig[prefix + "time_format"],
         date_format: oldConfig[prefix + "date_format"],
-        separator: oldConfig[prefix + "separator"],
-        icon: oldConfig[prefix + "icon"],
-        animate_icon: oldConfig[prefix + "animate_icon"]
+        separator: oldConfig[prefix + "separator"]
       };
     } else if (slotType === "button") {
       slotConfig.button = {
@@ -2199,7 +2197,6 @@ class HkiHeaderCard extends LitElement {
     m.datetime_show_time = m.datetime_show_time !== false;
     m.datetime_show_date = m.datetime_show_date !== false;
     m.datetime_show_day = m.datetime_show_day !== false;
-    m.datetime_animate_icon = ["none", "float", "pulse", "spin"].includes(m.datetime_animate_icon) ? m.datetime_animate_icon : "none";
 
     // Font options
     m.font_family = ["inherit", "system", "roboto", "inter", "arial", "georgia", "mono", "custom"].includes(m.font_family) ? m.font_family : "inherit";
@@ -3663,7 +3660,6 @@ class HkiHeaderCard extends LitElement {
     const dateFormat = cfg[prefix + "date_format"] || cfg.datetime_date_format || "D MMM";
     const timeFormat = cfg[prefix + "time_format"] || cfg.datetime_time_format || "HH:mm";
     const sep = cfg[prefix + "separator"] || cfg.datetime_separator || " • ";
-    const icon = cfg[prefix + "icon"] || cfg.datetime_icon;
 
     if (showDay) parts.push(formatDateTime(now, "DDDD", locale));
     if (showDate) parts.push(formatDateTime(now, dateFormat, locale));
@@ -3673,15 +3669,11 @@ class HkiHeaderCard extends LitElement {
 
     const pillClass = slotStyle.pill ? "info-pill" : "";
     
-    // Adjust padding for datetime pill to maintain consistent height:
-    // - With icon: 5px (to match notification card with icon)
-    // - Without icon: 11px (compensates for missing icon height)
-    const datetimePaddingY = slotStyle.pill ? (icon ? 5 : 11) : slotStyle.pillPaddingY;
+    // Datetime is text-only; keep a stable pill height without icon-dependent spacing.
+    const datetimePaddingY = slotStyle.pill ? 11 : slotStyle.pillPaddingY;
     const datetimePillStyle = slotStyle.pill ? `--hki-info-pill-background:${slotStyle.pillBg};--hki-info-pill-padding-x:${slotStyle.pillPaddingX}px;--hki-info-pill-padding-y:${datetimePaddingY}px;--hki-info-pill-radius:${slotStyle.pillRadius}px;--hki-info-pill-blur:${slotStyle.pillBlur}px;--hki-info-pill-border-style:${slotStyle.pillBorderStyle};--hki-info-pill-border-width:${slotStyle.pillBorderWidth}px;--hki-info-pill-border-color:${slotStyle.pillBorderColor}` : "";
     const combinedStyle = `${slotStyle.inlineStyle} ${datetimePillStyle}`;
     
-    const animateIcon = cfg[prefix + "animate_icon"] || cfg.datetime_animate_icon;
-    const animClass = animateIcon && animateIcon !== "none" ? `animate-${animateIcon}` : "";
     
     const tapAction = cfg[prefix + "tap_action"] || cfg.info_tap_action || { action: "none" };
     const holdAction = cfg[prefix + "hold_action"] || { action: "none" };
@@ -3752,10 +3744,6 @@ class HkiHeaderCard extends LitElement {
         @touchend=${handleTouchEnd}
         @contextmenu=${(e) => e.preventDefault()}
       >
-        ${icon ? html`
-          <div class="info-icon ${animClass}" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;"><ha-icon .icon=${icon}
-                   style="width:100%;height:100%;--mdc-icon-size:${slotStyle.iconSize}px;${slotStyle.iconShadowFilter ? `filter:${slotStyle.iconShadowFilter};` : ""}"></ha-icon></div>
-        ` : ""}
         <span>${displayText}</span>
       </div>
     `;
@@ -4887,7 +4875,7 @@ class HkiHeaderCardEditor extends LitElement {
           });
         }
       } else if (slotType === "datetime") {
-        const dtKeys = ['show_day', 'show_date', 'show_time', 'time_format', 'date_format', 'separator', 'icon', 'animate_icon'];
+        const dtKeys = ['show_day', 'show_date', 'show_time', 'time_format', 'date_format', 'separator'];
         const hasDateTimeConfig = dtKeys.some(k => flat[prefix + k] !== undefined);
         if (hasDateTimeConfig) {
           slotConfig.datetime = {};
@@ -5370,13 +5358,6 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="Date format" helper="D MMM, DD/MM/YYYY, MMMM D, etc." .value=${this._config[prefix + "date_format"] || "D MMM"} data-field="${prefix}date_format" @input=${this._changed}></ha-textfield>
         <ha-textfield label="Separator" .value=${this._config[prefix + "separator"] || " • "} data-field="${prefix}separator" @input=${this._changed}></ha-textfield>
         
-        ${this._renderIconPicker("Icon", prefix + "icon", this._config[prefix + "icon"] || "", "Optional icon")}
-        <ha-select label="Icon animation" .value=${this._config[prefix + "animate_icon"] || "none"} data-field="${prefix}animate_icon" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-            <mwc-list-item value="none">None</mwc-list-item>
-            <mwc-list-item value="float">Float</mwc-list-item>
-            <mwc-list-item value="pulse">Pulse</mwc-list-item>
-            <mwc-list-item value="spin">Spin</mwc-list-item>
-        </ha-select>
       ` : ''}
       
       ${type === "button" ? html`
