@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-21 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-22 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9362,8 +9362,6 @@ window.customCards.push({
       if (changedProps.has("hass")) {
         // Popup updates
         if (this._popupOpen) {
-          if (this._isDragging) return;
-          
           const oldHass = changedProps.get("hass");
           const trackedId = this._popupEntityId || this._config.entity;
           const oldEntity = trackedId ? oldHass?.states[trackedId] : null;
@@ -10771,6 +10769,8 @@ window.customCards.push({
       
       const domain = this._getDomain();
       const entity = this._getEntity();
+      this._popupType = domain || null;
+      this._popupEntityId = entity?.entity_id || this._config?.entity || null;
 
       // Check for custom popup first (support both nested and flat formats)
       const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
@@ -10942,6 +10942,8 @@ window.customCards.push({
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
+        this._popupType = null;
+        this._popupEntityId = null;
         this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;

@@ -1014,8 +1014,6 @@
       if (changedProps.has("hass")) {
         // Popup updates
         if (this._popupOpen) {
-          if (this._isDragging) return;
-          
           const oldHass = changedProps.get("hass");
           const trackedId = this._popupEntityId || this._config.entity;
           const oldEntity = trackedId ? oldHass?.states[trackedId] : null;
@@ -2423,6 +2421,8 @@
       
       const domain = this._getDomain();
       const entity = this._getEntity();
+      this._popupType = domain || null;
+      this._popupEntityId = entity?.entity_id || this._config?.entity || null;
 
       // Check for custom popup first (support both nested and flat formats)
       const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
@@ -2594,6 +2594,8 @@
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
+        this._popupType = null;
+        this._popupEntityId = null;
         this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
