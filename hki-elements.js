@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-20 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-21 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9392,11 +9392,8 @@ window.customCards.push({
               }
             }
           }
-          if (!shouldUpdate && oldEntity && newEntity && 
-              oldEntity.state === newEntity.state &&
-              JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
-            return;
-          }
+          // Do not early-return here: popup content can depend on other entities/templates
+          // (custom popups, group members, helper entities), so keep popup in sync on hass updates.
           
           const activeEl = this._popupPortal ? this._popupPortal.querySelector(':focus') : null;
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';
@@ -29578,6 +29575,9 @@ const portal = document.createElement('div');
 
   updated(changedProps) {
     super.updated(changedProps);
+    if (changedProps.has("hass") && this._popupOpen) {
+      this._createPopupPortal();
+    }
     if (this._config?.display_mode === 'marquee' && this._config?.auto_scroll !== false) {
       this._checkMarqueeOverflow();
     }

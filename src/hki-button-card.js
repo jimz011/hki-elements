@@ -1044,11 +1044,8 @@
               }
             }
           }
-          if (!shouldUpdate && oldEntity && newEntity && 
-              oldEntity.state === newEntity.state &&
-              JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
-            return;
-          }
+          // Do not early-return here: popup content can depend on other entities/templates
+          // (custom popups, group members, helper entities), so keep popup in sync on hass updates.
           
           const activeEl = this._popupPortal ? this._popupPortal.querySelector(':focus') : null;
           const isDropdownFocused = activeEl && activeEl.tagName === 'SELECT';

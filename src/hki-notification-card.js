@@ -1506,6 +1506,9 @@ const portal = document.createElement('div');
 
   updated(changedProps) {
     super.updated(changedProps);
+    if (changedProps.has("hass") && this._popupOpen) {
+      this._createPopupPortal();
+    }
     if (this._config?.display_mode === 'marquee' && this._config?.auto_scroll !== false) {
       this._checkMarqueeOverflow();
     }
