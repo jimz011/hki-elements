@@ -170,6 +170,7 @@ const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (
 
 const SLOT_BUTTON_TEMPLATE_FIELDS = Object.freeze([
   "icon",
+  "icon_animation",
   "name",
   "state",
   "card_color",
@@ -262,6 +263,7 @@ function popupAnyKeyToFlatKey(key) {
 
 const createDefaultSlotButton = () => ({
   icon: "",
+  icon_animation: "",
   name: "",
   state: "",
   entity: "",
@@ -736,6 +738,7 @@ function migrateToNestedFormat(oldConfig) {
     } else if (slotType === "button") {
       slotConfig.button = {
         icon: oldConfig[prefix + "icon"],
+        icon_animation: oldConfig[prefix + "icon_animation"],
         name: oldConfig[prefix + "name"],
         state: oldConfig[prefix + "state"],
         entity: oldConfig[prefix + "entity"],
@@ -1156,6 +1159,7 @@ class HkiHeaderCard extends LitElement {
     this._slotStyleCache = new Map();
     this._lastConfigHash = null;
     this._inlineTplSubs = new Map();
+    this._activePopupProxyCards = new Set();
   }
 
   static get styles() {
@@ -1568,6 +1572,7 @@ class HkiHeaderCard extends LitElement {
     this._unsubscribeTemplate("subtitle");
     this._clearInlineTemplateSubs();
     this._resetBadgesZIndex();
+    this._activePopupProxyCards.clear();
   }
 
   firstUpdated() {
@@ -1673,6 +1678,17 @@ class HkiHeaderCard extends LitElement {
       Object.values(this._customCards).forEach(el => {
         if (el) el.hass = this.hass;
       });
+
+      // Keep detached popup proxy cards (opened via header actions) in sync
+      if (this._activePopupProxyCards?.size) {
+        [...this._activePopupProxyCards].forEach((card) => {
+          if (!card || card._popupOpen !== true) {
+            this._activePopupProxyCards.delete(card);
+            return;
+          }
+          try { card.hass = this.hass; } catch (_) {}
+        });
+      }
     }
 
     if (changed.has("_kioskMode")) {
@@ -2048,6 +2064,7 @@ class HkiHeaderCard extends LitElement {
     const normalizeSlotButtonConfig = (prefix) => {
       const legacyButton = {
         icon: m[prefix + "icon"],
+        icon_animation: m[prefix + "icon_animation"],
         name: m[prefix + "name"],
         state: m[prefix + "state"],
         entity: m[prefix + "entity"],
@@ -2080,6 +2097,7 @@ class HkiHeaderCard extends LitElement {
       if (!buttons.length) buttons = [createDefaultSlotButton()];
       m[prefix + "buttons"] = buttons;
       m[prefix + "icon"] = buttons[0]?.icon || "mdi:gesture-tap";
+      m[prefix + "icon_animation"] = buttons[0]?.icon_animation || "";
       m[prefix + "name"] = buttons[0]?.name || "";
     };
 
@@ -2488,6 +2506,7 @@ class HkiHeaderCard extends LitElement {
     if (configured.length) return configured.map((btn) => normalizeSlotButton(btn));
     return [normalizeSlotButton({
       icon: this._config?.[prefix + "icon"] || "",
+      icon_animation: this._config?.[prefix + "icon_animation"] || "",
       name: this._config?.[prefix + "name"] ?? "",
       state: this._config?.[prefix + "state"] || "",
       entity: this._config?.[prefix + "entity"] || "",
@@ -2838,6 +2857,7 @@ class HkiHeaderCard extends LitElement {
                 custom_popup: { enabled: true, card: popupCard },
                 ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
               });
+              this._activePopupProxyCards.add(btn);
               btn._openPopup();
             } catch (err) {
               console.error('[hki-header-card] Failed to open popup:', err);
@@ -2860,6 +2880,7 @@ class HkiHeaderCard extends LitElement {
                   entity: popupEntityId,
                   ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
                 });
+                this._activePopupProxyCards.add(btn);
                 btn._openPopup();
               } catch (err) {
                 console.error('[hki-header-card] Failed to open domain popup:', err);
@@ -3187,7 +3208,6 @@ class HkiHeaderCard extends LitElement {
     if (!entity?.entity_id) return "";
     const domain = String(entity.entity_id).split(".")[0];
     const state = String(entity.state ?? "").toLowerCase();
-    const isOn = ["on", "open", "unlocked", "playing", "home"].includes(state);
     const isUnavailable = ["unavailable", "unknown"].includes(state);
     if (isUnavailable) return "var(--state-icon-unavailable-color)";
     if (domain === "climate") {
@@ -3196,9 +3216,14 @@ class HkiHeaderCard extends LitElement {
       if (["cooling", "cool"].includes(hvacAction)) return "#03a9f4";
       if (["drying", "dry"].includes(hvacAction)) return "#9c27b0";
       if (["fan", "fan_only"].includes(hvacAction)) return "#4caf50";
-      if (!isOn) return "var(--state-icon-color)";
-      return "var(--primary-color)";
+      if (state === "heat") return "#ff9800";
+      if (state === "cool") return "#03a9f4";
+      if (state === "auto" || state === "heat_cool") return "#4caf50";
+      if (state === "dry") return "#9c27b0";
+      if (state === "fan_only") return "#4caf50";
+      return "var(--state-icon-color)";
     }
+    const isOn = ["on", "open", "unlocked", "playing", "home"].includes(state);
     if (domain === "light" && isOn) {
       const attrs = entity.attributes || {};
       if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
@@ -3248,6 +3273,7 @@ class HkiHeaderCard extends LitElement {
           const autoColor = buttonEntity ? this._getAutoEntityColor(buttonEntity) : "";
 
           const iconOverride = this._resolveInlineTemplate(btn.icon || "", "");
+          const iconAnimation = (this._resolveInlineTemplate(btn.icon_animation || "", "") || "").trim();
           const nameOverride = this._resolveInlineTemplate(btn.name || "", "");
           const stateOverride = this._resolveInlineTemplate(btn.state || "", "");
 
@@ -3412,7 +3438,7 @@ class HkiHeaderCard extends LitElement {
             >
               ${showIcon ? html`
               <div class="info-icon" style="width:${slotStyle.iconSize}px;height:${slotStyle.iconSize}px;">
-                <ha-icon .icon=${icon} style="${iconStyle}"></ha-icon>
+                <ha-icon class="${iconAnimation && iconAnimation !== "none" ? `animate-${iconAnimation}` : ""}" .icon=${icon} style="${iconStyle}"></ha-icon>
               </div>` : ''}
               ${(showName || showState) ? html`
                 <span class="hki-slot-button-text">
@@ -3421,7 +3447,7 @@ class HkiHeaderCard extends LitElement {
                 </span>
               ` : ''}
               ${showBadge ? html`
-                <span class="hki-slot-button-badge" style="${(badgeColor || autoColor) ? `background:${badgeColor || autoColor};` : ""}${badgeTextColor ? `color:${badgeTextColor};` : ""}${badgeBorderStyle ? `border-style:${badgeBorderStyle};` : ""}${btn.badge_border_width !== "" && btn.badge_border_width != null ? `border-width:${Number(btn.badge_border_width) || 0}px;` : ""}${badgeBorderColor ? `border-color:${badgeBorderColor};` : ""}${btn.badge_border_radius !== "" && btn.badge_border_radius != null ? `border-radius:${Number(btn.badge_border_radius) || 0}px;` : ""}${badgeBoxShadow ? `box-shadow:${badgeBoxShadow};` : ""}${btn.badge_font_size !== "" && btn.badge_font_size != null ? `font-size:${Number(btn.badge_font_size) || 10}px;` : ""}${btn.badge_font_weight ? `font-weight:${btn.badge_font_weight};` : ""}${badgeFontFamily ? `font-family:${badgeFontFamily};` : ""}">
+                <span class="hki-slot-button-badge" style="${((badgeColor || "").toLowerCase() === "auto" && autoColor) ? `background:${autoColor};` : (badgeColor ? `background:${badgeColor};` : "")}${badgeTextColor ? `color:${badgeTextColor};` : ""}${badgeBorderStyle ? `border-style:${badgeBorderStyle};` : ""}${btn.badge_border_width !== "" && btn.badge_border_width != null ? `border-width:${Number(btn.badge_border_width) || 0}px;` : ""}${badgeBorderColor ? `border-color:${badgeBorderColor};` : ""}${btn.badge_border_radius !== "" && btn.badge_border_radius != null ? `border-radius:${Number(btn.badge_border_radius) || 0}px;` : ""}${badgeBoxShadow ? `box-shadow:${badgeBoxShadow};` : ""}${btn.badge_font_size !== "" && btn.badge_font_size != null ? `font-size:${Number(btn.badge_font_size) || 10}px;` : ""}${btn.badge_font_weight ? `font-weight:${btn.badge_font_weight};` : ""}${badgeFontFamily ? `font-family:${badgeFontFamily};` : ""}">
                   ${badgeText}
                 </span>
               ` : ''}
@@ -4844,7 +4870,7 @@ class HkiHeaderCardEditor extends LitElement {
         }
       } else if (slotType === "button") {
         const buttonKeys = [
-          "icon", "name", "state", "entity",
+          "icon", "icon_animation", "name", "state", "entity",
           "card_color", "icon_color", "name_color", "state_color", "text_shadow", "icon_shadow",
           "name_offset_x", "name_offset_y", "state_offset_x", "state_offset_y",
           "visibility_mode", "visibility_entity", "visibility_state", "visibility_attribute", "visibility_attribute_value",
@@ -4860,6 +4886,7 @@ class HkiHeaderCardEditor extends LitElement {
         if (hasButtonConfig) {
           slotConfig.button = {};
           if (flat[prefix + "icon"] !== undefined) slotConfig.button.icon = flat[prefix + "icon"];
+          if (flat[prefix + "icon_animation"] !== undefined) slotConfig.button.icon_animation = flat[prefix + "icon_animation"];
           if (flat[prefix + "name"] !== undefined) slotConfig.button.name = flat[prefix + "name"];
           if (flat[prefix + "state"] !== undefined) slotConfig.button.state = flat[prefix + "state"];
           if (flat[prefix + "entity"] !== undefined) slotConfig.button.entity = flat[prefix + "entity"];
@@ -5329,6 +5356,7 @@ class HkiHeaderCardEditor extends LitElement {
           const configured = Array.isArray(this._config[prefix + "buttons"]) ? this._config[prefix + "buttons"] : [];
           const fallback = normalizeSlotButton({
             icon: this._config[prefix + "icon"] || "",
+            icon_animation: this._config[prefix + "icon_animation"] || "",
             name: this._config[prefix + "name"] ?? "",
             state: this._config[prefix + "state"] || "",
             entity: this._config[prefix + "entity"] || "",
@@ -5363,6 +5391,7 @@ class HkiHeaderCardEditor extends LitElement {
               ...this._config,
               [prefix + "buttons"]: cleaned,
               [prefix + "icon"]: first.icon || "mdi:gesture-tap",
+              [prefix + "icon_animation"]: first.icon_animation || "",
               [prefix + "name"]: first.name || "",
               [prefix + "state"]: first.state || "",
               [prefix + "entity"]: first.entity || "",
@@ -5471,6 +5500,10 @@ class HkiHeaderCardEditor extends LitElement {
                   ${this._renderTemplateEditor("Icon (Jinja or mdi:...)", `${prefix}btn_${idx}_icon`, {
                     value: btn.icon || "",
                     onchange: (v) => setButton(idx, { icon: v || "" }),
+                  })}
+                  ${this._renderTemplateEditor("Icon Animation (Jinja: none|spin|float|pulse)", `${prefix}btn_${idx}_icon_animation`, {
+                    value: btn.icon_animation || "",
+                    onchange: (v) => setButton(idx, { icon_animation: v || "" }),
                   })}
                   ${this._renderTemplateEditor("Name Override (optional, Jinja)", `${prefix}btn_${idx}_name`, {
                     value: btn.name || "",
