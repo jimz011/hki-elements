@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-26 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-27 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9837,53 +9837,13 @@ window.customCards.push({
       return domainColor;
     }
 
-    // Returns the best color for a climate entity by checking hvac_action first,
-    // with smart temp-based inference when the action doesn't match reality.
+    // Climate color policy for icons/highlights:
+    // prefer hvac_mode color (stable, user-expected), then hvac_action fallback.
     _getClimateColor(entity) {
       const action = entity?.attributes?.hvac_action;
       const mode = entity?.state;
-      const currentTemp = entity?.attributes?.current_temperature;
-      const targetTemp = entity?.attributes?.temperature;
-      
-      // Smart inference: if we have temp data, infer actual state from physics
-      if (currentTemp !== undefined && targetTemp !== undefined) {
-        // HEAT mode: simple logic
-        if (mode === 'heat') {
-          return targetTemp > currentTemp 
-            ? (HVAC_COLORS.heating || 'darkorange')
-            : (HVAC_COLORS.idle || '#4CAF50');
-        }
-        
-        // COOL mode: simple logic
-        if (mode === 'cool') {
-          return targetTemp < currentTemp 
-            ? (HVAC_COLORS.cooling || '#1E90FF')
-            : (HVAC_COLORS.idle || '#4CAF50');
-        }
-        
-        // AUTO/HEAT_COOL modes: more complex - need to check actual action
-        if (mode === 'auto' || mode === 'heat_cool') {
-          // Heating: target > current
-          if (targetTemp > currentTemp) {
-            return HVAC_COLORS.heating || 'darkorange';
-          }
-          // Cooling: target < current AND hvac_action confirms cooling
-          if (targetTemp < currentTemp && action === 'cooling') {
-            return HVAC_COLORS.cooling || '#1E90FF';
-          }
-          // Otherwise idle (target reached or not actively cooling)
-          return HVAC_COLORS.idle || '#4CAF50';
-        }
-        
-        // Other modes (fan_only, dry, etc.) - check if on
-        if (mode !== 'off') {
-          return HVAC_COLORS.idle || '#4CAF50';
-        }
-      }
-      
-      // Fallback to hvac_action if we have it and no temp data
+      if (mode && HVAC_COLORS[mode] !== undefined) return HVAC_COLORS[mode];
       if (action && HVAC_COLORS[action] !== undefined) return HVAC_COLORS[action];
-      // Final fallback to mode state
       return HVAC_COLORS?.[mode] || HVAC_COLORS?.off || 'var(--primary-color)';
     }
     
@@ -12364,7 +12324,7 @@ window.customCards.push({
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              ${this._getPopupHeaderIconHtml(entity, ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat', this._getPopupIconColor(color))}
+              ${this._getPopupHeaderIconHtml(entity, ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || 'mdi:thermostat', this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
