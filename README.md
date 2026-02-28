@@ -53,6 +53,11 @@ Advanced entity control card with multiple layouts (square, badge, tile, Google)
 [Screenshots](https://jimz011.github.io/hki-elements/cards/hki-button-card/screenshots/)
 
 ---
+### HKI Settings Card
+
+A Master Card to style all the other cards at once (e.g. you want to change all the buttons border-radius to 25px), this card allows you to do that. This card is created to be used with HA's visual editor.
+
+---
 
 ## Screenshots 
 *For more screenshots check the documentation or the links above*
