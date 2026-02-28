@@ -1342,8 +1342,10 @@
           const isOn = this._isOn();
           const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
           const isOnEffective = isUnavailable ? false : isOn;
-        const brightness = this._getBrightness();
-          stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
+          const brightness = this._getBrightness();
+          const baseState = isOnEffective ? `${brightness}%` : (isUnavailable ? 'Unavailable' : 'Off');
+          const lastSeen = entity ? this._formatLastTriggered(entity) : '';
+          stateEl.textContent = `${this._getPopupHeaderState(baseState)}${lastSeen ? ` - ${lastSeen}` : ''}`;
       }
     }
 
@@ -10342,7 +10344,7 @@
       });
       
       // Individual icon buttons (both for mode switching and toggle)
-      const individualIcons = portal.querySelectorAll('.individual-icon');
+      const individualIcons = portal.querySelectorAll('.individual-icon:not(.individual-mode-btn)');
       individualIcons.forEach(icon => {
         const entityId = icon.dataset.entity;
         const action = icon.dataset.action;

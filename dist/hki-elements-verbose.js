@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-27 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-28 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9714,8 +9714,10 @@ window.customCards.push({
           const isOn = this._isOn();
           const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
           const isOnEffective = isUnavailable ? false : isOn;
-        const brightness = this._getBrightness();
-          stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
+          const brightness = this._getBrightness();
+          const baseState = isOnEffective ? `${brightness}%` : (isUnavailable ? 'Unavailable' : 'Off');
+          const lastSeen = entity ? this._formatLastTriggered(entity) : '';
+          stateEl.textContent = `${this._getPopupHeaderState(baseState)}${lastSeen ? ` - ${lastSeen}` : ''}`;
       }
     }
 
@@ -18714,7 +18716,7 @@ window.customCards.push({
       });
       
       // Individual icon buttons (both for mode switching and toggle)
-      const individualIcons = portal.querySelectorAll('.individual-icon');
+      const individualIcons = portal.querySelectorAll('.individual-icon:not(.individual-mode-btn)');
       individualIcons.forEach(icon => {
         const entityId = icon.dataset.entity;
         const action = icon.dataset.action;
