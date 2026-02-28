@@ -3394,9 +3394,6 @@ class HkiHeaderCard extends LitElement {
           const buttonPopupConfig = {
             ...(slotPopupConfig || {}),
             ...buttonPopupOverrides,
-            ...(name ? { popup_name: name } : {}),
-            ...(stateLabel ? { popup_state: stateLabel } : {}),
-            ...(icon ? { popup_icon: icon } : {}),
           };
           const effectivePopupConfig = Object.keys(buttonPopupConfig).length ? buttonPopupConfig : null;
 
