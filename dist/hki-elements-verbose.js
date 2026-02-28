@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-29 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-30 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9018,6 +9018,8 @@ window.customCards.push({
       // Tile slider throttling
       this._sliderThrottleTimer = null;
       this._sliderPendingValue = null;
+      this._historyRefreshTimer = null;
+      this._historyRefreshBusy = false;
     }
 
     setConfig(config) {
@@ -10926,6 +10928,7 @@ window.customCards.push({
       if (!portal) return;
 
       const cleanup = () => {
+        this._stopHistoryAutoRefresh();
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
@@ -10945,6 +10948,28 @@ window.customCards.push({
       } else {
         cleanup();
       }
+    }
+
+    _startHistoryAutoRefresh() {
+      if (this._historyRefreshTimer) return;
+      this._historyRefreshTimer = setInterval(() => {
+        if (!this._popupOpen || !this._popupPortal) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        const container = this._popupPortal.querySelector('#historyContainer');
+        if (!container) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        this._loadHistory();
+      }, 10000);
+    }
+
+    _stopHistoryAutoRefresh() {
+      if (!this._historyRefreshTimer) return;
+      clearInterval(this._historyRefreshTimer);
+      this._historyRefreshTimer = null;
     }
 
 
@@ -18768,8 +18793,18 @@ window.customCards.push({
     }
 
     async _loadHistory() {
+      if (!this._popupOpen || !this._popupPortal) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
       const container = this._popupPortal.querySelector('#historyContainer');
-      if (!container) return;
+      if (!container) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
+      this._startHistoryAutoRefresh();
+      if (this._historyRefreshBusy) return;
+      this._historyRefreshBusy = true;
 
       const entityId = this._config.entity;
       const endTime = new Date();
@@ -18972,6 +19007,8 @@ window.customCards.push({
       } catch (err) {
         console.error("Error fetching history", err);
         container.innerHTML = '<div class="history-loading">Error loading history</div>';
+      } finally {
+        this._historyRefreshBusy = false;
       }
     }
 

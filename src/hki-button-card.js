@@ -646,6 +646,8 @@
       // Tile slider throttling
       this._sliderThrottleTimer = null;
       this._sliderPendingValue = null;
+      this._historyRefreshTimer = null;
+      this._historyRefreshBusy = false;
     }
 
     setConfig(config) {
@@ -2554,6 +2556,7 @@
       if (!portal) return;
 
       const cleanup = () => {
+        this._stopHistoryAutoRefresh();
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
@@ -2573,6 +2576,28 @@
       } else {
         cleanup();
       }
+    }
+
+    _startHistoryAutoRefresh() {
+      if (this._historyRefreshTimer) return;
+      this._historyRefreshTimer = setInterval(() => {
+        if (!this._popupOpen || !this._popupPortal) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        const container = this._popupPortal.querySelector('#historyContainer');
+        if (!container) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        this._loadHistory();
+      }, 10000);
+    }
+
+    _stopHistoryAutoRefresh() {
+      if (!this._historyRefreshTimer) return;
+      clearInterval(this._historyRefreshTimer);
+      this._historyRefreshTimer = null;
     }
 
 
@@ -10396,8 +10421,18 @@
     }
 
     async _loadHistory() {
+      if (!this._popupOpen || !this._popupPortal) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
       const container = this._popupPortal.querySelector('#historyContainer');
-      if (!container) return;
+      if (!container) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
+      this._startHistoryAutoRefresh();
+      if (this._historyRefreshBusy) return;
+      this._historyRefreshBusy = true;
 
       const entityId = this._config.entity;
       const endTime = new Date();
@@ -10600,6 +10635,8 @@
       } catch (err) {
         console.error("Error fetching history", err);
         container.innerHTML = '<div class="history-loading">Error loading history</div>';
+      } finally {
+        this._historyRefreshBusy = false;
       }
     }
 
