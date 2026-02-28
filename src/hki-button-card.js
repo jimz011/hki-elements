@@ -192,6 +192,7 @@
       { value: "end", label: "End (right aligned)" },
     ],
   };
+  const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 
   
 
@@ -421,6 +422,9 @@
       ['popup_animation_duration',  'hki_popup','animation_duration'],
       // bottom bar & person popup (new)
       ['popup_hide_bottom_bar',     'hki_popup','hide_bottom_bar'],
+      ['popup_hide_top_bar',        'hki_popup','hide_top_bar'],
+      ['popup_show_close_button',   'hki_popup','show_close_button'],
+      ['popup_close_on_action',     'hki_popup','close_on_action'],
       ['popup_bottom_bar_align',    'hki_popup','bottom_bar_align'],
       ['popup_bottom_bar_entities', 'hki_popup','bottom_bar_entities'],
       ['person_geocoded_entity',    'hki_popup','person_geocoded_entity'],
@@ -544,6 +548,11 @@
     constructor() {
       super();
       this._paDomainCache = {};
+      this._rawConfigInput = null;
+      this._onGlobalSettingsChanged = () => {
+        if (!this._rawConfigInput) return;
+        try { this.setConfig(this._rawConfigInput); } catch (_) {}
+      };
 
       // Custom Popup YAML editor state (prevents re-serializing YAML while typing)
       this._customPopupYamlDraft = null;
@@ -637,13 +646,16 @@
       // Tile slider throttling
       this._sliderThrottleTimer = null;
       this._sliderPendingValue = null;
+      this._historyRefreshTimer = null;
+      this._historyRefreshBusy = false;
     }
 
     setConfig(config) {
       if (!config) throw new Error("Config is required");
+      this._rawConfigInput = config;
       // Normalize: accept both old flat format and new nested YAML format.
       const flatConfig = HkiButtonCard._migrateFlatConfig(config);
-            this._config = {
+      this._config = {
         ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
@@ -732,14 +744,179 @@
         // Tile does not support label
         this._config.show_label = false;
       }
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "card_color",
+          "card_opacity",
+          "border_radius",
+          "box_shadow",
+          "border_width",
+          "border_style",
+          "border_color",
+          "icon_color",
+          "icon_animation",
+          "size_icon",
+          "icon_circle_bg",
+          "icon_circle_border_style",
+          "icon_circle_border_width",
+          "icon_circle_border_color",
+          "badge_bg",
+          "badge_border_style",
+          "badge_border_width",
+          "badge_border_color",
+          "badge_border_radius",
+          "badge_box_shadow",
+          "size_badge",
+          "badge_font_family",
+          "badge_font_weight",
+          "temp_badge_text_color",
+          "temp_badge_border_color",
+          "temp_badge_border_style",
+          "temp_badge_border_width",
+          "temp_badge_border_radius",
+          "temp_badge_box_shadow",
+          "temp_badge_font_family",
+          "temp_badge_font_custom",
+          "temp_badge_font_weight",
+          "size_temp_badge",
+          "temp_badge_size",
+          "name_font_family",
+          "name_font_custom",
+          "name_font_weight",
+          "size_name",
+          "name_color",
+          "state_font_family",
+          "state_font_custom",
+          "state_font_weight",
+          "size_state",
+          "state_color",
+          "label_font_family",
+          "label_font_custom",
+          "label_font_weight",
+          "size_label",
+          "label_color",
+          "brightness_font_family",
+          "brightness_font_custom",
+          "brightness_font_weight",
+          "size_brightness",
+          "brightness_color",
+          "brightness_color_on",
+          "brightness_color_off",
+          "name_text_align",
+          "state_text_align",
+          "label_text_align",
+          "brightness_text_align",
+          "name_offset_x",
+          "name_offset_y",
+          "state_offset_x",
+          "state_offset_y",
+          "label_offset_x",
+          "label_offset_y",
+          "icon_offset_x",
+          "icon_offset_y",
+          "icon_circle_offset_x",
+          "icon_circle_offset_y",
+          "icon_badge_offset_x",
+          "icon_badge_offset_y",
+          "badge_offset_x",
+          "badge_offset_y",
+          "brightness_offset_x",
+          "brightness_offset_y",
+          "temp_badge_offset_x",
+          "temp_badge_offset_y",
+          "badge_circle",
+          "badge_size",
+          "icon_align",
+          "enable_icon_animation",
+          "tile_height",
+          "show_tile_slider",
+          "tile_slider_fill_color",
+          "tile_slider_track_color",
+        ],
+      });
+      applyGlobalDefaultsToConfig({
+        scope: "popup",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: [
+          "popup_border_radius",
+          "popup_width",
+          "popup_width_custom",
+          "popup_height",
+          "popup_height_custom",
+          "popup_open_animation",
+          "popup_close_animation",
+          "popup_animation_duration",
+          "popup_blur_enabled",
+          "popup_blur_amount",
+          "popup_card_blur_enabled",
+          "popup_card_blur_amount",
+          "popup_card_opacity",
+          "popup_show_favorites",
+          "popup_show_effects",
+          "popup_show_presets",
+          "popup_slider_radius",
+          "popup_hide_button_text",
+          "popup_value_font_size",
+          "popup_value_font_weight",
+          "popup_label_font_size",
+          "popup_label_font_weight",
+          "popup_time_format",
+          "popup_default_view",
+          "popup_default_section",
+          "popup_highlight_color",
+          "popup_highlight_text_color",
+          "popup_highlight_radius",
+          "popup_highlight_opacity",
+          "popup_highlight_border_color",
+          "popup_highlight_border_style",
+          "popup_highlight_border_width",
+          "popup_highlight_box_shadow",
+          "popup_button_bg",
+          "popup_button_text_color",
+          "popup_button_radius",
+          "popup_button_opacity",
+          "popup_button_border_color",
+          "popup_button_border_style",
+          "popup_button_border_width",
+          "popup_bottom_bar_align",
+          "popup_hide_bottom_bar",
+          "popup_hide_top_bar",
+          "popup_show_close_button",
+          "popup_close_on_action",
+          "sensor_graph_color",
+          "sensor_graph_gradient",
+          "sensor_line_width",
+          "sensor_hours",
+          "sensor_graph_style",
+          "climate_temp_step",
+          "climate_use_circular_slider",
+          "climate_show_plus_minus",
+          "climate_show_gradient",
+          "climate_show_target_range",
+          "humidifier_humidity_step",
+          "humidifier_use_circular_slider",
+          "humidifier_show_plus_minus",
+          "humidifier_show_gradient",
+        ],
+      });
       
-      // Domain-specific action defaults
+      // Domain-specific action defaults (only when user did not explicitly configure the action)
       const domain = this._config.entity ? this._config.entity.split('.')[0] : '';
-      if (domain === 'alarm_control_panel') {
-        // Alarm entities: default tap to hki-more-info
-        if (!Object.prototype.hasOwnProperty.call(cfg, 'tap_action')) {
-          this._config.tap_action = { action: 'hki-more-info' };
-        }
+      const toggleDomains = new Set(['switch', 'climate', 'input_boolean', 'automation', 'light']);
+      const infoAction = this._supportsHkiPopup() ? 'hki-more-info' : 'more-info';
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'tap_action')) {
+        this._config.tap_action = toggleDomains.has(domain) ? { action: 'toggle' } : { action: infoAction };
+      }
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'hold_action')) {
+        this._config.hold_action = { action: infoAction };
+      }
+      if (!Object.prototype.hasOwnProperty.call(cfg, 'double_tap_action')) {
+        this._config.double_tap_action = { action: infoAction };
       }
       
       // Setup templates when config changes (use longer delay to debounce editor changes)
@@ -756,6 +933,7 @@
 
     connectedCallback() {
       super.connectedCallback();
+      window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Set up templates immediately when element connects (0ms = next tick)
       // This matches header card behavior for faster initial render
       if (this.hass && this._config) {
@@ -765,6 +943,7 @@
 
     disconnectedCallback() {
       super.disconnectedCallback();
+      window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
       // Unsubscribe all templates
       if (this._tpl) {
         Object.keys(this._tpl).forEach(key => {
@@ -785,7 +964,6 @@
         clearTimeout(this._sliderThrottleTimer);
         this._sliderThrottleTimer = null;
       }
-
     }
 
     updated(changedProps) {
@@ -838,7 +1016,6 @@
         // Popup updates
         if (this._popupOpen) {
           if (this._isDragging) return;
-          
           const oldHass = changedProps.get("hass");
           const trackedId = this._popupEntityId || this._config.entity;
           const oldEntity = trackedId ? oldHass?.states[trackedId] : null;
@@ -867,7 +1044,7 @@
               }
             }
           }
-          if (!shouldUpdate && oldEntity && newEntity && 
+          if (!shouldUpdate && oldEntity && newEntity &&
               oldEntity.state === newEntity.state &&
               JSON.stringify(oldEntity.attributes) === JSON.stringify(newEntity.attributes)) {
             return;
@@ -1167,8 +1344,10 @@
           const isOn = this._isOn();
           const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
           const isOnEffective = isUnavailable ? false : isOn;
-        const brightness = this._getBrightness();
-          stateEl.textContent = this._getPopupHeaderState(isOnEffective ? brightness + '%' : 'Off');
+          const brightness = this._getBrightness();
+          const baseState = isOnEffective ? `${brightness}%` : (isUnavailable ? 'Unavailable' : 'Off');
+          const lastSeen = entity ? this._formatLastTriggered(entity) : '';
+          stateEl.textContent = `${this._getPopupHeaderState(baseState)}${lastSeen ? ` - ${lastSeen}` : ''}`;
       }
     }
 
@@ -1233,10 +1412,17 @@
      * Return the resolved icon for popup headers.
      * Priority: configured icon (with template evaluation) → entity attribute icon → provided fallback
      */
+    _getConfiguredIcon() {
+      const rawIcon = typeof this._config?.icon === 'string' ? this._config.icon.trim() : '';
+      if (!rawIcon) return '';
+      if (!this._isTemplate(rawIcon)) return rawIcon;
+      const rendered = (this.renderTemplate('icon', rawIcon) || '').toString().trim();
+      if (!rendered || rendered === '[object Object]') return '';
+      return rendered;
+    }
+
     _getResolvedIcon(entity, fallback) {
-      const cfgIcon = this._config.icon
-        ? (this.renderTemplate('icon', this._config.icon) || '').toString().trim()
-        : '';
+      const cfgIcon = this._getConfiguredIcon();
       return cfgIcon || entity?.attributes?.icon || fallback || this._getDomainIcon(this._getDomain());
     }
 
@@ -1290,53 +1476,13 @@
       return domainColor;
     }
 
-    // Returns the best color for a climate entity by checking hvac_action first,
-    // with smart temp-based inference when the action doesn't match reality.
+    // Climate color policy for icons/highlights:
+    // prefer hvac_mode color (stable, user-expected), then hvac_action fallback.
     _getClimateColor(entity) {
       const action = entity?.attributes?.hvac_action;
       const mode = entity?.state;
-      const currentTemp = entity?.attributes?.current_temperature;
-      const targetTemp = entity?.attributes?.temperature;
-      
-      // Smart inference: if we have temp data, infer actual state from physics
-      if (currentTemp !== undefined && targetTemp !== undefined) {
-        // HEAT mode: simple logic
-        if (mode === 'heat') {
-          return targetTemp > currentTemp 
-            ? (HVAC_COLORS.heating || 'darkorange')
-            : (HVAC_COLORS.idle || '#4CAF50');
-        }
-        
-        // COOL mode: simple logic
-        if (mode === 'cool') {
-          return targetTemp < currentTemp 
-            ? (HVAC_COLORS.cooling || '#1E90FF')
-            : (HVAC_COLORS.idle || '#4CAF50');
-        }
-        
-        // AUTO/HEAT_COOL modes: more complex - need to check actual action
-        if (mode === 'auto' || mode === 'heat_cool') {
-          // Heating: target > current
-          if (targetTemp > currentTemp) {
-            return HVAC_COLORS.heating || 'darkorange';
-          }
-          // Cooling: target < current AND hvac_action confirms cooling
-          if (targetTemp < currentTemp && action === 'cooling') {
-            return HVAC_COLORS.cooling || '#1E90FF';
-          }
-          // Otherwise idle (target reached or not actively cooling)
-          return HVAC_COLORS.idle || '#4CAF50';
-        }
-        
-        // Other modes (fan_only, dry, etc.) - check if on
-        if (mode !== 'off') {
-          return HVAC_COLORS.idle || '#4CAF50';
-        }
-      }
-      
-      // Fallback to hvac_action if we have it and no temp data
+      if (mode && HVAC_COLORS[mode] !== undefined) return HVAC_COLORS[mode];
       if (action && HVAC_COLORS[action] !== undefined) return HVAC_COLORS[action];
-      // Final fallback to mode state
       return HVAC_COLORS?.[mode] || HVAC_COLORS?.off || 'var(--primary-color)';
     }
     
@@ -1767,7 +1913,7 @@
 
     _getCurrentColor() {
       const entity = this._getEntity();
-      if (!entity) return (this._config.icon_color || 'var(--primary-text-color)');
+      if (!entity) return 'var(--state-icon-color)';
     
       const domain = this._getDomain();
       const isActive = this._isOn(); // important: uses your domain-aware logic
@@ -1813,6 +1959,7 @@
     
       // --- Everything else (covers included): default to HA's built-in domain/state colors ---
       if (!isActive) return (this._config.icon_color || 'var(--primary-text-color)');
+      return this._stateColorToken(domain, entity.state, true);
     }
 
 
@@ -2010,7 +2157,7 @@
       //   that support the HKI popup, otherwise treat as no double-tap.
       const effectiveDta = doubleTapAction !== undefined
         ? doubleTapAction
-        : (this._supportsHkiPopup() ? { action: 'hki-more-info' } : null);
+        : { action: this._defaultInfoActionType() };
 
       // If no double tap action is configured (or set to none), fire immediately to keep it snappy
       if (!effectiveDta || effectiveDta.action === 'none') {
@@ -2044,11 +2191,21 @@
       // ✅ NEW: fire-dom-event (like custom:button-card / core cards)
       // Fires `ll-custom` with the entire action config in `detail`.
       if (actionConfig.action === "fire-dom-event") {
+        const detail = { ...actionConfig };
+        const rawEventData = typeof actionConfig.event_data === "string" ? actionConfig.event_data.trim() : "";
+        if (rawEventData) {
+          try {
+            const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+            if (parsed !== undefined) detail.data = parsed;
+          } catch (_) {
+            detail.data = rawEventData;
+          }
+        }
         this.dispatchEvent(
           new CustomEvent("ll-custom", {
             bubbles: true,
             composed: true,
-            detail: actionConfig,
+            detail,
           })
         );
         return;
@@ -2118,6 +2275,9 @@
         if (domain && service) {
           this.hass.callService(domain, service, actionConfig.service_data || {});
         }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
         return;
       }
     
@@ -2138,6 +2298,9 @@
               target?.entity_id ? { ...data, entity_id: target.entity_id } : data;
             this.hass.callService(domain, service, merged);
           }
+        }
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
         }
         return;
       }
@@ -2204,6 +2367,16 @@
       return ['light', 'climate', 'alarm_control_panel', 'cover', 'humidifier', 'fan', 'switch', 'input_boolean', 'lock', 'group'].includes(domain);
     }
 
+    _defaultInfoActionType() {
+      return this._supportsHkiPopup() ? "hki-more-info" : "more-info";
+    }
+
+    _defaultTapActionConfig() {
+      const domain = this._getDomain();
+      const toggleDomains = new Set(["switch", "climate", "input_boolean", "automation", "light"]);
+      return toggleDomains.has(domain) ? { action: "toggle" } : { action: this._defaultInfoActionType() };
+    }
+
     _getPopupPortalStyle() {
       return window.HKI?.getPopupBackdropStyle?.(this._config) || '';
     }
@@ -2217,6 +2390,7 @@
     }
 
     _openPopup() {
+      if (this._inEditorPreview() || this._isEditMode()) return;
       if (this._popupOpen) return;
       
       const domain = this._getDomain();
@@ -2389,9 +2563,11 @@
       if (!portal) return;
 
       const cleanup = () => {
+        this._stopHistoryAutoRefresh();
         this._popupOpen = false;
         this._isDragging = false;
         this._expandedEffects = false;
+        this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
         __hkiUnlockScroll();
@@ -2409,6 +2585,29 @@
       }
     }
 
+    _startHistoryAutoRefresh() {
+      if (this._historyRefreshTimer) return;
+      this._historyRefreshTimer = setInterval(() => {
+        if (!this._popupOpen || !this._popupPortal) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        const container = this._popupPortal.querySelector('#historyContainer');
+        if (!container) {
+          this._stopHistoryAutoRefresh();
+          return;
+        }
+        this._loadHistory();
+      }, 10000);
+    }
+
+    _stopHistoryAutoRefresh() {
+      if (!this._historyRefreshTimer) return;
+      clearInterval(this._historyRefreshTimer);
+      this._historyRefreshTimer = null;
+    }
+
+
     _applyPopupNavVisibility(portal) {
       if (this._config.popup_hide_bottom_bar === true) {
         portal.setAttribute('data-hide-nav', '');
@@ -2423,6 +2622,7 @@
     }
 
     _applyOpenAnimation(portal) {
+      this._attachPopupChromeObserver(portal);
       window.HKI?.animatePopupOpen?.({
         portal,
         config: this._config,
@@ -2895,6 +3095,64 @@
         
         return styles.length ? styles.join('; ') + ';' : '';
       }
+    }
+
+    _applyPopupChromeToPortal(portal) {
+      if (!portal) return;
+      const hideTopBar = this._config?.popup_hide_top_bar === true;
+      const showCloseWhenHidden = hideTopBar && this._config?.popup_show_close_button !== false;
+      const headerSelectors = ".hki-popup-header, .hki-light-popup-header, .popup-header";
+      portal.querySelectorAll(headerSelectors).forEach((el) => {
+        el.style.display = hideTopBar ? "none" : "";
+      });
+      const existingFloat = portal.querySelector(".hki-floating-popup-close");
+      if (existingFloat) existingFloat.remove();
+      if (!showCloseWhenHidden) return;
+      const container = portal.querySelector(".hki-light-popup-container, .hki-popup-container, .popup-container");
+      if (!container) return;
+      if (!container.style.position) container.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.className = "hki-floating-popup-close";
+      btn.type = "button";
+      btn.innerHTML = '<ha-icon icon="mdi:close"></ha-icon>';
+      btn.style.cssText = "position:absolute;top:12px;right:12px;z-index:30;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.22);color:var(--primary-text-color);display:flex;align-items:center;justify-content:center;cursor:pointer;";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._closePopup();
+      });
+      container.appendChild(btn);
+    }
+
+    _attachPopupChromeObserver(portal) {
+      if (!portal) return;
+      this._applyPopupChromeToPortal(portal);
+      if (portal.__hkiPopupChromeObserverAttached) return;
+      portal.__hkiPopupChromeObserverAttached = true;
+      const observer = new MutationObserver(() => this._applyPopupChromeToPortal(portal));
+      observer.observe(portal, { childList: true, subtree: true });
+      portal.__hkiPopupChromeObserver = observer;
+      const actionHandler = (ev) => {
+        if (this._config?.popup_close_on_action !== true) return;
+        const action = ev?.detail?.config?.action || ev?.detail?.action;
+        if (action === "perform-action" || action === "call-service") {
+          setTimeout(() => this._closePopup(), 0);
+        }
+      };
+      portal.addEventListener("hass-action", actionHandler);
+      portal.__hkiPopupActionHandler = actionHandler;
+    }
+
+    _detachPopupChromeObserver(portal) {
+      if (!portal) return;
+      try {
+        portal.__hkiPopupChromeObserver?.disconnect?.();
+      } catch (_) {}
+      if (portal.__hkiPopupActionHandler) {
+        portal.removeEventListener("hass-action", portal.__hkiPopupActionHandler);
+      }
+      delete portal.__hkiPopupChromeObserver;
+      delete portal.__hkiPopupChromeObserverAttached;
+      delete portal.__hkiPopupActionHandler;
     }
 
 
@@ -3435,8 +3693,7 @@
         const slot = portal.querySelector('#hkiHeaderIconSlot');
         if (slot) {
           slot.innerHTML = '';
-          const __cfgIconRendered = ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim());
-          const cfgIcon = (__cfgIconRendered && __cfgIconRendered !== '[object Object]') ? __cfgIconRendered : null;
+          const cfgIcon = this._getConfiguredIcon() || null;
           {
             // Always use ha-state-icon so we can keep HA-native coloring behavior
             const el = document.createElement('ha-state-icon');
@@ -3728,7 +3985,7 @@
         <div class="hki-popup-container">
           <div class="hki-popup-header">
             <div class="hki-popup-title">
-              ${this._getPopupHeaderIconHtml(entity, ((this.renderTemplate('icon', this._config.icon || '') || '').toString().trim()) || (entity.attributes && entity.attributes.icon) || HVAC_ICONS[mode] || 'mdi:thermostat', this._getPopupIconColor(color))}
+              ${this._getPopupHeaderIconHtml(entity, this._getConfiguredIcon() || (entity.attributes && entity.attributes.icon) || 'mdi:thermostat', this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
                 <span class="hki-popup-state">${this._getPopupHeaderState(renderStateLine())}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
@@ -9158,8 +9415,23 @@
         const serviceStr = action.service || action.perform_action || '';
         const [d, s] = serviceStr.split('.');
         if (d && s) this.hass.callService(d, s, { entity_id: entityId, ...(action.service_data || action.data || {}) });
+        if (this._config?.popup_close_on_action === true && this._popupOpen) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       } else if (act === 'url') {
         if (action.url_path) window.open(action.url_path, '_blank');
+      } else if (act === 'fire-dom-event') {
+        const detail = { ...action };
+        const rawEventData = typeof action.event_data === 'string' ? action.event_data.trim() : '';
+        if (rawEventData) {
+          try {
+            const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+            if (parsed !== undefined) detail.data = parsed;
+          } catch (_) {
+            detail.data = rawEventData;
+          }
+        }
+        this.dispatchEvent(new CustomEvent('ll-custom', { bubbles: true, composed: true, detail }));
       }
     }
 
@@ -10103,7 +10375,7 @@
       });
       
       // Individual icon buttons (both for mode switching and toggle)
-      const individualIcons = portal.querySelectorAll('.individual-icon');
+      const individualIcons = portal.querySelectorAll('.individual-icon:not(.individual-mode-btn)');
       individualIcons.forEach(icon => {
         const entityId = icon.dataset.entity;
         const action = icon.dataset.action;
@@ -10155,8 +10427,18 @@
     }
 
     async _loadHistory() {
+      if (!this._popupOpen || !this._popupPortal) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
       const container = this._popupPortal.querySelector('#historyContainer');
-      if (!container) return;
+      if (!container) {
+        this._stopHistoryAutoRefresh();
+        return;
+      }
+      this._startHistoryAutoRefresh();
+      if (this._historyRefreshBusy) return;
+      this._historyRefreshBusy = true;
 
       const entityId = this._config.entity;
       const endTime = new Date();
@@ -10359,6 +10641,8 @@
       } catch (err) {
         console.error("Error fetching history", err);
         container.innerHTML = '<div class="history-loading">Error loading history</div>';
+      } finally {
+        this._historyRefreshBusy = false;
       }
     }
 
@@ -10383,14 +10667,18 @@
     }
 
     _formatLastTriggered(entity) {
-      if (!entity || !entity.last_changed) {
+      if (!entity) {
         return '';
       }
-      const lastChanged = new Date(entity.last_changed);
-      if (isNaN(lastChanged.getTime())) {
+      const ts = entity.last_updated || entity.last_changed;
+      if (!ts) {
         return '';
       }
-      return this._getTimeAgo(lastChanged);
+      const when = new Date(ts);
+      if (isNaN(when.getTime())) {
+        return '';
+      }
+      return this._getTimeAgo(when);
     }
 
     
@@ -10593,8 +10881,22 @@
       // -- Colors --
       const haDefaultBg = 'var(--ha-card-background, var(--card-background-color))';
       
-      // Light color (only meaningful for light domain; safe to call anyway)
-      const currentLightColor = this._getCurrentColor?.() || null;
+      // Auto color used by style fields that are set to "auto"
+      const currentAutoColor = this._getCurrentColor?.() || null;
+      const defaultAutoColor = currentAutoColor || 'var(--state-icon-color)';
+      const resolveAutoColor = (value, fallback = '') => {
+        if (value === undefined || value === null) return fallback;
+        const str = String(value).trim();
+        if (!str) return fallback;
+        if (str.toLowerCase() === 'auto') return defaultAutoColor;
+        return value;
+      };
+      const resolveAutoShadow = (value, fallback = '') => {
+        if (value === undefined || value === null || value === '') return fallback;
+        const str = String(value).trim().toLowerCase();
+        if (str === 'auto') return `0 8px 24px ${defaultAutoColor}`;
+        return value;
+      };
 
       // HKI Default on-state auto-theme: white card + black text when entity is active
       // Only applies to HKI Default layout (square / undefined), only when the user
@@ -10606,8 +10908,8 @@
       let bgColor = (_hkiOnActive && !this._config.card_color) ? 'white' : haDefaultBg;
       if (this._config.card_color) {
         const rendered = this.renderTemplate('cardColor', this._config.card_color);
-        if (rendered === 'auto' && this._getDomain() === 'light' && currentLightColor) {
-          bgColor = currentLightColor;
+        if (rendered === 'auto') {
+          bgColor = defaultAutoColor;
         } else if (rendered) {
           bgColor = rendered;
         }
@@ -10632,33 +10934,31 @@
           boxShadow = ''; // unset -> theme default
         } else if (rendered === 'none') {
           boxShadow = 'none';
-        } else if (rendered === 'auto') {
-          boxShadow = (currentLightColor) ? `0 8px 24px ${currentLightColor}` : '';
         } else if (rendered) {
-          boxShadow = rendered;
+          boxShadow = resolveAutoShadow(rendered, '');
         }
       }
 
       // Individual Element Colors with template support
-      const nameColor = this._config.name_color 
-        ? this.renderTemplate('nameColor', this._config.name_color) 
+      const nameColor = this._config.name_color
+        ? resolveAutoColor(this.renderTemplate('nameColor', this._config.name_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
       const stateColor = isUnavailable ? 'var(--error-color, red)' 
-        : (this._config.state_color ? this.renderTemplate('stateColor', this._config.state_color) : (_hkiOnActive ? '#000000' : 'inherit'));
-      const labelColor = this._config.label_color 
-        ? this.renderTemplate('labelColor', this._config.label_color) 
+        : (this._config.state_color ? resolveAutoColor(this.renderTemplate('stateColor', this._config.state_color), _hkiOnActive ? '#000000' : 'inherit') : (_hkiOnActive ? '#000000' : 'inherit'));
+      const labelColor = this._config.label_color
+        ? resolveAutoColor(this.renderTemplate('labelColor', this._config.label_color), _hkiOnActive ? '#000000' : 'inherit')
         : (_hkiOnActive ? '#000000' : 'inherit');
 
       // Info display / brightness colors (template support; defaults follow theme)
       const brightnessColorBase = this._config.brightness_color
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color)
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), '')
         : '';
       const _infoDspDefault = _hkiOnActive ? '#000000' : 'inherit';
       const brightnessColorOn = this._config.brightness_color_on
-        ? this.renderTemplate('brightnessColorOn', this._config.brightness_color_on)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOn', this._config.brightness_color_on), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
       const brightnessColorOff = this._config.brightness_color_off
-        ? this.renderTemplate('brightnessColorOff', this._config.brightness_color_off)
+        ? resolveAutoColor(this.renderTemplate('brightnessColorOff', this._config.brightness_color_off), brightnessColorBase || _infoDspDefault)
         : (brightnessColorBase || _infoDspDefault);
 
       // Icon color logic with template support and auto modes
@@ -10716,13 +11016,13 @@
       // Card Border
       const borderWidth = this._config.border_width ? this.renderTemplate('borderWidth', String(this._config.border_width)) : '0';
       const borderStyle = this._config.border_style ? this.renderTemplate('borderStyle', this._config.border_style) : 'none';
-      const borderColor = this._config.border_color ? this.renderTemplate('borderColor', this._config.border_color) : 'transparent';
+      const borderColor = this._config.border_color ? resolveAutoColor(this.renderTemplate('borderColor', this._config.border_color), 'transparent') : 'transparent';
       const cardBorder = `${_toUnit(borderWidth)} ${borderStyle} ${borderColor}`;
       
       // Icon Circle Styling with template support
       const iconCircleBorderWidth = this._config.icon_circle_border_width ? this.renderTemplate('iconCircleBorderWidth', String(this._config.icon_circle_border_width)) : '0';
       const iconCircleBorderStyle = this._config.icon_circle_border_style ? this.renderTemplate('iconCircleBorderStyle', this._config.icon_circle_border_style) : 'none';
-      const iconCircleBorderColor = this._config.icon_circle_border_color ? this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color) : 'transparent';
+      const iconCircleBorderColor = this._config.icon_circle_border_color ? resolveAutoColor(this.renderTemplate('iconCircleBorderColor', this._config.icon_circle_border_color), 'transparent') : 'transparent';
       const iconCircleBorder = `${_toUnit(iconCircleBorderWidth)} ${iconCircleBorderStyle} ${iconCircleBorderColor}`;
       const iconCircleBg = this._config.icon_circle_bg 
         ? this.renderTemplate('iconCircleBg', this._config.icon_circle_bg) 
@@ -10731,9 +11031,9 @@
       // Badge Styling with template support
       const badgeBorderWidth = this._config.badge_border_width ? this.renderTemplate('badgeBorderWidth', String(this._config.badge_border_width)) : '0';
       const badgeBorderStyle = this._config.badge_border_style ? this.renderTemplate('badgeBorderStyle', this._config.badge_border_style) : 'none';
-      const badgeBorderColor = this._config.badge_border_color ? this.renderTemplate('badgeBorderColor', this._config.badge_border_color) : 'transparent';
+      const badgeBorderColor = this._config.badge_border_color ? resolveAutoColor(this.renderTemplate('badgeBorderColor', this._config.badge_border_color), 'transparent') : 'transparent';
       const badgeBorder = `${_toUnit(badgeBorderWidth)} ${badgeBorderStyle} ${badgeBorderColor}`;
-      const badgeBg = this._config.badge_bg ? this.renderTemplate('badgeBg', this._config.badge_bg) : 'var(--primary-color)';
+      const badgeBg = this._config.badge_bg ? resolveAutoColor(this.renderTemplate('badgeBg', this._config.badge_bg), 'var(--primary-color)') : 'var(--primary-color)';
 
       // -- Offsets --
       const getTransform = (x, y) => `translate(${x || 0}px, ${y || 0}px)`;
@@ -10764,8 +11064,8 @@
       const infoText = this._isTemplate(this._config.info_display)
         ? (this._renderedInfo || '')
         : (this._config.info_display || '');
-      const brightnessColor = this._config.brightness_color 
-        ? this.renderTemplate('brightnessColor', this._config.brightness_color) 
+      const brightnessColor = this._config.brightness_color
+        ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), 'inherit')
         : 'inherit';
             
       const isGroup = !!(entity?.attributes?.entity_id && Array.isArray(entity.attributes.entity_id));
@@ -10877,7 +11177,7 @@
                             border: ${this._config.show_icon_circle !== false ? iconCircleBorder : 'none'};
                             transform: ${getTransform(this._config.icon_offset_x, this._config.icon_offset_y)};
                         "
-                        @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || { action: "hki-more-info" }, this._config.icon_double_tap_action); }}
+                        @click=${(e) => { e.stopPropagation(); this._handleDelayClick(this._config.icon_tap_action || this._config.tap_action || this._defaultTapActionConfig(), this._config.icon_double_tap_action || this._config.double_tap_action || { action: this._defaultInfoActionType() }); }}
                           
                         @mousedown=${(e) => { e.stopPropagation(); this._startHold(e, this._config.icon_hold_action); }}
                         @mouseup=${(e) => { e.stopPropagation(); this._clearHold(); }}
@@ -11066,7 +11366,7 @@
               // Don't handle if slider is active (let slider handle it)
               if (showBrightnessSlider) return;
               e.stopPropagation(); 
-              this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action); 
+              this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() }); 
             }}
             @mousedown=${(e) => {
               // Don't handle if slider is active
@@ -11099,8 +11399,8 @@
                 @click=${(e) => { 
                   e.stopPropagation();
                   // When slider is enabled, the card itself ignores taps; so the icon handles them.
-                  const ta = (this._config.icon_tap_action || this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }));
-                  const dta = (this._config.icon_double_tap_action || this._config.double_tap_action);
+                  const ta = (this._config.icon_tap_action || this._config.tap_action || this._defaultTapActionConfig());
+                  const dta = (this._config.icon_double_tap_action || this._config.double_tap_action || { action: this._defaultInfoActionType() });
                   this._handleDelayClick(ta, dta);
                 }}
                 @mousedown=${(e) => { 
@@ -11313,12 +11613,12 @@
               margin: 0 !important;
               ${iconColor ? `            --icon-color: ${iconColor} !important;\n` : ''}            "
 
-            @click=${() => this._handleDelayClick(this._config.tap_action || { action: "hki-more-info" }, this._config.double_tap_action || { action: "hki-more-info" })}
+            @click=${() => this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() })}
               
-            @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+            @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
             @mouseup=${() => this._clearHold()}
             @mouseleave=${() => this._clearHold()}
-            @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+            @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
             @touchend=${() => this._clearHold()}
             @touchcancel=${() => this._clearHold()}
           >
@@ -11386,12 +11686,12 @@
             --hki-icon-circle-size: calc(var(--hki-icon-size) + 16px);
             
           "
-          @click=${() => this._handleDelayClick(this._config.tap_action || ((!this._config.entity && (this._config.custom_popup?.enabled || this._config.custom_popup_enabled)) ? { action: "hki-more-info" } : { action: "toggle" }), this._config.double_tap_action || { action: "hki-more-info" })}
+          @click=${() => this._handleDelayClick(this._config.tap_action || this._defaultTapActionConfig(), this._config.double_tap_action || { action: this._defaultInfoActionType() })}
             
-          @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+          @mousedown=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
           @mouseup=${() => this._clearHold()}
           @mouseleave=${() => this._clearHold()}
-          @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: "hki-more-info" })}
+          @touchstart=${(e) => this._startHold(e, this._config.hold_action || { action: this._defaultInfoActionType() })}
           @touchend=${() => this._clearHold()}
           @touchcancel=${() => this._clearHold()}
         >
@@ -13297,6 +13597,25 @@
                   ` : ''}
                 </div>
               ` : ""}
+
+              ${currentAction === "fire-dom-event" ? html`
+                <ha-textfield
+                  label="Event Name (optional)"
+                  .value=${actionConfig.event_name || ""}
+                  @input=${(ev) => this._actionFieldChanged(ev, configKey, "event_name")}
+                  placeholder="browser_mod"
+                ></ha-textfield>
+                <div class="tpl-field">
+                  <div class="tpl-title">Event Data (YAML/JSON text)</div>
+                  <ha-code-editor
+                    .hass=${this.hass}
+                    .value=${actionConfig.event_data || ""}
+                    mode="yaml"
+                    @value-changed=${(ev) => this._actionFieldChanged(ev, configKey, "event_data")}
+                    @click=${(e) => e.stopPropagation()}
+                  ></ha-code-editor>
+                </div>
+              ` : ""}
               
               ${currentAction === 'more-info' ? html`
                 <ha-selector 
@@ -14248,15 +14567,12 @@
                   const showClimateOptions = isClimate;
                   const showAlarmOptions = domain === 'alarm_control_panel';
                   const showCoverOptions = domain === 'cover';
-                  const hasDomainFeatures = showLightOptions || showClimateOptions || showAlarmOptions || showCoverOptions;
+                  const hasDomainFeatures = true;
 
                   return html`
                     <div class="sub-accordion">
                       ${renderHeader("Popup Card", "popup_card")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_card'] ? 'hidden' : ''}">
-                        <ha-formfield .label=${"Hide bottom bar (save vertical space)"}>
-                          <ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch>
-                        </ha-formfield>
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Enable to embed any custom card instead of the auto domain popup.</p>
                         <ha-formfield .label=${"Enable Custom Popup"}><ha-switch .checked=${isCustomPopup} @change=${(ev) => this._switchChanged(ev, "custom_popup_enabled")}></ha-switch></ha-formfield>
                         ${isCustomPopup ? html`
@@ -14507,6 +14823,13 @@
                                       @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-yaml-editor>
                                   ` : ''}
                                 ` : ''}
+                                ${currentAction === 'fire-dom-event' ? html`
+                                  <ha-textfield label="Event Name (optional)" .value=${tapAction.event_name||""}
+                                    @input=${(ev) => setTapAction({ event_name: ev.target.value || "" })} style="margin-top:6px;"></ha-textfield>
+                                  <ha-code-editor .hass=${this.hass} mode="yaml" .value=${tapAction.event_data||""}
+                                    @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ event_data: ev.detail?.value || "" }); }}
+                                    @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-code-editor>
+                                ` : ''}
                               ` : ''}
                             </div>`;
                             })}
@@ -14555,6 +14878,12 @@
                               ${showCoverOptions ? html`
                                 <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${this._config.popup_show_favorites !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_favorites")}></ha-switch></ha-formfield>
                               ` : ''}
+                              <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                              <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                              ${this._config.popup_hide_top_bar === true ? html`
+                                <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                              ` : ''}
+                              <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
                             </div>
                           </div>
                         </div>

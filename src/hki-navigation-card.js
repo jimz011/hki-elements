@@ -9,6 +9,9 @@ const EDITOR_TAG = "hki-navigation-card-editor";
 
 const INHERIT = "__inherit__";
 const MIN_PILL_WIDTH = 85;
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
+const getGlobalDefaultsFor = window.HKI?.getGlobalDefaultsFor || (() => ({}));
+const isUnsetValue = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
 
 // Static Constants
 const BUTTON_TYPES = [
@@ -35,6 +38,7 @@ const ACTIONS = [
   { value: "toggle", label: "Toggle entity" },
   { value: "more-info", label: "More info" },
   { value: "perform-action", label: "Perform action" },
+  { value: "fire-dom-event", label: "Fire DOM Event" },
   { value: "back", label: "Back" },
   { value: "toggle-group", label: "Show/Hide Group" },
   { value: "none", label: "None" },
@@ -721,7 +725,37 @@ function normalizeConfig(cfg) {
   // Clean up and validate config
   cfg = cleanupAndValidateConfig(cfg);
 
-  const raw = { ...DEFAULTS, ...(cfg || {}) };
+  const sourceCfg = cfg || {};
+  const raw = { ...DEFAULTS, ...sourceCfg };
+  applyGlobalDefaultsToConfig({
+    scope: "navigation",
+    config: raw,
+    sourceConfig: sourceCfg,
+    fields: [
+      "default_border_radius",
+      "default_border_width",
+      "default_border_style",
+      "default_border_color",
+      "button_box_shadow",
+      "button_box_shadow_hover",
+      "default_button_opacity",
+      "default_background",
+      "default_icon_color",
+      "bottom_bar_border_radius",
+      "bottom_bar_box_shadow",
+      "bottom_bar_border_width",
+      "bottom_bar_border_style",
+      "bottom_bar_border_color",
+    ],
+  });
+  const navGlobals = getGlobalDefaultsFor("navigation");
+  if (!raw.label_style || typeof raw.label_style !== "object") raw.label_style = {};
+  const sourceLabelStyle = (sourceCfg.label_style && typeof sourceCfg.label_style === "object") ? sourceCfg.label_style : {};
+  if (isUnsetValue(sourceLabelStyle.font_size) && !isUnsetValue(navGlobals.label_font_size)) raw.label_style.font_size = Number(navGlobals.label_font_size);
+  if (isUnsetValue(sourceLabelStyle.font_weight) && !isUnsetValue(navGlobals.label_font_weight)) raw.label_style.font_weight = Number(navGlobals.label_font_weight);
+  if (isUnsetValue(sourceLabelStyle.letter_spacing) && !isUnsetValue(navGlobals.label_letter_spacing)) raw.label_style.letter_spacing = Number(navGlobals.label_letter_spacing);
+  if (isUnsetValue(sourceLabelStyle.text_transform) && !isUnsetValue(navGlobals.label_text_transform)) raw.label_style.text_transform = navGlobals.label_text_transform;
+  if (isUnsetValue(sourceLabelStyle.color) && !isUnsetValue(navGlobals.label_color)) raw.label_style.color = navGlobals.label_color;
   const base = { ...(raw.base || {}) };
   base.button = { ...DEFAULT_BUTTON(), ...(base.button || {}) };
   if (!base.button.id) base.button.id = _uid();
@@ -853,6 +887,7 @@ class HkiNavigationCard extends LitElement {
 
   constructor() {
     super();
+    this._rawConfigInput = null;
     this._groupOverride = { horizontal: null, vertical: null };
     this._tapState = { lastId: null, lastTime: 0, singleTimer: null };
     this._holdTimers = new Map();
@@ -912,6 +947,10 @@ class HkiNavigationCard extends LitElement {
       this._reconnectTemplates();
       this.requestUpdate();
     };
+    this._onGlobalSettingsChanged = () => {
+      if (!this._rawConfigInput) return;
+      try { this.setConfig(this._rawConfigInput); } catch (_) {}
+    };
   }
 
   connectedCallback() {
@@ -920,6 +959,7 @@ class HkiNavigationCard extends LitElement {
     window.addEventListener("location-changed", this._onLocationChange);
     document.addEventListener("visibilitychange", this._onVisibilityChange);
     window.addEventListener("connection-status", this._onConnectionChange);
+    window.addEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     
     // Fix: Invalidate cached DOM references on reconnect to ensure we aren't holding onto stale views
     this._contentEl = null;
@@ -941,6 +981,7 @@ class HkiNavigationCard extends LitElement {
     window.removeEventListener("location-changed", this._onLocationChange);
     document.removeEventListener("visibilitychange", this._onVisibilityChange);
     window.removeEventListener("connection-status", this._onConnectionChange);
+    window.removeEventListener("hki-global-settings-changed", this._onGlobalSettingsChanged);
     this._disconnectObservers();
     if (this._measureRaf) cancelAnimationFrame(this._measureRaf);
     if (this._bottomBarMeasureRaf) cancelAnimationFrame(this._bottomBarMeasureRaf);
@@ -1018,6 +1059,7 @@ class HkiNavigationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    this._rawConfigInput = config;
     this._config = normalizeConfig(config);
     this._layout = { ready: false, slots: {}, meta: {} };
 
@@ -1854,6 +1896,15 @@ class HkiNavigationCard extends LitElement {
           eventDetail[key] = action[key];
         }
       });
+      const rawEventData = typeof action.event_data === "string" ? action.event_data.trim() : "";
+      if (rawEventData) {
+        try {
+          const parsed = window.jsyaml?.load ? window.jsyaml.load(rawEventData) : JSON.parse(rawEventData);
+          if (parsed !== undefined) eventDetail.data = parsed;
+        } catch (_) {
+          eventDetail.data = rawEventData;
+        }
+      }
       fireEvent(this, "ll-custom", eventDetail);
       this._autoCloseTempMenus();
       return;
@@ -2376,6 +2427,11 @@ class HkiNavigationCardEditor extends LitElement {
             @click=${(e) => e.stopPropagation()}
           ></ha-yaml-editor>
         ` : html``}
+        ${type === "fire-dom-event" ? html`
+          <ha-textfield .label=${"Event Name (optional)"} .value=${act.event_name || ""} @change=${(e) => update({ event_name: e.target.value || "" })}></ha-textfield>
+          ${this._yamlEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
+        ` : html``}
+
         ${type === "toggle" || type === "more-info" ? html`<div class="hint">Uses the button’s <b>Entity</b> field (set above in Interaction & Data).</div>` : html``}
         ${type === "back" ? html`<div class="hint">Back uses browser history. (Tap action forces icon to mdi:chevron-left.)</div>` : html``}
       </div>`;
@@ -2797,3 +2853,4 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
 });
+

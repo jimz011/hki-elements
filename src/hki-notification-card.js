@@ -32,6 +32,56 @@ const FONTS = [
   "JetBrains Mono, monospace",
   "Custom"
 ];
+const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
+const NOTIFICATION_POPUP_NESTED_KEYS = Object.freeze([
+  ["popup_enabled", "enabled"],
+  ["popup_title", "title"],
+  ["popup_open_animation", "open_animation"],
+  ["popup_close_animation", "close_animation"],
+  ["popup_animation_duration", "animation_duration"],
+  ["popup_blur_enabled", "blur_enabled"],
+  ["popup_blur_amount", "blur_amount"],
+  ["popup_card_blur_enabled", "card_blur_enabled"],
+  ["popup_card_blur_amount", "card_blur_amount"],
+  ["popup_card_opacity", "card_opacity"],
+  ["popup_border_radius", "border_radius"],
+  ["popup_width", "width"],
+  ["popup_width_custom", "width_custom"],
+  ["popup_height", "height"],
+  ["popup_height_custom", "height_custom"],
+  ["popup_hide_top_bar", "hide_top_bar"],
+  ["popup_show_close_button", "show_close_button"],
+  ["popup_close_on_action", "close_on_action"],
+]);
+
+function migrateNotificationConfig(config) {
+  const next = { ...(config || {}) };
+  const popup = (next.hki_popup && typeof next.hki_popup === "object") ? next.hki_popup : null;
+  if (!popup) return next;
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    if (next[flatKey] !== undefined) return;
+    if (popup[nestedKey] === undefined) return;
+    next[flatKey] = popup[nestedKey];
+  });
+  return next;
+}
+
+function serializeNotificationConfig(config) {
+  const output = { ...(config || {}) };
+  const popup = (output.hki_popup && typeof output.hki_popup === "object") ? { ...output.hki_popup } : {};
+
+  NOTIFICATION_POPUP_NESTED_KEYS.forEach(([flatKey, nestedKey]) => {
+    const value = output[flatKey];
+    if (value !== undefined && value !== null && !(typeof value === "string" && value.trim() === "")) {
+      popup[nestedKey] = value;
+    }
+    delete output[flatKey];
+  });
+
+  if (Object.keys(popup).length) output.hki_popup = popup;
+  else delete output.hki_popup;
+  return output;
+}
 
 // --- MAIN CARD CLASS ---
 class HkiNotificationCard extends LitElement {
@@ -95,6 +145,7 @@ class HkiNotificationCard extends LitElement {
 
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
+    const flatInput = migrateNotificationConfig(config);
     this._config = {
       entity: "", 
       attribute: "messages",
@@ -149,6 +200,9 @@ class HkiNotificationCard extends LitElement {
       popup_width_custom: 400,
       popup_height: "auto",
       popup_height_custom: 600,
+      popup_hide_top_bar: false,
+      popup_show_close_button: true,
+      popup_close_on_action: false,
       // Timestamp options
       show_list_timestamp: false,
       show_popup_timestamp: true,
@@ -174,8 +228,31 @@ class HkiNotificationCard extends LitElement {
       button_pill_border_color: "rgba(255,255,255,0.08)",
       button_pill_border_radius: 99,
       button_pill_badge_position: "inside",
-      ...config,
+      ...flatInput,
     };
+    applyGlobalDefaultsToConfig({
+      scope: "popup",
+      config: this._config,
+      sourceConfig: flatInput,
+      fields: [
+        "popup_border_radius",
+        "popup_width",
+        "popup_width_custom",
+        "popup_height",
+        "popup_height_custom",
+        "popup_open_animation",
+        "popup_close_animation",
+        "popup_animation_duration",
+        "popup_blur_enabled",
+        "popup_blur_amount",
+        "popup_card_blur_enabled",
+        "popup_card_blur_amount",
+        "popup_card_opacity",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
+      ],
+    });
     this._resetTicker();
   }
 
@@ -243,6 +320,88 @@ class HkiNotificationCard extends LitElement {
     }
     
     this._isInBadgeSlot = false;
+  }
+
+  _isEditMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("edit") === "1") return true;
+    } catch (_) {}
+    try {
+      if (document.body?.classList?.contains("edit-mode") || document.body?.classList?.contains("edit")) return true;
+      if (document.querySelector("hui-dialog-edit-card")) return true;
+      const huiRoot = document.querySelector("hui-root") || document.querySelector("home-assistant")?.shadowRoot?.querySelector("hui-root");
+      if (huiRoot?.lovelace?.editMode || huiRoot?.editMode) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  _getAutoColorEntity(msg = null) {
+    const entityId = msg?.entity || msg?.entity_id || this._config?.entity || "";
+    return entityId && this.hass?.states?.[entityId] ? this.hass.states[entityId] : null;
+  }
+
+  _getDefaultHaIconColor(entity = null) {
+    if (!entity) return "var(--state-icon-color)";
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const isOn = ["on", "open", "unlocked", "playing", "home", "heat", "cool", "auto", "heat_cool", "dry", "fan_only", "triggered"].includes(state);
+    if (domain === "climate") return this._getAutoEntityColor(entity) || "var(--state-icon-color)";
+    return isOn ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _getAutoEntityColor(entity = null) {
+    if (!entity) return null;
+    const domain = String(entity.entity_id || "").split(".")[0];
+    const state = String(entity.state || "").toLowerCase();
+    if (state === "unavailable" || state === "unknown") return "var(--state-icon-unavailable-color)";
+
+    if (domain === "climate") {
+      const hvacAction = String(entity.attributes?.hvac_action || entity.state || "").toLowerCase();
+      if (hvacAction === "heating" || hvacAction === "heat") return "darkorange";
+      if (hvacAction === "cooling" || hvacAction === "cool") return "#1E90FF";
+      if (hvacAction === "drying" || hvacAction === "dry") return "#FFC107";
+      if (hvacAction === "fan" || hvacAction === "fan_only") return "#9E9E9E";
+      const hvacMode = state;
+      if (hvacMode === "heat") return "darkorange";
+      if (hvacMode === "cool") return "#1E90FF";
+      if (hvacMode === "auto" || hvacMode === "heat_cool") return "#4CAF50";
+      if (hvacMode === "dry") return "#FFC107";
+      if (hvacMode === "fan_only") return "#9E9E9E";
+      return "var(--state-icon-color)";
+    }
+
+    if (domain === "light" && state === "on") {
+      const attrs = entity.attributes || {};
+      if (Array.isArray(attrs.rgb_color) && attrs.rgb_color.length === 3) {
+        return `rgb(${attrs.rgb_color[0]}, ${attrs.rgb_color[1]}, ${attrs.rgb_color[2]})`;
+      }
+      if (Array.isArray(attrs.hs_color) && attrs.hs_color.length >= 2) {
+        return `hsl(${attrs.hs_color[0]}, ${attrs.hs_color[1]}%, 50%)`;
+      }
+      return "#ffc107";
+    }
+
+    return ["on", "open", "unlocked", "playing", "home"].includes(state) ? "#ffc107" : "var(--state-icon-color)";
+  }
+
+  _resolveAutoColorValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null) return fallback;
+    const str = String(value).trim();
+    if (!str) return fallback;
+    if (str.toLowerCase() !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    return this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+  }
+
+  _resolveAutoShadowValue(value, msg = null, fallback = "") {
+    if (value === undefined || value === null || value === "") return fallback;
+    const str = String(value).trim().toLowerCase();
+    if (str !== "auto") return value;
+    const entity = this._getAutoColorEntity(msg);
+    const autoColor = this._getAutoEntityColor(entity) || this._getDefaultHaIconColor(entity);
+    return `0 8px 24px ${autoColor}`;
   }
 
   disconnectedCallback() {
@@ -514,11 +673,15 @@ class HkiNotificationCard extends LitElement {
           ...(action.target || {}) 
         };
         this.hass.callService(domain, service, serviceData);
+        if (this._config?.popup_close_on_action === true && this._popupOpen && (action.action === "perform-action" || action.action === "call-service")) {
+          setTimeout(() => this._closePopup(), 0);
+        }
       }
     }
   }
 
 _openPopup() {
+  if (this._isEditMode()) return;
   if (this._popupOpen) return;
   this._popupOpen = true;
   this._popupClosing = false;
@@ -790,6 +953,8 @@ const messages = this._getMessages();
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
     const c = this._config;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     
         const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
@@ -819,6 +984,7 @@ const portal = document.createElement('div');
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
           display: flex;
           flex-direction: column;
+          position: relative;
           overflow: hidden;
           transition: height 0.2s;
         }
@@ -1017,15 +1183,22 @@ const portal = document.createElement('div');
         }
       </style>
       <div class="hki-popup-container">
-        <div class="hki-popup-header">
-          <span class="hki-popup-title">
-            ${c.popup_title || 'Notifications'}
-            <span class="hki-popup-count-badge">${count}</span>
-          </span>
-          <button class="hki-popup-close-btn">
+        ${hideTopBar ? '' : `
+          <div class="hki-popup-header">
+            <span class="hki-popup-title">
+              ${c.popup_title || 'Notifications'}
+              <span class="hki-popup-count-badge">${count}</span>
+            </span>
+            <button class="hki-popup-close-btn">
+              <ha-icon icon="mdi:close"></ha-icon>
+            </button>
+          </div>
+        `}
+        ${showCloseWhenTopHidden ? `
+          <button class="hki-popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;">
             <ha-icon icon="mdi:close"></ha-icon>
           </button>
-        </div>
+        ` : ''}
         <div class="hki-popup-content">
           ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPillHTML(msg)).join('') : `
             <div class="hki-popup-empty">No notifications</div>
@@ -1333,6 +1506,9 @@ const portal = document.createElement('div');
 
   updated(changedProps) {
     super.updated(changedProps);
+    if (changedProps.has("hass") && this._popupOpen) {
+      this._createPopupPortal();
+    }
     if (this._config?.display_mode === 'marquee' && this._config?.auto_scroll !== false) {
       this._checkMarqueeOverflow();
     }
@@ -1382,15 +1558,18 @@ const portal = document.createElement('div');
       headerStyles = this._getHeaderCardStyles();
     }
 
-    const textColor = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
-    const iconColor = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
-    const borderColor = msg.border_color || msg.color_border || c.border_color;
+    const textColorRaw = msg.text_color || msg.color_text || (useHeaderStyling && headerStyles?.color) || c.text_color;
+    const iconColorRaw = msg.icon_color || msg.color_icon || (useHeaderStyling && headerStyles?.color) || c.icon_color;
+    const borderColorRaw = msg.border_color || msg.color_border || c.border_color;
+    const textColor = this._resolveAutoColorValue(textColorRaw, msg, c.text_color);
+    const iconColor = this._resolveAutoColorValue(iconColorRaw, msg, this._getDefaultHaIconColor(this._getAutoColorEntity(msg)));
+    const borderColor = this._resolveAutoColorValue(borderColorRaw, msg, c.border_color);
 
     // Handle background & opacity
     // 1. Check message specific override first, then card config
     let showBg = msg.show_background !== undefined ? msg.show_background !== false : c.show_background !== false;
     
-    let bgColor = msg.bg_color || msg.color_bg || c.bg_color;
+    let bgColor = this._resolveAutoColorValue(msg.bg_color || msg.color_bg || c.bg_color, msg, c.bg_color);
     let backdropBlur = 'blur(12px)';
     let pillPadding = null;
     let borderRadius = msg.border_radius ?? c.border_radius;
@@ -1430,7 +1609,7 @@ const portal = document.createElement('div');
     const effectiveBorderWidth = pillBorderWidth ? parseInt(pillBorderWidth) : (showBg ? (msg.border_width ?? c.border_width) : 0);
     const effectiveBorderColor = pillBorderColor || (showBg ? borderColor : 'transparent');
     const effectiveBorderStyle = pillBorderStyle || 'solid';
-    const boxShadow = showBg ? (msg.box_shadow || c.box_shadow) : "none";
+    const boxShadow = showBg ? this._resolveAutoShadowValue(msg.box_shadow || c.box_shadow, msg, "none") : "none";
 
     const msgAlignment = msg.alignment || c.alignment || "left";
 
@@ -1503,26 +1682,33 @@ const portal = document.createElement('div');
     const buttonSize = c.button_size || 48;
     const badgeSize = c.button_badge_size > 0 ? c.button_badge_size : Math.max(16, Math.round(buttonSize * 0.4));
     
+    const buttonIconColor = this._resolveAutoColorValue(c.button_icon_color, null, "var(--state-icon-color)");
+    const buttonBadgeColor = this._resolveAutoColorValue(c.button_badge_color, null, c.button_badge_color);
+    const buttonBadgeTextColor = this._resolveAutoColorValue(c.button_badge_text_color, null, c.button_badge_text_color);
+    const buttonBgColor = this._resolveAutoColorValue(c.button_bg_color, null, c.button_bg_color);
+    const pillButtonBgColor = this._resolveAutoColorValue(c.button_pill_bg_color, null, c.button_pill_bg_color);
+    const pillButtonBorderColor = this._resolveAutoColorValue(c.button_pill_border_color, null, c.button_pill_border_color);
+
     const iconButtonStyles = [
       `--button-size: ${buttonSize}px`,
-      `--button-bg: ${c.button_bg_color}`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-bg: ${buttonBgColor}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");
     
     const pillButtonStyles = [
       `--pill-button-size: ${c.button_pill_size || 14}px`,
-      `--pill-button-bg: ${c.button_pill_bg_color}`,
+      `--pill-button-bg: ${pillButtonBgColor}`,
       `--pill-button-border-style: ${c.button_pill_border_style || 'solid'}`,
       `--pill-button-border-width: ${c.button_pill_border_width ?? 1}px`,
-      `--pill-button-border-color: ${c.button_pill_border_color}`,
+      `--pill-button-border-color: ${pillButtonBorderColor}`,
       `--pill-button-border-radius: ${c.button_pill_border_radius ?? 99}px`,
-      `--button-icon-color: ${c.button_icon_color}`,
-      `--badge-color: ${c.button_badge_color}`,
-      `--badge-text-color: ${c.button_badge_text_color}`,
+      `--button-icon-color: ${buttonIconColor}`,
+      `--badge-color: ${buttonBadgeColor}`,
+      `--badge-text-color: ${buttonBadgeTextColor}`,
       `--badge-size: ${badgeSize}px`,
       `--content-align: ${contentAlign}`
     ].join(";");
@@ -1572,23 +1758,32 @@ const portal = document.createElement('div');
     const c = this._config;
     const realMessages = messages.filter(m => m._real !== false);
     const count = realMessages.length;
+    const hideTopBar = c.popup_hide_top_bar === true;
+    const showCloseWhenTopHidden = hideTopBar && c.popup_show_close_button !== false;
     const popupBorderRadius = c.popup_border_radius ?? 16;
     const { width: popupWidth, height: popupHeight } = this._getPopupDimensions();
     const backdropStyle = this._getPopupPortalStyle();
-    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column;`;
+    const containerStyle = `${this._getPopupCardStyle()} border-radius: ${popupBorderRadius}px; width: ${popupWidth}; height: ${popupHeight}; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); overflow: hidden; display: flex; flex-direction: column; position: relative;`;
 
     return html`
       <div class="popup-backdrop" style="${backdropStyle}" @click=${(e) => this._handlePopupBackdropClick(e)}>
         <div class="popup-container" style="${containerStyle}">
-          <div class="popup-header">
-            <span class="popup-title">
-              ${c.popup_title || 'Notifications'}
-              <span class="popup-count-badge">${count}</span>
-            </span>
-            <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+          ${hideTopBar ? '' : html`
+            <div class="popup-header">
+              <span class="popup-title">
+                ${c.popup_title || 'Notifications'}
+                <span class="popup-count-badge">${count}</span>
+              </span>
+              <button class="popup-close-btn" @click=${(e) => this._closePopup(e)}>
+                <ha-icon icon="mdi:close"></ha-icon>
+              </button>
+            </div>
+          `}
+          ${showCloseWhenTopHidden ? html`
+            <button class="popup-close-btn" style="position:absolute;top:12px;right:12px;z-index:30;" @click=${(e) => this._closePopup(e)}>
               <ha-icon icon="mdi:close"></ha-icon>
             </button>
-          </div>
+          ` : ''}
           <div class="popup-content">
             ${realMessages.length > 0 ? realMessages.map(msg => this._renderPopupPill(msg)) : html`
               <div class="popup-empty">No notifications</div>
@@ -2529,7 +2724,7 @@ const portal = document.createElement('div');
 // --- EDITOR CLASS ---
 class HkiNotificationCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: { state: true } }; }
-  setConfig(config) { this._config = config; }
+  setConfig(config) { this._config = migrateNotificationConfig(config || {}); }
   
   render() {
     if (!this.hass || !this._config) return html``;
@@ -2715,6 +2910,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Confirm Tap Actions", "confirm_tap_action", this._config.confirm_tap_action)}
@@ -2840,6 +3038,9 @@ class HkiNotificationCardEditor extends LitElement {
                 </ha-select>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
+              ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
+              ${this._config.popup_hide_top_bar === true ? this._renderSwitch("Show Close Button", "popup_show_close_button", this._config.popup_show_close_button !== false) : ""}
+              ${this._renderSwitch("Close Popup After Action", "popup_close_on_action", this._config.popup_close_on_action === true)}
 
               <div class="separator"></div>
               ${this._renderSwitch("Tap Actions in Popup Only", "tap_action_popup_only", this._config.tap_action_popup_only)}
@@ -2929,7 +3130,7 @@ class HkiNotificationCardEditor extends LitElement {
         <details class="box-section">
           <summary>Header Card Integration</summary>
           <div class="box-content">
-            ${this._renderSwitch("Use Header Styling", "use_header_styling", this._config.use_header_styling)}
+            ${this._renderSwitch("Use Header Styling", "use_header_styling", this._config.use_header_styling === true)}
             ${this._config.use_header_styling ? html`
               <ha-alert alert-type="info">
                 When inside hki-header-card, font size, weight, color, and pill styling will be inherited from the header card's Info Display settings.
@@ -3092,7 +3293,7 @@ class HkiNotificationCardEditor extends LitElement {
 
   _fireChanged(newConfig) {
     this._config = newConfig;
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: newConfig }, bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: serializeNotificationConfig(newConfig) }, bubbles: true, composed: true }));
   }
 
   static get styles() {
