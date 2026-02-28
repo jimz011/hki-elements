@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-24 ',
+  '%c HKI-ELEMENTS %c v1.4.0-dev-25 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -2302,21 +2302,46 @@ class HkiHeaderCard extends LitElement {
       });
 
       // Keep detached popup proxy cards (opened via header actions) in sync
-      if (this._activePopupProxyCards?.size) {
-        [...this._activePopupProxyCards].forEach((card) => {
-          if (!card || card._popupOpen !== true) {
-            this._activePopupProxyCards.delete(card);
-            return;
-          }
-          try { card.hass = this.hass; } catch (_) {}
-        });
-      }
+      this._syncActivePopupProxyCards();
     }
 
     if (changed.has("_kioskMode")) {
       this._debouncedMeasure(true);
       this._debouncedBadgesZIndex();
     }
+  }
+
+  _ensurePopupProxyHost() {
+    if (!document?.body) return null;
+    let host = document.getElementById("hki-popup-proxy-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "hki-popup-proxy-host";
+      host.style.cssText = "display:none !important; width:0; height:0; overflow:hidden; pointer-events:none;";
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  _attachPopupProxyCard(card) {
+    if (!card || card.isConnected) return;
+    const host = this._ensurePopupProxyHost();
+    if (!host) return;
+    host.appendChild(card);
+  }
+
+  _syncActivePopupProxyCards() {
+    if (!this._activePopupProxyCards?.size) return;
+    [...this._activePopupProxyCards].forEach((card) => {
+      if (!card || card._popupOpen !== true) {
+        this._activePopupProxyCards.delete(card);
+        try {
+          if (card?.parentNode) card.remove();
+        } catch (_) {}
+        return;
+      }
+      try { card.hass = this.hass; } catch (_) {}
+    });
   }
 
   _detectKioskMode() {
@@ -3473,6 +3498,7 @@ class HkiHeaderCard extends LitElement {
           ]).then(([resolvedName, resolvedState, resolvedIcon]) => {
             try {
               const btn = document.createElement('hki-button-card');
+              this._attachPopupProxyCard(btn);
               btn.hass = this.hass;
               btn.setConfig({
                 type: 'custom:hki-button-card',
@@ -3494,13 +3520,14 @@ class HkiHeaderCard extends LitElement {
               resolveTemplate(mergedPopup.popup_state),
               resolveTemplate(mergedPopup.popup_icon),
             ]).then(([resolvedName, resolvedState, resolvedIcon]) => {
-              try {
-                const btn = document.createElement('hki-button-card');
-                btn.hass = this.hass;
-                btn.setConfig({
-                  type: 'custom:hki-button-card',
-                  entity: popupEntityId,
-                  ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
+            try {
+              const btn = document.createElement('hki-button-card');
+              this._attachPopupProxyCard(btn);
+              btn.hass = this.hass;
+              btn.setConfig({
+                type: 'custom:hki-button-card',
+                entity: popupEntityId,
+                ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
                 });
                 this._activePopupProxyCards.add(btn);
                 btn._openPopup();
