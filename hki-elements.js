@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0-dev-30 ',
+  '%c HKI-ELEMENTS %c v1.4.0 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3379,6 +3379,7 @@ class HkiHeaderCard extends LitElement {
       ],
     });
     _copyTruthy([
+      "icon_color",
       "popup_open_animation",
       "popup_close_animation",
       "popup_time_format",
@@ -4016,6 +4017,10 @@ class HkiHeaderCard extends LitElement {
           const buttonPopupConfig = {
             ...(slotPopupConfig || {}),
             ...buttonPopupOverrides,
+            ...((typeof btn.name === "string" && btn.name.trim()) ? { popup_name: btn.name.trim() } : {}),
+            ...((typeof btn.state === "string" && btn.state.trim()) ? { popup_state: btn.state.trim() } : {}),
+            ...((typeof btn.icon === "string" && btn.icon.trim()) ? { popup_icon: btn.icon.trim() } : {}),
+            ...((typeof btn.icon_color === "string" && btn.icon_color.trim()) ? { icon_color: btn.icon_color.trim() } : {}),
           };
           const effectivePopupConfig = Object.keys(buttonPopupConfig).length ? buttonPopupConfig : null;
 
