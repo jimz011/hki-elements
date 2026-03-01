@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.1-dev-05 ',
+  '%c HKI-ELEMENTS %c v1.4.1-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -19,6 +19,34 @@ if (!window.LitElement) {
 
 // HKI shared helpers (load once, reuse across cards)
 window.HKI = window.HKI || {};
+
+// Normalize value extraction for HA select/text events across versions.
+window.HKI.getSelectValue = window.HKI.getSelectValue || ((ev, options = null) => {
+  const detailValue = ev?.detail?.value;
+  if (detailValue !== undefined && detailValue !== null) return detailValue;
+  const targetValue = ev?.target?.value;
+  if (targetValue !== undefined && targetValue !== null) return targetValue;
+  const currentValue = ev?.currentTarget?.value;
+  if (currentValue !== undefined && currentValue !== null) return currentValue;
+  const idx = Number(ev?.detail?.index);
+  if (Number.isInteger(idx) && idx >= 0) {
+    if (Array.isArray(options)) {
+      const opt = options[idx];
+      if (opt && typeof opt === "object") {
+        if (opt.value !== undefined) return opt.value;
+        if (opt.label !== undefined) return opt.label;
+      }
+      if (opt !== undefined) return opt;
+    }
+    const listItems = ev?.currentTarget?.items || ev?.target?.items;
+    const item = Array.isArray(listItems)
+      ? listItems[idx]
+      : (listItems?.item ? listItems.item(idx) : null);
+    const itemValue = item?.value ?? item?.getAttribute?.("value");
+    if (itemValue !== undefined && itemValue !== null) return itemValue;
+  }
+  return undefined;
+});
 
 // Shared popup-related keys used across cards/editors.
 window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [

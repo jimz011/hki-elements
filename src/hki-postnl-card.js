@@ -778,7 +778,7 @@ class HKIPostNLCardEditor extends LitElement {
     }
 
     _val(ev) {
-        return ev.detail?.value ?? ev.target?.value;
+        return window.HKI.getSelectValue(ev);
     }
 
     _changed(ev, explicitField = null) {

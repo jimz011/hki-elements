@@ -388,11 +388,11 @@ class HkiSettingsBase extends LitElement {
       <ha-select
         .label=${label}
         .value=${current !== undefined ? String(current) : "__inherit__"}
-        @selected=${(e) => this._setSelect(scope, key, (e.detail?.value ?? e.target?.value))}
+        @change=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
         @closed=${(e) => e.stopPropagation()}
       >
-        <mwc-list-item .value=${"__inherit__"}>(inherit)</mwc-list-item>
-        ${options.map((opt) => html`<mwc-list-item .value=${String(opt.value)}>${opt.label}</mwc-list-item>`)}
+        <ha-list-item .value=${"__inherit__"}>(inherit)</ha-list-item>
+        ${options.map((opt) => html`<ha-list-item .value=${String(opt.value)}>${opt.label}</ha-list-item>`)}
       </ha-select>
     `;
   }
@@ -406,8 +406,8 @@ class HkiSettingsBase extends LitElement {
         .value=${current !== undefined ? String(current) : ""}
         .placeholder=${placeholder}
         @input=${(e) => (type === "number"
-          ? this._setNumber(scope, key, (e.detail?.value ?? e.target?.value))
-          : this._setText(scope, key, (e.detail?.value ?? e.target?.value)))}
+          ? this._setNumber(scope, key, (window.HKI.getSelectValue(e)))
+          : this._setText(scope, key, (window.HKI.getSelectValue(e))))}
       ></ha-textfield>
     `;
   }
@@ -457,7 +457,7 @@ class HkiSettingsBase extends LitElement {
           .hass=${this.hass}
           mode="yaml"
           .value=${text}
-          @blur=${(e) => this._setList(scope, key, e.target?.value ?? text)}
+          @blur=${(e) => this._setList(scope, key, window.HKI.getSelectValue(e) ?? text)}
         ></ha-code-editor>
       </div>
     `;
