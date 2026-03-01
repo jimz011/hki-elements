@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.1-dev-08 ',
+  '%c HKI-ELEMENTS %c v1.4.1-dev-09 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -24,8 +24,16 @@ window.HKI = window.HKI || {};
 window.HKI.getSelectValue = window.HKI.getSelectValue || ((ev, options = null) => {
   const detailValue = ev?.detail?.value;
   if (detailValue !== undefined && detailValue !== null) return detailValue;
+  const detailItemValue =
+    ev?.detail?.item?.value ??
+    ev?.detail?.item?.getAttribute?.("value") ??
+    ev?.detail?.option?.value ??
+    ev?.detail?.option?.getAttribute?.("value");
+  if (detailItemValue !== undefined && detailItemValue !== null) return detailItemValue;
   const targetValue = ev?.target?.value;
   if (targetValue !== undefined && targetValue !== null) return targetValue;
+  const targetAttrValue = ev?.target?.getAttribute?.("value");
+  if (targetAttrValue !== undefined && targetAttrValue !== null) return targetAttrValue;
   const currentValue = ev?.currentTarget?.value;
   if (currentValue !== undefined && currentValue !== null) return currentValue;
   const idx = Number(ev?.detail?.index);
@@ -45,8 +53,47 @@ window.HKI.getSelectValue = window.HKI.getSelectValue || ((ev, options = null) =
     const itemValue = item?.value ?? item?.getAttribute?.("value");
     if (itemValue !== undefined && itemValue !== null) return itemValue;
   }
+  const path = typeof ev?.composedPath === "function" ? ev.composedPath() : [];
+  for (const node of path) {
+    const pathValue = node?.value ?? node?.getAttribute?.("value");
+    if (pathValue !== undefined && pathValue !== null) return pathValue;
+  }
   return undefined;
 });
+
+// HA 2026.3+ compatibility: some builds emit `change` for <ha-select> where
+// older code listens to `selected`. Bridge change -> selected once globally.
+if (!window.HKI._haSelectCompatInstalled) {
+  window.HKI._haSelectCompatInstalled = true;
+  const nativeSelectedMark = "__hkiLastNativeSelected";
+  document.addEventListener(
+    "selected",
+    (ev) => {
+      const target = ev?.target;
+      if (target?.tagName?.toLowerCase?.() === "ha-select") {
+        target[nativeSelectedMark] = Date.now();
+      }
+    },
+    true
+  );
+  document.addEventListener(
+    "change",
+    (ev) => {
+      const target = ev?.target;
+      if (target?.tagName?.toLowerCase?.() !== "ha-select") return;
+      const lastNative = Number(target[nativeSelectedMark] || 0);
+      if (Date.now() - lastNative < 50) return;
+      target.dispatchEvent(
+        new CustomEvent("selected", {
+          detail: { ...(ev?.detail || {}), value: window.HKI.getSelectValue(ev) },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    },
+    true
+  );
+}
 
 // Shared popup-related keys used across cards/editors.
 window.HKI.POPUP_CONFIG_KEYS = window.HKI.POPUP_CONFIG_KEYS || [
@@ -8376,6 +8423,7 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
+
 
 })();
 
@@ -27164,6 +27212,7 @@ window.customCards.push({
 });
 
 
+
 })();
 
 // ============================================================
@@ -27561,7 +27610,7 @@ class HkiSettingsBase extends LitElement {
       <ha-select
         .label=${label}
         .value=${current !== undefined ? String(current) : "__inherit__"}
-        @change=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
+        @selected=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
         @closed=${(e) => e.stopPropagation()}
       >
         <ha-list-item .value=${"__inherit__"}>(inherit)</ha-list-item>
@@ -28201,6 +28250,7 @@ window.customCards.push({
   description: "Global style defaults for HKI cards.",
   preview: false,
 });
+
 
 })();
 
@@ -31571,6 +31621,7 @@ if (!customElements.get(EDITOR_TAG)) {
 }
 window.customCards = window.customCards || [];
 window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", description: "Animated notification ticker.", preview: true });
+
 
 })();
 

@@ -7726,3 +7726,4 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
+

@@ -3360,3 +3360,4 @@ if (!customElements.get(EDITOR_TAG)) {
 }
 window.customCards = window.customCards || [];
 window.customCards.push({ type: CARD_TYPE, name: "HKI Notification Card", description: "Animated notification ticker.", preview: true });
+

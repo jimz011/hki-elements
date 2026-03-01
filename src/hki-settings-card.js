@@ -388,7 +388,7 @@ class HkiSettingsBase extends LitElement {
       <ha-select
         .label=${label}
         .value=${current !== undefined ? String(current) : "__inherit__"}
-        @change=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
+        @selected=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
         @closed=${(e) => e.stopPropagation()}
       >
         <ha-list-item .value=${"__inherit__"}>(inherit)</ha-list-item>
@@ -1028,3 +1028,4 @@ window.customCards.push({
   description: "Global style defaults for HKI cards.",
   preview: false,
 });
+
