@@ -388,7 +388,7 @@ class HkiSettingsBase extends LitElement {
       <ha-select
         .label=${label}
         .value=${current !== undefined ? String(current) : "__inherit__"}
-        @selected=${(e) => this._setSelect(scope, key, e.target.value)}
+        @selected=${(e) => this._setSelect(scope, key, (e.detail?.value ?? e.target?.value))}
         @closed=${(e) => e.stopPropagation()}
       >
         <mwc-list-item .value=${"__inherit__"}>(inherit)</mwc-list-item>
@@ -406,8 +406,8 @@ class HkiSettingsBase extends LitElement {
         .value=${current !== undefined ? String(current) : ""}
         .placeholder=${placeholder}
         @input=${(e) => (type === "number"
-          ? this._setNumber(scope, key, e.target.value)
-          : this._setText(scope, key, e.target.value))}
+          ? this._setNumber(scope, key, (e.detail?.value ?? e.target?.value))
+          : this._setText(scope, key, (e.detail?.value ?? e.target?.value)))}
       ></ha-textfield>
     `;
   }

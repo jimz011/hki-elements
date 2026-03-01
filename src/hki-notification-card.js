@@ -3206,7 +3206,7 @@ class HkiNotificationCardEditor extends LitElement {
   }
 
   _modeChanged(ev) {
-    const mode = ev.target.value;
+    const mode = (ev.detail?.value ?? ev.target?.value);
     const newConfig = { ...this._config, display_mode: mode };
     if (mode === 'marquee') newConfig.full_width = false;
     this._fireChanged(newConfig);
@@ -3289,7 +3289,7 @@ class HkiNotificationCardEditor extends LitElement {
     }
   }
 
-  _valueChanged(ev, field) { this._fireChanged({ ...this._config, [field]: ev.target.value }); }
+  _valueChanged(ev, field) { this._fireChanged({ ...this._config, [field]: (ev.detail?.value ?? ev.target?.value) }); }
 
   _fireChanged(newConfig) {
     this._config = newConfig;

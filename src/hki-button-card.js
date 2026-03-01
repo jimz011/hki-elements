@@ -13465,7 +13465,8 @@
               <ha-select 
                 label="Action Type" 
                 .value=${currentAction} 
-                @selected=${(ev) => this._actionChanged(ev, configKey)} 
+                @selected=${(ev) => this._actionChanged(ev, configKey, actionsList)} 
+                @value-changed=${(ev) => this._actionChanged(ev, configKey, actionsList)}
                 @closed=${(e) => e.stopPropagation()} 
                 @click=${(e) => e.stopPropagation()}
               >
@@ -14808,8 +14809,12 @@
                                 <ha-select label="Tap Action" .value=${currentAction}
                                   @selected=${(ev) => {
                                     ev.stopPropagation();
-                                    const idx = Number(ev?.detail?.index);
-                                    const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? actionsList[idx]?.value : undefined);
+                                    const v = this._resolveSelectEventValue(ev, actionsList);
+                                    if (v && v !== currentAction) setTapAction({ action: v });
+                                  }}
+                                  @value-changed=${(ev) => {
+                                    ev.stopPropagation();
+                                    const v = this._resolveSelectEventValue(ev, actionsList);
                                     if (v && v !== currentAction) setTapAction({ action: v });
                                   }}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
@@ -14852,13 +14857,15 @@
                                       return html`
                                         <div class="side-by-side" style="margin-top:6px;">
                                           <ha-select label="Domain" .value=${domain||""}
-                                            @selected=${(e) => { e.stopPropagation(); this._paDomainCache[bbKey] = e.target.value || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                            @selected=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                            @value-changed=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
                                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                                             <mwc-list-item value=""></mwc-list-item>
                                             ${domains.map(d => html`<mwc-list-item .value=${d}>${d}</mwc-list-item>`)}
                                           </ha-select>
                                           <ha-select label="Service" .value=${derivedService||""} .disabled=${!domain}
-                                            @selected=${(e) => { e.stopPropagation(); const svc = e.target.value || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                            @selected=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                            @value-changed=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
                                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                                             <mwc-list-item value=""></mwc-list-item>
                                             ${services.map(s => html`<mwc-list-item .value=${s}>${s}</mwc-list-item>`)}
@@ -15244,18 +15251,48 @@
     }
 
     
+    // Normalize ha-select / mwc select event payloads across HA versions.
+    _resolveSelectEventValue(ev, options = null) {
+      const fromDetail = ev?.detail?.value;
+      if (fromDetail !== undefined && fromDetail !== null) return fromDetail;
+      const fromTarget = ev?.target?.value;
+      if (fromTarget !== undefined && fromTarget !== null) return fromTarget;
+      const fromCurrent = ev?.currentTarget?.value;
+      if (fromCurrent !== undefined && fromCurrent !== null) return fromCurrent;
+      const idx = Number(ev?.detail?.index);
+      if (Number.isInteger(idx) && idx >= 0) {
+        if (Array.isArray(options)) {
+          const opt = options[idx];
+          if (opt && typeof opt === "object") {
+            if (opt.value !== undefined) return opt.value;
+            if (opt.label !== undefined) return opt.label;
+          }
+          if (opt !== undefined) return opt;
+        }
+        const items = ev?.currentTarget?.items || ev?.target?.items;
+        const item = Array.isArray(items) ? items[idx] : (items?.item ? items.item(idx) : null);
+        if (item) {
+          const v = item.value ?? item.getAttribute?.("value");
+          if (v !== undefined && v !== null) return v;
+        }
+      }
+      return undefined;
+    }
+
     // For Dropdowns (ha-select)
-    _dropdownChanged(ev, field) {
+    _dropdownChanged(ev, field, options = null) {
         ev.stopPropagation();
-        const value = ev.target.value;
+        const value = this._resolveSelectEventValue(ev, options);
+        if (value === undefined) return;
         this._fireChanged({ ...this._config, [field]: value });
     }
 
     // For Action Dropdowns - merges 'action' string back into an object
 
-    _actionChanged(ev, field) {
+    _actionChanged(ev, field, options = null) {
         ev.stopPropagation();
-        const actionValue = ev.target.value;
+        const actionValue = this._resolveSelectEventValue(ev, options);
+        if (actionValue === undefined) return;
 
         // IMPORTANT:
         // Keep `{ action: "none" }` in the config instead of deleting the field.
