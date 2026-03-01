@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.1-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.4.1-dev-03 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -10987,6 +10987,8 @@ window.customCards.push({
           s.textContent = '[data-hide-nav] .hki-popup-nav { display: none !important; }';
           document.head.appendChild(s);
         }
+      } else {
+        portal.removeAttribute('data-hide-nav');
       }
     }
 
@@ -11475,11 +11477,14 @@ window.customCards.push({
         el.style.display = hideTopBar ? "none" : "";
       });
       const existingFloat = portal.querySelector(".hki-floating-popup-close");
-      if (existingFloat) existingFloat.remove();
-      if (!showCloseWhenHidden) return;
+      if (!showCloseWhenHidden) {
+        if (existingFloat) existingFloat.remove();
+        return;
+      }
       const container = portal.querySelector(".hki-light-popup-container, .hki-popup-container, .popup-container");
       if (!container) return;
       if (!container.style.position) container.style.position = "relative";
+      if (existingFloat) return;
       const btn = document.createElement("button");
       btn.className = "hki-floating-popup-close";
       btn.type = "button";
