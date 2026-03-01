@@ -13409,14 +13409,14 @@
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Family"}
-                  .selector=${{ select: { options: fonts.map(f => ({value: f, label: f})) } }}
+                  .selector=${{ select: { mode: "dropdown", options: fonts.map(f => ({value: f, label: f})) } }}
                   .value=${this._config[`${prefix}_font_family`] || "system"}
                   @value-changed=${(ev) => this._dropdownChanged(ev, `${prefix}_font_family`)}
                 ></ha-selector>
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Weight"}
-                  .selector=${{ select: { options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
+                  .selector=${{ select: { mode: "dropdown", options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
                   .value=${(this._config[`${prefix}_font_weight`] ?? this._defaultFontWeight(prefix))}
                   @value-changed=${(ev) => this._dropdownChanged(ev, `${prefix}_font_weight`)}
                 ></ha-selector>
@@ -13461,7 +13461,7 @@
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Action Type"}
-                .selector=${{ select: { options: actionsList } }}
+                .selector=${{ select: { mode: "dropdown", options: actionsList } }}
                 .value=${currentAction}
                 @value-changed=${(ev) => this._actionChanged(ev, configKey, actionsList)}
               ></ha-selector>
@@ -13536,7 +13536,7 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Domain"}
-                            .selector=${{ select: { options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
+                            .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
                             .value=${domain || ""}
                             @value-changed=${(e) => {
                               e.stopPropagation();
@@ -13551,7 +13551,7 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Service"}
-                            .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
+                            .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                             .value=${derivedService || ""}
                             .disabled=${!domain}
                             @value-changed=${(e) => {
@@ -13665,7 +13665,7 @@
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Card Layout"}
-                  .selector=${{ select: { options: shapes.map(a => ({value: a, label: a === "square" ? "HKI Default" : (a === "google_default" ? "Google Default" : (a === "hki_tile" ? "HKI Tile" : "Badge"))})) } }}
+                  .selector=${{ select: { mode: "dropdown", options: shapes.map(a => ({value: a, label: a === "square" ? "HKI Default" : (a === "google_default" ? "Google Default" : (a === "hki_tile" ? "HKI Tile" : "Badge"))})) } }}
                   .value=${this._config.card_layout || "square"}
                   @value-changed=${(ev) => {
                     ev.stopPropagation();
@@ -13952,14 +13952,14 @@
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${"Font Family"}
-                    .selector=${{ select: { options: fonts.map(f => ({value: f, label: f})) } }}
+                    .selector=${{ select: { mode: "dropdown", options: fonts.map(f => ({value: f, label: f})) } }}
                     .value=${this._config.temp_badge_font_family || "system"}
                     @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_font_family")}
                   ></ha-selector>
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${"Font Weight"}
-                    .selector=${{ select: { options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
+                    .selector=${{ select: { mode: "dropdown", options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
                     .value=${this._config.temp_badge_font_weight || "normal"}
                     @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_font_weight")}
                   ></ha-selector>
@@ -13979,7 +13979,7 @@
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${"Border Style"}
-                    .selector=${{ select: { options: borderStyleOptions } }}
+                    .selector=${{ select: { mode: "dropdown", options: borderStyleOptions } }}
                     .value=${this._config.temp_badge_border_style || "none"}
                     @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_border_style")}
                   ></ha-selector>
@@ -14046,7 +14046,7 @@
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Graph Style"}
-                  .selector=${{ select: { options: [{value: 'line', label: 'Line Graph'}, {value: 'bar', label: 'Bar Chart'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'line', label: 'Line Graph'}, {value: 'bar', label: 'Bar Chart'}] } }}
                   .value=${this._config.sensor_graph_style || 'line'}
                   @value-changed=${(ev) => this._dropdownChanged(ev, 'sensor_graph_style')}
                 ></ha-selector>
@@ -14057,7 +14057,7 @@
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Graph time range"}
-                .selector=${{ select: { options: [{value: '12', label: '12 hours'}, {value: '24', label: '24 hours'}, {value: '48', label: '48 hours'}, {value: '72', label: '72 hours'}] } }}
+                .selector=${{ select: { mode: "dropdown", options: [{value: '12', label: '12 hours'}, {value: '24', label: '24 hours'}, {value: '48', label: '48 hours'}, {value: '72', label: '72 hours'}] } }}
                 .value=${String(this._config.sensor_hours ?? 24)}
                 @value-changed=${(ev) => this._dropdownChanged(ev, 'sensor_hours')}
               ></ha-selector>
@@ -14649,14 +14649,14 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Open Animation"}
-                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
+                            .selector=${{ select: { mode: "dropdown", options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
                             .value=${this._config.popup_open_animation || 'scale'}
                             @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
                           ></ha-selector>
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Close Animation"}
-                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
+                            .selector=${{ select: { mode: "dropdown", options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
                             .value=${this._config.popup_close_animation || 'scale'}
                             @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                           ></ha-selector>
@@ -14673,7 +14673,7 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Width"}
-                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.width } }}
+                            .selector=${{ select: { mode: "dropdown", options: HKI_POPUP_EDITOR_OPTIONS.width } }}
                             .value=${this._config.popup_width || 'auto'}
                             @value-changed=${(ev) => this._dropdownChanged(ev, "popup_width")}
                           ></ha-selector>
@@ -14685,7 +14685,7 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Height"}
-                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.height } }}
+                            .selector=${{ select: { mode: "dropdown", options: HKI_POPUP_EDITOR_OPTIONS.height } }}
                             .value=${this._config.popup_height || 'auto'}
                             @value-changed=${(ev) => this._dropdownChanged(ev, "popup_height")}
                           ></ha-selector>
@@ -14736,7 +14736,7 @@
                                                 <ha-selector
                           .hass=${this.hass}
                           .label=${"Button Alignment"}
-                          .selector=${{ select: { options: popupBottomBarAlignOptionsDetailed } }}
+                          .selector=${{ select: { mode: "dropdown", options: popupBottomBarAlignOptionsDetailed } }}
                           .value=${this._config.popup_bottom_bar_align || 'spread'}
                           @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
                         ></ha-selector>
@@ -14796,7 +14796,7 @@
                                                                 <ha-selector
                                   .hass=${this.hass}
                                   .label=${"Tap Action"}
-                                  .selector=${{ select: { options: actionsList } }}
+                                  .selector=${{ select: { mode: "dropdown", options: actionsList } }}
                                   .value=${currentAction}
                                   @value-changed=${(ev) => {
                                     ev.stopPropagation();
@@ -14844,14 +14844,14 @@
                                                                                     <ha-selector
                                             .hass=${this.hass}
                                             .label=${"Domain"}
-                                            .selector=${{ select: { options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
+                                            .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
                                             .value=${domain||""}
                                             @value-changed=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
                                           ></ha-selector>
                                                                                     <ha-selector
                                             .hass=${this.hass}
                                             .label=${"Service"}
-                                            .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
+                                            .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                                             .value=${derivedService||""}
                                             .disabled=${!domain}
                                             @value-changed=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
@@ -14897,7 +14897,7 @@
                                                             <ha-selector
                                 .hass=${this.hass}
                                 .label=${"Default View"}
-                                .selector=${{ select: { options: popupDefaultViewOptions.map(o => ({value: o.value, label: o.value === "individual" ? `Individual ${entityTypeName}` : o.label})) } }}
+                                .selector=${{ select: { mode: "dropdown", options: popupDefaultViewOptions.map(o => ({value: o.value, label: o.value === "individual" ? `Individual ${entityTypeName}` : o.label})) } }}
                                 .value=${this._config.popup_default_view || 'main'}
                                 @value-changed=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
                               ></ha-selector>
@@ -14905,7 +14905,7 @@
                                                                 <ha-selector
                                   .hass=${this.hass}
                                   .label=${"Default Section"}
-                                  .selector=${{ select: { options: popupDefaultSectionOptionsTagged } }}
+                                  .selector=${{ select: { mode: "dropdown", options: popupDefaultSectionOptionsTagged } }}
                                   .value=${this._config.popup_default_section || 'last'}
                                   @value-changed=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
                                 ></ha-selector>
@@ -14960,7 +14960,7 @@
                                                     <ha-selector
                             .hass=${this.hass}
                             .label=${"Time Format"}
-                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.timeFormats } }}
+                            .selector=${{ select: { mode: "dropdown", options: HKI_POPUP_EDITOR_OPTIONS.timeFormats } }}
                             .value=${this._config.popup_time_format || 'auto'}
                             @value-changed=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
                           ></ha-selector>
@@ -14983,7 +14983,7 @@
                                                         <ha-selector
                               .hass=${this.hass}
                               .label=${"Border Style"}
-                              .selector=${{ select: { options: borderStyleOptions } }}
+                              .selector=${{ select: { mode: "dropdown", options: borderStyleOptions } }}
                               .value=${this._config.popup_highlight_border_style || "none"}
                               @value-changed=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
                             ></ha-selector>
@@ -15010,7 +15010,7 @@
                                                         <ha-selector
                               .hass=${this.hass}
                               .label=${"Border Style"}
-                              .selector=${{ select: { options: borderStyleOptions } }}
+                              .selector=${{ select: { mode: "dropdown", options: borderStyleOptions } }}
                               .value=${this._config.popup_button_border_style || "none"}
                               @value-changed=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
                             ></ha-selector>

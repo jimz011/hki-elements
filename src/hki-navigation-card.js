@@ -2326,7 +2326,7 @@ class HkiNavigationCardEditor extends LitElement {
                 <ha-selector
           .hass=${this.hass}
           .label=${""}
-          .selector=${{ select: { options: ACTIONS } }}
+          .selector=${{ select: { mode: "dropdown", options: ACTIONS } }}
           .value=${type}
           @value-changed=${(e) => update({ action: (window.HKI.getSelectValue(e)) })}
         ></ha-selector>
@@ -2335,13 +2335,13 @@ class HkiNavigationCardEditor extends LitElement {
         ${type === "toggle-group" ? html`<div class="grid2">        <ha-selector
           .hass=${this.hass}
           .label=${""}
-          .selector=${{ select: { options: GROUP_TARGETS } }}
+          .selector=${{ select: { mode: "dropdown", options: GROUP_TARGETS } }}
           .value=${act.target || "vertical"}
           @value-changed=${(e) => update({ target: (window.HKI.getSelectValue(e)) })}
         ></ha-selector>        <ha-selector
           .hass=${this.hass}
           .label=${""}
-          .selector=${{ select: { options: GROUP_ACTIONS } }}
+          .selector=${{ select: { mode: "dropdown", options: GROUP_ACTIONS } }}
           .value=${act.mode || "toggle"}
           @value-changed=${(e) => update({ mode: (window.HKI.getSelectValue(e)) })}
         ></ha-selector></div><div class="hint">Tip: Disable a group below, then use this action to open it temporarily. It auto-closes after pressing any other button.</div>` : html``}
@@ -2372,7 +2372,7 @@ class HkiNavigationCardEditor extends LitElement {
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${""}
-                    .selector=${{ select: { options: [{value: '', label: ''}, ...Object.keys(this.hass?.services || {}).sort().map(d => ({value: d, label: d}))] } }}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...Object.keys(this.hass?.services || {}).sort().map(d => ({value: d, label: d}))] } }}
                     .value=${domain || undefined}
                     @value-changed=${(e) => {
                       const nextDomain = (window.HKI.getSelectValue(e)) || '';
@@ -2386,7 +2386,7 @@ class HkiNavigationCardEditor extends LitElement {
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${""}
-                    .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                     .value=${derivedService || undefined}
                     .disabled=${!domain}
                     @value-changed=${(e) => {
@@ -2464,7 +2464,7 @@ class HkiNavigationCardEditor extends LitElement {
                 <ha-selector
           .hass=${this.hass}
           .label=${""}
-          .selector=${{ select: { options: [{value: 'all', label: 'All conditions (AND)'}, {value: 'any', label: 'Any condition (OR)'}] } }}
+          .selector=${{ select: { mode: "dropdown", options: [{value: 'all', label: 'All conditions (AND)'}, {value: 'any', label: 'Any condition (OR)'}] } }}
           .value=${mode}
           @value-changed=${(e) => setBtnFn({ ...btn, conditions_mode: (window.HKI.getSelectValue(e)) })}
         ></ha-selector>
@@ -2475,14 +2475,14 @@ class HkiNavigationCardEditor extends LitElement {
           return html`<div class="cond"><div class="cond-head"><div class="cond-title">${title}${cond.invert ? " • inverted" : ""}</div><mwc-icon-button title="Remove" @click=${() => remove(cond.id)}><ha-icon icon="mdi:trash-can-outline"></ha-icon></mwc-icon-button></div><div class="grid2">          <ha-selector
             .hass=${this.hass}
             .label=${""}
-            .selector=${{ select: { options: CONDITION_TYPES } }}
+            .selector=${{ select: { mode: "dropdown", options: CONDITION_TYPES } }}
             .value=${type}
             @value-changed=${(e) => setCond(cond.id, { type: (window.HKI.getSelectValue(e)) })}
           ></ha-selector><ha-formfield .label=${"Invert result"}><ha-switch .checked=${!!cond.invert} @change=${(e) => setCond(cond.id, { invert: e.target.checked })}></ha-switch></ha-formfield></div>
               ${type === "entity" ? html`<div class="grid2">${this._renderEntityPicker("Entity", cond.entity || "", (v) => setCond(cond.id, { entity: v }))}<ha-textfield .label=${"Attribute (optional)"} .value=${cond.attribute || ""} placeholder="brightness" @change=${(e) => setCond(cond.id, { attribute: (window.HKI.getSelectValue(e)) })}></ha-textfield>              <ha-selector
                 .hass=${this.hass}
                 .label=${""}
-                .selector=${{ select: { options: ENTITY_OPERATORS } }}
+                .selector=${{ select: { mode: "dropdown", options: ENTITY_OPERATORS } }}
                 .value=${cond.operator || "equals"}
                 @value-changed=${(e) => setCond(cond.id, { operator: (window.HKI.getSelectValue(e)) })}
               ></ha-selector>${(cond.operator === "exists" || cond.operator === "not_exists") ? html`<div></div>` : html`<ha-textfield .label=${"Value"} .value=${cond.value ?? ""} placeholder="on" @change=${(e) => setCond(cond.id, { value: (window.HKI.getSelectValue(e)) })}></ha-textfield>`}</div>` : html``}
@@ -2491,7 +2491,7 @@ class HkiNavigationCardEditor extends LitElement {
               ${type === "screen" ? html`              <ha-selector
                 .hass=${this.hass}
                 .label=${""}
-                .selector=${{ select: { options: [{value: 'mobile', label: 'Mobile'}, {value: 'desktop', label: 'Desktop'}] } }}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'mobile', label: 'Mobile'}, {value: 'desktop', label: 'Desktop'}] } }}
                 .value=${cond.mode || "mobile"}
                 @value-changed=${(e) => setCond(cond.id, { mode: (window.HKI.getSelectValue(e)) })}
               ></ha-selector>` : html``}</div>`;
@@ -2510,7 +2510,7 @@ class HkiNavigationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${""}
-              .selector=${{ select: { options: BUTTON_TYPES } }}
+              .selector=${{ select: { mode: "dropdown", options: BUTTON_TYPES } }}
               .value=${effectiveType}
               @value-changed=${(e) => { const v = (window.HKI.getSelectValue(e)); setBtnFn({ ...btn, button_type: v === INHERIT ? "" : v }); }}
             ></ha-selector>
@@ -2581,7 +2581,7 @@ class HkiNavigationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${""}
-              .selector=${{ select: { options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
+              .selector=${{ select: { mode: "dropdown", options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
               .value=${btn.label_style?.font_weight !== undefined ? String(btn.label_style.font_weight) : INHERIT}
               @value-changed=${(e) => { const next = { ...(btn.label_style || {}) }; if ((window.HKI.getSelectValue(e)) === INHERIT) delete next.font_weight; else next.font_weight = Number((window.HKI.getSelectValue(e))); setBtnFn({ ...btn, label_style: next }); }}
             ></ha-selector>
@@ -2707,7 +2707,7 @@ class HkiNavigationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${""}
-              .selector=${{ select: { options: [{value: 'bottom-left', label: 'Bottom left'}, {value: 'bottom-center', label: 'Bottom center'}, {value: 'bottom-right', label: 'Bottom right'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'bottom-left', label: 'Bottom left'}, {value: 'bottom-center', label: 'Bottom center'}, {value: 'bottom-right', label: 'Bottom right'}] } }}
               .value=${c.position}
               @value-changed=${(e) => this._setValue("position", (window.HKI.getSelectValue(e)))}
             ></ha-selector>
@@ -2743,7 +2743,7 @@ class HkiNavigationCardEditor extends LitElement {
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${""}
-                    .selector=${{ select: { options: BUTTON_TYPES } }}
+                    .selector=${{ select: { mode: "dropdown", options: BUTTON_TYPES } }}
                     .value=${c.default_button_type}
                     @value-changed=${(e) => this._setValue("default_button_type", (window.HKI.getSelectValue(e)))}
                   ></ha-selector>
@@ -2768,7 +2768,7 @@ class HkiNavigationCardEditor extends LitElement {
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${""}
-                    .selector=${{ select: { options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
+                    .selector=${{ select: { mode: "dropdown", options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
                     .value=${String(c.label_style?.font_weight ?? DEFAULT_LABEL_STYLE.font_weight)}
                     @value-changed=${(e) => this._setLabelStyleGlobal("font_weight", Number((window.HKI.getSelectValue(e))))}
                   ></ha-selector>
@@ -2776,7 +2776,7 @@ class HkiNavigationCardEditor extends LitElement {
                                     <ha-selector
                     .hass=${this.hass}
                     .label=${""}
-                    .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'uppercase', label: 'Uppercase'}, {value: 'lowercase', label: 'Lowercase'}, {value: 'capitalize', label: 'Capitalize'}] } }}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'uppercase', label: 'Uppercase'}, {value: 'lowercase', label: 'Lowercase'}, {value: 'capitalize', label: 'Capitalize'}] } }}
                     .value=${c.label_style?.text_transform ?? "none"}
                     @value-changed=${(e) => this._setLabelStyleGlobal("text_transform", (window.HKI.getSelectValue(e)))}
                   ></ha-selector>

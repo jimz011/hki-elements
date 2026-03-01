@@ -388,7 +388,7 @@ class HkiSettingsBase extends LitElement {
             <ha-selector
         .hass=${this.hass}
         .label=${""}
-        .selector=${{ select: { options: options.map(opt => ({value: String(opt.value), label: opt.label})) } }}
+        .selector=${{ select: { mode: "dropdown", options: options.map(opt => ({value: String(opt.value), label: opt.label})) } }}
         .value=${current !== undefined ? String(current) : "__inherit__"}
         @value-changed=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
       ></ha-selector>

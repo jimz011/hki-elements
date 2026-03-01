@@ -2757,7 +2757,7 @@ class HkiNotificationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Display Mode"}
-              .selector=${{ select: { options: [{value: 'ticker', label: 'Ticker (Cycle One by One)'}, {value: 'marquee', label: 'Marquee (Scrollable List)'}, {value: 'list', label: 'List (Vertical Stack)'}, {value: 'button', label: 'Button (Icon Only)'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'ticker', label: 'Ticker (Cycle One by One)'}, {value: 'marquee', label: 'Marquee (Scrollable List)'}, {value: 'list', label: 'List (Vertical Stack)'}, {value: 'button', label: 'Button (Icon Only)'}] } }}
               .value=${mode}
               @value-changed=${(e) => this._modeChanged(e)}
             ></ha-selector>
@@ -2787,14 +2787,14 @@ class HkiNotificationCardEditor extends LitElement {
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Animation"}
-                      .selector=${{ select: { options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
                       .value=${this._config.animation || "slide"}
                       @value-changed=${(e) => this._valueChanged(e, "animation")}
                     ></ha-selector>
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Direction"}
-                      .selector=${{ select: { options: [{value: 'd', label: 'From ${d.charAt(0).toUpperCase() + d.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: [{value: 'd', label: 'From ${d.charAt(0).toUpperCase() + d.slice(1)}'}] } }}
                       .value=${this._config.direction || "right"}
                       @value-changed=${(e) => this._valueChanged(e, "direction")}
                     ></ha-selector>
@@ -2812,7 +2812,7 @@ class HkiNotificationCardEditor extends LitElement {
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Time Format"}
-                .selector=${{ select: { options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
                 .value=${this._config.time_format || "auto"}
                 @value-changed=${(e) => this._valueChanged(e, "time_format")}
               ></ha-selector>
@@ -2824,7 +2824,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Width"}
-                  .selector=${{ select: { options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_width || 'auto'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_width")}
                 ></ha-selector>
@@ -2837,7 +2837,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Height"}
-                  .selector=${{ select: { options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_height || 'auto'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_height")}
                 ></ha-selector>
@@ -2880,14 +2880,14 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Open Animation"}
-                  .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
                   .value=${this._config.popup_open_animation || 'scale'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_open_animation")}
                 ></ha-selector>
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Close Animation"}
-                  .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
                   .value=${this._config.popup_close_animation || 'scale'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_close_animation")}
                 ></ha-selector>
@@ -2913,7 +2913,7 @@ class HkiNotificationCardEditor extends LitElement {
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Time Format"}
-                .selector=${{ select: { options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
                 .value=${this._config.time_format || "auto"}
                 @value-changed=${(e) => this._valueChanged(e, "time_format")}
               ></ha-selector>
@@ -2925,7 +2925,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Width"}
-                  .selector=${{ select: { options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_width || 'auto'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_width")}
                 ></ha-selector>
@@ -2938,7 +2938,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Height"}
-                  .selector=${{ select: { options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_height || 'auto'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_height")}
                 ></ha-selector>
@@ -2982,14 +2982,14 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Open Animation"}
-                  .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
                   .value=${this._config.popup_open_animation || 'scale'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_open_animation")}
                 ></ha-selector>
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Close Animation"}
-                  .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
                   .value=${this._config.popup_close_animation || 'scale'}
                   @value-changed=${(ev) => this._valueChanged(ev, "popup_close_animation")}
                 ></ha-selector>
@@ -3021,7 +3021,7 @@ class HkiNotificationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Alignment"}
-              .selector=${{ select: { options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
               .value=${this._config.alignment || "left"}
               @value-changed=${(e) => this._valueChanged(e, "alignment")}
             ></ha-selector>
@@ -3034,7 +3034,7 @@ class HkiNotificationCardEditor extends LitElement {
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Label Position"}
-                .selector=${{ select: { options: [{value: 'below', label: 'Below Icon'}, {value: 'left', label: 'Left of Icon'}, {value: 'right', label: 'Right of Icon'}, {value: 'inside', label: 'Inside (Pill Style)'}] } }}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'below', label: 'Below Icon'}, {value: 'left', label: 'Left of Icon'}, {value: 'right', label: 'Right of Icon'}, {value: 'inside', label: 'Inside (Pill Style)'}] } }}
                 .value=${this._config.button_label_position || "below"}
                 @value-changed=${(e) => this._valueChanged(e, "button_label_position")}
               ></ha-selector>
@@ -3062,7 +3062,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Border Style"}
-                  .selector=${{ select: { options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'none', label: 'None'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'none', label: 'None'}] } }}
                   .value=${this._config.button_pill_border_style || "solid"}
                   @value-changed=${(e) => this._valueChanged(e, "button_pill_border_style")}
                 ></ha-selector>
@@ -3077,7 +3077,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Badge Position"}
-                  .selector=${{ select: { options: [{value: 'inside', label: 'Inside Pill'}, {value: 'outside', label: 'Outside Pill (Corner)'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'inside', label: 'Inside Pill'}, {value: 'outside', label: 'Outside Pill (Corner)'}] } }}
                   .value=${this._config.button_pill_badge_position || "inside"}
                   @value-changed=${(e) => this._valueChanged(e, "button_pill_badge_position")}
                 ></ha-selector>
@@ -3122,7 +3122,7 @@ class HkiNotificationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Alignment"}
-              .selector=${{ select: { options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
               .value=${this._config.alignment || "left"}
               @value-changed=${(e) => this._valueChanged(e, "alignment")}
             ></ha-selector>
@@ -3158,7 +3158,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Weight"}
-                  .selector=${{ select: { options: [{value: 'w', label: '${w}'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w}'}] } }}
                   .value=${this._config.font_weight || "Semi Bold"}
                   @value-changed=${(e) => this._valueChanged(e, "font_weight")}
                 ></ha-selector>
@@ -3167,7 +3167,7 @@ class HkiNotificationCardEditor extends LitElement {
 <ha-selector
   .hass=${this.hass}
   .label=${"Font Family"}
-  .selector=${{ select: { options: FONTS.map(f => ({value: f, label: f === "Custom" ? "Custom..." : f.split(',')[0]})) } }}
+  .selector=${{ select: { mode: "dropdown", options: FONTS.map(f => ({value: f, label: f === "Custom" ? "Custom..." : f.split(',')[0]})) } }}
   .value=${fontFamily}
   @value-changed=${(e) => this._valueChanged(e, "font_family")}
 ></ha-selector>
