@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.0 ',
+  '%c HKI-ELEMENTS %c v1.4.1-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -8918,6 +8918,8 @@ window.customCards.push({
       this._customPopupYamlDebounce = null;
       this._popupOpen = false;
       this._popupPortal = null;
+      this._popupSourceEntityId = null;
+      this._popupEntitySwitchInProgress = false;
       this._activeView = 'brightness'; // brightness, temperature, color
       this._favoritesEditMode = false;
       this._lightFavorites = null;
@@ -10916,9 +10918,12 @@ window.customCards.push({
       this._renderPopupPortal();
     }
 
-    _closePopup() {
+    _closePopup(onDone) {
       const portal = this._popupPortal;
-      if (!portal) return;
+      if (!portal) {
+        if (typeof onDone === 'function') onDone();
+        return;
+      }
 
       const cleanup = () => {
         this._stopHistoryAutoRefresh();
@@ -10928,7 +10933,13 @@ window.customCards.push({
         this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
+        if (!this._popupEntitySwitchInProgress && this._popupSourceEntityId && this._config?.entity !== this._popupSourceEntityId) {
+          this._config = { ...this._config, entity: this._popupSourceEntityId };
+          this.requestUpdate();
+        }
+        if (!this._popupEntitySwitchInProgress) this._popupSourceEntityId = null;
         __hkiUnlockScroll();
+        if (typeof onDone === 'function') onDone();
       };
 
       if (window.HKI?.animatePopupClose) {
@@ -17763,6 +17774,22 @@ window.customCards.push({
         const d = entityId.split('.')[0];
         const svc = d === 'input_boolean' ? 'input_boolean' : (d === 'light' ? 'light' : (d === 'switch' ? 'switch' : 'homeassistant'));
         this.hass.callService(svc, 'toggle', { entity_id: entityId });
+      } else if (act === 'hki-more-info') {
+        if (!entityId) return;
+        if (!this._popupSourceEntityId) {
+          this._popupSourceEntityId = this._config?.entity || null;
+        }
+        this._config = { ...this._config, entity: entityId };
+        this.requestUpdate();
+        if (this._popupOpen) {
+          this._popupEntitySwitchInProgress = true;
+          this._closePopup(() => {
+            this._popupEntitySwitchInProgress = false;
+            this._openPopup();
+          });
+        } else {
+          this._openPopup();
+        }
       } else if (act === 'more-info') {
         const ev = new Event('hass-more-info', { bubbles: true, composed: true });
         ev.detail = { entityId };
@@ -23317,6 +23344,22 @@ window.customCards.push({
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
                           </div>
                           <ha-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></ha-textfield>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    ${isCustomPopup ? html`
+                      <div class="sub-accordion">
+                        ${renderHeader("Features", "popup_features")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_features'] ? 'hidden' : ''}">
+                          <div class="checkbox-grid">
+                            <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                            <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                            ${this._config.popup_hide_top_bar === true ? html`
+                              <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                            ` : ''}
+                            <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
+                          </div>
                         </div>
                       </div>
                     ` : ''}
