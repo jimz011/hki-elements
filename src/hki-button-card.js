@@ -2394,6 +2394,8 @@
     _openPopup() {
       if (this._inEditorPreview() || this._isEditMode()) return;
       if (this._popupOpen) return;
+      const forceDomainPopupOnce = this._forceDomainPopupOnce === true;
+      this._forceDomainPopupOnce = false;
       
       const domain = this._getDomain();
       const entity = this._getEntity();
@@ -2402,7 +2404,7 @@
       const customPopupEnabled = this._config.custom_popup?.enabled || this._config.custom_popup_enabled;
       const customPopupCard = this._config.custom_popup?.card || this._config.custom_popup_card;
       
-      if (customPopupEnabled && customPopupCard) {
+      if (customPopupEnabled && customPopupCard && !forceDomainPopupOnce) {
         this._popupOpen = true;
         __hkiLockScroll();
         this._activeView = 'main';
@@ -9422,11 +9424,13 @@
         const svc = d === 'input_boolean' ? 'input_boolean' : (d === 'light' ? 'light' : (d === 'switch' ? 'switch' : 'homeassistant'));
         this.hass.callService(svc, 'toggle', { entity_id: entityId });
       } else if (act === 'hki-more-info') {
-        if (!entityId) return;
+        const popupEntityId = action.entity || entityId;
+        if (!popupEntityId) return;
         if (!this._popupSourceEntityId) {
           this._popupSourceEntityId = this._config?.entity || null;
         }
-        this._config = { ...this._config, entity: entityId };
+        this._config = { ...this._config, entity: popupEntityId };
+        this._forceDomainPopupOnce = true;
         this.requestUpdate();
         if (this._popupOpen) {
           this._popupEntitySwitchInProgress = true;
