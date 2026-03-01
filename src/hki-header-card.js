@@ -6123,7 +6123,7 @@ class HkiHeaderCardEditor extends LitElement {
           </div>
         </details>
 
-        <details class="box-section">
+        ${p('popup_hide_bottom_bar') !== true ? html`<details class="box-section">
           <summary>Bottom Bar Entities</summary>
           <div class="box-content">
             <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the popup bottom bar.</p>
@@ -6181,7 +6181,7 @@ class HkiHeaderCardEditor extends LitElement {
                         <ha-textfield label="Icon (optional)" .value=${_ent.icon||''} placeholder="mdi:home"
                           @input=${(ev) => setSlot({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
                         <ha-select label="Tap Action" .value=${_act}
-                          @selected=${(ev) => { ev.stopPropagation(); const v=ev.detail?.value||ev.target?.value; if(v && v!==_act) setTap({ action:v }); }}
+                          @selected=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
                           @closed=${(e)=>e.stopPropagation()} @click=${(e)=>e.stopPropagation()} style="margin-top:6px;">
                           ${popupBottomBarActionOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                         </ha-select>
@@ -6200,7 +6200,7 @@ class HkiHeaderCardEditor extends LitElement {
               `;
             })()}
           </div>
-        </details>
+        </details>` : ''}
       ` : ''}
     `;
   }
@@ -6823,7 +6823,7 @@ class HkiHeaderCardEditor extends LitElement {
           </div>
         </details>
 
-        <details class="box-section">
+        ${pv('popup_hide_bottom_bar') !== true ? html`<details class="box-section">
           <summary>Bottom Bar Entities</summary>
           <div class="box-content">
             <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the popup bottom bar.</p>
@@ -6881,7 +6881,7 @@ class HkiHeaderCardEditor extends LitElement {
                         <ha-textfield label="Icon (optional)" .value=${_ent.icon||''} placeholder="mdi:home"
                           @input=${(ev) => setSlot({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
                         <ha-select label="Tap Action" .value=${_act}
-                          @selected=${(ev) => { ev.stopPropagation(); const v=ev.detail?.value||ev.target?.value; if(v && v!==_act) setTap({ action:v }); }}
+                          @selected=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
                           @closed=${(e)=>e.stopPropagation()} @click=${(e)=>e.stopPropagation()} style="margin-top:6px;">
                           ${popupBottomBarActionOptions.map((o) => html`<mwc-list-item value="${o.value}">${o.label}</mwc-list-item>`)}
                         </ha-select>
@@ -6900,7 +6900,7 @@ class HkiHeaderCardEditor extends LitElement {
               `;
             })()}
           </div>
-        </details>
+        </details>` : ''}
       ` : ''}
         </div>
       </details>

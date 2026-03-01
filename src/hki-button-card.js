@@ -14725,6 +14725,23 @@
                       </div>
                     </div>
 
+                    ${isCustomPopup ? html`
+                      <div class="sub-accordion">
+                        ${renderHeader("Features", "popup_features")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_features'] ? 'hidden' : ''}">
+                          <div class="checkbox-grid">
+                            <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                            <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                            ${this._config.popup_hide_top_bar === true ? html`
+                              <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                            ` : ''}
+                            <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    ${this._config.popup_hide_bottom_bar !== true ? html`
                     <div class="sub-accordion">
                       ${renderHeader("Bottom Bar Entities", "popup_bottom_bar")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_bottom_bar'] ? 'hidden' : ''}">
@@ -14789,7 +14806,12 @@
                                   @input=${(ev) => setEntry({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
 
                                 <ha-select label="Tap Action" .value=${currentAction}
-                                  @selected=${(ev) => { ev.stopPropagation(); const v = ev.detail?.value || ev.target?.value; if (v && v !== currentAction) setTapAction({ action: v }); }}
+                                  @selected=${(ev) => {
+                                    ev.stopPropagation();
+                                    const idx = Number(ev?.detail?.index);
+                                    const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? actionsList[idx]?.value : undefined);
+                                    if (v && v !== currentAction) setTapAction({ action: v });
+                                  }}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
                                   ${actionsList.map(a => html`<mwc-list-item .value=${a.value}>${a.label}</mwc-list-item>`)}
                                 </ha-select>
@@ -14870,6 +14892,7 @@
                         }
                       </div>
                     </div>
+                    ` : ''}
 
                     ${!isCustomPopup ? html`
                       ${hasChildren ? html`
@@ -14995,21 +15018,6 @@
                       </div>
                     ` : ''}
 
-                    ${isCustomPopup ? html`
-                      <div class="sub-accordion">
-                        ${renderHeader("Features", "popup_features")}
-                        <div class="sub-accordion-content ${this._closedDetails['popup_features'] ? 'hidden' : ''}">
-                          <div class="checkbox-grid">
-                            <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
-                            <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
-                            ${this._config.popup_hide_top_bar === true ? html`
-                              <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
-                            ` : ''}
-                            <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
-                          </div>
-                        </div>
-                      </div>
-                    ` : ''}
                   `;
                 })()}
              </div>
