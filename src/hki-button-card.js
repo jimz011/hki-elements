@@ -560,6 +560,8 @@
       this._customPopupYamlDebounce = null;
       this._popupOpen = false;
       this._popupPortal = null;
+      this._popupSourceEntityId = null;
+      this._popupEntitySwitchInProgress = false;
       this._activeView = 'brightness'; // brightness, temperature, color
       this._favoritesEditMode = false;
       this._lightFavorites = null;
@@ -1671,7 +1673,7 @@
 
     _tileSliderInput(e, domain) {
       // Update value while dragging (optimistic UI)
-      const value = parseInt(e.target.value, 10);
+      const value = parseInt(window.HKI.getSelectValue(e), 10);
       if (!Number.isNaN(value)) {
         this._tileSliderValue = value;
         this._tileSliderValueTs = Date.now();
@@ -1684,7 +1686,7 @@
 
     _tileSliderChange(e, domain) {
       // Final value when released
-      const value = parseInt(e.target.value, 10);
+      const value = parseInt(window.HKI.getSelectValue(e), 10);
       if (!Number.isNaN(value)) {
         this._tileSliderValue = value;
         this._tileSliderLastSet = Date.now();
@@ -2558,9 +2560,12 @@
       this._renderPopupPortal();
     }
 
-    _closePopup() {
+    _closePopup(onDone) {
       const portal = this._popupPortal;
-      if (!portal) return;
+      if (!portal) {
+        if (typeof onDone === 'function') onDone();
+        return;
+      }
 
       const cleanup = () => {
         this._stopHistoryAutoRefresh();
@@ -2570,7 +2575,13 @@
         this._detachPopupChromeObserver(portal);
         portal.remove();
         this._popupPortal = null;
+        if (!this._popupEntitySwitchInProgress && this._popupSourceEntityId && this._config?.entity !== this._popupSourceEntityId) {
+          this._config = { ...this._config, entity: this._popupSourceEntityId };
+          this.requestUpdate();
+        }
+        if (!this._popupEntitySwitchInProgress) this._popupSourceEntityId = null;
         __hkiUnlockScroll();
+        if (typeof onDone === 'function') onDone();
       };
 
       if (window.HKI?.animatePopupClose) {
@@ -2618,6 +2629,8 @@
           s.textContent = '[data-hide-nav] .hki-popup-nav { display: none !important; }';
           document.head.appendChild(s);
         }
+      } else {
+        portal.removeAttribute('data-hide-nav');
       }
     }
 
@@ -3106,11 +3119,14 @@
         el.style.display = hideTopBar ? "none" : "";
       });
       const existingFloat = portal.querySelector(".hki-floating-popup-close");
-      if (existingFloat) existingFloat.remove();
-      if (!showCloseWhenHidden) return;
+      if (!showCloseWhenHidden) {
+        if (existingFloat) existingFloat.remove();
+        return;
+      }
       const container = portal.querySelector(".hki-light-popup-container, .hki-popup-container, .popup-container");
       if (!container) return;
       if (!container.style.position) container.style.position = "relative";
+      if (existingFloat) return;
       const btn = document.createElement("button");
       btn.className = "hki-floating-popup-close";
       btn.type = "button";
@@ -9405,6 +9421,22 @@
         const d = entityId.split('.')[0];
         const svc = d === 'input_boolean' ? 'input_boolean' : (d === 'light' ? 'light' : (d === 'switch' ? 'switch' : 'homeassistant'));
         this.hass.callService(svc, 'toggle', { entity_id: entityId });
+      } else if (act === 'hki-more-info') {
+        if (!entityId) return;
+        if (!this._popupSourceEntityId) {
+          this._popupSourceEntityId = this._config?.entity || null;
+        }
+        this._config = { ...this._config, entity: entityId };
+        this.requestUpdate();
+        if (this._popupOpen) {
+          this._popupEntitySwitchInProgress = true;
+          this._closePopup(() => {
+            this._popupEntitySwitchInProgress = false;
+            this._openPopup();
+          });
+        } else {
+          this._openPopup();
+        }
       } else if (act === 'more-info') {
         const ev = new Event('hass-more-info', { bubbles: true, composed: true });
         ev.detail = { entityId };
@@ -13433,7 +13465,8 @@
               <ha-select 
                 label="Action Type" 
                 .value=${currentAction} 
-                @selected=${(ev) => this._actionChanged(ev, configKey)} 
+                @selected=${(ev) => this._actionChanged(ev, configKey, actionsList)} 
+                @value-changed=${(ev) => this._actionChanged(ev, configKey, actionsList)}
                 @closed=${(e) => e.stopPropagation()} 
                 @click=${(e) => e.stopPropagation()}
               >
@@ -13487,7 +13520,7 @@
                       .value=${actionConfig.perform_action || ""}
                       @value-changed=${(ev) => {
                         ev.stopPropagation();
-                        const v = ev.detail?.value ?? ev.target?.value ?? "";
+                        const v = window.HKI.getSelectValue(ev) ?? "";
                         if (v !== actionConfig.perform_action) {
                           const updated = { ...actionConfig, action: "perform-action", perform_action: String(v || "") };
                           this._fireChanged({ ...this._config, [configKey]: updated });
@@ -13512,7 +13545,7 @@
                             .value=${domain || ""}
                             @selected=${(e) => {
                               e.stopPropagation();
-                              const nextDomain = e.target.value || '';
+                              const nextDomain = window.HKI.getSelectValue(e) || '';
                               this._paDomainCache[key] = nextDomain;
                               const updated = { ...actionConfig, action: "perform-action", perform_action: "" };
                               this._fireChanged({ ...this._config, [configKey]: updated });
@@ -13531,7 +13564,7 @@
                             .disabled=${!domain}
                             @selected=${(e) => {
                               e.stopPropagation();
-                              const service = e.target.value || '';
+                              const service = window.HKI.getSelectValue(e) || '';
                               const d = (this._paDomainCache[key] || domain || '');
                               const next = (d && service) ? `${d}.${service}` : "";
                               const updated = { ...actionConfig, action: "perform-action", perform_action: next };
@@ -13647,7 +13680,7 @@
                   .value=${this._config.card_layout || "square"} 
                   @selected=${(ev) => {
                     ev.stopPropagation();
-                    const newLayout = ev.target.value;
+                    const newLayout = window.HKI.getSelectValue(ev);
                     const oldLayout = this._config.card_layout;
                     
                     // Create new config with layout changed
@@ -14693,6 +14726,23 @@
                       </div>
                     </div>
 
+                    ${isCustomPopup ? html`
+                      <div class="sub-accordion">
+                        ${renderHeader("Features", "popup_features")}
+                        <div class="sub-accordion-content ${this._closedDetails['popup_features'] ? 'hidden' : ''}">
+                          <div class="checkbox-grid">
+                            <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${this._config.popup_hide_bottom_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_bottom_bar")}></ha-switch></ha-formfield>
+                            <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${this._config.popup_hide_top_bar === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_top_bar")}></ha-switch></ha-formfield>
+                            ${this._config.popup_hide_top_bar === true ? html`
+                              <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${this._config.popup_show_close_button !== false} @change=${(ev) => this._switchChanged(ev, "popup_show_close_button")}></ha-switch></ha-formfield>
+                            ` : ''}
+                            <ha-formfield .label=${"Close Popup After Action"}><ha-switch .checked=${this._config.popup_close_on_action === true} @change=${(ev) => this._switchChanged(ev, "popup_close_on_action")}></ha-switch></ha-formfield>
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    ${this._config.popup_hide_bottom_bar !== true ? html`
                     <div class="sub-accordion">
                       ${renderHeader("Bottom Bar Entities", "popup_bottom_bar")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_bottom_bar'] ? 'hidden' : ''}">
@@ -14752,12 +14802,21 @@
                                 allow-custom-entity></ha-entity-picker>
                               ${entry.entity ? html`
                                 <ha-textfield label="Name (optional)" .value=${entry.name||""} placeholder="Custom name"
-                                  @input=${(ev) => setEntry({ name: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
+                                  @input=${(ev) => setEntry({ name: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></ha-textfield>
                                 <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
-                                  @input=${(ev) => setEntry({ icon: ev.target.value || undefined })} style="margin-top:6px;"></ha-textfield>
+                                  @input=${(ev) => setEntry({ icon: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></ha-textfield>
 
                                 <ha-select label="Tap Action" .value=${currentAction}
-                                  @selected=${(ev) => { ev.stopPropagation(); const v = ev.detail?.value || ev.target?.value; if (v && v !== currentAction) setTapAction({ action: v }); }}
+                                  @selected=${(ev) => {
+                                    ev.stopPropagation();
+                                    const v = this._resolveSelectEventValue(ev, actionsList);
+                                    if (v && v !== currentAction) setTapAction({ action: v });
+                                  }}
+                                  @value-changed=${(ev) => {
+                                    ev.stopPropagation();
+                                    const v = this._resolveSelectEventValue(ev, actionsList);
+                                    if (v && v !== currentAction) setTapAction({ action: v });
+                                  }}
                                   @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
                                   ${actionsList.map(a => html`<mwc-list-item .value=${a.value}>${a.label}</mwc-list-item>`)}
                                 </ha-select>
@@ -14770,20 +14829,20 @@
                                       @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-navigation-picker>
                                   ` : html`
                                     <ha-textfield label="Navigation Path" .value=${tapAction.navigation_path||""} placeholder="/lovelace/0"
-                                      @input=${(ev) => setTapAction({ navigation_path: ev.target.value })} style="margin-top:6px;"></ha-textfield>
+                                      @input=${(ev) => setTapAction({ navigation_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></ha-textfield>
                                   `}
                                 ` : ''}
 
                                 ${currentAction === 'url' ? html`
                                   <ha-textfield label="URL" .value=${tapAction.url_path||""} placeholder="https://..."
-                                    @input=${(ev) => setTapAction({ url_path: ev.target.value })} style="margin-top:6px;"></ha-textfield>
+                                    @input=${(ev) => setTapAction({ url_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></ha-textfield>
                                 ` : ''}
 
                                 ${currentAction === 'perform-action' ? html`
                                   ${customElements.get("ha-service-picker") ? html`
                                     <ha-service-picker .hass=${this.hass} label="Action (service)"
                                       .value=${tapAction.perform_action||""}
-                                      @value-changed=${(ev) => { ev.stopPropagation(); const v = ev.detail?.value ?? ev.target?.value ?? ""; if (v !== tapAction.perform_action) setTapAction({ perform_action: String(v || "") }); }}
+                                      @value-changed=${(ev) => { ev.stopPropagation(); const v = window.HKI.getSelectValue(ev) ?? ""; if (v !== tapAction.perform_action) setTapAction({ perform_action: String(v || "") }); }}
                                       @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-service-picker>
                                   ` : html`
                                     ${(() => {
@@ -14798,13 +14857,15 @@
                                       return html`
                                         <div class="side-by-side" style="margin-top:6px;">
                                           <ha-select label="Domain" .value=${domain||""}
-                                            @selected=${(e) => { e.stopPropagation(); this._paDomainCache[bbKey] = e.target.value || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                            @selected=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                            @value-changed=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
                                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                                             <mwc-list-item value=""></mwc-list-item>
                                             ${domains.map(d => html`<mwc-list-item .value=${d}>${d}</mwc-list-item>`)}
                                           </ha-select>
                                           <ha-select label="Service" .value=${derivedService||""} .disabled=${!domain}
-                                            @selected=${(e) => { e.stopPropagation(); const svc = e.target.value || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                            @selected=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                            @value-changed=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
                                             @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
                                             <mwc-list-item value=""></mwc-list-item>
                                             ${services.map(s => html`<mwc-list-item .value=${s}>${s}</mwc-list-item>`)}
@@ -14825,7 +14886,7 @@
                                 ` : ''}
                                 ${currentAction === 'fire-dom-event' ? html`
                                   <ha-textfield label="Event Name (optional)" .value=${tapAction.event_name||""}
-                                    @input=${(ev) => setTapAction({ event_name: ev.target.value || "" })} style="margin-top:6px;"></ha-textfield>
+                                    @input=${(ev) => setTapAction({ event_name: window.HKI.getSelectValue(ev) || "" })} style="margin-top:6px;"></ha-textfield>
                                   <ha-code-editor .hass=${this.hass} mode="yaml" .value=${tapAction.event_data||""}
                                     @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ event_data: ev.detail?.value || "" }); }}
                                     @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-code-editor>
@@ -14838,6 +14899,7 @@
                         }
                       </div>
                     </div>
+                    ` : ''}
 
                     ${!isCustomPopup ? html`
                       ${hasChildren ? html`
@@ -14962,6 +15024,7 @@
                         </div>
                       </div>
                     ` : ''}
+
                   `;
                 })()}
              </div>
@@ -15188,18 +15251,48 @@
     }
 
     
+    // Normalize ha-select / mwc select event payloads across HA versions.
+    _resolveSelectEventValue(ev, options = null) {
+      const fromDetail = ev?.detail?.value;
+      if (fromDetail !== undefined && fromDetail !== null) return fromDetail;
+      const fromTarget = ev?.target?.value;
+      if (fromTarget !== undefined && fromTarget !== null) return fromTarget;
+      const fromCurrent = ev?.currentTarget?.value;
+      if (fromCurrent !== undefined && fromCurrent !== null) return fromCurrent;
+      const idx = Number(ev?.detail?.index);
+      if (Number.isInteger(idx) && idx >= 0) {
+        if (Array.isArray(options)) {
+          const opt = options[idx];
+          if (opt && typeof opt === "object") {
+            if (opt.value !== undefined) return opt.value;
+            if (opt.label !== undefined) return opt.label;
+          }
+          if (opt !== undefined) return opt;
+        }
+        const items = ev?.currentTarget?.items || ev?.target?.items;
+        const item = Array.isArray(items) ? items[idx] : (items?.item ? items.item(idx) : null);
+        if (item) {
+          const v = item.value ?? item.getAttribute?.("value");
+          if (v !== undefined && v !== null) return v;
+        }
+      }
+      return undefined;
+    }
+
     // For Dropdowns (ha-select)
-    _dropdownChanged(ev, field) {
+    _dropdownChanged(ev, field, options = null) {
         ev.stopPropagation();
-        const value = ev.target.value;
+        const value = this._resolveSelectEventValue(ev, options);
+        if (value === undefined) return;
         this._fireChanged({ ...this._config, [field]: value });
     }
 
     // For Action Dropdowns - merges 'action' string back into an object
 
-    _actionChanged(ev, field) {
+    _actionChanged(ev, field, options = null) {
         ev.stopPropagation();
-        const actionValue = ev.target.value;
+        const actionValue = this._resolveSelectEventValue(ev, options);
+        if (actionValue === undefined) return;
 
         // IMPORTANT:
         // Keep `{ action: "none" }` in the config instead of deleting the field.
@@ -15219,7 +15312,7 @@
     _actionFieldChanged(ev, actionKey, fieldName, isJSON = false) {
       ev.stopPropagation();
     
-      let value = ev.detail?.value ?? ev.target?.value;  // ✅ supports ha-selector + text/select
+      let value = window.HKI.getSelectValue(ev);  // ✅ supports ha-selector + text/select
     
       if (isJSON && value) {
         try { value = JSON.parse(value); } catch (e) { return; }
@@ -15279,7 +15372,7 @@
     // For Textfields (ha-textfield)
     _textChanged(ev, field) { 
         ev.stopPropagation(); 
-        let value = ev.target.value; 
+        let value = window.HKI.getSelectValue(ev); 
         const isOffset = HkiButtonCardEditor.OFFSET_DEFAULTS[field] !== undefined ||
                          HkiButtonCardEditor.TILE_OFFSET_DEFAULTS[field] !== undefined ||
                          HkiButtonCardEditor.GOOGLE_OFFSET_DEFAULTS[field] !== undefined;
