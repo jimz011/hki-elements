@@ -5272,26 +5272,23 @@ class HkiHeaderCardEditor extends LitElement {
     
     const displayType = (type === "custom") ? "notifications" : type;
     return html`
-      <ha-select label="Content Type" .value=${displayType} data-field="${bar}_${slotName}" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-        <ha-list-item value="none">None</ha-list-item>
-        <ha-list-item value="spacer">Spacer</ha-list-item>
-        <ha-list-item value="weather">Weather</ha-list-item>
-        <ha-list-item value="datetime">Date/Time</ha-list-item>
-        <ha-list-item value="notifications">Notifications</ha-list-item>
-        <ha-list-item value="card">Custom Card</ha-list-item>
-        <ha-list-item value="button">Badge</ha-list-item>
-      </ha-select>
+            <ha-selector
+        .hass=${this.hass}
+        .label=${"Content Type"}
+        .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'spacer', label: 'Spacer'}, {value: 'weather', label: 'Weather'}, {value: 'datetime', label: 'Date/Time'}, {value: 'notifications', label: 'Notifications'}, {value: 'card', label: 'Custom Card'}, {value: 'button', label: 'Badge'}] } }}
+        .value=${displayType}
+        @value-changed=${this._changed}
+      ></ha-selector>
       
       ${type !== "none" && type !== "spacer" ? html`
         <div class="section" style="margin-top: 12px;">Alignment</div>
-        <ha-select label="Content Alignment" .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")} data-field="${prefix}align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-          <ha-list-item value="start">Start (left)</ha-list-item>
-          <ha-list-item value="center">Center</ha-list-item>
-          <ha-list-item value="end">End (right)</ha-list-item>
-          ${(type === "card" || type === "notifications" || type === "custom") ? html`
-            <ha-list-item value="stretch">Stretch (fill available slots)</ha-list-item>
-          ` : ''}
-        </ha-select>
+                <ha-selector
+          .hass=${this.hass}
+          .label=${"Content Alignment"}
+          .selector=${{ select: { options: [{value: 'start', label: 'Start (left)'}, {value: 'center', label: 'Center'}, {value: 'end', label: 'End (right)'}, {value: 'stretch', label: 'Stretch (fill available slots)'}] } }}
+          .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")}
+          @value-changed=${this._changed}
+        ></ha-selector>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -5329,17 +5326,20 @@ class HkiHeaderCardEditor extends LitElement {
         </div>
         
         <div class="inline-fields-2">
-          <ha-select label="Icon color mode" .value=${this._config[prefix + "weather_icon_color_mode"] || "state"} data-field="${prefix}weather_icon_color_mode" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-            <ha-list-item value="state">By condition</ha-list-item>
-            <ha-list-item value="custom">Custom</ha-list-item>
-            <ha-list-item value="inherit">Inherit</ha-list-item>
-          </ha-select>
-          <ha-select label="Icon animation" .value=${this._config[prefix + "animate_icon"] || "none"} data-field="${prefix}animate_icon" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-            <ha-list-item value="none">None</ha-list-item>
-            <ha-list-item value="float">Float</ha-list-item>
-            <ha-list-item value="pulse">Pulse</ha-list-item>
-            <ha-list-item value="spin">Spin</ha-list-item>
-          </ha-select>
+                    <ha-selector
+            .hass=${this.hass}
+            .label=${"Icon color mode"}
+            .selector=${{ select: { options: [{value: 'state', label: 'By condition'}, {value: 'custom', label: 'Custom'}, {value: 'inherit', label: 'Inherit'}] } }}
+            .value=${this._config[prefix + "weather_icon_color_mode"] || "state"}
+            @value-changed=${this._changed}
+          ></ha-selector>
+                    <ha-selector
+            .hass=${this.hass}
+            .label=${"Icon animation"}
+            .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'float', label: 'Float'}, {value: 'pulse', label: 'Pulse'}, {value: 'spin', label: 'Spin'}] } }}
+            .value=${this._config[prefix + "animate_icon"] || "none"}
+            @value-changed=${this._changed}
+          ></ha-selector>
         </div>
         ${this._config[prefix + "weather_icon_color_mode"] === "custom" ? html`
             <ha-textfield label="Custom icon color (CSS)" .value=${this._config[prefix + "weather_icon_color"] || ""} data-field="${prefix}weather_icon_color" @input=${this._changed}></ha-textfield>
@@ -5446,11 +5446,13 @@ class HkiHeaderCardEditor extends LitElement {
               const renderActionEditor = (actionLabel, actionObj, setAction) => html`
                 <div style="margin-top:6px;">
                   <p style="font-size:11px;opacity:0.7;margin:0 0 4px 0;">${actionLabel}</p>
-                  <ha-select .value=${actionObj.action || "none"}
-                    @change=${(e) => setAction({ action: (window.HKI.getSelectValue(e)) || "none" })}
-                    @closed=${(e) => e.stopPropagation()}>
-                    ${HKI_EDITOR_OPTIONS.headerActionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                  </ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { options: HKI_EDITOR_OPTIONS.headerActionOptions } }}
+                    .value=${actionObj.action || "none"}
+                    @value-changed=${(e) => setAction({ action: (window.HKI.getSelectValue(e)) || "none" })}
+                  ></ha-selector>
                   ${(actionObj.action === "navigate") ? html`
                     ${this._renderNavigationPathPicker("Navigation path", actionObj.navigation_path || "", (v) => setAction({ ...actionObj, navigation_path: v }))}
                   ` : ''}
@@ -5530,12 +5532,13 @@ class HkiHeaderCardEditor extends LitElement {
                   </div>
 
                   ${btn.show_badge ? html`
-                    <ha-select label="Badge Source" .value=${badgeSource}
-                      @change=${(e) => setButton(idx, { badge_source: (window.HKI.getSelectValue(e)) || "entity" })}
-                      @closed=${(e) => e.stopPropagation()}>
-                      <ha-list-item value="entity">Entity state</ha-list-item>
-                      <ha-list-item value="template">Jinja template</ha-list-item>
-                    </ha-select>
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Badge Source"}
+                      .selector=${{ select: { options: [{value: 'entity', label: 'Entity state'}, {value: 'template', label: 'Jinja template'}] } }}
+                      .value=${badgeSource}
+                      @value-changed=${(e) => setButton(idx, { badge_source: (window.HKI.getSelectValue(e)) || "entity" })}
+                    ></ha-selector>
                     ${badgeSource === "entity" ? html`
                       <ha-entity-picker .hass=${this.hass} .value=${btn.badge_entity || ""} label="Badge Entity"
                         @value-changed=${(e) => setButton(idx, { badge_entity: e.detail.value || "" })}></ha-entity-picker>
@@ -5649,18 +5652,13 @@ class HkiHeaderCardEditor extends LitElement {
                               @input=${(e) => setButton(idx, { badge_font_size: (window.HKI.getSelectValue(e)) === "" ? "" : Number((window.HKI.getSelectValue(e))) || 0 })}></ha-textfield>
                           </div>
                           <div class="inline-fields-2">
-                            <ha-select label="Badge Font Family" .value=${btn.badge_font_family || "inherit"}
-                              @change=${(e) => setButton(idx, { badge_font_family: (window.HKI.getSelectValue(e)) || "inherit" })}
-                              @closed=${(e) => e.stopPropagation()}>
-                              <ha-list-item value="inherit">inherit</ha-list-item>
-                              <ha-list-item value="system">system</ha-list-item>
-                              <ha-list-item value="roboto">roboto</ha-list-item>
-                              <ha-list-item value="inter">inter</ha-list-item>
-                              <ha-list-item value="arial">arial</ha-list-item>
-                              <ha-list-item value="georgia">georgia</ha-list-item>
-                              <ha-list-item value="mono">mono</ha-list-item>
-                              <ha-list-item value="custom">custom</ha-list-item>
-                            </ha-select>
+                                                        <ha-selector
+                              .hass=${this.hass}
+                              .label=${"Badge Font Family"}
+                              .selector=${{ select: { options: [{value: 'inherit', label: 'inherit'}, {value: 'system', label: 'system'}, {value: 'roboto', label: 'roboto'}, {value: 'inter', label: 'inter'}, {value: 'arial', label: 'arial'}, {value: 'georgia', label: 'georgia'}, {value: 'mono', label: 'mono'}, {value: 'custom', label: 'custom'}] } }}
+                              .value=${btn.badge_font_family || "inherit"}
+                              @value-changed=${(e) => setButton(idx, { badge_font_family: (window.HKI.getSelectValue(e)) || "inherit" })}
+                            ></ha-selector>
                             <ha-textfield label="Badge Font Weight" .value=${String(btn.badge_font_weight ?? "")}
                               @input=${(e) => setButton(idx, { badge_font_weight: (window.HKI.getSelectValue(e)) || "" })} placeholder="400 / semibold"></ha-textfield>
                           </div>
@@ -5680,13 +5678,13 @@ class HkiHeaderCardEditor extends LitElement {
                         <div class="switch-row"><ha-switch .checked=${btn.show_name !== false} @change=${(e) => setButton(idx, { show_name: e.target.checked })}></ha-switch><span>Show name</span></div>
                         <div class="switch-row"><ha-switch .checked=${btn.show_state !== false} @change=${(e) => setButton(idx, { show_state: e.target.checked })}></ha-switch><span>Show state</span></div>
                       </div>
-                      <ha-select label="Show badge when" .value=${btn.visibility_mode || "none"}
-                        @change=${(e) => setButton(idx, { visibility_mode: (window.HKI.getSelectValue(e)) || "none" })}
-                        @closed=${(e) => e.stopPropagation()}>
-                        <ha-list-item value="none">Always show</ha-list-item>
-                        <ha-list-item value="state">Entity state equals</ha-list-item>
-                        <ha-list-item value="attribute">Entity attribute equals</ha-list-item>
-                      </ha-select>
+                                            <ha-selector
+                        .hass=${this.hass}
+                        .label=${"Show badge when"}
+                        .selector=${{ select: { options: [{value: 'none', label: 'Always show'}, {value: 'state', label: 'Entity state equals'}, {value: 'attribute', label: 'Entity attribute equals'}] } }}
+                        .value=${btn.visibility_mode || "none"}
+                        @value-changed=${(e) => setButton(idx, { visibility_mode: (window.HKI.getSelectValue(e)) || "none" })}
+                      ></ha-selector>
 
                       ${btn.visibility_mode && btn.visibility_mode !== "none" ? html`
                         <ha-entity-picker .hass=${this.hass} .value=${btn.visibility_entity || btn.entity || ""} label="Condition Entity"
@@ -5782,10 +5780,13 @@ class HkiHeaderCardEditor extends LitElement {
         ${!useGlobal ? html`
           <div class="inline-fields-2">
             <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config[prefix + "size_px"] ?? "")} data-field="${prefix}size_px" @input=${this._changed}></ha-textfield>
-            <ha-select label="Font Weight" .value=${this._config[prefix + "weight"] || ""} data-field="${prefix}weight" @selected=${this._changed} @closed=${this._changed}>
-              <ha-list-item value="">Use Global</ha-list-item>
-              ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<ha-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Font Weight"}
+              .selector=${{ select: { options: [{value: '', label: 'Use Global'}, {value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+              .value=${this._config[prefix + "weight"] || ""}
+              @value-changed=${this._changed}
+            ></ha-selector>
           </div>
           <ha-textfield label="Text Color (Jinja supported)" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
           <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config[prefix + "text_shadow"] || ""} data-field="${prefix}text_shadow" @input=${this._changed}></ha-textfield>
@@ -5901,16 +5902,20 @@ class HkiHeaderCardEditor extends LitElement {
         <summary>Animation</summary>
         <div class="box-content">
           <div class="inline-fields-2">
-            <ha-select label="Open Animation" .value=${p("popup_open_animation") || "scale"}
-              @change=${(ev) => { ev.stopPropagation(); pp({ "popup_open_animation": (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupAnimOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
-            <ha-select label="Close Animation" .value=${p("popup_close_animation") || p("popup_open_animation") || "scale"}
-              @change=${(ev) => { ev.stopPropagation(); pp({ "popup_close_animation": (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupAnimOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Open Animation"}
+              .selector=${{ select: { options: popupAnimOptions } }}
+              .value=${p("popup_open_animation") || "scale"}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_open_animation": (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Close Animation"}
+              .selector=${{ select: { options: popupAnimOptions } }}
+              .value=${p("popup_close_animation") || p("popup_open_animation") || "scale"}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_close_animation": (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
           </div>
           <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(p("popup_animation_duration") ?? 300)} @input=${(ev) => pp({ "popup_animation_duration": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
         </div>
@@ -5921,19 +5926,23 @@ class HkiHeaderCardEditor extends LitElement {
         <div class="box-content">
           <ha-textfield label="Border Radius (px)" type="number" .value=${String(p("popup_border_radius") ?? 16)} @input=${(ev) => pp({ "popup_border_radius": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
           <div class="inline-fields-2">
-            <ha-select label="Width" .value=${p("popup_width") || "auto"}
-              @change=${(ev) => { ev.stopPropagation(); pp({ "popup_width": (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupWidthOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Width"}
+              .selector=${{ select: { options: popupWidthOptions } }}
+              .value=${p("popup_width") || "auto"}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_width": (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${p("popup_width") === "custom" ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(p("popup_width_custom") ?? 400)} @input=${(ev) => pp({ "popup_width_custom": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>` : html`<div></div>`}
           </div>
           <div class="inline-fields-2">
-            <ha-select label="Height" .value=${p("popup_height") || "auto"}
-              @change=${(ev) => { ev.stopPropagation(); pp({ "popup_height": (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupHeightOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Height"}
+              .selector=${{ select: { options: popupHeightOptions } }}
+              .value=${p("popup_height") || "auto"}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_height": (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${p("popup_height") === "custom" ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(p("popup_height_custom") ?? 600)} @input=${(ev) => pp({ "popup_height_custom": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>` : html`<div></div>`}
           </div>
         </div>
@@ -5966,17 +5975,21 @@ class HkiHeaderCardEditor extends LitElement {
             <summary>Default View (Groups)</summary>
             <div class="box-content">
               <div class="inline-fields-2">
-                <ha-select label="Default View" .value=${p("popup_default_view") || "main"}
-                  @change=${(ev) => { ev.stopPropagation(); pp({ "popup_default_view": (window.HKI.getSelectValue(ev)) }); }}
-                  @closed=${(ev) => ev.stopPropagation()}>
-                  ${popupDefaultViewOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Default View"}
+                  .selector=${{ select: { options: popupDefaultViewOptions } }}
+                  .value=${p("popup_default_view") || "main"}
+                  @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_default_view": (window.HKI.getSelectValue(ev)) }); }}
+                ></ha-selector>
                 ${isLightGroup ? html`
-                  <ha-select label="Default Section" .value=${p("popup_default_section") || "last"}
-                    @change=${(ev) => { ev.stopPropagation(); pp({ "popup_default_section": (window.HKI.getSelectValue(ev)) }); }}
-                    @closed=${(ev) => ev.stopPropagation()}>
-                    ${popupDefaultSectionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                  </ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${"Default Section"}
+                    .selector=${{ select: { options: popupDefaultSectionOptions } }}
+                    .value=${p("popup_default_section") || "last"}
+                    @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_default_section": (window.HKI.getSelectValue(ev)) }); }}
+                  ></ha-selector>
                 ` : html`<div></div>`}
               </div>
             </div>
@@ -6037,12 +6050,13 @@ class HkiHeaderCardEditor extends LitElement {
           <details class="box-section">
             <summary>Sensor Graph Options</summary>
             <div class="box-content">
-              <ha-select label="Graph Style" .value=${p("sensor_graph_style") || "line"}
-                @change=${(ev) => { ev.stopPropagation(); pp({ sensor_graph_style: (window.HKI.getSelectValue(ev)) }); }}
-                @closed=${(ev) => ev.stopPropagation()}>
-                <ha-list-item value="line">Line Graph</ha-list-item>
-                <ha-list-item value="bar">Bar Chart</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Graph Style"}
+                .selector=${{ select: { options: [{value: 'line', label: 'Line Graph'}, {value: 'bar', label: 'Bar Chart'}] } }}
+                .value=${p("sensor_graph_style") || "line"}
+                @value-changed=${(ev) => { ev.stopPropagation(); pp({ sensor_graph_style: (window.HKI.getSelectValue(ev)) }); }}
+              ></ha-selector>
               <div class="switch-row"><ha-switch .checked=${p("sensor_graph_gradient") !== false} @change=${(ev) => pp({ sensor_graph_gradient: ev.target.checked })}></ha-switch><span>Temperature Gradient</span></div>
               <ha-textfield label="Fixed Line Color (overrides gradient)" .value=${p("sensor_graph_color") || ""} @input=${(ev) => pp({ sensor_graph_color: (window.HKI.getSelectValue(ev)) || undefined })} placeholder="e.g. #2196F3"></ha-textfield>
               <ha-textfield label="Line Width (px)" type="number" .value=${String(p("sensor_line_width") ?? 3)} @input=${(ev) => pp({ sensor_line_width: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
@@ -6078,11 +6092,13 @@ class HkiHeaderCardEditor extends LitElement {
               <ha-textfield label="Font Size (px)" type="number" .value=${String(p("popup_label_font_size") ?? 16)} @input=${(ev) => pp({ "popup_label_font_size": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
               <ha-textfield label="Font Weight" type="number" .value=${String(p("popup_label_font_weight") ?? 400)} @input=${(ev) => pp({ "popup_label_font_weight": Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
             </div>
-            <ha-select label="Time Format" .value=${p("popup_time_format") || "auto"}
-              @change=${(ev) => { ev.stopPropagation(); pp({ "popup_time_format": (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupTimeFormatOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Time Format"}
+              .selector=${{ select: { options: popupTimeFormatOptions } }}
+              .value=${p("popup_time_format") || "auto"}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ "popup_time_format": (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
           </div>
         </details>
 
@@ -6127,11 +6143,13 @@ class HkiHeaderCardEditor extends LitElement {
           <summary>Bottom Bar Entities</summary>
           <div class="box-content">
             <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the popup bottom bar.</p>
-            <ha-select label="Button Alignment" .value=${p('popup_bottom_bar_align') || 'spread'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_bottom_bar_align: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupBottomBarAlignOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Button Alignment"}
+              .selector=${{ select: { options: popupBottomBarAlignOptions } }}
+              .value=${p('popup_bottom_bar_align') || 'spread'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_bottom_bar_align: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, p('_bb_slots') ?? Math.max(1, (p('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`
@@ -6180,11 +6198,14 @@ class HkiHeaderCardEditor extends LitElement {
                           @input=${(ev) => setSlot({ name: (window.HKI.getSelectValue(ev)) || undefined })} style="margin-top:6px;"></ha-textfield>
                         <ha-textfield label="Icon (optional)" .value=${_ent.icon||''} placeholder="mdi:home"
                           @input=${(ev) => setSlot({ icon: (window.HKI.getSelectValue(ev)) || undefined })} style="margin-top:6px;"></ha-textfield>
-                        <ha-select label="Tap Action" .value=${_act}
-                          @change=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
-                          @closed=${(e)=>e.stopPropagation()} @click=${(e)=>e.stopPropagation()} style="margin-top:6px;">
-                          ${popupBottomBarActionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                        </ha-select>
+                                                <ha-selector
+                          .hass=${this.hass}
+                          .label=${"Tap Action"}
+                          .selector=${{ select: { options: popupBottomBarActionOptions } }}
+                          .value=${_act}
+                          @value-changed=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
+                          style="margin-top:6px;"
+                        ></ha-selector>
                         ${_act==='navigate'?html`<ha-textfield label="Navigation Path" .value=${_tap.navigation_path||''} @input=${(ev)=>setTap({navigation_path:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='url'?html`<ha-textfield label="URL" .value=${_tap.url_path||''} @input=${(ev)=>setTap({url_path:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='perform-action'?html`<ha-textfield label="Action (domain.service)" .value=${_tap.perform_action||''} @input=${(ev)=>setTap({perform_action:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
@@ -6228,9 +6249,13 @@ class HkiHeaderCardEditor extends LitElement {
       const headerActionOptions = HKI_EDITOR_OPTIONS.headerActionOptions;
     
       return html`
-      <ha-select label="Action" .value=${actionType} data-field="${field}.action" @selected=${this._changed} @closed=${this._changed}>
-        ${headerActionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-      </ha-select>
+            <ha-selector
+        .hass=${this.hass}
+        .label=${"Action"}
+        .selector=${{ select: { options: headerActionOptions } }}
+        .value=${actionType}
+        @value-changed=${this._changed}
+      ></ha-selector>
       ${actionType === "navigate" ? html`
         ${this._renderNavigationPathPicker("Navigation path", action.navigation_path || "", (v) => patchAction({ navigation_path: v }))}
       ` : ''}
@@ -6283,38 +6308,32 @@ class HkiHeaderCardEditor extends LitElement {
               : [];
             return html`
               <div class="inline-fields-2">
-                <ha-select
-                  label="Domain"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Domain"}
+                  .selector=${{ select: { options: [{value: '', label: ''}, ...Object.keys(this.hass?.services || {}).sort().map(d => ({value: d, label: d}))] } }}
                   .value=${domain || undefined}
-                  @change=${(e) => {
+                  @value-changed=${(e) => {
                     const nextDomain = (window.HKI.getSelectValue(e)) || "";
                     this._paDomainCache[key] = nextDomain;
                     // Clear service when domain changes
                     patchAction({ perform_action: "" });
                     this.requestUpdate();
                   }}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <ha-list-item value=""></ha-list-item>
-                  ${Object.keys(this.hass?.services || {}).sort().map((d) => html`<ha-list-item .value=${d}>${d}</ha-list-item>`)}
-                </ha-select>
+                ></ha-selector>
 
-                <ha-select
-                  label="Service"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Service"}
+                  .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                   .value=${derivedService || undefined}
                   .disabled=${!domain}
-                  @change=${(e) => {
+                  @value-changed=${(e) => {
                     const service = (window.HKI.getSelectValue(e)) || "";
                     const d = this._paDomainCache[key] || domain;
                     patchAction({ perform_action: (d && service) ? `${d}.${service}` : "" });
                   }}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <ha-list-item value=""></ha-list-item>
-                  ${services.map((s) => html`<ha-list-item .value=${s}>${s}</ha-list-item>`)}
-                </ha-select>
+                ></ha-selector>
               </div>
             `;
           })()}
@@ -6391,9 +6410,13 @@ class HkiHeaderCardEditor extends LitElement {
       return html`
         <div style="margin-top: 8px;">
           <p style="font-weight: 500; margin-bottom: 4px; font-size: 0.9em;">${label}</p>
-          <ha-select label="Action" .value=${actionValue} @selected=${(e) => setAction({ action: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>
-            ${headerActionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-          </ha-select>
+                    <ha-selector
+            .hass=${this.hass}
+            .label=${"Action"}
+            .selector=${{ select: { options: headerActionOptions } }}
+            .value=${actionValue}
+            @value-changed=${(e) => setAction({ action: (window.HKI.getSelectValue(e)) })}
+          ></ha-selector>
           ${actionValue === "navigate" ? html`
             ${this._renderNavigationPathPicker("Navigation path", action.navigation_path || "", (v) => patchAction({ navigation_path: v }))}
           ` : ''}
@@ -6446,37 +6469,31 @@ class HkiHeaderCardEditor extends LitElement {
                   : [];
                 return html`
                   <div class="inline-fields-2">
-                    <ha-select
-                      label="Domain"
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Domain"}
+                      .selector=${{ select: { options: [{value: '', label: ''}, ...Object.keys(this.hass?.services || {}).sort().map(d => ({value: d, label: d}))] } }}
                       .value=${domain || undefined}
-                      @change=${(e) => {
+                      @value-changed=${(e) => {
                         const nextDomain = (window.HKI.getSelectValue(e)) || "";
                         this._paDomainCache[key] = nextDomain;
                         patchAction({ perform_action: "" });
                         this.requestUpdate();
                       }}
-                      @closed=${(e) => e.stopPropagation()}
-                      @click=${(e) => e.stopPropagation()}
-                    >
-                      <ha-list-item value=""></ha-list-item>
-                      ${Object.keys(this.hass?.services || {}).sort().map((d) => html`<ha-list-item .value=${d}>${d}</ha-list-item>`)}
-                    </ha-select>
+                    ></ha-selector>
 
-                    <ha-select
-                      label="Service"
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Service"}
+                      .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                       .value=${derivedService || undefined}
                       .disabled=${!domain}
-                      @change=${(e) => {
+                      @value-changed=${(e) => {
                         const service = (window.HKI.getSelectValue(e)) || "";
                         const d = this._paDomainCache[key] || domain;
                         patchAction({ perform_action: (d && service) ? `${d}.${service}` : "" });
                       }}
-                      @closed=${(e) => e.stopPropagation()}
-                      @click=${(e) => e.stopPropagation()}
-                    >
-                      <ha-list-item value=""></ha-list-item>
-                      ${services.map((s) => html`<ha-list-item .value=${s}>${s}</ha-list-item>`)}
-                    </ha-select>
+                    ></ha-selector>
                   </div>
                 `;
               })()}
@@ -6620,16 +6637,20 @@ class HkiHeaderCardEditor extends LitElement {
         <summary>Animation</summary>
         <div class="box-content">
           <div class="inline-fields-2">
-            <ha-select label="Open Animation" .value=${pv('popup_open_animation') || 'scale'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_open_animation: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupAnimOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
-            <ha-select label="Close Animation" .value=${pv('popup_close_animation') || pv('popup_open_animation') || 'scale'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_close_animation: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupAnimOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Open Animation"}
+              .selector=${{ select: { options: popupAnimOptions } }}
+              .value=${pv('popup_open_animation') || 'scale'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_open_animation: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Close Animation"}
+              .selector=${{ select: { options: popupAnimOptions } }}
+              .value=${pv('popup_close_animation') || pv('popup_open_animation') || 'scale'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_close_animation: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
           </div>
           <ha-textfield label="Animation Duration (ms)" type="number" .value=${String(pv('popup_animation_duration') ?? 300)} @input=${(ev) => pp({ popup_animation_duration: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
         </div>
@@ -6640,19 +6661,23 @@ class HkiHeaderCardEditor extends LitElement {
         <div class="box-content">
           <ha-textfield label="Border Radius (px)" type="number" .value=${String(pv('popup_border_radius') ?? 16)} @input=${(ev) => pp({ popup_border_radius: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
           <div class="inline-fields-2">
-            <ha-select label="Width" .value=${pv('popup_width') || 'auto'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_width: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupWidthOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Width"}
+              .selector=${{ select: { options: popupWidthOptions } }}
+              .value=${pv('popup_width') || 'auto'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_width: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${pv('popup_width') === 'custom' ? html`<ha-textfield label="Custom Width (px)" type="number" .value=${String(pv('popup_width_custom') ?? 400)} @input=${(ev) => pp({ popup_width_custom: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>` : html`<div></div>`}
           </div>
           <div class="inline-fields-2">
-            <ha-select label="Height" .value=${pv('popup_height') || 'auto'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_height: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupHeightOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Height"}
+              .selector=${{ select: { options: popupHeightOptions } }}
+              .value=${pv('popup_height') || 'auto'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_height: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${pv('popup_height') === 'custom' ? html`<ha-textfield label="Custom Height (px)" type="number" .value=${String(pv('popup_height_custom') ?? 600)} @input=${(ev) => pp({ popup_height_custom: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>` : html`<div></div>`}
           </div>
         </div>
@@ -6685,17 +6710,21 @@ class HkiHeaderCardEditor extends LitElement {
             <summary>Default View (Groups)</summary>
             <div class="box-content">
               <div class="inline-fields-2">
-                <ha-select label="Default View" .value=${pv('popup_default_view') || 'main'}
-                  @change=${(ev) => { ev.stopPropagation(); pp({ popup_default_view: (window.HKI.getSelectValue(ev)) }); }}
-                  @closed=${(ev) => ev.stopPropagation()}>
-                  ${popupDefaultViewOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Default View"}
+                  .selector=${{ select: { options: popupDefaultViewOptions } }}
+                  .value=${pv('popup_default_view') || 'main'}
+                  @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_default_view: (window.HKI.getSelectValue(ev)) }); }}
+                ></ha-selector>
                 ${p_isLightGroup ? html`
-                  <ha-select label="Default Section" .value=${pv('popup_default_section') || 'last'}
-                    @change=${(ev) => { ev.stopPropagation(); pp({ popup_default_section: (window.HKI.getSelectValue(ev)) }); }}
-                    @closed=${(ev) => ev.stopPropagation()}>
-                    ${popupDefaultSectionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                  </ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${"Default Section"}
+                    .selector=${{ select: { options: popupDefaultSectionOptions } }}
+                    .value=${pv('popup_default_section') || 'last'}
+                    @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_default_section: (window.HKI.getSelectValue(ev)) }); }}
+                  ></ha-selector>
                 ` : html`<div></div>`}
               </div>
             </div>
@@ -6778,11 +6807,13 @@ class HkiHeaderCardEditor extends LitElement {
               <ha-textfield label="Font Size (px)" type="number" .value=${String(pv('popup_label_font_size') ?? 16)} @input=${(ev) => pp({ popup_label_font_size: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
               <ha-textfield label="Font Weight" type="number" .value=${String(pv('popup_label_font_weight') ?? 400)} @input=${(ev) => pp({ popup_label_font_weight: Number((window.HKI.getSelectValue(ev))) })}></ha-textfield>
             </div>
-            <ha-select label="Time Format" .value=${pv('popup_time_format') || 'auto'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_time_format: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupTimeFormatOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Time Format"}
+              .selector=${{ select: { options: popupTimeFormatOptions } }}
+              .value=${pv('popup_time_format') || 'auto'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_time_format: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
           </div>
         </details>
 
@@ -6827,11 +6858,13 @@ class HkiHeaderCardEditor extends LitElement {
           <summary>Bottom Bar Entities</summary>
           <div class="box-content">
             <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the popup bottom bar.</p>
-            <ha-select label="Button Alignment" .value=${pv('popup_bottom_bar_align') || 'spread'}
-              @change=${(ev) => { ev.stopPropagation(); pp({ popup_bottom_bar_align: (window.HKI.getSelectValue(ev)) }); }}
-              @closed=${(ev) => ev.stopPropagation()}>
-              ${popupBottomBarAlignOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Button Alignment"}
+              .selector=${{ select: { options: popupBottomBarAlignOptions } }}
+              .value=${pv('popup_bottom_bar_align') || 'spread'}
+              @value-changed=${(ev) => { ev.stopPropagation(); pp({ popup_bottom_bar_align: (window.HKI.getSelectValue(ev)) }); }}
+            ></ha-selector>
             ${(() => {
               const _bbSlots = Math.max(1, Math.min(8, pv('_bb_slots') ?? Math.max(1, (pv('popup_bottom_bar_entities') || []).filter(Boolean).length || 1)));
               return html`
@@ -6880,11 +6913,14 @@ class HkiHeaderCardEditor extends LitElement {
                           @input=${(ev) => setSlot({ name: (window.HKI.getSelectValue(ev)) || undefined })} style="margin-top:6px;"></ha-textfield>
                         <ha-textfield label="Icon (optional)" .value=${_ent.icon||''} placeholder="mdi:home"
                           @input=${(ev) => setSlot({ icon: (window.HKI.getSelectValue(ev)) || undefined })} style="margin-top:6px;"></ha-textfield>
-                        <ha-select label="Tap Action" .value=${_act}
-                          @change=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
-                          @closed=${(e)=>e.stopPropagation()} @click=${(e)=>e.stopPropagation()} style="margin-top:6px;">
-                          ${popupBottomBarActionOptions.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                        </ha-select>
+                                                <ha-selector
+                          .hass=${this.hass}
+                          .label=${"Tap Action"}
+                          .selector=${{ select: { options: popupBottomBarActionOptions } }}
+                          .value=${_act}
+                          @value-changed=${(ev) => { ev.stopPropagation(); const idx = Number(ev?.detail?.index); const v = ev?.detail?.value ?? ev?.target?.value ?? ev?.currentTarget?.value ?? (Number.isInteger(idx) && idx >= 0 ? popupBottomBarActionOptions[idx]?.value : undefined); if(v && v!==_act) setTap({ action:v }); }}
+                          style="margin-top:6px;"
+                        ></ha-selector>
                         ${_act==='navigate'?html`<ha-textfield label="Navigation Path" .value=${_tap.navigation_path||''} @input=${(ev)=>setTap({navigation_path:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='url'?html`<ha-textfield label="URL" .value=${_tap.url_path||''} @input=${(ev)=>setTap({url_path:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
                         ${_act==='perform-action'?html`<ha-textfield label="Action (domain.service)" .value=${_tap.perform_action||''} @input=${(ev)=>setTap({perform_action:(window.HKI.getSelectValue(ev))})} style="margin-top:6px;"></ha-textfield>`:''}
@@ -6942,11 +6978,13 @@ class HkiHeaderCardEditor extends LitElement {
             ${this._renderTemplateEditor("Title template (Jinja)", "title")}
             ${this._renderTemplateEditor("Subtitle template (Jinja)", "subtitle")}
 
-            <ha-select label="Text alignment" .value=${this._config.text_align} data-field="text_align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-              <ha-list-item value="left">Left</ha-list-item>
-              <ha-list-item value="center">Center</ha-list-item>
-              <ha-list-item value="right">Right</ha-list-item>
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Text alignment"}
+              .selector=${{ select: { options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
+              .value=${this._config.text_align}
+              @value-changed=${this._changed}
+            ></ha-selector>
           </div>
         </details>
 
@@ -7215,11 +7253,13 @@ class HkiHeaderCardEditor extends LitElement {
               </div>
 
               <div class="section">Alignment</div>
-              <ha-select label="Persons alignment" .value=${this._config.persons_align || "left"} data-field="persons_align" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                <ha-list-item value="left">Left</ha-list-item>
-                <ha-list-item value="center">Center</ha-list-item>
-                <ha-list-item value="right">Right</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Persons alignment"}
+                .selector=${{ select: { options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
+                .value=${this._config.persons_align || "left"}
+                @value-changed=${this._changed}
+              ></ha-selector>
 
               <div class="section">Appearance</div>
               <div class="inline-fields-2">
@@ -7227,24 +7267,23 @@ class HkiHeaderCardEditor extends LitElement {
                 <ha-textfield label="Spacing (px)" helper="Negative = overlap" type="number" .value=${String(this._config.persons_spacing != null ? this._config.persons_spacing : -8)} data-field="persons_spacing" @input=${this._changed}></ha-textfield>
               </div>
 
-              <ha-select label="Stack order" helper="Only affects overlapping (negative spacing)" .value=${this._config.persons_stack_order || "ascending"} data-field="persons_stack_order" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                <ha-list-item value="ascending">Ascending (last on top)</ha-list-item>
-                <ha-list-item value="descending">Descending (first on top)</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Stack order"}
+                .selector=${{ select: { options: [{value: 'ascending', label: 'Ascending (last on top)'}, {value: 'descending', label: 'Descending (first on top)'}] } }}
+                .value=${this._config.persons_stack_order || "ascending"}
+                @value-changed=${this._changed}
+              ></ha-selector>
 
               <div class="inline-fields-2">
                 <ha-textfield label="Border width (px)" type="number" .value=${String(this._config.persons_border_width || 1)} data-field="persons_border_width" @input=${this._changed}></ha-textfield>
-                <ha-select label="Border style" .value=${this._config.persons_border_style || "solid"} data-field="persons_border_style" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                  <ha-list-item value="solid">Solid</ha-list-item>
-                  <ha-list-item value="dashed">Dashed</ha-list-item>
-                  <ha-list-item value="dotted">Dotted</ha-list-item>
-                  <ha-list-item value="double">Double</ha-list-item>
-                  <ha-list-item value="groove">Groove</ha-list-item>
-                  <ha-list-item value="ridge">Ridge</ha-list-item>
-                  <ha-list-item value="inset">Inset</ha-list-item>
-                  <ha-list-item value="outset">Outset</ha-list-item>
-                  <ha-list-item value="none">None</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Border style"}
+                  .selector=${{ select: { options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}, {value: 'none', label: 'None'}] } }}
+                  .value=${this._config.persons_border_style || "solid"}
+                  @value-changed=${this._changed}
+                ></ha-selector>
               </div>
 
               <div class="inline-fields-2">
@@ -7292,47 +7331,39 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-textfield label="Background" helper="CSS color (hex, rgb, rgba, color name), gradient, or image URL (/local/image.jpg)" .value=${this._config.background} data-field="background" @input=${this._changed}></ha-textfield>
 
             <div class="inline-fields-2">
-                <ha-select label="Background position" .value=${this._config.background_position} data-field="background_position" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                  <ha-list-item value="top">Top</ha-list-item>
-                  <ha-list-item value="center">Center</ha-list-item>
-                  <ha-list-item value="bottom">Bottom</ha-list-item>
-                  <ha-list-item value="left">Left</ha-list-item>
-                  <ha-list-item value="right">Right</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Background position"}
+                  .selector=${{ select: { options: [{value: 'top', label: 'Top'}, {value: 'center', label: 'Center'}, {value: 'bottom', label: 'Bottom'}, {value: 'left', label: 'Left'}, {value: 'right', label: 'Right'}] } }}
+                  .value=${this._config.background_position}
+                  @value-changed=${this._changed}
+                ></ha-selector>
 
-                <ha-select label="Background repeat" .value=${this._config.background_repeat} data-field="background_repeat" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                  <ha-list-item value="no-repeat">No repeat</ha-list-item>
-                  <ha-list-item value="repeat">Repeat</ha-list-item>
-                  <ha-list-item value="repeat-x">Repeat horizontally</ha-list-item>
-                  <ha-list-item value="repeat-y">Repeat vertically</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Background repeat"}
+                  .selector=${{ select: { options: [{value: 'no-repeat', label: 'No repeat'}, {value: 'repeat', label: 'Repeat'}, {value: 'repeat-x', label: 'Repeat horizontally'}, {value: 'repeat-y', label: 'Repeat vertically'}] } }}
+                  .value=${this._config.background_repeat}
+                  @value-changed=${this._changed}
+                ></ha-selector>
             </div>
 
             <div class="inline-fields-2">
-                <ha-select 
-                    label="Background size" 
-                    .value=${bgSizeSelectValue} 
-                    
-                    @change=${this._handleBgSizeSelect} 
-                    @closed=${(e) => e.stopPropagation()}
-                >
-                  <ha-list-item value="cover">Cover</ha-list-item>
-                  <ha-list-item value="contain">Contain</ha-list-item>
-                  <ha-list-item value="auto">Auto</ha-list-item>
-                  <ha-list-item value="custom">Custom</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Background size"}
+                  .selector=${{ select: { options: [{value: 'cover', label: 'Cover'}, {value: 'contain', label: 'Contain'}, {value: 'auto', label: 'Auto'}, {value: 'custom', label: 'Custom'}] } }}
+                  .value=${bgSizeSelectValue}
+                  @value-changed=${this._handleBgSizeSelect}
+                ></ha-selector>
                 
-                <ha-select label="Background blend mode" .value=${this._config.background_blend_mode || "normal"} data-field="background_blend_mode" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                  <ha-list-item value="normal">Normal</ha-list-item>
-                  <ha-list-item value="multiply">Multiply</ha-list-item>
-                  <ha-list-item value="screen">Screen</ha-list-item>
-                  <ha-list-item value="overlay">Overlay</ha-list-item>
-                  <ha-list-item value="darken">Darken</ha-list-item>
-                  <ha-list-item value="lighten">Lighten</ha-list-item>
-                  <ha-list-item value="color-dodge">Color Dodge</ha-list-item>
-                  <ha-list-item value="soft-light">Soft Light</ha-list-item>
-                  <ha-list-item value="difference">Difference</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Background blend mode"}
+                  .selector=${{ select: { options: [{value: 'normal', label: 'Normal'}, {value: 'multiply', label: 'Multiply'}, {value: 'screen', label: 'Screen'}, {value: 'overlay', label: 'Overlay'}, {value: 'darken', label: 'Darken'}, {value: 'lighten', label: 'Lighten'}, {value: 'color-dodge', label: 'Color Dodge'}, {value: 'soft-light', label: 'Soft Light'}, {value: 'difference', label: 'Difference'}] } }}
+                  .value=${this._config.background_blend_mode || "normal"}
+                  @value-changed=${this._changed}
+                ></ha-selector>
             </div>
             
             ${isCustomBgSize ? html`
@@ -7376,17 +7407,13 @@ class HkiHeaderCardEditor extends LitElement {
             </div>
             <ha-textfield label="Box Shadow" helper="e.g. 0 4px 12px rgba(0,0,0,0.3)" .value=${this._config.card_box_shadow || ""} data-field="card_box_shadow" @input=${this._changed}></ha-textfield>
             <div class="inline-fields-3">
-              <ha-select label="Border Style" .value=${this._config.card_border_style || "none"} data-field="card_border_style" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                <ha-list-item value="none">None</ha-list-item>
-                <ha-list-item value="solid">Solid</ha-list-item>
-                <ha-list-item value="dashed">Dashed</ha-list-item>
-                <ha-list-item value="dotted">Dotted</ha-list-item>
-                <ha-list-item value="double">Double</ha-list-item>
-                <ha-list-item value="groove">Groove</ha-list-item>
-                <ha-list-item value="ridge">Ridge</ha-list-item>
-                <ha-list-item value="inset">Inset</ha-list-item>
-                <ha-list-item value="outset">Outset</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Border Style"}
+                .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}] } }}
+                .value=${this._config.card_border_style || "none"}
+                @value-changed=${this._changed}
+              ></ha-selector>
               <ha-textfield label="Border Width (px)" type="number" .value=${String(this._config.card_border_width || 0)} data-field="card_border_width" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Border Color" .value=${this._config.card_border_color || ""} data-field="card_border_color" @input=${this._changed}></ha-textfield>
             </div>
@@ -7397,23 +7424,23 @@ class HkiHeaderCardEditor extends LitElement {
           <summary>Typography</summary>
           <div class="box-content">
             <div class="section">Font Settings</div>
-            <ha-select label="Font family" .value=${this._config.font_family} data-field="font_family" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-              <ha-list-item value="inherit">Inherit</ha-list-item>
-              <ha-list-item value="system">System</ha-list-item>
-              <ha-list-item value="roboto">Roboto</ha-list-item>
-              <ha-list-item value="inter">Inter</ha-list-item>
-              <ha-list-item value="arial">Arial</ha-list-item>
-              <ha-list-item value="georgia">Georgia</ha-list-item>
-              <ha-list-item value="mono">Monospace</ha-list-item>
-              <ha-list-item value="custom">Custom…</ha-list-item>
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Font family"}
+              .selector=${{ select: { options: [{value: 'inherit', label: 'Inherit'}, {value: 'system', label: 'System'}, {value: 'roboto', label: 'Roboto'}, {value: 'inter', label: 'Inter'}, {value: 'arial', label: 'Arial'}, {value: 'georgia', label: 'Georgia'}, {value: 'mono', label: 'Monospace'}, {value: 'custom', label: 'Custom…'}] } }}
+              .value=${this._config.font_family}
+              @value-changed=${this._changed}
+            ></ha-selector>
 
             ${showCustomFont ? html`<ha-textfield label="Custom font-family (CSS)" .value=${this._config.font_family_custom} data-field="font_family_custom" @input=${this._changed}></ha-textfield>` : ""}
 
-            <ha-select label="Font style" .value=${this._config.font_style} data-field="font_style" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-              <ha-list-item value="normal">Normal</ha-list-item>
-              <ha-list-item value="italic">Italic</ha-list-item>
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Font style"}
+              .selector=${{ select: { options: [{value: 'normal', label: 'Normal'}, {value: 'italic', label: 'Italic'}] } }}
+              .value=${this._config.font_style}
+              @value-changed=${this._changed}
+            ></ha-selector>
 
             <div class="inline-fields-2">
               <ha-textfield label="Title size (px)" type="number" .value=${String(this._config.title_size_px)} data-field="title_size_px" @input=${this._changed}></ha-textfield>
@@ -7421,23 +7448,21 @@ class HkiHeaderCardEditor extends LitElement {
             </div>
 
             <div class="inline-fields-2">
-              <ha-select label="Title weight" .value=${this._config.title_weight} data-field="title_weight" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                <ha-list-item value="light">Light</ha-list-item>
-                <ha-list-item value="regular">Regular</ha-list-item>
-                <ha-list-item value="medium">Medium</ha-list-item>
-                <ha-list-item value="semibold">Semi-bold</ha-list-item>
-                <ha-list-item value="bold">Bold</ha-list-item>
-                <ha-list-item value="black">Black</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Title weight"}
+                .selector=${{ select: { options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
+                .value=${this._config.title_weight}
+                @value-changed=${this._changed}
+              ></ha-selector>
 
-              <ha-select label="Subtitle weight" .value=${this._config.subtitle_weight} data-field="subtitle_weight" @selected=${this._changed} @closed=${this._changed} @value-changed=${this._changed}>
-                <ha-list-item value="light">Light</ha-list-item>
-                <ha-list-item value="regular">Regular</ha-list-item>
-                <ha-list-item value="medium">Medium</ha-list-item>
-                <ha-list-item value="semibold">Semi-bold</ha-list-item>
-                <ha-list-item value="bold">Bold</ha-list-item>
-                <ha-list-item value="black">Black</ha-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Subtitle weight"}
+                .selector=${{ select: { options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
+                .value=${this._config.subtitle_weight}
+                @value-changed=${this._changed}
+              ></ha-selector>
             </div>
           </div>
         </details>
@@ -7460,9 +7485,13 @@ class HkiHeaderCardEditor extends LitElement {
                   <div class="box-content">
                     <div class="inline-fields-2">
                       <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config.info_size_px || 12)} data-field="info_size_px" @input=${this._changed}></ha-textfield>
-                      <ha-select label="Font Weight" .value=${this._config.info_weight || "medium"} data-field="info_weight" @selected=${this._changed} @closed=${this._changed}>
-                        ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<ha-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</ha-list-item>`)}
-                      </ha-select>
+                                            <ha-selector
+                        .hass=${this.hass}
+                        .label=${"Font Weight"}
+                        .selector=${{ select: { options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                        .value=${this._config.info_weight || "medium"}
+                        @value-changed=${this._changed}
+                      ></ha-selector>
                     </div>
                     <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
                     <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.info_text_shadow || ""} data-field="info_text_shadow" @input=${this._changed}></ha-textfield>
@@ -7483,12 +7512,13 @@ class HkiHeaderCardEditor extends LitElement {
                         <ha-textfield label="Blur (px)" type="number" .value=${String(this._config.info_pill_blur ?? 0)} data-field="info_pill_blur" @input=${this._changed}></ha-textfield>
                       </div>
                       <div class="inline-fields-3">
-                        <ha-select label="Border Style" .value=${this._config.info_pill_border_style || "none"} data-field="info_pill_border_style" @selected=${this._changed} @closed=${this._changed}>
-                          <ha-list-item value="none">None</ha-list-item>
-                          <ha-list-item value="solid">Solid</ha-list-item>
-                          <ha-list-item value="dashed">Dashed</ha-list-item>
-                          <ha-list-item value="dotted">Dotted</ha-list-item>
-                        </ha-select>
+                                                <ha-selector
+                          .hass=${this.hass}
+                          .label=${"Border Style"}
+                          .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
+                          .value=${this._config.info_pill_border_style || "none"}
+                          @value-changed=${this._changed}
+                        ></ha-selector>
                         <ha-textfield label="Border Width" type="number" .value=${String(this._config.info_pill_border_width ?? 0)} data-field="info_pill_border_width" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Border Color" .value=${this._config.info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="info_pill_border_color" @input=${this._changed}></ha-textfield>
                       </div>
@@ -7538,9 +7568,13 @@ class HkiHeaderCardEditor extends LitElement {
                 <div class="box-content">
                   <div class="inline-fields-2">
                     <ha-textfield label="Font Size (px)" type="number" .value=${String(this._config.bottom_info_size_px || 12)} data-field="bottom_info_size_px" @input=${this._changed}></ha-textfield>
-                    <ha-select label="Font Weight" .value=${this._config.bottom_info_weight || "medium"} data-field="bottom_info_weight" @selected=${this._changed} @closed=${this._changed}>
-                      ${["light", "regular", "medium", "semibold", "bold", "extrabold"].map(w => html`<ha-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</ha-list-item>`)}
-                    </ha-select>
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Font Weight"}
+                      .selector=${{ select: { options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                      .value=${this._config.bottom_info_weight || "medium"}
+                      @value-changed=${this._changed}
+                    ></ha-selector>
                   </div>
                   <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
                   <ha-textfield label="Text Shadow (CSS/Jinja)" .value=${this._config.bottom_info_text_shadow || ""} data-field="bottom_info_text_shadow" @input=${this._changed}></ha-textfield>
@@ -7561,12 +7595,13 @@ class HkiHeaderCardEditor extends LitElement {
                       <ha-textfield label="Blur (px)" type="number" .value=${String(this._config.bottom_info_pill_blur ?? 0)} data-field="bottom_info_pill_blur" @input=${this._changed}></ha-textfield>
                     </div>
                     <div class="inline-fields-3">
-                      <ha-select label="Border Style" .value=${this._config.bottom_info_pill_border_style || "none"} data-field="bottom_info_pill_border_style" @selected=${this._changed} @closed=${this._changed}>
-                        <ha-list-item value="none">None</ha-list-item>
-                        <ha-list-item value="solid">Solid</ha-list-item>
-                        <ha-list-item value="dashed">Dashed</ha-list-item>
-                        <ha-list-item value="dotted">Dotted</ha-list-item>
-                      </ha-select>
+                                            <ha-selector
+                        .hass=${this.hass}
+                        .label=${"Border Style"}
+                        .selector=${{ select: { options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
+                        .value=${this._config.bottom_info_pill_border_style || "none"}
+                        @value-changed=${this._changed}
+                      ></ha-selector>
                       <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>
                     </div>
@@ -7726,4 +7761,3 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-header-card",
 });
-

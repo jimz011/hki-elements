@@ -13406,24 +13406,20 @@
         <div class="sub-section">
             <strong>${label} Typography</strong>
             <div class="side-by-side">
-                <ha-select 
-                  label="Family" 
-                  .value=${this._config[`${prefix}_font_family`] || "system"} 
-                  @change=${(ev) => this._dropdownChanged(ev, `${prefix}_font_family`)} 
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                    ${fonts.map(f => html`<ha-list-item .value=${f}>${f}</ha-list-item>`)}
-                </ha-select>
-                <ha-select 
-                  label="Weight" 
-                  .value=${(this._config[`${prefix}_font_weight`] ?? this._defaultFontWeight(prefix))} 
-                  @change=${(ev) => this._dropdownChanged(ev, `${prefix}_font_weight`)} 
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                    ${weights.map(w => html`<ha-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</ha-list-item>`)}
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Family"}
+                  .selector=${{ select: { options: fonts.map(f => ({value: f, label: f})) } }}
+                  .value=${this._config[`${prefix}_font_family`] || "system"}
+                  @value-changed=${(ev) => this._dropdownChanged(ev, `${prefix}_font_family`)}
+                ></ha-selector>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Weight"}
+                  .selector=${{ select: { options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
+                  .value=${(this._config[`${prefix}_font_weight`] ?? this._defaultFontWeight(prefix))}
+                  @value-changed=${(ev) => this._dropdownChanged(ev, `${prefix}_font_weight`)}
+                ></ha-selector>
             </div>
             ${this._config[`${prefix}_font_family`] === 'custom' ? html`
                 <ha-textfield .label=${"Custom Font Name"} .value=${this._config[`${prefix}_font_custom`] || ""} @input=${(ev) => this._textChanged(ev, `${prefix}_font_custom`)}></ha-textfield>
@@ -13462,16 +13458,13 @@
           return html`
             <div class="action-config-section">
               <strong>${label}</strong>
-              <ha-select 
-                label="Action Type" 
-                .value=${currentAction} 
-                @change=${(ev) => this._actionChanged(ev, configKey, actionsList)} 
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Action Type"}
+                .selector=${{ select: { options: actionsList } }}
+                .value=${currentAction}
                 @value-changed=${(ev) => this._actionChanged(ev, configKey, actionsList)}
-                @closed=${(e) => e.stopPropagation()} 
-                @click=${(e) => e.stopPropagation()}
-              >
-                  ${actionsList.map(a => html`<ha-list-item .value=${a.value}>${a.label}</ha-list-item>`)}
-              </ha-select>
+              ></ha-selector>
               
               ${currentAction === 'navigate' ? html`
                 ${customElements.get("ha-navigation-picker") ? html`
@@ -13540,10 +13533,12 @@
                       const services = (domain && this.hass?.services?.[domain]) ? Object.keys(this.hass.services[domain]).sort() : [];
                       return html`
                         <div class="side-by-side">
-                          <ha-select
-                            label="Domain"
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Domain"}
+                            .selector=${{ select: { options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
                             .value=${domain || ""}
-                            @change=${(e) => {
+                            @value-changed=${(e) => {
                               e.stopPropagation();
                               const nextDomain = window.HKI.getSelectValue(e) || '';
                               this._paDomainCache[key] = nextDomain;
@@ -13551,18 +13546,15 @@
                               this._fireChanged({ ...this._config, [configKey]: updated });
                               this.requestUpdate();
                             }}
-                            @closed=${(e) => e.stopPropagation()}
-                            @click=${(e) => e.stopPropagation()}
-                          >
-                            <ha-list-item value=""></ha-list-item>
-                            ${domains.map((d) => html`<ha-list-item .value=${d}>${d}</ha-list-item>`)}
-                          </ha-select>
+                          ></ha-selector>
 
-                          <ha-select
-                            label="Service"
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Service"}
+                            .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                             .value=${derivedService || ""}
                             .disabled=${!domain}
-                            @change=${(e) => {
+                            @value-changed=${(e) => {
                               e.stopPropagation();
                               const service = window.HKI.getSelectValue(e) || '';
                               const d = (this._paDomainCache[key] || domain || '');
@@ -13570,12 +13562,7 @@
                               const updated = { ...actionConfig, action: "perform-action", perform_action: next };
                               this._fireChanged({ ...this._config, [configKey]: updated });
                             }}
-                            @closed=${(e) => e.stopPropagation()}
-                            @click=${(e) => e.stopPropagation()}
-                          >
-                            <ha-list-item value=""></ha-list-item>
-                            ${services.map((s) => html`<ha-list-item .value=${s}>${s}</ha-list-item>`)}
-                          </ha-select>
+                          ></ha-selector>
                         </div>
                       `;
                     })()}
@@ -13675,10 +13662,12 @@
           <div class="accordion-group">
             ${renderHeader("Card Layout", "layout_type")}
             <div class="accordion-content ${this._closedDetails['layout_type'] ? 'hidden' : ''}">
-                <ha-select 
-                  label="Card Layout" 
-                  .value=${this._config.card_layout || "square"} 
-                  @change=${(ev) => {
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Card Layout"}
+                  .selector=${{ select: { options: shapes.map(a => ({value: a, label: a === "square" ? "HKI Default" : (a === "google_default" ? "Google Default" : (a === "hki_tile" ? "HKI Tile" : "Badge"))})) } }}
+                  .value=${this._config.card_layout || "square"}
+                  @value-changed=${(ev) => {
                     ev.stopPropagation();
                     const newLayout = window.HKI.getSelectValue(ev);
                     const oldLayout = this._config.card_layout;
@@ -13715,12 +13704,8 @@
                     }
                     
                     this._fireChanged(newConfig);
-                  }} 
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                    ${shapes.map(a => html`<ha-list-item .value=${a}>${a === "square" ? "HKI Default" : (a === "google_default" ? "Google Default" : (a === "hki_tile" ? "HKI Tile" : "Badge"))}</ha-list-item>`) }
-                </ha-select>
+                  }}
+                ></ha-selector>
                 <div class="layout-actions">
                   <button type="button" class="hki-reset-btn" @click=${(ev) => { ev.stopPropagation(); this._resetToDefaults(ev); }}>
                     <ha-icon icon="mdi:restore"></ha-icon>
@@ -13964,24 +13949,20 @@
                   <ha-textfield label="Font Size (px)" type="number" .value=${this._config.size_temp_badge ?? 9} @input=${(ev) => this._textChanged(ev, "size_temp_badge")}></ha-textfield>
                 </div>
                 <div class="side-by-side">
-                  <ha-select 
-                    label="Font Family" 
-                    .value=${this._config.temp_badge_font_family || "system"} 
-                    @change=${(ev) => this._dropdownChanged(ev, "temp_badge_font_family")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    ${fonts.map(f => html`<ha-list-item .value=${f}>${f}</ha-list-item>`)}
-                  </ha-select>
-                  <ha-select 
-                    label="Font Weight" 
-                    .value=${this._config.temp_badge_font_weight || "normal"} 
-                    @change=${(ev) => this._dropdownChanged(ev, "temp_badge_font_weight")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    ${weights.map(w => html`<ha-list-item .value=${w}>${w.charAt(0).toUpperCase() + w.slice(1)}</ha-list-item>`)}
-                  </ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${"Font Family"}
+                    .selector=${{ select: { options: fonts.map(f => ({value: f, label: f})) } }}
+                    .value=${this._config.temp_badge_font_family || "system"}
+                    @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_font_family")}
+                  ></ha-selector>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${"Font Weight"}
+                    .selector=${{ select: { options: weights.map(w => ({value: w, label: w.charAt(0).toUpperCase() + w.slice(1)})) } }}
+                    .value=${this._config.temp_badge_font_weight || "normal"}
+                    @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_font_weight")}
+                  ></ha-selector>
                 </div>
                 ${this._config.temp_badge_font_family === 'custom' ? html`
                   <ha-textfield label="Custom Font Name" .value=${this._config.temp_badge_font_custom || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_font_custom")}></ha-textfield>
@@ -13995,15 +13976,13 @@
                   <ha-textfield label="Border Color" .value=${this._config.temp_badge_border_color || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_color")}></ha-textfield>
                 </div>
                 <div class="side-by-side">
-                  <ha-select 
-                    label="Border Style" 
-                    .value=${this._config.temp_badge_border_style || "none"} 
-                    @change=${(ev) => this._dropdownChanged(ev, "temp_badge_border_style")}
-                    @closed=${(e) => e.stopPropagation()}
-                    @click=${(e) => e.stopPropagation()}
-                  >
-                    ${borderStyleOptions.map((o) => html`<ha-list-item .value=${o.value}>${o.label}</ha-list-item>`)}
-                  </ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${"Border Style"}
+                    .selector=${{ select: { options: borderStyleOptions } }}
+                    .value=${this._config.temp_badge_border_style || "none"}
+                    @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_border_style")}
+                  ></ha-selector>
                   <ha-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></ha-textfield>
                 </div>
             </div>
@@ -14064,25 +14043,24 @@
             <div class="accordion-content ${this._closedDetails['sensor_opts'] ? 'hidden' : ''}">
               <p style="font-size: 11px; opacity: 0.7; margin: 0 0 8px 0;">Applies when domain popup is Sensor and action is "More Info (HKI)".</p>
               <ha-formfield .label=${"Use gradient coloring (temperature-style)"}>
-                <ha-select label="Graph Style" .value=${this._config.sensor_graph_style || 'line'}
-                  @change=${(ev) => this._dropdownChanged(ev, 'sensor_graph_style')}
-                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                  <ha-list-item value="line">Line Graph</ha-list-item>
-                  <ha-list-item value="bar">Bar Chart</ha-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Graph Style"}
+                  .selector=${{ select: { options: [{value: 'line', label: 'Line Graph'}, {value: 'bar', label: 'Bar Chart'}] } }}
+                  .value=${this._config.sensor_graph_style || 'line'}
+                  @value-changed=${(ev) => this._dropdownChanged(ev, 'sensor_graph_style')}
+                ></ha-selector>
                 <ha-switch .checked=${this._config.sensor_graph_gradient !== false} @change=${(ev) => this._switchChanged(ev, "sensor_graph_gradient")}></ha-switch>
               </ha-formfield>
               <ha-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></ha-textfield>
               <ha-textfield label="Line width (px)" type="number" .value=${this._config.sensor_line_width ?? 3} @input=${(ev) => this._textChanged(ev, "sensor_line_width")}></ha-textfield>
-              <ha-select label="Graph time range"
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Graph time range"}
+                .selector=${{ select: { options: [{value: '12', label: '12 hours'}, {value: '24', label: '24 hours'}, {value: '48', label: '48 hours'}, {value: '72', label: '72 hours'}] } }}
                 .value=${String(this._config.sensor_hours ?? 24)}
-                @change=${(ev) => this._dropdownChanged(ev, 'sensor_hours')}
-                @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                <ha-list-item value="12">12 hours</ha-list-item>
-                <ha-list-item value="24">24 hours</ha-list-item>
-                <ha-list-item value="48">48 hours</ha-list-item>
-                <ha-list-item value="72">72 hours</ha-list-item>
-              </ha-select>
+                @value-changed=${(ev) => this._dropdownChanged(ev, 'sensor_hours')}
+              ></ha-selector>
             </div>
           </div>
           ` : ''}
@@ -14668,16 +14646,20 @@
                       ${renderHeader("Animation", "popup_anim")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_anim'] ? 'hidden' : ''}">
                         <div class="side-by-side">
-                          <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
-                            @change=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
-                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                          </ha-select>
-                          <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
-                            @change=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
-                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            ${HKI_POPUP_EDITOR_OPTIONS.animations.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                          </ha-select>
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Open Animation"}
+                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
+                            .value=${this._config.popup_open_animation || 'scale'}
+                            @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_open_animation')}
+                          ></ha-selector>
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Close Animation"}
+                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.animations } }}
+                            .value=${this._config.popup_close_animation || 'scale'}
+                            @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
+                          ></ha-selector>
                         </div>
                         <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
                       </div>
@@ -14688,21 +14670,25 @@
                       <div class="sub-accordion-content ${this._closedDetails['popup_container'] ? 'hidden' : ''}">
                         <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
                         <div class="side-by-side">
-                          <ha-select label="Width" .value=${this._config.popup_width || 'auto'}
-                            @change=${(ev) => this._dropdownChanged(ev, "popup_width")}
-                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            ${HKI_POPUP_EDITOR_OPTIONS.width.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                          </ha-select>
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Width"}
+                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.width } }}
+                            .value=${this._config.popup_width || 'auto'}
+                            @value-changed=${(ev) => this._dropdownChanged(ev, "popup_width")}
+                          ></ha-selector>
                           ${this._config.popup_width === 'custom' ? html`
                             <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
                           ` : html`<div></div>`}
                         </div>
                         <div class="side-by-side">
-                          <ha-select label="Height" .value=${this._config.popup_height || 'auto'}
-                            @change=${(ev) => this._dropdownChanged(ev, "popup_height")}
-                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            ${HKI_POPUP_EDITOR_OPTIONS.height.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                          </ha-select>
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Height"}
+                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.height } }}
+                            .value=${this._config.popup_height || 'auto'}
+                            @value-changed=${(ev) => this._dropdownChanged(ev, "popup_height")}
+                          ></ha-selector>
                           ${this._config.popup_height === 'custom' ? html`
                             <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
                           ` : html`<div></div>`}
@@ -14747,12 +14733,13 @@
                       ${renderHeader("Bottom Bar Entities", "popup_bottom_bar")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_bottom_bar'] ? 'hidden' : ''}">
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Add up to 8 icon buttons to the bottom bar. Works on all popups.</p>
-                        <ha-select label="Button Alignment"
+                                                <ha-selector
+                          .hass=${this.hass}
+                          .label=${"Button Alignment"}
+                          .selector=${{ select: { options: popupBottomBarAlignOptionsDetailed } }}
                           .value=${this._config.popup_bottom_bar_align || 'spread'}
-                          @change=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
-                          @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                          ${popupBottomBarAlignOptionsDetailed.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                        </ha-select>
+                          @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_bottom_bar_align')}
+                        ></ha-selector>
                         ${(() => {
                           const currentSlots = this._config._bb_slots ?? Math.max(1, (this._config.popup_bottom_bar_entities || []).filter(Boolean).length || 1);
                           const slots = Math.max(1, Math.min(8, currentSlots));
@@ -14806,20 +14793,18 @@
                                 <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
                                   @input=${(ev) => setEntry({ icon: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></ha-textfield>
 
-                                <ha-select label="Tap Action" .value=${currentAction}
-                                  @change=${(ev) => {
-                                    ev.stopPropagation();
-                                    const v = this._resolveSelectEventValue(ev, actionsList);
-                                    if (v && v !== currentAction) setTapAction({ action: v });
-                                  }}
+                                                                <ha-selector
+                                  .hass=${this.hass}
+                                  .label=${"Tap Action"}
+                                  .selector=${{ select: { options: actionsList } }}
+                                  .value=${currentAction}
                                   @value-changed=${(ev) => {
                                     ev.stopPropagation();
                                     const v = this._resolveSelectEventValue(ev, actionsList);
                                     if (v && v !== currentAction) setTapAction({ action: v });
                                   }}
-                                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()} style="margin-top:6px;">
-                                  ${actionsList.map(a => html`<ha-list-item .value=${a.value}>${a.label}</ha-list-item>`)}
-                                </ha-select>
+                                  style="margin-top:6px;"
+                                ></ha-selector>
 
                                 ${currentAction === 'navigate' ? html`
                                   ${customElements.get("ha-navigation-picker") ? html`
@@ -14856,20 +14841,21 @@
                                       const services = domain && this.hass?.services?.[domain] ? Object.keys(this.hass.services[domain]).sort() : [];
                                       return html`
                                         <div class="side-by-side" style="margin-top:6px;">
-                                          <ha-select label="Domain" .value=${domain||""}
-                                            @change=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
+                                                                                    <ha-selector
+                                            .hass=${this.hass}
+                                            .label=${"Domain"}
+                                            .selector=${{ select: { options: [{value: '', label: ''}, ...domains.map(d => ({value: d, label: d}))] } }}
+                                            .value=${domain||""}
                                             @value-changed=${(e) => { e.stopPropagation(); const v = this._resolveSelectEventValue(e, domains); this._paDomainCache[bbKey] = v || ''; setTapAction({ perform_action: "" }); this.requestUpdate(); }}
-                                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                            <ha-list-item value=""></ha-list-item>
-                                            ${domains.map(d => html`<ha-list-item .value=${d}>${d}</ha-list-item>`)}
-                                          </ha-select>
-                                          <ha-select label="Service" .value=${derivedService||""} .disabled=${!domain}
-                                            @change=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
+                                          ></ha-selector>
+                                                                                    <ha-selector
+                                            .hass=${this.hass}
+                                            .label=${"Service"}
+                                            .selector=${{ select: { options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
+                                            .value=${derivedService||""}
+                                            .disabled=${!domain}
                                             @value-changed=${(e) => { e.stopPropagation(); const svc = this._resolveSelectEventValue(e, services) || ''; const d = this._paDomainCache[bbKey] || domain || ''; setTapAction({ perform_action: d && svc ? `${d}.${svc}` : "" }); }}
-                                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                            <ha-list-item value=""></ha-list-item>
-                                            ${services.map(s => html`<ha-list-item .value=${s}>${s}</ha-list-item>`)}
-                                          </ha-select>
+                                          ></ha-selector>
                                         </div>`;
                                     })()}
                                   `}
@@ -14908,17 +14894,21 @@
                           <div class="sub-accordion-content ${this._closedDetails['popup_default_view'] ? 'hidden' : ''}">
                             <p style="font-size: 10px; opacity: 0.6; margin: 0 0 8px 0; font-style: italic;">Choose which view${isLightGroup ? ' and section' : ''} to show when opening the popup.</p>
                             <div class="side-by-side">
-                              <ha-select label="Default View" .value=${this._config.popup_default_view || 'main'}
-                                @change=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
-                                @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                ${popupDefaultViewOptions.map((o) => html`<ha-list-item value="${o.value}">${o.value === "individual" ? `Individual ${entityTypeName}` : o.label}</ha-list-item>`)}
-                              </ha-select>
+                                                            <ha-selector
+                                .hass=${this.hass}
+                                .label=${"Default View"}
+                                .selector=${{ select: { options: popupDefaultViewOptions.map(o => ({value: o.value, label: o.value === "individual" ? `Individual ${entityTypeName}` : o.label})) } }}
+                                .value=${this._config.popup_default_view || 'main'}
+                                @value-changed=${(ev) => this._dropdownChanged(ev, "popup_default_view")}
+                              ></ha-selector>
                               ${isLightGroup ? html`
-                                <ha-select label="Default Section" .value=${this._config.popup_default_section || 'last'}
-                                  @change=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
-                                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                                  ${popupDefaultSectionOptionsTagged.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                                </ha-select>
+                                                                <ha-selector
+                                  .hass=${this.hass}
+                                  .label=${"Default Section"}
+                                  .selector=${{ select: { options: popupDefaultSectionOptionsTagged } }}
+                                  .value=${this._config.popup_default_section || 'last'}
+                                  @value-changed=${(ev) => this._dropdownChanged(ev, "popup_default_section")}
+                                ></ha-selector>
                               ` : html`<div></div>`}
                             </div>
                           </div>
@@ -14967,11 +14957,13 @@
                             <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_label_font_weight ?? 400} @input=${(ev) => this._textChanged(ev, "popup_label_font_weight")}></ha-textfield>
                           </div>
                           <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">History/Logbook Time Format</p>
-                          <ha-select label="Time Format" .value=${this._config.popup_time_format || 'auto'}
-                            @change=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
-                            @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                            ${HKI_POPUP_EDITOR_OPTIONS.timeFormats.map((o) => html`<ha-list-item value="${o.value}">${o.label}</ha-list-item>`)}
-                          </ha-select>
+                                                    <ha-selector
+                            .hass=${this.hass}
+                            .label=${"Time Format"}
+                            .selector=${{ select: { options: HKI_POPUP_EDITOR_OPTIONS.timeFormats } }}
+                            .value=${this._config.popup_time_format || 'auto'}
+                            @value-changed=${(ev) => this._dropdownChanged(ev, "popup_time_format")}
+                          ></ha-selector>
                         </div>
                       </div>
 
@@ -14988,11 +14980,13 @@
                             <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_highlight_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_opacity")} placeholder="1"></ha-textfield>
                           </div>
                           <div class="side-by-side">
-                            <ha-select label="Border Style" .value=${this._config.popup_highlight_border_style || "none"}
-                              @change=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
-                              @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borderStyleOptions.map((o) => html`<ha-list-item .value=${o.value}>${o.label}</ha-list-item>`)}
-                            </ha-select>
+                                                        <ha-selector
+                              .hass=${this.hass}
+                              .label=${"Border Style"}
+                              .selector=${{ select: { options: borderStyleOptions } }}
+                              .value=${this._config.popup_highlight_border_style || "none"}
+                              @value-changed=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
+                            ></ha-selector>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
                           </div>
                           <ha-textfield label="Border Color" .value=${this._config.popup_highlight_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_color")}></ha-textfield>
@@ -15013,11 +15007,13 @@
                             <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_button_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_opacity")} placeholder="1"></ha-textfield>
                           </div>
                           <div class="side-by-side">
-                            <ha-select label="Border Style" .value=${this._config.popup_button_border_style || "none"}
-                              @change=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
-                              @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                              ${borderStyleOptions.map((o) => html`<ha-list-item .value=${o.value}>${o.label}</ha-list-item>`)}
-                            </ha-select>
+                                                        <ha-selector
+                              .hass=${this.hass}
+                              .label=${"Border Style"}
+                              .selector=${{ select: { options: borderStyleOptions } }}
+                              .value=${this._config.popup_button_border_style || "none"}
+                              @value-changed=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
+                            ></ha-selector>
                             <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
                           </div>
                           <ha-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></ha-textfield>
@@ -15143,7 +15139,7 @@
         const interactiveSelectors = [
             'ha-selector',
             'ha-select', 
-            'ha-list-item',
+            'mwc-list-item',
             'ha-textfield',
             'input',
             'button',
