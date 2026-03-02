@@ -2915,33 +2915,21 @@ class HkiNavigationCardEditor extends LitElement {
             <span>Enable custom popup card</span>
           </div>
           ${enabled ? html`
-            <p style="font-size: 10px; opacity: 0.6; margin: 6px 0 4px 0; font-style: italic;">This starts as a vertical-stack. Use the card picker to choose another card type.</p>
             <div class="card-config">
-              ${customElements.get("hui-card-picker") ? html`
-                <hui-card-picker
-                  .hass=${this.hass}
-                  .lovelace=${this._getLovelace()}
-                  .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
-                  @config-changed=${(ev) => {
-                    const picked = this._extractCardConfigFromEvent(ev, null);
-                    if (picked) pp({ custom_popup_card: picked });
-                  }}
-                  @value-changed=${(ev) => {
-                    const picked = this._extractCardConfigFromEvent(ev, null);
-                    if (picked) pp({ custom_popup_card: picked });
-                  }}
-                ></hui-card-picker>
-              ` : customElements.get("hui-card-element-editor") ? html`
+              ${customElements.get("hui-card-element-editor") ? html`
                 <hui-card-element-editor
                   .hass=${this.hass}
                   .lovelace=${this._getLovelace()}
                   .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
                   @config-changed=${(ev) => {
-                    const newCard = this._extractCardConfigFromEvent(ev, null);
-                    if (newCard) pp({ custom_popup_card: newCard });
+                    ev.stopPropagation();
+                    const newCard = ev.detail?.config;
+                    if (newCard && JSON.stringify(newCard) !== JSON.stringify(p("custom_popup_card"))) {
+                      pp({ "custom_popup_card": newCard });
+                    }
                   }}
                 ></hui-card-element-editor>
-              ` : (() => { this._ensureCardEditorLoaded(); return html`<div class="hint">Loading card picker...</div>`; })()}
+              ` : html`<p style="font-size:11px;opacity:0.6;">Card editor not available. Use YAML mode.</p>`}
             </div>
           ` : ''}
         </div>
