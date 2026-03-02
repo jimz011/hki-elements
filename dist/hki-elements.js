@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-12 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-13 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -27911,6 +27911,13 @@ class HkiNavigationCardEditor extends LitElement {
     const onChange = options?.onchange || (() => {});
     return this._renderCodeEditor(label, value, onChange, key || label);
   }
+  _extractCardConfigFromEvent(ev, fallback = undefined) {
+    const raw = ev?.detail?.config ?? ev?.detail?.value ?? ev?.target?.config ?? ev?.target?.value;
+    if (!raw) return fallback;
+    if (typeof raw === "string") return { type: raw };
+    if (typeof raw === "object" && typeof raw.type === "string" && raw.type.trim()) return raw;
+    return fallback;
+  }
   _renderActionEditor(btn, setBtnFn, which, title, errorKeyPrefix) {
     const act = btn?.[which] || { action: "none" };
     const type = act.action || "none";
@@ -28180,8 +28187,11 @@ class HkiNavigationCardEditor extends LitElement {
                   .lovelace=${this._getLovelace()}
                   .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
                   @config-changed=${(ev) => {
-                    ev.stopPropagation();
-                    const picked = ev.detail?.config || ev.detail?.value || ev.target?.config;
+                    const picked = this._extractCardConfigFromEvent(ev, null);
+                    if (picked) pp({ custom_popup_card: picked });
+                  }}
+                  @value-changed=${(ev) => {
+                    const picked = this._extractCardConfigFromEvent(ev, null);
                     if (picked) pp({ custom_popup_card: picked });
                   }}
                 ></hui-card-picker>
@@ -28191,8 +28201,7 @@ class HkiNavigationCardEditor extends LitElement {
                   .lovelace=${this._getLovelace()}
                   .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
                   @config-changed=${(ev) => {
-                    ev.stopPropagation();
-                    const newCard = ev.detail?.config || ev.detail?.value || ev.target?.config;
+                    const newCard = this._extractCardConfigFromEvent(ev, null);
                     if (newCard) pp({ custom_popup_card: newCard });
                   }}
                 ></hui-card-element-editor>
