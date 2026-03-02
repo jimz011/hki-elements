@@ -670,6 +670,7 @@
       this._buttonLockArmTimer = null;
       this._buttonLockFailedAttempts = 0;
       this._buttonLockLockedUntil = 0;
+      this._buttonLockStorageKey = null;
       this._actionLockPortal = null;
       this._actionLockPending = false;
     }
@@ -683,6 +684,8 @@
         ...HkiButtonCard._cloneBaseDefaults(),
         ...flatConfig,
       };
+      this._buttonLockStorageKey = this._getButtonLockStorageKey();
+      this._loadButtonLockState();
       // Use the flat (migrated) config for user-override checks below
       const __layout = (this._config.card_layout || 'square');
       const cfg = flatConfig;
@@ -2117,7 +2120,13 @@
     }
 
     _isButtonLockInLockout() {
-      return this._getButtonLockRemainingLockoutMs() > 0;
+      const remaining = this._getButtonLockRemainingLockoutMs();
+      if (remaining <= 0 && this._buttonLockLockedUntil) {
+        this._buttonLockLockedUntil = 0;
+        this._buttonLockFailedAttempts = 0;
+        this._saveButtonLockState();
+      }
+      return remaining > 0;
     }
 
     _formatMsShort(ms) {
@@ -2126,6 +2135,41 @@
       const s = total % 60;
       if (m > 0) return `${m}:${String(s).padStart(2, "0")}`;
       return `${s}s`;
+    }
+
+    _getButtonLockStorageKey() {
+      const id = String(this._config?.entity || this._config?.name || this._config?.icon || "card").trim();
+      return `hki_button_lock_state::${id}`;
+    }
+
+    _saveButtonLockState() {
+      try {
+        const key = this._buttonLockStorageKey || this._getButtonLockStorageKey();
+        localStorage.setItem(key, JSON.stringify({
+          failed_attempts: Number(this._buttonLockFailedAttempts || 0),
+          locked_until: Number(this._buttonLockLockedUntil || 0),
+        }));
+      } catch (_) {}
+    }
+
+    _loadButtonLockState() {
+      try {
+        const key = this._buttonLockStorageKey || this._getButtonLockStorageKey();
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const now = Date.now();
+        const until = Number(parsed?.locked_until || 0);
+        const attempts = Number(parsed?.failed_attempts || 0);
+        if (!Number.isFinite(until) || until <= now) {
+          this._buttonLockLockedUntil = 0;
+          this._buttonLockFailedAttempts = 0;
+          this._saveButtonLockState();
+          return;
+        }
+        this._buttonLockLockedUntil = until;
+        this._buttonLockFailedAttempts = Number.isFinite(attempts) ? Math.max(0, Math.round(attempts)) : 0;
+      } catch (_) {}
     }
 
     _isButtonLockArmed() {
@@ -2213,6 +2257,10 @@
           border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
           background: var(--secondary-background-color, rgba(255,255,255,0.05));
           display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .hki-auth-pin-display.hki-auth-input-error {
+          border-color: var(--error-color, #f44336);
+          box-shadow: 0 0 0 1px rgba(244,67,54,0.25) inset;
         }
         .hki-auth-dot {
           width: 10px; height: 10px; border-radius: 50%;
@@ -2320,6 +2368,7 @@
           const box = overlay.querySelector('.hki-auth-dialog');
           const errorEl = overlay.querySelector('.hki-auth-error-text');
           const inputEl = overlay.querySelector('.hki-auth-input');
+          const pinDisplay = overlay.querySelector('.hki-auth-pin-display');
           if (errorEl) errorEl.textContent = msg || 'Incorrect code.';
           if (box) {
             box.classList.remove('hki-auth-error');
@@ -2327,6 +2376,7 @@
             box.classList.add('hki-auth-error');
           }
           if (inputEl) inputEl.classList.add('hki-auth-input-error');
+          if (pinDisplay) pinDisplay.classList.add('hki-auth-input-error');
         };
 
         const markSuccessAndClose = () => {
@@ -2338,14 +2388,17 @@
           }
           this._buttonLockFailedAttempts = 0;
           this._buttonLockLockedUntil = 0;
+          this._saveButtonLockState();
           setTimeout(() => close(true), 180);
         };
 
         const clearErrorVisual = () => {
           const inputEl = overlay.querySelector('.hki-auth-input');
+          const pinDisplay = overlay.querySelector('.hki-auth-pin-display');
           const errorEl = overlay.querySelector('.hki-auth-error-text');
           const box = overlay.querySelector('.hki-auth-dialog');
           if (inputEl) inputEl.classList.remove('hki-auth-input-error');
+          if (pinDisplay) pinDisplay.classList.remove('hki-auth-input-error');
           if (errorEl) errorEl.textContent = '';
           if (box) box.classList.remove('hki-auth-locked');
         };
@@ -2374,6 +2427,7 @@
           } else if (this._buttonLockLockedUntil) {
             this._buttonLockLockedUntil = 0;
             this._buttonLockFailedAttempts = 0;
+            this._saveButtonLockState();
             clearErrorVisual();
             if (lockoutTicker) {
               clearInterval(lockoutTicker);
@@ -2402,11 +2456,13 @@
           if (lockoutMs > 0 && this._buttonLockFailedAttempts >= maxTries) {
             this._buttonLockLockedUntil = Date.now() + lockoutMs;
             markError(`Too many failed attempts. Locked for ${this._formatMsShort(lockoutMs)}.`);
+            this._saveButtonLockState();
             syncLockoutUI();
           } else {
             if (lockoutMs <= 0 && this._buttonLockFailedAttempts >= maxTries) {
               this._buttonLockFailedAttempts = 0;
             }
+            this._saveButtonLockState();
             const triesLeft = Math.max(0, maxTries - this._buttonLockFailedAttempts);
             const msg = isPin ? 'Wrong PIN. Try again.' : 'Wrong password. Try again.';
             markError(triesLeft > 0 ? `${msg} ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left.` : msg);
@@ -2471,7 +2527,8 @@
         document.body.appendChild(overlay);
 
         overlay.addEventListener('click', (ev) => {
-          if (ev.target === overlay) close(false);
+          // Keep dialog open for retries; close explicitly via Cancel/Escape.
+          if (ev.target === overlay) ev.stopPropagation();
         });
         overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', (ev) => ev.stopPropagation());
 
@@ -2518,17 +2575,6 @@
         }
 
         syncLockoutUI();
-
-        // Ensure pending state is cleared if removed externally.
-        const obs = new MutationObserver(() => {
-          if (!document.body.contains(overlay)) {
-            obs.disconnect();
-            this._actionLockPending = false;
-            __hkiUnlockScroll();
-            resolve(false);
-          }
-        });
-        obs.observe(document.body, { childList: true });
       });
     }
 
@@ -14778,20 +14824,6 @@
                     placeholder="0 = disabled"
                   ></ha-textfield>
                 </div>
-                <div class="side-by-side" style="gap: 12px;">
-                  <ha-textfield
-                    label="Lock Icon Offset X"
-                    type="number"
-                    .value=${this._config.button_lock_offset_x ?? 0}
-                    @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}
-                  ></ha-textfield>
-                  <ha-textfield
-                    label="Lock Icon Offset Y"
-                    type="number"
-                    .value=${this._config.button_lock_offset_y ?? 0}
-                    @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}
-                  ></ha-textfield>
-                </div>
                 <p style="font-size: 11px; opacity: 0.7; margin: 0;">
                   PIN has priority over password if both are filled. Wrong code now keeps the popup open with retry feedback.
                 </p>
@@ -15792,6 +15824,14 @@
                 <div class="side-by-side">
                     <ha-textfield label="Temp Badge X" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_x")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_x")}></ha-textfield>
                     <ha-textfield label="Temp Badge Y" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_y")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_y")}></ha-textfield>
+                </div>
+                ` : ''}
+                ${this._config.button_lock_enabled === true ? html`
+                <div class="separator"></div>
+                <strong>Action Lock Icon</strong>
+                <div class="side-by-side">
+                    <ha-textfield label="Lock Icon X" type="number" .value=${this._config.button_lock_offset_x ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
+                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._config.button_lock_offset_y ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
                 </div>
                 ` : ''}
              </div>
