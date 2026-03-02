@@ -148,6 +148,7 @@ class HkiSettingsBase extends LitElement {
   constructor() {
     super();
     this._templateDrafts = {};
+    this._openSections = {};
   }
 
   _tplFieldKey(scope, key) {
@@ -512,13 +513,20 @@ class HkiSettingsBase extends LitElement {
   }
 
   _renderCategoryAccordion(title, fields, description = "") {
+    const sectionKey = `category:${title}:${description}`;
+    const isOpen = !!this._openSections[sectionKey];
     return html`
-      <details class="category-accordion">
+      <details class="category-accordion" ?open=${isOpen} @toggle=${(ev) => {
+        const opened = !!ev.currentTarget?.open;
+        this._openSections = { ...this._openSections, [sectionKey]: opened };
+      }}>
         <summary>${title}</summary>
-        <div class="category">
-          ${description ? html`<div class="category-sub">${description}</div>` : ""}
-          <div class="grid">${fields}</div>
-        </div>
+        ${isOpen ? html`
+          <div class="category">
+            ${description ? html`<div class="category-sub">${description}</div>` : ""}
+            <div class="grid">${fields}</div>
+          </div>
+        ` : ""}
       </details>
     `;
   }
@@ -539,100 +547,107 @@ class HkiSettingsBase extends LitElement {
   }
 
   _renderButtonScope(scope, title, subtitle) {
+    const sectionKey = `button-scope:${scope}`;
+    const isOpen = !!this._openSections[sectionKey];
     return html`
-      <details class="category-accordion">
+      <details class="category-accordion" ?open=${isOpen} @toggle=${(ev) => {
+        const opened = !!ev.currentTarget?.open;
+        this._openSections = { ...this._openSections, [sectionKey]: opened };
+      }}>
         <summary>${title}</summary>
-        <div class="category">
-          ${this._renderScopeHeader(title, scope, subtitle)}
-          <div class="grid">
-            ${this._renderTemplateInput(scope, "card_color", "Card color (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "card_opacity", "Card opacity (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "border_radius", "Border radius (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "box_shadow", "Box shadow (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "border_width", "Border width (Template/CSS)")}
-            ${this._renderSelect(scope, "border_style", "Border style", BORDER_STYLES)}
-            ${this._renderTemplateInput(scope, "border_color", "Border color (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "icon_color", "Icon color (Template/CSS/Jinja)")}
-            ${this._renderTemplateInput(scope, "icon_animation", "Icon animation (Template/Jinja)")}
-            ${this._renderSwitch(scope, "enable_icon_animation", "Enable icon animation")}
-            ${this._renderSelect(scope, "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
-            ${this._renderInput(scope, "size_icon", "Icon size (px)", "number")}
-            ${this._renderTemplateInput(scope, "icon_circle_bg", "Circle background (Template/CSS/Jinja)")}
-            ${this._renderSelect(scope, "icon_circle_border_style", "Circle border style", BORDER_STYLES)}
-            ${this._renderTemplateInput(scope, "icon_circle_border_width", "Circle border width (Template/CSS/Jinja)")}
-            ${this._renderTemplateInput(scope, "icon_circle_border_color", "Circle border color (Template/CSS/Jinja)")}
-            ${this._renderTemplateInput(scope, "badge_bg", "Badge background (Template/CSS/Jinja)")}
-            ${this._renderSelect(scope, "badge_border_style", "Badge border style", BORDER_STYLES)}
-            ${this._renderTemplateInput(scope, "badge_border_width", "Badge border width (Template/CSS/Jinja)")}
-            ${this._renderTemplateInput(scope, "badge_border_color", "Badge border color (Template/CSS/Jinja)")}
-            ${this._renderInput(scope, "badge_border_radius", "Badge border radius", "number")}
-            ${this._renderInput(scope, "badge_box_shadow", "Badge box shadow")}
-            ${this._renderSwitch(scope, "badge_circle", "Badge circle")}
-            ${this._renderInput(scope, "badge_size", "Badge size (px)", "number")}
-            ${this._renderInput(scope, "size_badge", "Badge font size", "number")}
-            ${this._renderSelect(scope, "badge_font_family", "Badge font family", FONT_FAMILIES)}
-            ${this._renderSelect(scope, "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
-            ${this._renderInput(scope, "temp_badge_size", "Temp badge size (px)", "number")}
-            ${this._renderInput(scope, "size_temp_badge", "Temp badge font size", "number")}
-            ${this._renderInput(scope, "temp_badge_text_color", "Temp badge text color")}
-            ${this._renderInput(scope, "temp_badge_border_color", "Temp badge border color")}
-            ${this._renderSelect(scope, "temp_badge_border_style", "Temp badge border style", BORDER_STYLES)}
-            ${this._renderInput(scope, "temp_badge_border_width", "Temp badge border width", "number")}
-            ${this._renderInput(scope, "temp_badge_border_radius", "Temp badge border radius", "number")}
-            ${this._renderInput(scope, "temp_badge_box_shadow", "Temp badge box shadow")}
-            ${this._renderSelect(scope, "temp_badge_font_family", "Temp badge font family", FONT_FAMILIES)}
-            ${this._renderInput(scope, "temp_badge_font_custom", "Temp badge custom font")}
-            ${this._renderSelect(scope, "temp_badge_font_weight", "Temp badge font weight", FONT_WEIGHTS)}
-            ${this._renderSelect(scope, "name_font_family", "Name font family", FONT_FAMILIES)}
-            ${this._renderInput(scope, "name_font_custom", "Name custom font")}
-            ${this._renderSelect(scope, "name_font_weight", "Name font weight", FONT_WEIGHTS)}
-            ${this._renderSelect(scope, "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
-            ${this._renderInput(scope, "size_name", "Name size", "number")}
-            ${this._renderTemplateInput(scope, "name_color", "Name color (Template/CSS)")}
-            ${this._renderSelect(scope, "state_font_family", "State font family", FONT_FAMILIES)}
-            ${this._renderInput(scope, "state_font_custom", "State custom font")}
-            ${this._renderSelect(scope, "state_font_weight", "State font weight", FONT_WEIGHTS)}
-            ${this._renderSelect(scope, "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
-            ${this._renderInput(scope, "size_state", "State size", "number")}
-            ${this._renderTemplateInput(scope, "state_color", "State color (Template/CSS)")}
-            ${this._renderSelect(scope, "label_font_family", "Label font family", FONT_FAMILIES)}
-            ${this._renderInput(scope, "label_font_custom", "Label custom font")}
-            ${this._renderSelect(scope, "label_font_weight", "Label font weight", FONT_WEIGHTS)}
-            ${this._renderSelect(scope, "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
-            ${this._renderInput(scope, "size_label", "Label size", "number")}
-            ${this._renderTemplateInput(scope, "label_color", "Label color (Template/CSS)")}
-            ${this._renderSelect(scope, "brightness_font_family", "Info font family", FONT_FAMILIES)}
-            ${this._renderInput(scope, "brightness_font_custom", "Info custom font")}
-            ${this._renderSelect(scope, "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
-            ${this._renderSelect(scope, "brightness_text_align", "Info text align", TEXT_ALIGN_OPTIONS)}
-            ${this._renderInput(scope, "size_brightness", "Info size", "number")}
-            ${this._renderTemplateInput(scope, "brightness_color", "Info color (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "brightness_color_on", "Info color (On) (Template/CSS)")}
-            ${this._renderTemplateInput(scope, "brightness_color_off", "Info color (Off) (Template/CSS)")}
-            ${this._renderInput(scope, "tile_height", "Tile height", "number")}
-            ${this._renderSwitch(scope, "show_tile_slider", "Show tile slider")}
-            ${this._renderTemplateInput(scope, "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
-            ${this._renderTemplateInput(scope, "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
-            ${this._renderInput(scope, "name_offset_x", "Name offset X", "number")}
-            ${this._renderInput(scope, "name_offset_y", "Name offset Y", "number")}
-            ${this._renderInput(scope, "state_offset_x", "State offset X", "number")}
-            ${this._renderInput(scope, "state_offset_y", "State offset Y", "number")}
-            ${this._renderInput(scope, "label_offset_x", "Label offset X", "number")}
-            ${this._renderInput(scope, "label_offset_y", "Label offset Y", "number")}
-            ${this._renderInput(scope, "icon_offset_x", "Icon offset X", "number")}
-            ${this._renderInput(scope, "icon_offset_y", "Icon offset Y", "number")}
-            ${this._renderInput(scope, "icon_circle_offset_x", "Icon circle offset X", "number")}
-            ${this._renderInput(scope, "icon_circle_offset_y", "Icon circle offset Y", "number")}
-            ${this._renderInput(scope, "icon_badge_offset_x", "Icon badge offset X", "number")}
-            ${this._renderInput(scope, "icon_badge_offset_y", "Icon badge offset Y", "number")}
-            ${this._renderInput(scope, "badge_offset_x", "Badge offset X", "number")}
-            ${this._renderInput(scope, "badge_offset_y", "Badge offset Y", "number")}
-            ${this._renderInput(scope, "brightness_offset_x", "Info offset X", "number")}
-            ${this._renderInput(scope, "brightness_offset_y", "Info offset Y", "number")}
-            ${this._renderInput(scope, "temp_badge_offset_x", "Temp badge offset X", "number")}
-            ${this._renderInput(scope, "temp_badge_offset_y", "Temp badge offset Y", "number")}
+        ${isOpen ? html`
+          <div class="category">
+            ${this._renderScopeHeader(title, scope, subtitle)}
+            <div class="grid">
+              ${this._renderTemplateInput(scope, "card_color", "Card color (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "card_opacity", "Card opacity (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "border_radius", "Border radius (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "box_shadow", "Box shadow (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "border_width", "Border width (Template/CSS)")}
+              ${this._renderSelect(scope, "border_style", "Border style", BORDER_STYLES)}
+              ${this._renderTemplateInput(scope, "border_color", "Border color (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "icon_color", "Icon color (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput(scope, "icon_animation", "Icon animation (Template/Jinja)")}
+              ${this._renderSwitch(scope, "enable_icon_animation", "Enable icon animation")}
+              ${this._renderSelect(scope, "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
+              ${this._renderInput(scope, "size_icon", "Icon size (px)", "number")}
+              ${this._renderTemplateInput(scope, "icon_circle_bg", "Circle background (Template/CSS/Jinja)")}
+              ${this._renderSelect(scope, "icon_circle_border_style", "Circle border style", BORDER_STYLES)}
+              ${this._renderTemplateInput(scope, "icon_circle_border_width", "Circle border width (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput(scope, "icon_circle_border_color", "Circle border color (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput(scope, "badge_bg", "Badge background (Template/CSS/Jinja)")}
+              ${this._renderSelect(scope, "badge_border_style", "Badge border style", BORDER_STYLES)}
+              ${this._renderTemplateInput(scope, "badge_border_width", "Badge border width (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput(scope, "badge_border_color", "Badge border color (Template/CSS/Jinja)")}
+              ${this._renderInput(scope, "badge_border_radius", "Badge border radius", "number")}
+              ${this._renderInput(scope, "badge_box_shadow", "Badge box shadow")}
+              ${this._renderSwitch(scope, "badge_circle", "Badge circle")}
+              ${this._renderInput(scope, "badge_size", "Badge size (px)", "number")}
+              ${this._renderInput(scope, "size_badge", "Badge font size", "number")}
+              ${this._renderSelect(scope, "badge_font_family", "Badge font family", FONT_FAMILIES)}
+              ${this._renderSelect(scope, "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
+              ${this._renderInput(scope, "temp_badge_size", "Temp badge size (px)", "number")}
+              ${this._renderInput(scope, "size_temp_badge", "Temp badge font size", "number")}
+              ${this._renderInput(scope, "temp_badge_text_color", "Temp badge text color")}
+              ${this._renderInput(scope, "temp_badge_border_color", "Temp badge border color")}
+              ${this._renderSelect(scope, "temp_badge_border_style", "Temp badge border style", BORDER_STYLES)}
+              ${this._renderInput(scope, "temp_badge_border_width", "Temp badge border width", "number")}
+              ${this._renderInput(scope, "temp_badge_border_radius", "Temp badge border radius", "number")}
+              ${this._renderInput(scope, "temp_badge_box_shadow", "Temp badge box shadow")}
+              ${this._renderSelect(scope, "temp_badge_font_family", "Temp badge font family", FONT_FAMILIES)}
+              ${this._renderInput(scope, "temp_badge_font_custom", "Temp badge custom font")}
+              ${this._renderSelect(scope, "temp_badge_font_weight", "Temp badge font weight", FONT_WEIGHTS)}
+              ${this._renderSelect(scope, "name_font_family", "Name font family", FONT_FAMILIES)}
+              ${this._renderInput(scope, "name_font_custom", "Name custom font")}
+              ${this._renderSelect(scope, "name_font_weight", "Name font weight", FONT_WEIGHTS)}
+              ${this._renderSelect(scope, "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
+              ${this._renderInput(scope, "size_name", "Name size", "number")}
+              ${this._renderTemplateInput(scope, "name_color", "Name color (Template/CSS)")}
+              ${this._renderSelect(scope, "state_font_family", "State font family", FONT_FAMILIES)}
+              ${this._renderInput(scope, "state_font_custom", "State custom font")}
+              ${this._renderSelect(scope, "state_font_weight", "State font weight", FONT_WEIGHTS)}
+              ${this._renderSelect(scope, "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
+              ${this._renderInput(scope, "size_state", "State size", "number")}
+              ${this._renderTemplateInput(scope, "state_color", "State color (Template/CSS)")}
+              ${this._renderSelect(scope, "label_font_family", "Label font family", FONT_FAMILIES)}
+              ${this._renderInput(scope, "label_font_custom", "Label custom font")}
+              ${this._renderSelect(scope, "label_font_weight", "Label font weight", FONT_WEIGHTS)}
+              ${this._renderSelect(scope, "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
+              ${this._renderInput(scope, "size_label", "Label size", "number")}
+              ${this._renderTemplateInput(scope, "label_color", "Label color (Template/CSS)")}
+              ${this._renderSelect(scope, "brightness_font_family", "Info font family", FONT_FAMILIES)}
+              ${this._renderInput(scope, "brightness_font_custom", "Info custom font")}
+              ${this._renderSelect(scope, "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
+              ${this._renderSelect(scope, "brightness_text_align", "Info text align", TEXT_ALIGN_OPTIONS)}
+              ${this._renderInput(scope, "size_brightness", "Info size", "number")}
+              ${this._renderTemplateInput(scope, "brightness_color", "Info color (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "brightness_color_on", "Info color (On) (Template/CSS)")}
+              ${this._renderTemplateInput(scope, "brightness_color_off", "Info color (Off) (Template/CSS)")}
+              ${this._renderInput(scope, "tile_height", "Tile height", "number")}
+              ${this._renderSwitch(scope, "show_tile_slider", "Show tile slider")}
+              ${this._renderTemplateInput(scope, "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
+              ${this._renderTemplateInput(scope, "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
+              ${this._renderInput(scope, "name_offset_x", "Name offset X", "number")}
+              ${this._renderInput(scope, "name_offset_y", "Name offset Y", "number")}
+              ${this._renderInput(scope, "state_offset_x", "State offset X", "number")}
+              ${this._renderInput(scope, "state_offset_y", "State offset Y", "number")}
+              ${this._renderInput(scope, "label_offset_x", "Label offset X", "number")}
+              ${this._renderInput(scope, "label_offset_y", "Label offset Y", "number")}
+              ${this._renderInput(scope, "icon_offset_x", "Icon offset X", "number")}
+              ${this._renderInput(scope, "icon_offset_y", "Icon offset Y", "number")}
+              ${this._renderInput(scope, "icon_circle_offset_x", "Icon circle offset X", "number")}
+              ${this._renderInput(scope, "icon_circle_offset_y", "Icon circle offset Y", "number")}
+              ${this._renderInput(scope, "icon_badge_offset_x", "Icon badge offset X", "number")}
+              ${this._renderInput(scope, "icon_badge_offset_y", "Icon badge offset Y", "number")}
+              ${this._renderInput(scope, "badge_offset_x", "Badge offset X", "number")}
+              ${this._renderInput(scope, "badge_offset_y", "Badge offset Y", "number")}
+              ${this._renderInput(scope, "brightness_offset_x", "Info offset X", "number")}
+              ${this._renderInput(scope, "brightness_offset_y", "Info offset Y", "number")}
+              ${this._renderInput(scope, "temp_badge_offset_x", "Temp badge offset X", "number")}
+              ${this._renderInput(scope, "temp_badge_offset_y", "Temp badge offset Y", "number")}
+            </div>
           </div>
-        </div>
+        ` : ""}
       </details>
     `;
   }
@@ -1034,6 +1049,34 @@ class HkiSettingsBase extends LitElement {
         border-color: var(--error-color, #d32f2f);
         background: var(--error-color, #d32f2f);
       }
+      .edit-placeholder {
+        border-radius: 14px;
+        border: 2px dashed rgba(160, 160, 160, 0.35);
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .edit-placeholder-inner {
+        display:flex;
+        align-items:center;
+        gap:12px;
+        padding:12px;
+      }
+      .edit-placeholder-inner ha-icon {
+        color: var(--primary-color);
+      }
+      .edit-placeholder-text {
+        min-width: 0;
+      }
+      .edit-placeholder-title {
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 1.25;
+      }
+      .edit-placeholder-subtitle {
+        margin-top: 4px;
+        opacity: 0.8;
+        font-size: 12px;
+        line-height: 1.35;
+      }
       .footer {
         display: flex;
         justify-content: flex-end;
@@ -1053,9 +1096,27 @@ class HkiSettingsCard extends HkiSettingsBase {
     return document.createElement(EDITOR_TAG);
   }
 
+  static getStubConfig() {
+    return { ...DEFAULT_CONFIG };
+  }
+
+  static getCardSize() {
+    return 2;
+  }
+
   render() {
     if (!this._config) this._config = normalizeConfig({});
-    return html`<ha-card>${this._renderForm()}</ha-card>`;
+    return html`
+      <ha-card class="edit-placeholder">
+        <div class="edit-placeholder-inner">
+          <ha-icon icon="mdi:tune-variant"></ha-icon>
+          <div class="edit-placeholder-text">
+            <div class="edit-placeholder-title">HKI Settings Card</div>
+            <div class="edit-placeholder-subtitle">Global HKI defaults editor. Open card editor to change global button, header, navigation and popup settings.</div>
+          </div>
+        </div>
+      </ha-card>
+    `;
   }
 }
 
@@ -1078,5 +1139,6 @@ window.customCards.push({
   type: CARD_TYPE,
   name: "HKI Settings Card",
   description: "Global style defaults for HKI cards.",
-  preview: false,
+  preview: true,
+  documentationURL: "https://jimz011.github.io/hki-elements/",
 });
