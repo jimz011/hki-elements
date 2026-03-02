@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-11 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-12 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -27768,6 +27768,13 @@ class HkiNavigationCardEditor extends LitElement {
     
     Object.keys(clean).forEach(key => {
       const value = clean[key];
+
+      // Preserve card configs exactly as selected; stripping empty arrays/objects
+      // can invalidate valid card schemas (e.g. stack cards with empty cards list).
+      if (key === "custom_popup_card") {
+        clean[key] = value;
+        return;
+      }
       
       // Remove empty strings
       if (value === "") {
@@ -28174,7 +28181,7 @@ class HkiNavigationCardEditor extends LitElement {
                   .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
                   @config-changed=${(ev) => {
                     ev.stopPropagation();
-                    const picked = ev.detail?.config;
+                    const picked = ev.detail?.config || ev.detail?.value || ev.target?.config;
                     if (picked) pp({ custom_popup_card: picked });
                   }}
                 ></hui-card-picker>
@@ -28185,7 +28192,7 @@ class HkiNavigationCardEditor extends LitElement {
                   .value=${p("custom_popup_card") || { type: "vertical-stack", cards: [] }}
                   @config-changed=${(ev) => {
                     ev.stopPropagation();
-                    const newCard = ev.detail?.config;
+                    const newCard = ev.detail?.config || ev.detail?.value || ev.target?.config;
                     if (newCard) pp({ custom_popup_card: newCard });
                   }}
                 ></hui-card-element-editor>
