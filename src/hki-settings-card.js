@@ -1104,8 +1104,42 @@ class HkiSettingsCard extends HkiSettingsBase {
     return 2;
   }
 
+  _isEditMode() {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("edit") === "1") return true;
+    } catch (_) {}
+    if (document.body?.classList) {
+      if (document.body.classList.contains("edit-mode") || document.body.classList.contains("edit")) return true;
+    }
+    return false;
+  }
+
+  _isInPreviewContext() {
+    let node = this;
+    while (node) {
+      const root = node.getRootNode?.();
+      if (!root || root === document) break;
+      const host = root.host;
+      if (!host) break;
+      const tag = (host.tagName || "").toLowerCase();
+      if (tag === "hui-card-preview" || tag === "hui-dialog-edit-card" || tag === "ha-dialog" || tag === "ha-dialog-scroller") {
+        return true;
+      }
+      node = host;
+    }
+    return false;
+  }
+
+  getCardSize() {
+    return (this._isEditMode() || this._isInPreviewContext()) ? 2 : 0;
+  }
+
   render() {
     if (!this._config) this._config = normalizeConfig({});
+    if (!this._isEditMode() && !this._isInPreviewContext()) {
+      return html``;
+    }
     return html`
       <ha-card class="edit-placeholder">
         <div class="edit-placeholder-inner">
