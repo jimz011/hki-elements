@@ -512,8 +512,8 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
-  _renderCategoryAccordion(title, fields, description = "") {
-    const sectionKey = `category:${title}:${description}`;
+  _renderCategoryAccordion(title, fields, description = "", keyScope = "") {
+    const sectionKey = `category:${keyScope}:${title}:${description}`;
     const isOpen = !!this._openSections[sectionKey];
     return html`
       <details class="category-accordion" ?open=${isOpen} @toggle=${(ev) => {
@@ -558,7 +558,7 @@ class HkiSettingsBase extends LitElement {
         ${isOpen ? html`
           <div class="category">
             ${this._renderScopeHeader(title, scope, subtitle)}
-            <div class="grid">
+            ${this._renderCategoryAccordion("Card", html`
               ${this._renderTemplateInput(scope, "card_color", "Card color (Template/CSS)")}
               ${this._renderTemplateInput(scope, "card_opacity", "Card opacity (Template/CSS)")}
               ${this._renderTemplateInput(scope, "border_radius", "Border radius (Template/CSS)")}
@@ -566,15 +566,21 @@ class HkiSettingsBase extends LitElement {
               ${this._renderTemplateInput(scope, "border_width", "Border width (Template/CSS)")}
               ${this._renderSelect(scope, "border_style", "Border style", BORDER_STYLES)}
               ${this._renderTemplateInput(scope, "border_color", "Border color (Template/CSS)")}
+            `, "Styles the outer button container.", `${scope}:card`)}
+            ${this._renderCategoryAccordion("Icon", html`
               ${this._renderTemplateInput(scope, "icon_color", "Icon color (Template/CSS/Jinja)")}
               ${this._renderTemplateInput(scope, "icon_animation", "Icon animation (Template/Jinja)")}
               ${this._renderSwitch(scope, "enable_icon_animation", "Enable icon animation")}
               ${this._renderSelect(scope, "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
               ${this._renderInput(scope, "size_icon", "Icon size (px)", "number")}
+            `, "Global icon style.", `${scope}:icon`)}
+            ${this._renderCategoryAccordion("Icon Circle", html`
               ${this._renderTemplateInput(scope, "icon_circle_bg", "Circle background (Template/CSS/Jinja)")}
               ${this._renderSelect(scope, "icon_circle_border_style", "Circle border style", BORDER_STYLES)}
               ${this._renderTemplateInput(scope, "icon_circle_border_width", "Circle border width (Template/CSS/Jinja)")}
               ${this._renderTemplateInput(scope, "icon_circle_border_color", "Circle border color (Template/CSS/Jinja)")}
+            `, "Styles for the optional icon circle.", `${scope}:icon-circle`)}
+            ${this._renderCategoryAccordion("Badge (Icon Badge)", html`
               ${this._renderTemplateInput(scope, "badge_bg", "Badge background (Template/CSS/Jinja)")}
               ${this._renderSelect(scope, "badge_border_style", "Badge border style", BORDER_STYLES)}
               ${this._renderTemplateInput(scope, "badge_border_width", "Badge border width (Template/CSS/Jinja)")}
@@ -586,6 +592,8 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput(scope, "size_badge", "Badge font size", "number")}
               ${this._renderSelect(scope, "badge_font_family", "Badge font family", FONT_FAMILIES)}
               ${this._renderSelect(scope, "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
+            `, "Styles for the small icon badge/chip.", `${scope}:badge`)}
+            ${this._renderCategoryAccordion("Temperature Badge", html`
               ${this._renderInput(scope, "temp_badge_size", "Temp badge size (px)", "number")}
               ${this._renderInput(scope, "size_temp_badge", "Temp badge font size", "number")}
               ${this._renderInput(scope, "temp_badge_text_color", "Temp badge text color")}
@@ -597,24 +605,32 @@ class HkiSettingsBase extends LitElement {
               ${this._renderSelect(scope, "temp_badge_font_family", "Temp badge font family", FONT_FAMILIES)}
               ${this._renderInput(scope, "temp_badge_font_custom", "Temp badge custom font")}
               ${this._renderSelect(scope, "temp_badge_font_weight", "Temp badge font weight", FONT_WEIGHTS)}
+            `, "Climate temperature corner badge styling.", `${scope}:temp-badge`)}
+            ${this._renderCategoryAccordion("Name Typography", html`
               ${this._renderSelect(scope, "name_font_family", "Name font family", FONT_FAMILIES)}
               ${this._renderInput(scope, "name_font_custom", "Name custom font")}
               ${this._renderSelect(scope, "name_font_weight", "Name font weight", FONT_WEIGHTS)}
               ${this._renderSelect(scope, "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput(scope, "size_name", "Name size", "number")}
               ${this._renderTemplateInput(scope, "name_color", "Name color (Template/CSS)")}
+            `, "Applies to the entity name text.", `${scope}:name-typo`)}
+            ${this._renderCategoryAccordion("State Typography", html`
               ${this._renderSelect(scope, "state_font_family", "State font family", FONT_FAMILIES)}
               ${this._renderInput(scope, "state_font_custom", "State custom font")}
               ${this._renderSelect(scope, "state_font_weight", "State font weight", FONT_WEIGHTS)}
               ${this._renderSelect(scope, "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput(scope, "size_state", "State size", "number")}
               ${this._renderTemplateInput(scope, "state_color", "State color (Template/CSS)")}
+            `, "Applies to the entity state text.", `${scope}:state-typo`)}
+            ${this._renderCategoryAccordion("Label Typography", html`
               ${this._renderSelect(scope, "label_font_family", "Label font family", FONT_FAMILIES)}
               ${this._renderInput(scope, "label_font_custom", "Label custom font")}
               ${this._renderSelect(scope, "label_font_weight", "Label font weight", FONT_WEIGHTS)}
               ${this._renderSelect(scope, "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
               ${this._renderInput(scope, "size_label", "Label size", "number")}
               ${this._renderTemplateInput(scope, "label_color", "Label color (Template/CSS)")}
+            `, "Applies to optional label text.", `${scope}:label-typo`)}
+            ${this._renderCategoryAccordion("Info/Brightness Typography", html`
               ${this._renderSelect(scope, "brightness_font_family", "Info font family", FONT_FAMILIES)}
               ${this._renderInput(scope, "brightness_font_custom", "Info custom font")}
               ${this._renderSelect(scope, "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
@@ -623,10 +639,14 @@ class HkiSettingsBase extends LitElement {
               ${this._renderTemplateInput(scope, "brightness_color", "Info color (Template/CSS)")}
               ${this._renderTemplateInput(scope, "brightness_color_on", "Info color (On) (Template/CSS)")}
               ${this._renderTemplateInput(scope, "brightness_color_off", "Info color (Off) (Template/CSS)")}
+            `, "Applies to info/brightness line text.", `${scope}:info-typo`)}
+            ${this._renderCategoryAccordion("Tile", html`
               ${this._renderInput(scope, "tile_height", "Tile height", "number")}
               ${this._renderSwitch(scope, "show_tile_slider", "Show tile slider")}
               ${this._renderTemplateInput(scope, "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
               ${this._renderTemplateInput(scope, "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
+            `, "Tile-specific defaults.", `${scope}:tile`)}
+            ${this._renderCategoryAccordion("Offsets", html`
               ${this._renderInput(scope, "name_offset_x", "Name offset X", "number")}
               ${this._renderInput(scope, "name_offset_y", "Name offset Y", "number")}
               ${this._renderInput(scope, "state_offset_x", "State offset X", "number")}
@@ -645,7 +665,7 @@ class HkiSettingsBase extends LitElement {
               ${this._renderInput(scope, "brightness_offset_y", "Info offset Y", "number")}
               ${this._renderInput(scope, "temp_badge_offset_x", "Temp badge offset X", "number")}
               ${this._renderInput(scope, "temp_badge_offset_y", "Temp badge offset Y", "number")}
-            </div>
+            `, "Global element positioning offsets.", `${scope}:offsets`)}
           </div>
         ` : ""}
       </details>

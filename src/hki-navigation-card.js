@@ -12,6 +12,48 @@ const MIN_PILL_WIDTH = 85;
 const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 const getGlobalDefaultsFor = window.HKI?.getGlobalDefaultsFor || (() => ({}));
 const isUnsetValue = window.HKI?.isUnsetValue || ((v) => v === undefined || v === null || (typeof v === "string" && v.trim() === ""));
+const HKI_POPUP_CONFIG_KEYS = window.HKI?.POPUP_CONFIG_KEYS || [];
+const copyDefinedKeys = window.HKI?.copyDefinedKeys || (({ src, dst, keys }) => {
+  if (!src || !dst || !Array.isArray(keys)) return dst;
+  keys.forEach((k) => {
+    if (src[k] !== undefined) dst[k] = src[k];
+  });
+  return dst;
+});
+const HKI_POPUP_EDITOR_OPTIONS = window.HKI?.POPUP_EDITOR_OPTIONS || {
+  animations: [
+    { value: "none", label: "None" },
+    { value: "fade", label: "Fade" },
+    { value: "scale", label: "Scale" },
+  ],
+  width: [
+    { value: "auto", label: "Auto (Responsive)" },
+    { value: "default", label: "Default (400px)" },
+    { value: "custom", label: "Custom" },
+  ],
+  height: [
+    { value: "auto", label: "Auto (Responsive)" },
+    { value: "default", label: "Default (600px)" },
+    { value: "custom", label: "Custom" },
+  ],
+  timeFormats: [
+    { value: "auto", label: "Auto" },
+    { value: "12", label: "12-Hour Clock" },
+    { value: "24", label: "24-Hour Clock" },
+  ],
+};
+const HKI_EDITOR_OPTIONS = window.HKI?.EDITOR_OPTIONS || {
+  popupBottomBarActionOptions: [
+    { value: "toggle", label: "Toggle" },
+    { value: "more-info", label: "More Info" },
+    { value: "hki-more-info", label: "HKI More Info" },
+    { value: "navigate", label: "Navigate" },
+    { value: "perform-action", label: "Perform Action" },
+    { value: "fire-dom-event", label: "Fire DOM Event" },
+    { value: "url", label: "URL" },
+    { value: "none", label: "None" },
+  ],
+};
 
 // Static Constants
 const BUTTON_TYPES = [
@@ -36,6 +78,7 @@ const ACTIONS = [
   { value: "navigate", label: "Navigate" },
   { value: "url", label: "Open URL" },
   { value: "toggle", label: "Toggle entity" },
+  { value: "hki-more-info", label: "HKI More info" },
   { value: "more-info", label: "More info" },
   { value: "perform-action", label: "Perform action" },
   { value: "fire-dom-event", label: "Fire DOM Event" },
@@ -108,6 +151,7 @@ const ACTION_CONFLICTS = {
   navigate: ['url', 'url_path', 'entity', 'service', 'data', 'target', 'mode', 'perform_action', 'new_tab'],
   url: ['navigation_path', 'entity', 'service', 'data', 'target', 'mode', 'perform_action'],
   toggle: ['navigation_path', 'url', 'url_path', 'service', 'data', 'target', 'mode', 'perform_action'],
+  'hki-more-info': ['navigation_path', 'url', 'url_path', 'service', 'data', 'target', 'mode', 'perform_action'],
   'more-info': ['navigation_path', 'url', 'url_path', 'service', 'data', 'target', 'mode', 'perform_action'],
   'perform-action': ['navigation_path', 'url', 'url_path', 'entity', 'mode', 'target'],
   'toggle-group': ['navigation_path', 'url', 'url_path', 'entity', 'service', 'data', 'perform_action'],
@@ -618,6 +662,11 @@ const DEFAULT_BUTTON = () => ({
   tap_action: { action: "navigate", navigation_path: "/" },
   hold_action: { action: "none" },
   double_tap_action: { action: "none" },
+  custom_popup_enabled: false,
+  custom_popup_card: undefined,
+  popup_name: "",
+  popup_state: "",
+  popup_icon: "",
 });
 
 const DEFAULTS = {
@@ -905,6 +954,7 @@ class HkiNavigationCard extends LitElement {
     this._rightPanelEl = null;
     this._uiObservers = [];
     this._resizeObservers = [];
+    this._activePopupProxyCards = new Set();
 
     // Optimize: Debounce resize and measurement to avoid heavy DOM thrashing
     this._debouncedRefreshAndMeasure = debounce(() => {
@@ -993,6 +1043,12 @@ class HkiNavigationCard extends LitElement {
       }
     }
     this._tpl.clear();
+    if (this._activePopupProxyCards?.size) {
+      [...this._activePopupProxyCards].forEach((card) => {
+        try { if (card?.parentNode) card.remove(); } catch (_) {}
+      });
+      this._activePopupProxyCards.clear();
+    }
   }
 
   _disconnectObservers() {
@@ -1055,6 +1111,128 @@ class HkiNavigationCard extends LitElement {
     this._refreshUiState(false, true);
     this._scheduleMeasure();
     this._scheduleMeasureBottomBar();
+    if (changedProps.has("hass")) this._syncActivePopupProxyCards();
+  }
+
+  _ensurePopupProxyHost() {
+    if (!document?.body) return null;
+    let host = document.getElementById("hki-popup-proxy-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "hki-popup-proxy-host";
+      host.style.cssText = "display:none !important; width:0; height:0; overflow:hidden; pointer-events:none;";
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  _attachPopupProxyCard(card) {
+    if (!card || card.isConnected) return;
+    const host = this._ensurePopupProxyHost();
+    if (!host) return;
+    host.appendChild(card);
+  }
+
+  _syncActivePopupProxyCards() {
+    if (!this._activePopupProxyCards?.size) return;
+    [...this._activePopupProxyCards].forEach((card) => {
+      if (!card || card._popupOpen !== true) {
+        this._activePopupProxyCards.delete(card);
+        try { if (card?.parentNode) card.remove(); } catch (_) {}
+        return;
+      }
+      try { card.hass = this.hass; } catch (_) {}
+    });
+  }
+
+  _buildPopupConfig(p, resolvedName, resolvedState, resolvedIcon = "") {
+    const popupGlobals = window.HKI?.getGlobalDefaultsFor?.("popup") || {};
+    const mergedPopup = { ...(popupGlobals || {}), ...(p || {}) };
+    const cfg = {};
+    const _copyTruthy = (keys) => keys.forEach((k) => { if (mergedPopup[k]) cfg[k] = mergedPopup[k]; });
+    if (resolvedName) cfg.name = resolvedName;
+    if (resolvedState) cfg.state_label = resolvedState;
+    copyDefinedKeys({
+      src: mergedPopup,
+      dst: cfg,
+      keys: [
+        "popup_border_radius",
+        "popup_width",
+        "popup_width_custom",
+        "popup_height",
+        "popup_height_custom",
+        "popup_animation_duration",
+        "popup_blur_enabled",
+        "popup_blur_amount",
+        "popup_card_blur_enabled",
+        "popup_card_blur_amount",
+        "popup_card_opacity",
+        "popup_show_favorites",
+        "popup_show_effects",
+        "popup_show_presets",
+        "popup_slider_radius",
+        "popup_hide_button_text",
+        "popup_value_font_size",
+        "popup_value_font_weight",
+        "popup_label_font_size",
+        "popup_label_font_weight",
+        "popup_highlight_radius",
+        "popup_highlight_opacity",
+        "popup_button_radius",
+        "popup_button_opacity",
+        "climate_temp_step",
+        "climate_use_circular_slider",
+        "climate_show_plus_minus",
+        "climate_show_gradient",
+        "climate_show_target_range",
+        "humidifier_humidity_step",
+        "humidifier_use_circular_slider",
+        "humidifier_show_plus_minus",
+        "humidifier_show_gradient",
+        "sensor_graph_gradient",
+        "sensor_line_width",
+        "sensor_hours",
+        "popup_bottom_bar_entities",
+        "popup_bottom_bar_align",
+        "popup_hide_bottom_bar",
+        "popup_hide_top_bar",
+        "popup_show_close_button",
+        "popup_close_on_action",
+        "_bb_slots",
+      ],
+    });
+    _copyTruthy([
+      "icon_color",
+      "popup_open_animation",
+      "popup_close_animation",
+      "popup_time_format",
+      "popup_default_view",
+      "popup_default_section",
+      "popup_highlight_color",
+      "popup_highlight_text_color",
+      "popup_highlight_border_color",
+      "popup_highlight_border_style",
+      "popup_highlight_border_width",
+      "popup_highlight_box_shadow",
+      "popup_button_bg",
+      "popup_button_text_color",
+      "popup_button_border_color",
+      "popup_button_border_style",
+      "popup_button_border_width",
+      "climate_humidity_entity",
+      "climate_humidity_name",
+      "climate_pressure_entity",
+      "climate_pressure_name",
+      "climate_current_temperature_entity",
+      "climate_temperature_name",
+      "humidifier_fan_entity",
+      "person_geocoded_entity",
+      "sensor_graph_color",
+      "sensor_graph_style",
+    ]);
+    if (resolvedIcon) cfg.icon = resolvedIcon;
+    if (mergedPopup.popup_use_entity_picture !== undefined) cfg.use_entity_picture = mergedPopup.popup_use_entity_picture;
+    return cfg;
   }
 
   setConfig(config) {
@@ -1819,6 +1997,7 @@ class HkiNavigationCard extends LitElement {
     const action = (btn && btn[which]) || btn?.tap_action || { action: "none" };
     const type = action?.action || "none";
     if (type === "none") return;
+    if (this._isEditMode() && type === "hki-more-info") return;
 
     if (type === "toggle-group") {
       const target = action.target || "vertical";
@@ -1857,6 +2036,73 @@ class HkiNavigationCard extends LitElement {
       const entityId = action.entity || btn?.entity;
       if (!entityId) return;
       fireEvent(this, "hass-more-info", { entityId: entityId });
+      this._autoCloseTempMenus();
+      return;
+    }
+    if (type === "hki-more-info") {
+      const baseEntityId = btn?.entity || "";
+      const mergedPopup = { ...(btn || {}), ...(action || {}) };
+      const customPopupEnabled = mergedPopup.custom_popup_enabled === true;
+      const popupEntityId = customPopupEnabled ? baseEntityId : (action.entity || baseEntityId);
+      const hasEntityOverride = !customPopupEnabled && !!action.entity && !!baseEntityId && action.entity !== baseEntityId;
+      const popupCard = mergedPopup.custom_popup_enabled === false ? null : mergedPopup.custom_popup_card;
+      const resolveTemplate = async (str) => {
+        if (!str) return str;
+        if (!(String(str).includes("{{") || String(str).includes("{%"))) return str;
+        try {
+          const res = await hass.callWS({
+            type: "render_template",
+            template: str,
+            variables: { config: this._config ?? {}, user: hass?.user?.name || "" },
+            strict: false,
+          });
+          return res?.result != null ? String(res.result) : str;
+        } catch (_) { return str; }
+      };
+      if (!hasEntityOverride && popupCard && customElements.get("hki-button-card")) {
+        Promise.all([
+          resolveTemplate(mergedPopup.popup_name),
+          resolveTemplate(mergedPopup.popup_state),
+          resolveTemplate(mergedPopup.popup_icon),
+        ]).then(([resolvedName, resolvedState, resolvedIcon]) => {
+          try {
+            const proxy = document.createElement("hki-button-card");
+            this._attachPopupProxyCard(proxy);
+            proxy.hass = hass;
+            proxy.setConfig({
+              type: "custom:hki-button-card",
+              custom_popup: { enabled: true, card: popupCard },
+              ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
+            });
+            this._activePopupProxyCards.add(proxy);
+            proxy._openPopup();
+          } catch (err) {
+            console.error("[hki-navigation-card] Failed to open custom HKI popup:", err);
+          }
+        });
+      } else if (popupEntityId && customElements.get("hki-button-card")) {
+        Promise.all([
+          resolveTemplate(mergedPopup.popup_name),
+          resolveTemplate(mergedPopup.popup_state),
+          resolveTemplate(mergedPopup.popup_icon),
+        ]).then(([resolvedName, resolvedState, resolvedIcon]) => {
+          try {
+            const proxy = document.createElement("hki-button-card");
+            this._attachPopupProxyCard(proxy);
+            proxy.hass = hass;
+            proxy.setConfig({
+              type: "custom:hki-button-card",
+              entity: popupEntityId,
+              ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
+            });
+            if (hasEntityOverride) proxy._forceDomainPopupOnce = true;
+            this._activePopupProxyCards.add(proxy);
+            proxy._openPopup();
+          } catch (err) {
+            console.error("[hki-navigation-card] Failed to open HKI popup:", err);
+          }
+        });
+      }
       this._autoCloseTempMenus();
       return;
     }
@@ -2452,6 +2698,14 @@ class HkiNavigationCardEditor extends LitElement {
           ${this._renderEntityPicker("Entity Override (optional)", act.entity || "", (v) => update({ entity: v || undefined }))}
           <div class="hint">If empty, the button entity from Interaction & Data is used.</div>
         ` : html``}
+        ${type === "hki-more-info" ? html`
+          ${(btn?.custom_popup_enabled === true) ? html`
+            <div class="hint">Entity override is disabled while Custom HKI Popup is enabled.</div>
+          ` : html`
+            ${this._renderEntityPicker("Override Entity (optional)", act.entity || "", (v) => update({ entity: v || undefined }))}
+          `}
+          <div class="hint">Configure popup options in the "HKI Popup Options" accordion below.</div>
+        ` : html``}
         ${type === "back" ? html`<div class="hint">Back uses browser history. (Tap action forces icon to mdi:chevron-left.)</div>` : html``}
       </div>`;
   }
@@ -2502,6 +2756,131 @@ class HkiNavigationCardEditor extends LitElement {
               ></ha-selector>` : html``}</div>`;
         })}
       </div>`;
+  }
+  _renderHkiPopupOptions(btn, setBtnFn, errorKeyPrefix) {
+    const hasHkiAction = ["tap_action", "hold_action", "double_tap_action"]
+      .some((k) => (btn?.[k]?.action || "none") === "hki-more-info");
+    if (!hasHkiAction) return html``;
+
+    const popupAnimOptions = HKI_POPUP_EDITOR_OPTIONS.animations || [];
+    const popupWidthOptions = HKI_POPUP_EDITOR_OPTIONS.width || [];
+    const popupHeightOptions = HKI_POPUP_EDITOR_OPTIONS.height || [];
+    const popupTimeFormatOptions = HKI_POPUP_EDITOR_OPTIONS.timeFormats || [];
+    const popupBottomBarActionOptions = HKI_EDITOR_OPTIONS.popupBottomBarActionOptions || ACTIONS;
+    const setPopup = (patch) => setBtnFn({ ...btn, ...patch });
+    const getv = (k, fb = "") => (btn?.[k] ?? fb);
+    const bottomBar = btn?.popup_bottom_bar_entities || [];
+    const bbSlots = Math.max(1, Math.min(8, btn?._bb_slots ?? Math.max(1, bottomBar.filter(Boolean).length || 1)));
+    const setBottomBarEntry = (idx, patch) => {
+      const arr = [...(btn?.popup_bottom_bar_entities || [])];
+      const cur = (arr[idx] && typeof arr[idx] === "object") ? arr[idx] : {};
+      arr[idx] = { ...cur, ...patch };
+      setPopup({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+    };
+    const moveBottomBarEntry = (idx, dir) => {
+      const arr = [...(btn?.popup_bottom_bar_entities || [])];
+      const j = idx + dir;
+      if (idx < 0 || j < 0 || idx >= arr.length || j >= arr.length) return;
+      [arr[idx], arr[j]] = [arr[j], arr[idx]];
+      setPopup({ popup_bottom_bar_entities: arr.length ? arr : undefined });
+    };
+
+    return html`
+      <details><summary class="cat-head">HKI Popup Options</summary><div class="cat-content">
+        <div class="grid2">
+          ${this._renderCodeEditor("Popup Name (supports template)", getv("popup_name", ""), (v) => setPopup({ popup_name: v || undefined }), `${errorKeyPrefix}:popup_name`)}
+          ${this._renderCodeEditor("Popup State (supports template)", getv("popup_state", ""), (v) => setPopup({ popup_state: v || undefined }), `${errorKeyPrefix}:popup_state`)}
+          <ha-textfield .label=${"Popup Icon (mdi:... or template)"} .value=${getv("popup_icon", "")} @change=${(e) => setPopup({ popup_icon: (window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+          <ha-formfield .label=${"Use Entity Picture"}><ha-switch .checked=${getv("popup_use_entity_picture", false) === true} @change=${(e) => setPopup({ popup_use_entity_picture: e.target.checked })}></ha-switch></ha-formfield>
+        </div>
+        <ha-formfield .label=${"Enable Custom HKI Popup Card"}><ha-switch .checked=${getv("custom_popup_enabled", false) === true} @change=${(e) => setPopup({ custom_popup_enabled: e.target.checked })}></ha-switch></ha-formfield>
+        ${getv("custom_popup_enabled", false) === true ? html`
+          <hui-card-element-editor
+            .hass=${this.hass}
+            .value=${getv("custom_popup_card", { type: "vertical-stack", cards: [] })}
+            @config-changed=${(e) => setPopup({ custom_popup_card: e.detail?.config })}
+          ></hui-card-element-editor>
+        ` : ''}
+
+        <details><summary class="cat-head">Animation & Container</summary><div class="cat-content">
+          <div class="grid2">
+                        <ha-selector .hass=${this.hass} .label=${"Open Animation"} .selector=${{ select: { mode: "dropdown", options: popupAnimOptions } }} .value=${getv("popup_open_animation", "scale")} @value-changed=${(e) => setPopup({ popup_open_animation: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+            <ha-selector .hass=${this.hass} .label=${"Close Animation"} .selector=${{ select: { mode: "dropdown", options: popupAnimOptions } }} .value=${getv("popup_close_animation", "scale")} @value-changed=${(e) => setPopup({ popup_close_animation: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+            <ha-textfield type="number" .label=${"Animation Duration (ms)"} .value=${String(getv("popup_animation_duration", 300))} @change=${(e) => setPopup({ popup_animation_duration: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-textfield type="number" .label=${"Border Radius (px)"} .value=${String(getv("popup_border_radius", 16))} @change=${(e) => setPopup({ popup_border_radius: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+                        <ha-selector .hass=${this.hass} .label=${"Width"} .selector=${{ select: { mode: "dropdown", options: popupWidthOptions } }} .value=${getv("popup_width", "auto")} @value-changed=${(e) => setPopup({ popup_width: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+            <ha-selector .hass=${this.hass} .label=${"Height"} .selector=${{ select: { mode: "dropdown", options: popupHeightOptions } }} .value=${getv("popup_height", "auto")} @value-changed=${(e) => setPopup({ popup_height: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+            ${getv("popup_width", "auto") === "custom" ? html`<ha-textfield type="number" .label=${"Custom Width (px)"} .value=${String(getv("popup_width_custom", 400))} @change=${(e) => setPopup({ popup_width_custom: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>` : html``}
+            ${getv("popup_height", "auto") === "custom" ? html`<ha-textfield type="number" .label=${"Custom Height (px)"} .value=${String(getv("popup_height_custom", 600))} @change=${(e) => setPopup({ popup_height_custom: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>` : html``}
+          </div>
+          <div class="grid2">
+            <ha-formfield .label=${"Backdrop Blur"}><ha-switch .checked=${getv("popup_blur_enabled", true) !== false} @change=${(e) => setPopup({ popup_blur_enabled: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-textfield type="number" .label=${"Backdrop Blur (px)"} .value=${String(getv("popup_blur_amount", 10))} @change=${(e) => setPopup({ popup_blur_amount: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-formfield .label=${"Card Blur"}><ha-switch .checked=${getv("popup_card_blur_enabled", false) === true} @change=${(e) => setPopup({ popup_card_blur_enabled: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-textfield type="number" .label=${"Card Blur (px)"} .value=${String(getv("popup_card_blur_amount", 40))} @change=${(e) => setPopup({ popup_card_blur_amount: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-textfield type="number" step="0.1" min="0" max="1" .label=${"Card Opacity"} .value=${String(getv("popup_card_opacity", 0.4))} @change=${(e) => setPopup({ popup_card_opacity: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+          </div>
+        </div></details>
+
+        <details><summary class="cat-head">Features & Content</summary><div class="cat-content">
+          <div class="grid2">
+            <ha-formfield .label=${"Show Favorites"}><ha-switch .checked=${getv("popup_show_favorites", true) !== false} @change=${(e) => setPopup({ popup_show_favorites: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Show Effects"}><ha-switch .checked=${getv("popup_show_effects", true) !== false} @change=${(e) => setPopup({ popup_show_effects: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Show Presets"}><ha-switch .checked=${getv("popup_show_presets", true) !== false} @change=${(e) => setPopup({ popup_show_presets: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Hide Bottom Bar"}><ha-switch .checked=${getv("popup_hide_bottom_bar", false) === true} @change=${(e) => setPopup({ popup_hide_bottom_bar: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Hide Top Bar"}><ha-switch .checked=${getv("popup_hide_top_bar", false) === true} @change=${(e) => setPopup({ popup_hide_top_bar: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Show Close Button"}><ha-switch .checked=${getv("popup_show_close_button", true) !== false} @change=${(e) => setPopup({ popup_show_close_button: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-formfield .label=${"Close On Action"}><ha-switch .checked=${getv("popup_close_on_action", false) === true} @change=${(e) => setPopup({ popup_close_on_action: e.target.checked })}></ha-switch></ha-formfield>
+                        <ha-selector .hass=${this.hass} .label=${"Bottom Bar Align"} .selector=${{ select: { mode: "dropdown", options: [{ value: "spread", label: "Spread" }, { value: "start", label: "Start" }, { value: "center", label: "Center" }, { value: "end", label: "End" }] } }} .value=${getv("popup_bottom_bar_align", "spread")} @value-changed=${(e) => setPopup({ popup_bottom_bar_align: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+            <ha-textfield type="number" .label=${"Slider Radius (px)"} .value=${String(getv("popup_slider_radius", 12))} @change=${(e) => setPopup({ popup_slider_radius: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-formfield .label=${"Hide Button Text"}><ha-switch .checked=${getv("popup_hide_button_text", false) === true} @change=${(e) => setPopup({ popup_hide_button_text: e.target.checked })}></ha-switch></ha-formfield>
+            <ha-textfield type="number" .label=${"Value Font Size"} .value=${String(getv("popup_value_font_size", 36))} @change=${(e) => setPopup({ popup_value_font_size: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-textfield type="number" .label=${"Value Font Weight"} .value=${String(getv("popup_value_font_weight", 300))} @change=${(e) => setPopup({ popup_value_font_weight: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-textfield type="number" .label=${"Label Font Size"} .value=${String(getv("popup_label_font_size", 16))} @change=${(e) => setPopup({ popup_label_font_size: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+            <ha-textfield type="number" .label=${"Label Font Weight"} .value=${String(getv("popup_label_font_weight", 400))} @change=${(e) => setPopup({ popup_label_font_weight: Number(window.HKI.getSelectValue(e)) || undefined })}></ha-textfield>
+                        <ha-selector .hass=${this.hass} .label=${"Time Format"} .selector=${{ select: { mode: "dropdown", options: popupTimeFormatOptions } }} .value=${getv("popup_time_format", "auto")} @value-changed=${(e) => setPopup({ popup_time_format: window.HKI.getSelectValue(e) || undefined })}></ha-selector>
+          </div>
+        </div></details>
+
+        <details><summary class="cat-head">Popup Bottom Bar Actions</summary><div class="cat-content">
+          <div class="row" style="justify-content:flex-start; gap:10px;">
+            <mwc-button outlined @click=${() => setPopup({ _bb_slots: Math.max(1, bbSlots - 1) })}>-</mwc-button>
+            <span>Slots: ${bbSlots}</span>
+            <mwc-button outlined @click=${() => setPopup({ _bb_slots: Math.min(8, bbSlots + 1) })}>+</mwc-button>
+          </div>
+          ${Array.from({ length: bbSlots }).map((_, i) => {
+            const entry = (bottomBar[i] && typeof bottomBar[i] === "object") ? bottomBar[i] : {};
+            const tapAction = entry.tap_action || { action: "none" };
+            const currentAction = tapAction.action || "none";
+            const updateTap = (patch) => setBottomBarEntry(i, { tap_action: cleanupActionConflicts({ ...tapAction, ...patch }) });
+            return html`
+              <div class="cond">
+                <div class="cond-head">
+                  <div class="cond-title">Slot ${i + 1}</div>
+                  <div class="btn-actions">
+                    <mwc-icon-button ?disabled=${i === 0} @click=${() => moveBottomBarEntry(i, -1)}><ha-icon icon="mdi:chevron-up"></ha-icon></mwc-icon-button>
+                    <mwc-icon-button ?disabled=${i === (bbSlots - 1)} @click=${() => moveBottomBarEntry(i, 1)}><ha-icon icon="mdi:chevron-down"></ha-icon></mwc-icon-button>
+                  </div>
+                </div>
+                <div class="grid2">
+                  ${this._renderEntityPicker("Entity", entry.entity || "", (v) => setBottomBarEntry(i, { entity: v || "" }))}
+                  <ha-textfield .label=${"Icon (optional)"} .value=${entry.icon || ""} @change=${(e) => setBottomBarEntry(i, { icon: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
+                </div>
+                                <ha-selector .hass=${this.hass} .label=${"Tap Action"} .selector=${{ select: { mode: "dropdown", options: popupBottomBarActionOptions } }} .value=${currentAction} @value-changed=${(e) => updateTap({ action: window.HKI.getSelectValue(e) || "none" })}></ha-selector>
+                ${currentAction === "navigate" ? html`${this._renderNavigationPathPicker("Navigation path", tapAction.navigation_path || "", (v) => updateTap({ navigation_path: v || "" }))}` : html``}
+                ${currentAction === "url" ? html`<ha-textfield .label=${"URL"} .value=${tapAction.url_path || ""} @change=${(e) => updateTap({ url_path: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>` : html``}
+                ${(currentAction === "toggle" || currentAction === "more-info" || currentAction === "hki-more-info") ? html`${this._renderEntityPicker("Override Entity (optional)", tapAction.entity || "", (v) => updateTap({ entity: v || undefined }))}` : html``}
+                ${currentAction === "perform-action" ? html`<ha-textfield .label=${"Action (domain.service)"} .value=${tapAction.perform_action || ""} @change=${(e) => updateTap({ perform_action: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>` : html``}
+                ${currentAction === "fire-dom-event" ? html`
+                  <ha-textfield .label=${"Event Name (optional)"} .value=${tapAction.event_name || ""} @change=${(e) => updateTap({ event_name: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
+                  ${this._renderCodeEditor("Event Data (YAML/JSON text)", tapAction.event_data || "", (v) => updateTap({ event_data: v || "" }), `${errorKeyPrefix}:bb:${i}:event`)}
+                ` : html``}
+              </div>
+            `;
+          })}
+        </div></details>
+      </div></details>
+    `;
   }
   _renderButtonPanel(btn, setBtnFn, errorKeyPrefix, allowConditions = true) {
     const hasIconPicker = !!customElements.get("ha-icon-picker");
@@ -2602,6 +2981,7 @@ class HkiNavigationCardEditor extends LitElement {
         ${this._renderActionEditor(btn, setBtnFn, "hold_action", "Hold / Right click", errorKeyPrefix)}
         ${this._renderActionEditor(btn, setBtnFn, "double_tap_action", "Double tap", errorKeyPrefix)}
       </div></details>
+      ${this._renderHkiPopupOptions(btn, setBtnFn, errorKeyPrefix)}
 
       ${allowConditions ? html`<details><summary class="cat-head">Visibility (Conditions)</summary><div class="cat-content">
         ${this._renderConditions(btn, setBtnFn)}
