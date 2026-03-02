@@ -2228,9 +2228,7 @@
           border: 1px solid var(--divider-color, rgba(255,255,255,0.08));
           box-shadow: 0 16px 40px rgba(0,0,0,0.45);
           overflow: hidden;
-          transform: translateY(12px) scale(0.98);
-          opacity: 0;
-          animation: hkiAuthEnter 220ms ease forwards;
+          animation: hkiAuthEnter 220ms ease backwards;
         }
         .hki-auth-dialog.hki-auth-error { animation: hkiAuthShake 320ms ease; }
         .hki-auth-dialog.hki-auth-success { animation: hkiAuthSuccess 260ms ease forwards; }
@@ -2270,6 +2268,10 @@
         .hki-auth-dot.filled {
           transform: scale(1.15);
           background: var(--primary-color, #03a9f4);
+        }
+        .hki-auth-dot.error {
+          background: var(--error-color, #f44336);
+          transform: scale(1.15);
         }
         .hki-auth-grid {
           display: grid;
@@ -2343,6 +2345,7 @@
         overlay.className = 'hki-auth-backdrop';
         let inputValue = '';
         let lockoutTicker = null;
+        let verifyPending = false;
         this._actionLockPortal = overlay;
         this._actionLockPending = true;
         __hkiLockScroll();
@@ -2400,7 +2403,13 @@
           if (inputEl) inputEl.classList.remove('hki-auth-input-error');
           if (pinDisplay) pinDisplay.classList.remove('hki-auth-input-error');
           if (errorEl) errorEl.textContent = '';
-          if (box) box.classList.remove('hki-auth-locked');
+          if (box) {
+            box.classList.remove('hki-auth-locked');
+            box.classList.remove('hki-auth-error');
+          }
+          overlay.querySelectorAll('.hki-auth-dot').forEach((dot) => {
+            dot.classList.remove('error');
+          });
         };
 
         const syncLockoutUI = () => {
@@ -2443,6 +2452,7 @@
         };
 
         const verify = () => {
+          if (verifyPending) return;
           if (this._isButtonLockInLockout()) {
             syncLockoutUI();
             return;
@@ -2452,12 +2462,14 @@
             markSuccessAndClose();
             return;
           }
+          verifyPending = true;
           this._buttonLockFailedAttempts = Number(this._buttonLockFailedAttempts || 0) + 1;
           if (lockoutMs > 0 && this._buttonLockFailedAttempts >= maxTries) {
             this._buttonLockLockedUntil = Date.now() + lockoutMs;
             markError(`Too many failed attempts. Locked for ${this._formatMsShort(lockoutMs)}.`);
             this._saveButtonLockState();
             syncLockoutUI();
+            verifyPending = false;
           } else {
             if (lockoutMs <= 0 && this._buttonLockFailedAttempts >= maxTries) {
               this._buttonLockFailedAttempts = 0;
@@ -2468,8 +2480,19 @@
             markError(triesLeft > 0 ? `${msg} ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left.` : msg);
           }
           if (isPin) {
-            inputValue = '';
-            updatePinDots();
+            overlay.querySelectorAll('.hki-auth-dot').forEach((dot) => {
+              if (dot.classList.contains('filled')) {
+                dot.classList.add('error');
+              }
+            });
+            setTimeout(() => {
+              inputValue = '';
+              updatePinDots();
+              overlay.querySelectorAll('.hki-auth-dot').forEach((dot) => {
+                dot.classList.remove('error');
+              });
+              verifyPending = false;
+            }, 400);
           } else {
             const inputEl = overlay.querySelector('#hkiAuthPasswordInput');
             if (inputEl) {
@@ -2477,6 +2500,7 @@
               inputValue = '';
               setTimeout(() => inputEl.focus(), 0);
             }
+            verifyPending = false;
           }
         };
 
@@ -2541,17 +2565,32 @@
         const onKeyDown = (ev) => {
           if (ev.key === 'Escape') close(false);
           if (!isPin && ev.key === 'Enter') verify();
+          if (isPin && !verifyPending && !this._isButtonLockInLockout()) {
+            if (ev.key >= '0' && ev.key <= '9' && inputValue.length < pinLength) {
+              inputValue += ev.key;
+              clearErrorVisual();
+              updatePinDots();
+              if (inputValue.length === pinLength) {
+                setTimeout(() => verify(), 150);
+              }
+            } else if (ev.key === 'Backspace') {
+              inputValue = inputValue.slice(0, -1);
+              clearErrorVisual();
+              updatePinDots();
+            }
+          }
         };
         window.addEventListener('keydown', onKeyDown);
         keydownAttached = true;
 
         overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', (ev) => { stopEvent(ev); close(false); });
-        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { stopEvent(ev); verify(); });
+        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { stopEvent(ev); if (!verifyPending) verify(); });
 
         if (isPin) {
           overlay.querySelectorAll('[data-k]').forEach((btn) => {
             btn.addEventListener('click', (ev) => {
               stopEvent(ev);
+              if (verifyPending) return;
               if (this._isButtonLockInLockout()) {
                 syncLockoutUI();
                 return;
@@ -2567,6 +2606,9 @@
               }
               clearErrorVisual();
               updatePinDots();
+              if (inputValue.length === pinLength) {
+                setTimeout(() => verify(), 150);
+              }
             });
           });
           updatePinDots();
