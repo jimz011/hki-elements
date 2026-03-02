@@ -5285,7 +5285,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Content Type"}
         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'spacer', label: 'Spacer'}, {value: 'weather', label: 'Weather'}, {value: 'datetime', label: 'Date/Time'}, {value: 'notifications', label: 'Notifications'}, {value: 'card', label: 'Custom Card'}, {value: 'button', label: 'Badge'}] } }}
         .value=${displayType}
-        @value-changed=${(ev) => this._changed(ev, field + ".action")}
+        @value-changed=${(ev) => this._changed(ev, `${bar}_${slotName}`)}
       ></ha-selector>
       
       ${type !== "none" && type !== "spacer" ? html`
@@ -5295,7 +5295,7 @@ class HkiHeaderCardEditor extends LitElement {
           .label=${"Content Alignment"}
           .selector=${{ select: { mode: "dropdown", options: [{value: 'start', label: 'Start (left)'}, {value: 'center', label: 'Center'}, {value: 'end', label: 'End (right)'}, {value: 'stretch', label: 'Stretch (fill available slots)'}] } }}
           .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")}
-              @value-changed=${(ev) => this._changed(ev, "text_align")}
+          @value-changed=${(ev) => this._changed(ev, `${prefix}align`)}
             ></ha-selector>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
@@ -7076,55 +7076,58 @@ class HkiHeaderCardEditor extends LitElement {
                       </div>
                     </div>
                     
-                    <ha-entity-picker
+                    <ha-selector
                       .hass=${this.hass}
+                      .selector=${{ entity: { domain: "person" } }}
                       .value=${entityId}
                       .label=${"Person Entity"}
-                      .includeDomains=${["person"]}
                       @value-changed=${(e) => {
+                        const val = (window.HKI.getSelectValue(e)) || "";
                         const updated = [...this._config.persons_entities];
                         if (typeof updated[index] === 'string') {
                           updated[index] = {
-                            entity: e.detail.value,
+                            entity: val,
                             tap_action: { action: "more-info" },
                             hold_action: { action: "none" },
                             double_tap_action: { action: "none" }
                           };
                         } else {
-                          updated[index] = { ...updated[index], entity: e.detail.value };
+                          updated[index] = { ...updated[index], entity: val };
                         }
                         this._config = { ...this._config, persons_entities: updated };
                         const strippedConfig = this._stripDefaults(this._config);
                         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                         this.requestUpdate();
                       }}
-                    ></ha-entity-picker>
+                    ></ha-selector>
 
                     ${this._config.persons_grayscale_away ? html`
-                      <ha-entity-picker
+                      <ha-selector
                         .hass=${this.hass}
+                        .selector=${{ entity: {} }}
                         .value=${typeof personConfig !== 'string' ? (personConfig.grayscale_entity || "") : ""}
                         .label=${"State Override Entity (optional)"}
                         helper="Override person state with this entity: ON = home/color, OFF = away/grayscale"
                         @value-changed=${(e) => {
+                          const val = (window.HKI.getSelectValue(e)) || "";
                           const updated = [...this._config.persons_entities];
                           if (typeof updated[index] === 'string') {
                             updated[index] = {
                               entity: updated[index],
-                              grayscale_entity: e.detail.value || "",
+                              grayscale_entity: val,
                               tap_action: { action: "more-info" },
                               hold_action: { action: "none" },
                               double_tap_action: { action: "none" }
                             };
                           } else {
-                            updated[index] = { ...updated[index], grayscale_entity: e.detail.value || "" };
+                            updated[index] = { ...updated[index], grayscale_entity: val };
                           }
                           this._config = { ...this._config, persons_entities: updated };
                           const strippedConfig = this._stripDefaults(this._config);
                           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                           this.requestUpdate();
                         }}
-                      ></ha-entity-picker>
+                      ></ha-selector>
                     ` : ''}
 
                     <details class="box-section" style="margin-top: 8px;">

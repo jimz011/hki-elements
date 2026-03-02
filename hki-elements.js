@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-01 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -5934,7 +5934,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Content Type"}
         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'spacer', label: 'Spacer'}, {value: 'weather', label: 'Weather'}, {value: 'datetime', label: 'Date/Time'}, {value: 'notifications', label: 'Notifications'}, {value: 'card', label: 'Custom Card'}, {value: 'button', label: 'Badge'}] } }}
         .value=${displayType}
-        @value-changed=${(ev) => this._changed(ev, field + ".action")}
+        @value-changed=${(ev) => this._changed(ev, `${bar}_${slotName}`)}
       ></ha-selector>
       
       ${type !== "none" && type !== "spacer" ? html`
@@ -5944,7 +5944,7 @@ class HkiHeaderCardEditor extends LitElement {
           .label=${"Content Alignment"}
           .selector=${{ select: { mode: "dropdown", options: [{value: 'start', label: 'Start (left)'}, {value: 'center', label: 'Center'}, {value: 'end', label: 'End (right)'}, {value: 'stretch', label: 'Stretch (fill available slots)'}] } }}
           .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")}
-              @value-changed=${(ev) => this._changed(ev, "text_align")}
+          @value-changed=${(ev) => this._changed(ev, `${prefix}align`)}
             ></ha-selector>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
@@ -7725,55 +7725,58 @@ class HkiHeaderCardEditor extends LitElement {
                       </div>
                     </div>
                     
-                    <ha-entity-picker
+                    <ha-selector
                       .hass=${this.hass}
+                      .selector=${{ entity: { domain: "person" } }}
                       .value=${entityId}
                       .label=${"Person Entity"}
-                      .includeDomains=${["person"]}
                       @value-changed=${(e) => {
+                        const val = (window.HKI.getSelectValue(e)) || "";
                         const updated = [...this._config.persons_entities];
                         if (typeof updated[index] === 'string') {
                           updated[index] = {
-                            entity: e.detail.value,
+                            entity: val,
                             tap_action: { action: "more-info" },
                             hold_action: { action: "none" },
                             double_tap_action: { action: "none" }
                           };
                         } else {
-                          updated[index] = { ...updated[index], entity: e.detail.value };
+                          updated[index] = { ...updated[index], entity: val };
                         }
                         this._config = { ...this._config, persons_entities: updated };
                         const strippedConfig = this._stripDefaults(this._config);
                         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                         this.requestUpdate();
                       }}
-                    ></ha-entity-picker>
+                    ></ha-selector>
 
                     ${this._config.persons_grayscale_away ? html`
-                      <ha-entity-picker
+                      <ha-selector
                         .hass=${this.hass}
+                        .selector=${{ entity: {} }}
                         .value=${typeof personConfig !== 'string' ? (personConfig.grayscale_entity || "") : ""}
                         .label=${"State Override Entity (optional)"}
                         helper="Override person state with this entity: ON = home/color, OFF = away/grayscale"
                         @value-changed=${(e) => {
+                          const val = (window.HKI.getSelectValue(e)) || "";
                           const updated = [...this._config.persons_entities];
                           if (typeof updated[index] === 'string') {
                             updated[index] = {
                               entity: updated[index],
-                              grayscale_entity: e.detail.value || "",
+                              grayscale_entity: val,
                               tap_action: { action: "more-info" },
                               hold_action: { action: "none" },
                               double_tap_action: { action: "none" }
                             };
                           } else {
-                            updated[index] = { ...updated[index], grayscale_entity: e.detail.value || "" };
+                            updated[index] = { ...updated[index], grayscale_entity: val };
                           }
                           this._config = { ...this._config, persons_entities: updated };
                           const strippedConfig = this._stripDefaults(this._config);
                           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                           this.requestUpdate();
                         }}
-                      ></ha-entity-picker>
+                      ></ha-selector>
                     ` : ''}
 
                     <details class="box-section" style="margin-top: 8px;">
@@ -8672,6 +8675,10 @@ window.customCards.push({
       temp_badge_size: 40,
       button_lock_show_indicator: true,
       button_lock_relock_ms: 8000,
+      button_lock_max_tries: 3,
+      button_lock_lockout_minutes: 0,
+      button_lock_offset_x: 0,
+      button_lock_offset_y: 0,
     });
 
     static _cloneBaseDefaults() {
@@ -8876,6 +8883,10 @@ window.customCards.push({
       ['button_lock_pin',             'button_lock','pin'],
       ['button_lock_password',        'button_lock','password'],
       ['button_lock_relock_ms',       'button_lock','relock_ms'],
+      ['button_lock_max_tries',       'button_lock','max_tries'],
+      ['button_lock_lockout_minutes', 'button_lock','lockout_minutes'],
+      ['button_lock_offset_x',        'button_lock','offset_x'],
+      ['button_lock_offset_y',        'button_lock','offset_y'],
     ];
 
     // All valid non-mapped root-level keys. Anything else (old/obsolete) gets stripped.
@@ -9088,6 +9099,8 @@ window.customCards.push({
       this._historyRefreshBusy = false;
       this._buttonLockArmed = false;
       this._buttonLockArmTimer = null;
+      this._buttonLockFailedAttempts = 0;
+      this._buttonLockLockedUntil = 0;
       this._actionLockPortal = null;
       this._actionLockPending = false;
     }
@@ -10509,9 +10522,41 @@ window.customCards.push({
     }
 
     _getButtonLockRelockMs() {
-      const ms = Number(this._config?.button_lock_relock_ms);
-      if (!Number.isFinite(ms) || ms <= 0) return 8000;
+      const raw = this._config?.button_lock_relock_ms;
+      if (raw === undefined || raw === null || raw === "") return 8000;
+      const ms = Number(raw);
+      if (!Number.isFinite(ms) || ms < 0) return 8000;
+      if (ms === 0) return 0;
       return Math.max(500, Math.round(ms));
+    }
+
+    _getButtonLockMaxTries() {
+      const n = Number(this._config?.button_lock_max_tries);
+      if (!Number.isFinite(n) || n <= 0) return 3;
+      return Math.max(1, Math.min(20, Math.round(n)));
+    }
+
+    _getButtonLockLockoutMs() {
+      const mins = Number(this._config?.button_lock_lockout_minutes);
+      if (!Number.isFinite(mins) || mins <= 0) return 0;
+      return Math.max(1000, Math.round(mins * 60000));
+    }
+
+    _getButtonLockRemainingLockoutMs() {
+      const until = Number(this._buttonLockLockedUntil || 0);
+      return Math.max(0, until - Date.now());
+    }
+
+    _isButtonLockInLockout() {
+      return this._getButtonLockRemainingLockoutMs() > 0;
+    }
+
+    _formatMsShort(ms) {
+      const total = Math.max(0, Math.ceil((Number(ms) || 0) / 1000));
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      if (m > 0) return `${m}:${String(s).padStart(2, "0")}`;
+      return `${s}s`;
     }
 
     _isButtonLockArmed() {
@@ -10521,11 +10566,16 @@ window.customCards.push({
     _armButtonLock() {
       this._buttonLockArmed = true;
       if (this._buttonLockArmTimer) clearTimeout(this._buttonLockArmTimer);
-      this._buttonLockArmTimer = setTimeout(() => {
-        this._buttonLockArmed = false;
+      const relockMs = this._getButtonLockRelockMs();
+      if (relockMs > 0) {
+        this._buttonLockArmTimer = setTimeout(() => {
+          this._buttonLockArmed = false;
+          this._buttonLockArmTimer = null;
+          this.requestUpdate();
+        }, relockMs);
+      } else {
         this._buttonLockArmTimer = null;
-        this.requestUpdate();
-      }, this._getButtonLockRelockMs());
+      }
       this.requestUpdate();
     }
 
@@ -10571,6 +10621,9 @@ window.customCards.push({
         }
         .hki-auth-dialog.hki-auth-error { animation: hkiAuthShake 320ms ease; }
         .hki-auth-dialog.hki-auth-success { animation: hkiAuthSuccess 260ms ease forwards; }
+        .hki-auth-dialog.hki-auth-locked {
+          box-shadow: 0 0 0 1px rgba(244,67,54,0.35), 0 16px 40px rgba(0,0,0,0.45);
+        }
         .hki-auth-head {
           padding: 14px 16px;
           font-size: 15px; font-weight: 600;
@@ -10630,6 +10683,10 @@ window.customCards.push({
           font-size: 14px;
           outline: none;
         }
+        .hki-auth-input.hki-auth-input-error {
+          border-color: var(--error-color, #f44336);
+          box-shadow: 0 0 0 1px rgba(244,67,54,0.25) inset;
+        }
         .hki-auth-error-text {
           min-height: 18px;
           color: var(--error-color, #f44336);
@@ -10663,9 +10720,12 @@ window.customCards.push({
         const expectedPin = String(this._config?.button_lock_pin ?? '').trim();
         const expectedPassword = String(this._config?.button_lock_password ?? '');
         const isPin = mode === 'pin';
+        const maxTries = this._getButtonLockMaxTries();
+        const lockoutMs = this._getButtonLockLockoutMs();
         const overlay = document.createElement('div');
         overlay.className = 'hki-auth-backdrop';
         let inputValue = '';
+        let lockoutTicker = null;
         this._actionLockPortal = overlay;
         this._actionLockPending = true;
         __hkiLockScroll();
@@ -10677,6 +10737,10 @@ window.customCards.push({
             window.removeEventListener('keydown', onKeyDown);
             keydownAttached = false;
           }
+          if (lockoutTicker) {
+            clearInterval(lockoutTicker);
+            lockoutTicker = null;
+          }
           this._actionLockPending = false;
           this._closeActionLockPopup();
           __hkiUnlockScroll();
@@ -10686,21 +10750,67 @@ window.customCards.push({
         const markError = (msg) => {
           const box = overlay.querySelector('.hki-auth-dialog');
           const errorEl = overlay.querySelector('.hki-auth-error-text');
+          const inputEl = overlay.querySelector('.hki-auth-input');
           if (errorEl) errorEl.textContent = msg || 'Incorrect code.';
           if (box) {
             box.classList.remove('hki-auth-error');
             void box.offsetWidth;
             box.classList.add('hki-auth-error');
           }
+          if (inputEl) inputEl.classList.add('hki-auth-input-error');
         };
 
         const markSuccessAndClose = () => {
           const box = overlay.querySelector('.hki-auth-dialog');
           if (box) {
             box.classList.remove('hki-auth-error');
+            box.classList.remove('hki-auth-locked');
             box.classList.add('hki-auth-success');
           }
+          this._buttonLockFailedAttempts = 0;
+          this._buttonLockLockedUntil = 0;
           setTimeout(() => close(true), 180);
+        };
+
+        const clearErrorVisual = () => {
+          const inputEl = overlay.querySelector('.hki-auth-input');
+          const errorEl = overlay.querySelector('.hki-auth-error-text');
+          const box = overlay.querySelector('.hki-auth-dialog');
+          if (inputEl) inputEl.classList.remove('hki-auth-input-error');
+          if (errorEl) errorEl.textContent = '';
+          if (box) box.classList.remove('hki-auth-locked');
+        };
+
+        const syncLockoutUI = () => {
+          const remaining = this._getButtonLockRemainingLockoutMs();
+          const isLockedOut = remaining > 0;
+          const box = overlay.querySelector('.hki-auth-dialog');
+          const errorEl = overlay.querySelector('.hki-auth-error-text');
+          const okBtn = overlay.querySelector('[data-act="ok"]');
+          const inputEl = overlay.querySelector('.hki-auth-input');
+          if (box) box.classList.toggle('hki-auth-locked', isLockedOut);
+          if (okBtn) okBtn.disabled = isLockedOut;
+          if (inputEl) inputEl.disabled = isLockedOut;
+          overlay.querySelectorAll('.hki-auth-key').forEach((btn) => {
+            btn.disabled = isLockedOut;
+          });
+          if (isLockedOut) {
+            if (errorEl) errorEl.textContent = `Too many failed attempts. Try again in ${this._formatMsShort(remaining)}.`;
+            if (!lockoutTicker) {
+              lockoutTicker = setInterval(() => {
+                if (!document.body.contains(overlay)) return;
+                syncLockoutUI();
+              }, 1000);
+            }
+          } else if (this._buttonLockLockedUntil) {
+            this._buttonLockLockedUntil = 0;
+            this._buttonLockFailedAttempts = 0;
+            clearErrorVisual();
+            if (lockoutTicker) {
+              clearInterval(lockoutTicker);
+              lockoutTicker = null;
+            }
+          }
         };
 
         const updatePinDots = () => {
@@ -10710,15 +10820,38 @@ window.customCards.push({
         };
 
         const verify = () => {
+          if (this._isButtonLockInLockout()) {
+            syncLockoutUI();
+            return;
+          }
           const ok = isPin ? (inputValue === expectedPin) : (inputValue === expectedPassword);
           if (ok) {
             markSuccessAndClose();
             return;
           }
-          markError(isPin ? 'Wrong PIN. Try again.' : 'Wrong password. Try again.');
+          this._buttonLockFailedAttempts = Number(this._buttonLockFailedAttempts || 0) + 1;
+          if (lockoutMs > 0 && this._buttonLockFailedAttempts >= maxTries) {
+            this._buttonLockLockedUntil = Date.now() + lockoutMs;
+            markError(`Too many failed attempts. Locked for ${this._formatMsShort(lockoutMs)}.`);
+            syncLockoutUI();
+          } else {
+            if (lockoutMs <= 0 && this._buttonLockFailedAttempts >= maxTries) {
+              this._buttonLockFailedAttempts = 0;
+            }
+            const triesLeft = Math.max(0, maxTries - this._buttonLockFailedAttempts);
+            const msg = isPin ? 'Wrong PIN. Try again.' : 'Wrong password. Try again.';
+            markError(triesLeft > 0 ? `${msg} ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left.` : msg);
+          }
           if (isPin) {
             inputValue = '';
             updatePinDots();
+          } else {
+            const inputEl = overlay.querySelector('#hkiAuthPasswordInput');
+            if (inputEl) {
+              inputEl.value = '';
+              inputValue = '';
+              setTimeout(() => inputEl.focus(), 0);
+            }
           }
         };
 
@@ -10771,6 +10904,7 @@ window.customCards.push({
         overlay.addEventListener('click', (ev) => {
           if (ev.target === overlay) close(false);
         });
+        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', (ev) => ev.stopPropagation());
 
         const onKeyDown = (ev) => {
           if (ev.key === 'Escape') close(false);
@@ -10785,6 +10919,10 @@ window.customCards.push({
         if (isPin) {
           overlay.querySelectorAll('[data-k]').forEach((btn) => {
             btn.addEventListener('click', () => {
+              if (this._isButtonLockInLockout()) {
+                syncLockoutUI();
+                return;
+              }
               const k = btn.getAttribute('data-k');
               if (!k) return;
               if (k === 'clear') {
@@ -10794,8 +10932,7 @@ window.customCards.push({
               } else if (inputValue.length < pinLength) {
                 inputValue += k;
               }
-              const err = overlay.querySelector('.hki-auth-error-text');
-              if (err) err.textContent = '';
+              clearErrorVisual();
               updatePinDots();
             });
           });
@@ -10806,11 +10943,12 @@ window.customCards.push({
             setTimeout(() => inputEl.focus(), 0);
             inputEl.addEventListener('input', () => {
               inputValue = inputEl.value || '';
-              const err = overlay.querySelector('.hki-auth-error-text');
-              if (err) err.textContent = '';
+              clearErrorVisual();
             });
           }
         }
+
+        syncLockoutUI();
 
         // Ensure pending state is cleared if removed externally.
         const obs = new MutationObserver(() => {
@@ -10848,12 +10986,16 @@ window.customCards.push({
 
       const mode = this._getButtonLockMode();
       const armed = mode === 'tap' && this._isButtonLockArmed();
+      const ox = Number(this._config?.button_lock_offset_x);
+      const oy = Number(this._config?.button_lock_offset_y);
       const icon = armed ? 'mdi:lock-open-variant' : 'mdi:lock';
       const title = armed ? 'Action unlocked' : (mode === 'tap' ? 'Locked: tap to unlock' : 'Locked');
+      const style = `--hki-lock-offset-x:${Number.isFinite(ox) ? ox : 0}px;--hki-lock-offset-y:${Number.isFinite(oy) ? oy : 0}px;`;
       return html`
         <button
           class="hki-action-lock-indicator ${armed ? 'armed' : 'locked'}"
           title="${title}"
+          style="${style}"
           @click=${(ev) => {
             ev.stopPropagation();
             if (mode === 'tap') this._armButtonLock();
@@ -20979,6 +21121,7 @@ window.customCards.push({
           transition: transform 140ms ease, background 140ms ease, color 140ms ease, border-color 140ms ease;
           backdrop-filter: blur(4px);
           -webkit-backdrop-filter: blur(4px);
+          transform: translate(var(--hki-lock-offset-x, 0px), var(--hki-lock-offset-y, 0px));
         }
         .hki-action-lock-indicator ha-icon {
           --mdc-icon-size: 16px;
@@ -20994,7 +21137,7 @@ window.customCards.push({
           animation: hkiLockArmedPulse 1.1s ease-in-out infinite;
         }
         .hki-action-lock-indicator:active {
-          transform: scale(0.94);
+          transform: translate(var(--hki-lock-offset-x, 0px), var(--hki-lock-offset-y, 0px)) scale(0.94);
         }
         @keyframes hkiLockArmedPulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.15); }
@@ -23048,9 +23191,40 @@ window.customCards.push({
                   type="number"
                   .value=${this._config.button_lock_relock_ms ?? 8000}
                   @input=${(ev) => this._textChanged(ev, "button_lock_relock_ms")}
+                  placeholder="0 = no auto relock"
                 ></ha-textfield>
+                <div class="side-by-side" style="gap: 12px;">
+                  <ha-textfield
+                    label="Max Tries"
+                    type="number"
+                    .value=${this._config.button_lock_max_tries ?? 3}
+                    @input=${(ev) => this._textChanged(ev, "button_lock_max_tries")}
+                  ></ha-textfield>
+                  <ha-textfield
+                    label="Lockout (minutes)"
+                    type="number"
+                    step="0.5"
+                    .value=${this._config.button_lock_lockout_minutes ?? 0}
+                    @input=${(ev) => this._textChanged(ev, "button_lock_lockout_minutes")}
+                    placeholder="0 = disabled"
+                  ></ha-textfield>
+                </div>
+                <div class="side-by-side" style="gap: 12px;">
+                  <ha-textfield
+                    label="Lock Icon Offset X"
+                    type="number"
+                    .value=${this._config.button_lock_offset_x ?? 0}
+                    @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}
+                  ></ha-textfield>
+                  <ha-textfield
+                    label="Lock Icon Offset Y"
+                    type="number"
+                    .value=${this._config.button_lock_offset_y ?? 0}
+                    @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}
+                  ></ha-textfield>
+                </div>
                 <p style="font-size: 11px; opacity: 0.7; margin: 0;">
-                  PIN has priority over password if both are filled.
+                  PIN has priority over password if both are filled. Wrong code now keeps the popup open with retry feedback.
                 </p>
               ` : ''}
             </div>
