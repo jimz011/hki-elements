@@ -8,6 +8,14 @@ const toNum = (v, fallback) => { const n = +v; return Number.isFinite(n) ? n : f
 const WEIGHT_MAP = Object.freeze({
   light: 300, regular: 400, medium: 500, semibold: 600, bold: 700, black: 900,
 });
+const WEIGHT_KEY_OPTIONS = Object.freeze([
+  { value: "light", label: "Light" },
+  { value: "regular", label: "Regular" },
+  { value: "medium", label: "Medium" },
+  { value: "semibold", label: "Semi-bold" },
+  { value: "bold", label: "Bold" },
+  { value: "black", label: "Black" },
+]);
 
 const BG_SIZE_PRESETS = Object.freeze(["cover", "contain", "auto"]);
 
@@ -5277,7 +5285,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Content Type"}
         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'spacer', label: 'Spacer'}, {value: 'weather', label: 'Weather'}, {value: 'datetime', label: 'Date/Time'}, {value: 'notifications', label: 'Notifications'}, {value: 'card', label: 'Custom Card'}, {value: 'button', label: 'Badge'}] } }}
         .value=${displayType}
-        @value-changed=${this._changed}
+        @value-changed=${(ev) => this._changed(ev, field + ".action")}
       ></ha-selector>
       
       ${type !== "none" && type !== "spacer" ? html`
@@ -5287,8 +5295,8 @@ class HkiHeaderCardEditor extends LitElement {
           .label=${"Content Alignment"}
           .selector=${{ select: { mode: "dropdown", options: [{value: 'start', label: 'Start (left)'}, {value: 'center', label: 'Center'}, {value: 'end', label: 'End (right)'}, {value: 'stretch', label: 'Stretch (fill available slots)'}] } }}
           .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")}
-          @value-changed=${this._changed}
-        ></ha-selector>
+              @value-changed=${(ev) => this._changed(ev, "text_align")}
+            ></ha-selector>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -5331,14 +5339,14 @@ class HkiHeaderCardEditor extends LitElement {
             .label=${"Icon color mode"}
             .selector=${{ select: { mode: "dropdown", options: [{value: 'state', label: 'By condition'}, {value: 'custom', label: 'Custom'}, {value: 'inherit', label: 'Inherit'}] } }}
             .value=${this._config[prefix + "weather_icon_color_mode"] || "state"}
-            @value-changed=${this._changed}
+            @value-changed=${(ev) => this._changed(ev, `${prefix}weather_icon_color_mode`)}
           ></ha-selector>
                     <ha-selector
             .hass=${this.hass}
             .label=${"Icon animation"}
             .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'float', label: 'Float'}, {value: 'pulse', label: 'Pulse'}, {value: 'spin', label: 'Spin'}] } }}
             .value=${this._config[prefix + "animate_icon"] || "none"}
-            @value-changed=${this._changed}
+            @value-changed=${(ev) => this._changed(ev, `${prefix}animate_icon`)}
           ></ha-selector>
         </div>
         ${this._config[prefix + "weather_icon_color_mode"] === "custom" ? html`
@@ -5783,9 +5791,9 @@ class HkiHeaderCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Font Weight"}
-              .selector=${{ select: { mode: "dropdown", options: [{value: '', label: 'Use Global'}, {value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{ value: "", label: "Use Global" }, ...WEIGHT_KEY_OPTIONS] } }}
               .value=${this._config[prefix + "weight"] || ""}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, `${prefix}weight`)}
             ></ha-selector>
           </div>
           <ha-textfield label="Text Color (Jinja supported)" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
@@ -6254,7 +6262,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Action"}
         .selector=${{ select: { mode: "dropdown", options: headerActionOptions } }}
         .value=${actionType}
-        @value-changed=${this._changed}
+        @value-changed=${(ev) => this._changed(ev, field + ".action")}
       ></ha-selector>
       ${actionType === "navigate" ? html`
         ${this._renderNavigationPathPicker("Navigation path", action.navigation_path || "", (v) => patchAction({ navigation_path: v }))}
@@ -6983,7 +6991,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Text alignment"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
               .value=${this._config.text_align}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "text_align")}
             ></ha-selector>
           </div>
         </details>
@@ -7258,8 +7266,8 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Persons alignment"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
                 .value=${this._config.persons_align || "left"}
-                @value-changed=${this._changed}
-              ></ha-selector>
+                @value-changed=${(ev) => this._changed(ev, "persons_align")}
+          ></ha-selector>
 
               <div class="section">Appearance</div>
               <div class="inline-fields-2">
@@ -7272,8 +7280,8 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Stack order"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'ascending', label: 'Ascending (last on top)'}, {value: 'descending', label: 'Descending (first on top)'}] } }}
                 .value=${this._config.persons_stack_order || "ascending"}
-                @value-changed=${this._changed}
-              ></ha-selector>
+                @value-changed=${(ev) => this._changed(ev, "persons_stack_order")}
+          ></ha-selector>
 
               <div class="inline-fields-2">
                 <ha-textfield label="Border width (px)" type="number" .value=${String(this._config.persons_border_width || 1)} data-field="persons_border_width" @input=${this._changed}></ha-textfield>
@@ -7282,7 +7290,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Border style"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}, {value: 'none', label: 'None'}] } }}
                   .value=${this._config.persons_border_style || "solid"}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "persons_border_style")}
                 ></ha-selector>
               </div>
 
@@ -7336,7 +7344,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background position"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'top', label: 'Top'}, {value: 'center', label: 'Center'}, {value: 'bottom', label: 'Bottom'}, {value: 'left', label: 'Left'}, {value: 'right', label: 'Right'}] } }}
                   .value=${this._config.background_position}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_position")}
                 ></ha-selector>
 
                                 <ha-selector
@@ -7344,7 +7352,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background repeat"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'no-repeat', label: 'No repeat'}, {value: 'repeat', label: 'Repeat'}, {value: 'repeat-x', label: 'Repeat horizontally'}, {value: 'repeat-y', label: 'Repeat vertically'}] } }}
                   .value=${this._config.background_repeat}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_repeat")}
                 ></ha-selector>
             </div>
 
@@ -7362,7 +7370,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background blend mode"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'normal', label: 'Normal'}, {value: 'multiply', label: 'Multiply'}, {value: 'screen', label: 'Screen'}, {value: 'overlay', label: 'Overlay'}, {value: 'darken', label: 'Darken'}, {value: 'lighten', label: 'Lighten'}, {value: 'color-dodge', label: 'Color Dodge'}, {value: 'soft-light', label: 'Soft Light'}, {value: 'difference', label: 'Difference'}] } }}
                   .value=${this._config.background_blend_mode || "normal"}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_blend_mode")}
                 ></ha-selector>
             </div>
             
@@ -7412,7 +7420,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Border Style"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}] } }}
                 .value=${this._config.card_border_style || "none"}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "card_border_style")}
               ></ha-selector>
               <ha-textfield label="Border Width (px)" type="number" .value=${String(this._config.card_border_width || 0)} data-field="card_border_width" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Border Color" .value=${this._config.card_border_color || ""} data-field="card_border_color" @input=${this._changed}></ha-textfield>
@@ -7429,7 +7437,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Font family"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'inherit', label: 'Inherit'}, {value: 'system', label: 'System'}, {value: 'roboto', label: 'Roboto'}, {value: 'inter', label: 'Inter'}, {value: 'arial', label: 'Arial'}, {value: 'georgia', label: 'Georgia'}, {value: 'mono', label: 'Monospace'}, {value: 'custom', label: 'Custom…'}] } }}
               .value=${this._config.font_family}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "font_family")}
             ></ha-selector>
 
             ${showCustomFont ? html`<ha-textfield label="Custom font-family (CSS)" .value=${this._config.font_family_custom} data-field="font_family_custom" @input=${this._changed}></ha-textfield>` : ""}
@@ -7439,7 +7447,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Font style"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'normal', label: 'Normal'}, {value: 'italic', label: 'Italic'}] } }}
               .value=${this._config.font_style}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "font_style")}
             ></ha-selector>
 
             <div class="inline-fields-2">
@@ -7453,7 +7461,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Title weight"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
                 .value=${this._config.title_weight}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "title_weight")}
               ></ha-selector>
 
                             <ha-selector
@@ -7461,7 +7469,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Subtitle weight"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
                 .value=${this._config.subtitle_weight}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "subtitle_weight")}
               ></ha-selector>
             </div>
           </div>
@@ -7488,9 +7496,9 @@ class HkiHeaderCardEditor extends LitElement {
                                             <ha-selector
                         .hass=${this.hass}
                         .label=${"Font Weight"}
-                        .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                        .selector=${{ select: { mode: "dropdown", options: WEIGHT_KEY_OPTIONS } }}
                         .value=${this._config.info_weight || "medium"}
-                        @value-changed=${this._changed}
+                        @value-changed=${(ev) => this._changed(ev, "info_weight")}
                       ></ha-selector>
                     </div>
                     <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
@@ -7517,7 +7525,7 @@ class HkiHeaderCardEditor extends LitElement {
                           .label=${"Border Style"}
                           .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
                           .value=${this._config.info_pill_border_style || "none"}
-                          @value-changed=${this._changed}
+                          @value-changed=${(ev) => this._changed(ev, "info_pill_border_style")}
                         ></ha-selector>
                         <ha-textfield label="Border Width" type="number" .value=${String(this._config.info_pill_border_width ?? 0)} data-field="info_pill_border_width" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Border Color" .value=${this._config.info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="info_pill_border_color" @input=${this._changed}></ha-textfield>
@@ -7571,9 +7579,9 @@ class HkiHeaderCardEditor extends LitElement {
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Font Weight"}
-                      .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: WEIGHT_KEY_OPTIONS } }}
                       .value=${this._config.bottom_info_weight || "medium"}
-                      @value-changed=${this._changed}
+                      @value-changed=${(ev) => this._changed(ev, "bottom_info_weight")}
                     ></ha-selector>
                   </div>
                   <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
@@ -7600,7 +7608,7 @@ class HkiHeaderCardEditor extends LitElement {
                         .label=${"Border Style"}
                         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
                         .value=${this._config.bottom_info_pill_border_style || "none"}
-                        @value-changed=${this._changed}
+                        @value-changed=${(ev) => this._changed(ev, "bottom_info_pill_border_style")}
                       ></ha-selector>
                       <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>

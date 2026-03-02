@@ -242,6 +242,8 @@
       size_brightness: 12,
       size_icon: 30,
       temp_badge_size: 40,
+      button_lock_show_indicator: true,
+      button_lock_relock_ms: 8000,
     });
 
     static _cloneBaseDefaults() {
@@ -440,6 +442,12 @@
       // lock
       ['lock_contact_sensor_entity','lock','contact_sensor_entity'],
       ['lock_contact_sensor_label', 'lock','contact_sensor_label'],
+      // button lock
+      ['button_lock_enabled',         'button_lock','enabled'],
+      ['button_lock_show_indicator',  'button_lock','show_indicator'],
+      ['button_lock_pin',             'button_lock','pin'],
+      ['button_lock_password',        'button_lock','password'],
+      ['button_lock_relock_ms',       'button_lock','relock_ms'],
     ];
 
     // All valid non-mapped root-level keys. Anything else (old/obsolete) gets stripped.
@@ -494,7 +502,7 @@
     // Also strips obsolete/unknown keys that are not in the valid set.
     static _migrateFlatConfig(config) {
       if (!config || typeof config !== 'object') return config;
-      const NESTED_SECTIONS = new Set(['styles','offsets','climate','humidifier','hki_popup','lock','custom_popup']);
+      const NESTED_SECTIONS = new Set(['styles','offsets','climate','humidifier','hki_popup','lock','custom_popup','button_lock']);
       const MAPPED_FLAT_KEYS = new Set(HkiButtonCard._CONFIG_MAP.map(([k]) => k));
       const flat = {};
       // 1. Copy root-level keys that are in the valid whitelist (strips obsolete flat keys)
@@ -650,6 +658,10 @@
       this._sliderPendingValue = null;
       this._historyRefreshTimer = null;
       this._historyRefreshBusy = false;
+      this._buttonLockArmed = false;
+      this._buttonLockArmTimer = null;
+      this._actionLockPortal = null;
+      this._actionLockPending = false;
     }
 
     setConfig(config) {
@@ -966,6 +978,11 @@
         clearTimeout(this._sliderThrottleTimer);
         this._sliderThrottleTimer = null;
       }
+      if (this._buttonLockArmTimer) {
+        clearTimeout(this._buttonLockArmTimer);
+        this._buttonLockArmTimer = null;
+      }
+      this._closeActionLockPopup();
     }
 
     updated(changedProps) {
@@ -2051,6 +2068,374 @@
     }
 
     /* --- ACTION HANDLING --- */
+    _isButtonLockEnabled() {
+      return this._config?.button_lock_enabled === true;
+    }
+
+    _getButtonLockMode() {
+      const pin = String(this._config?.button_lock_pin ?? '').trim();
+      const password = String(this._config?.button_lock_password ?? '');
+      if (pin) return 'pin';
+      if (password) return 'password';
+      return 'tap';
+    }
+
+    _getButtonLockRelockMs() {
+      const ms = Number(this._config?.button_lock_relock_ms);
+      if (!Number.isFinite(ms) || ms <= 0) return 8000;
+      return Math.max(500, Math.round(ms));
+    }
+
+    _isButtonLockArmed() {
+      return this._buttonLockArmed === true;
+    }
+
+    _armButtonLock() {
+      this._buttonLockArmed = true;
+      if (this._buttonLockArmTimer) clearTimeout(this._buttonLockArmTimer);
+      this._buttonLockArmTimer = setTimeout(() => {
+        this._buttonLockArmed = false;
+        this._buttonLockArmTimer = null;
+        this.requestUpdate();
+      }, this._getButtonLockRelockMs());
+      this.requestUpdate();
+    }
+
+    _consumeButtonLockArm() {
+      if (!this._buttonLockArmed) return false;
+      this._buttonLockArmed = false;
+      if (this._buttonLockArmTimer) {
+        clearTimeout(this._buttonLockArmTimer);
+        this._buttonLockArmTimer = null;
+      }
+      this.requestUpdate();
+      return true;
+    }
+
+    _closeActionLockPopup() {
+      if (!this._actionLockPortal) return;
+      try { this._actionLockPortal.remove(); } catch (_) {}
+      this._actionLockPortal = null;
+    }
+
+    _ensureActionLockPopupStyles() {
+      if (document.getElementById('hki-action-lock-popup-styles')) return;
+      const st = document.createElement('style');
+      st.id = 'hki-action-lock-popup-styles';
+      st.textContent = `
+        .hki-auth-backdrop {
+          position: fixed; inset: 0; z-index: 10003;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,0.45);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+        .hki-auth-dialog {
+          width: 92%; max-width: 360px;
+          background: var(--card-background-color, #1c1c1c);
+          border-radius: 18px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.08));
+          box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+          overflow: hidden;
+          transform: translateY(12px) scale(0.98);
+          opacity: 0;
+          animation: hkiAuthEnter 220ms ease forwards;
+        }
+        .hki-auth-dialog.hki-auth-error { animation: hkiAuthShake 320ms ease; }
+        .hki-auth-dialog.hki-auth-success { animation: hkiAuthSuccess 260ms ease forwards; }
+        .hki-auth-head {
+          padding: 14px 16px;
+          font-size: 15px; font-weight: 600;
+          color: var(--primary-text-color);
+          border-bottom: 1px solid var(--divider-color, rgba(255,255,255,0.06));
+        }
+        .hki-auth-body {
+          padding: 14px 16px 16px 16px;
+          display: flex; flex-direction: column; gap: 10px;
+        }
+        .hki-auth-msg {
+          margin: 0; font-size: 13px; line-height: 1.3;
+          color: var(--secondary-text-color, rgba(255,255,255,0.75));
+        }
+        .hki-auth-pin-display {
+          height: 44px;
+          border-radius: 12px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          background: var(--secondary-background-color, rgba(255,255,255,0.05));
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .hki-auth-dot {
+          width: 10px; height: 10px; border-radius: 50%;
+          background: var(--divider-color, rgba(255,255,255,0.35));
+          transition: transform 160ms ease, background 160ms ease;
+        }
+        .hki-auth-dot.filled {
+          transform: scale(1.15);
+          background: var(--primary-color, #03a9f4);
+        }
+        .hki-auth-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .hki-auth-key, .hki-auth-btn {
+          height: 40px; border-radius: 12px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          background: var(--secondary-background-color, rgba(255,255,255,0.06));
+          color: var(--primary-text-color);
+          cursor: pointer;
+          font-size: 14px; font-weight: 600;
+        }
+        .hki-auth-key:active, .hki-auth-btn:active { transform: scale(0.97); }
+        .hki-auth-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .hki-auth-btn.primary {
+          background: var(--primary-color, rgba(255,255,255,0.14));
+          color: var(--text-primary-color, var(--primary-text-color));
+        }
+        .hki-auth-input {
+          height: 42px;
+          border-radius: 12px;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.12));
+          background: var(--secondary-background-color, rgba(255,255,255,0.06));
+          color: var(--primary-text-color);
+          padding: 0 12px;
+          font-size: 14px;
+          outline: none;
+        }
+        .hki-auth-error-text {
+          min-height: 18px;
+          color: var(--error-color, #f44336);
+          font-size: 12px;
+        }
+        @keyframes hkiAuthEnter {
+          from { opacity: 0; transform: translateY(12px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes hkiAuthShake {
+          0%,100% { transform: translateX(0); }
+          20% { transform: translateX(-7px); }
+          40% { transform: translateX(7px); }
+          60% { transform: translateX(-6px); }
+          80% { transform: translateX(6px); }
+        }
+        @keyframes hkiAuthSuccess {
+          0% { transform: scale(1); box-shadow: 0 16px 40px rgba(0,0,0,0.45); }
+          55% { transform: scale(1.02); box-shadow: 0 0 0 2px rgba(76,175,80,0.35), 0 16px 40px rgba(0,0,0,0.45); }
+          100% { transform: scale(1); box-shadow: 0 0 0 1px rgba(76,175,80,0.2), 0 16px 40px rgba(0,0,0,0.45); }
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    _promptActionLockCredential(mode) {
+      this._ensureActionLockPopupStyles();
+      this._closeActionLockPopup();
+
+      return new Promise((resolve) => {
+        const expectedPin = String(this._config?.button_lock_pin ?? '').trim();
+        const expectedPassword = String(this._config?.button_lock_password ?? '');
+        const isPin = mode === 'pin';
+        const overlay = document.createElement('div');
+        overlay.className = 'hki-auth-backdrop';
+        let inputValue = '';
+        this._actionLockPortal = overlay;
+        this._actionLockPending = true;
+        __hkiLockScroll();
+
+        let keydownAttached = false;
+        const close = (ok) => {
+          if (!this._actionLockPending) return;
+          if (keydownAttached) {
+            window.removeEventListener('keydown', onKeyDown);
+            keydownAttached = false;
+          }
+          this._actionLockPending = false;
+          this._closeActionLockPopup();
+          __hkiUnlockScroll();
+          resolve(ok === true);
+        };
+
+        const markError = (msg) => {
+          const box = overlay.querySelector('.hki-auth-dialog');
+          const errorEl = overlay.querySelector('.hki-auth-error-text');
+          if (errorEl) errorEl.textContent = msg || 'Incorrect code.';
+          if (box) {
+            box.classList.remove('hki-auth-error');
+            void box.offsetWidth;
+            box.classList.add('hki-auth-error');
+          }
+        };
+
+        const markSuccessAndClose = () => {
+          const box = overlay.querySelector('.hki-auth-dialog');
+          if (box) {
+            box.classList.remove('hki-auth-error');
+            box.classList.add('hki-auth-success');
+          }
+          setTimeout(() => close(true), 180);
+        };
+
+        const updatePinDots = () => {
+          overlay.querySelectorAll('.hki-auth-dot').forEach((dot, idx) => {
+            dot.classList.toggle('filled', idx < inputValue.length);
+          });
+        };
+
+        const verify = () => {
+          const ok = isPin ? (inputValue === expectedPin) : (inputValue === expectedPassword);
+          if (ok) {
+            markSuccessAndClose();
+            return;
+          }
+          markError(isPin ? 'Wrong PIN. Try again.' : 'Wrong password. Try again.');
+          if (isPin) {
+            inputValue = '';
+            updatePinDots();
+          }
+        };
+
+        const pinLength = Math.max(4, expectedPin.length || 4);
+        const dotsHtml = Array.from({ length: pinLength }).map(() => '<span class="hki-auth-dot"></span>').join('');
+        overlay.innerHTML = isPin ? `
+          <div class="hki-auth-dialog" role="dialog" aria-modal="true">
+            <div class="hki-auth-head">Unlock Action</div>
+            <div class="hki-auth-body">
+              <p class="hki-auth-msg">Enter PIN to continue.</p>
+              <div class="hki-auth-pin-display">${dotsHtml}</div>
+              <div class="hki-auth-grid">
+                <button class="hki-auth-key" data-k="1">1</button>
+                <button class="hki-auth-key" data-k="2">2</button>
+                <button class="hki-auth-key" data-k="3">3</button>
+                <button class="hki-auth-key" data-k="4">4</button>
+                <button class="hki-auth-key" data-k="5">5</button>
+                <button class="hki-auth-key" data-k="6">6</button>
+                <button class="hki-auth-key" data-k="7">7</button>
+                <button class="hki-auth-key" data-k="8">8</button>
+                <button class="hki-auth-key" data-k="9">9</button>
+                <button class="hki-auth-key" data-k="clear">CLR</button>
+                <button class="hki-auth-key" data-k="0">0</button>
+                <button class="hki-auth-key" data-k="back"><ha-icon icon="mdi:backspace-outline"></ha-icon></button>
+              </div>
+              <div class="hki-auth-error-text"></div>
+              <div class="hki-auth-actions">
+                <button class="hki-auth-btn" data-act="cancel">Cancel</button>
+                <button class="hki-auth-btn primary" data-act="ok">Unlock</button>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="hki-auth-dialog" role="dialog" aria-modal="true">
+            <div class="hki-auth-head">Unlock Action</div>
+            <div class="hki-auth-body">
+              <p class="hki-auth-msg">Enter password to continue.</p>
+              <input class="hki-auth-input" type="password" id="hkiAuthPasswordInput" autocomplete="off" />
+              <div class="hki-auth-error-text"></div>
+              <div class="hki-auth-actions">
+                <button class="hki-auth-btn" data-act="cancel">Cancel</button>
+                <button class="hki-auth-btn primary" data-act="ok">Unlock</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (ev) => {
+          if (ev.target === overlay) close(false);
+        });
+
+        const onKeyDown = (ev) => {
+          if (ev.key === 'Escape') close(false);
+          if (!isPin && ev.key === 'Enter') verify();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        keydownAttached = true;
+
+        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', () => close(false));
+        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', () => verify());
+
+        if (isPin) {
+          overlay.querySelectorAll('[data-k]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const k = btn.getAttribute('data-k');
+              if (!k) return;
+              if (k === 'clear') {
+                inputValue = '';
+              } else if (k === 'back') {
+                inputValue = inputValue.slice(0, -1);
+              } else if (inputValue.length < pinLength) {
+                inputValue += k;
+              }
+              const err = overlay.querySelector('.hki-auth-error-text');
+              if (err) err.textContent = '';
+              updatePinDots();
+            });
+          });
+          updatePinDots();
+        } else {
+          const inputEl = overlay.querySelector('#hkiAuthPasswordInput');
+          if (inputEl) {
+            setTimeout(() => inputEl.focus(), 0);
+            inputEl.addEventListener('input', () => {
+              inputValue = inputEl.value || '';
+              const err = overlay.querySelector('.hki-auth-error-text');
+              if (err) err.textContent = '';
+            });
+          }
+        }
+
+        // Ensure pending state is cleared if removed externally.
+        const obs = new MutationObserver(() => {
+          if (!document.body.contains(overlay)) {
+            obs.disconnect();
+            this._actionLockPending = false;
+            __hkiUnlockScroll();
+            resolve(false);
+          }
+        });
+        obs.observe(document.body, { childList: true });
+      });
+    }
+
+    async _guardActionLock(actionConfig) {
+      if (!this._isButtonLockEnabled()) return false;
+      if (this._inEditorPreview() || this._isEditMode()) return false;
+      if (!actionConfig || !actionConfig.action || actionConfig.action === "none") return false;
+      if (this._actionLockPending) return true;
+
+      const mode = this._getButtonLockMode();
+      if (mode === 'tap') {
+        if (this._consumeButtonLockArm()) return false;
+        this._armButtonLock();
+        return true;
+      }
+
+      const ok = await this._promptActionLockCredential(mode);
+      return !ok;
+    }
+
+    _renderActionLockIndicator() {
+      if (!this._isButtonLockEnabled()) return '';
+      if (this._config?.button_lock_show_indicator === false) return '';
+
+      const mode = this._getButtonLockMode();
+      const armed = mode === 'tap' && this._isButtonLockArmed();
+      const icon = armed ? 'mdi:lock-open-variant' : 'mdi:lock';
+      const title = armed ? 'Action unlocked' : (mode === 'tap' ? 'Locked: tap to unlock' : 'Locked');
+      return html`
+        <button
+          class="hki-action-lock-indicator ${armed ? 'armed' : 'locked'}"
+          title="${title}"
+          @click=${(ev) => {
+            ev.stopPropagation();
+            if (mode === 'tap') this._armButtonLock();
+          }}
+        >
+          <ha-icon icon="${icon}"></ha-icon>
+        </button>
+      `;
+    }
+
     _startHold(e, actionConfig) {
         // IMPORTANT (mobile): calling preventDefault() on touchstart will often
         // suppress the synthetic click event, which breaks tap_action (including
@@ -2184,11 +2569,12 @@
       }, 250);
     }
 
-    _handleAction(actionConfig) {
+    async _handleAction(actionConfig) {
       // No action configured -> do nothing (avoid fallback attempts like more-info without entity)
       if (!actionConfig || !actionConfig.action || actionConfig.action === "none") return;
       // Prevent actions from running in editor preview mode
       if (this._inEditorPreview()) return;
+      if (await this._guardActionLock(actionConfig)) return;
 
       // ✅ NEW: fire-dom-event (like custom:button-card / core cards)
       // Fires `ll-custom` with the entire action config in `detail`.
@@ -11534,6 +11920,7 @@
                   />
                 </div>
               ` : ''}
+            ${this._renderActionLockIndicator()}
           </ha-card>
         `;
       }
@@ -11722,6 +12109,7 @@
                 </div>
               ` : ''}
             </div>
+            ${this._renderActionLockIndicator()}
           </ha-card>
         `;
       }
@@ -12078,6 +12466,7 @@
                 return html`${renderedElements}`;
                 })();
             })()}
+            ${this._renderActionLockIndicator()}
         </ha-card>
       `;
     }
@@ -12142,6 +12531,46 @@
         /* Badge: Compact Horizontal Layout (Like HA Badge) */
         .hki-ha-badge {
           cursor: pointer;
+        }
+
+        .hki-action-lock-indicator {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          border: 1px solid var(--divider-color, rgba(255,255,255,0.16));
+          background: rgba(0, 0, 0, 0.35);
+          color: var(--primary-text-color);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 30;
+          transition: transform 140ms ease, background 140ms ease, color 140ms ease, border-color 140ms ease;
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+        .hki-action-lock-indicator ha-icon {
+          --mdc-icon-size: 16px;
+          pointer-events: none;
+        }
+        .hki-action-lock-indicator.locked {
+          color: var(--primary-text-color);
+        }
+        .hki-action-lock-indicator.armed {
+          color: #4CAF50;
+          border-color: rgba(76, 175, 80, 0.65);
+          background: rgba(76, 175, 80, 0.16);
+          animation: hkiLockArmedPulse 1.1s ease-in-out infinite;
+        }
+        .hki-action-lock-indicator:active {
+          transform: scale(0.94);
+        }
+        @keyframes hkiLockArmedPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.15); }
+          50% { box-shadow: 0 0 0 6px rgba(76,175,80,0.05); }
         }
 
         ha-card.hki-tile { height: 100%; min-height: 0; position: relative; }
@@ -13018,6 +13447,7 @@
         layout_order: true,
         typography: true,
         visibility: true,
+        action_lock: true,
         card_styling: true,
         icon_settings: true,
     
@@ -14152,6 +14582,49 @@
                 </ha-formfield>
                 ` : ''} 
                 </div>
+            </div>
+          </div>
+
+          <div class="accordion-group ">
+            ${renderHeader("Action Lock", "action_lock")}
+            <div class="accordion-content ${this._closedDetails['action_lock'] ? 'hidden' : ''}">
+              <p style="font-size: 13px; opacity: 0.7; margin: 8px 0;">
+                Protect actions behind a lock. Without PIN/password: first tap unlocks, second tap executes.
+              </p>
+              <ha-formfield .label=${"Enable Action Lock"}>
+                <ha-switch .checked=${this._config.button_lock_enabled === true} @change=${(ev) => this._switchChanged(ev, "button_lock_enabled")}></ha-switch>
+              </ha-formfield>
+              ${this._config.button_lock_enabled === true ? html`
+                <ha-formfield .label=${"Show Lock Indicator"}>
+                  <ha-switch .checked=${this._config.button_lock_show_indicator !== false} @change=${(ev) => this._switchChanged(ev, "button_lock_show_indicator")}></ha-switch>
+                </ha-formfield>
+                <ha-textfield
+                  label="PIN Code (optional)"
+                  type="password"
+                  inputmode="numeric"
+                  autocomplete="new-password"
+                  .value=${this._config.button_lock_pin || ""}
+                  @input=${(ev) => this._textChanged(ev, "button_lock_pin")}
+                  placeholder="e.g. 1234"
+                ></ha-textfield>
+                <ha-textfield
+                  label="Password (optional)"
+                  type="password"
+                  autocomplete="new-password"
+                  .value=${this._config.button_lock_password || ""}
+                  @input=${(ev) => this._textChanged(ev, "button_lock_password")}
+                  placeholder="If set (and no PIN), password popup is used"
+                ></ha-textfield>
+                <ha-textfield
+                  label="Auto Relock (ms)"
+                  type="number"
+                  .value=${this._config.button_lock_relock_ms ?? 8000}
+                  @input=${(ev) => this._textChanged(ev, "button_lock_relock_ms")}
+                ></ha-textfield>
+                <p style="font-size: 11px; opacity: 0.7; margin: 0;">
+                  PIN has priority over password if both are filled.
+                </p>
+              ` : ''}
             </div>
           </div>
 

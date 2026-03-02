@@ -32,6 +32,32 @@ const FONTS = [
   "JetBrains Mono, monospace",
   "Custom"
 ];
+const ALIGNMENT_OPTIONS = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+const ANIMATION_OPTIONS = [
+  { value: "slide", label: "Slide" },
+  { value: "fade", label: "Fade" },
+  { value: "flip", label: "Flip" },
+  { value: "zoom", label: "Zoom" },
+];
+const DIRECTION_OPTIONS = [
+  { value: "left", label: "From Left" },
+  { value: "right", label: "From Right" },
+  { value: "up", label: "From Up" },
+  { value: "down", label: "From Down" },
+];
+const FONT_WEIGHT_OPTIONS = [
+  { value: "Thin", label: "Thin" },
+  { value: "Light", label: "Light" },
+  { value: "Regular", label: "Regular" },
+  { value: "Medium", label: "Medium" },
+  { value: "Semi Bold", label: "Semi Bold" },
+  { value: "Bold", label: "Bold" },
+  { value: "Black", label: "Black" },
+];
 const applyGlobalDefaultsToConfig = window.HKI?.applyGlobalDefaultsToConfig || (({ config }) => config);
 const NOTIFICATION_POPUP_NESTED_KEYS = Object.freeze([
   ["popup_enabled", "enabled"],
@@ -2787,14 +2813,14 @@ class HkiNotificationCardEditor extends LitElement {
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Animation"}
-                      .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: ANIMATION_OPTIONS } }}
                       .value=${this._config.animation || "slide"}
                       @value-changed=${(e) => this._valueChanged(e, "animation")}
                     ></ha-selector>
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Direction"}
-                      .selector=${{ select: { mode: "dropdown", options: [{value: 'd', label: 'From ${d.charAt(0).toUpperCase() + d.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: DIRECTION_OPTIONS } }}
                       .value=${this._config.direction || "right"}
                       @value-changed=${(e) => this._valueChanged(e, "direction")}
                     ></ha-selector>
@@ -3021,7 +3047,7 @@ class HkiNotificationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Alignment"}
-              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: ALIGNMENT_OPTIONS } }}
               .value=${this._config.alignment || "left"}
               @value-changed=${(e) => this._valueChanged(e, "alignment")}
             ></ha-selector>
@@ -3122,7 +3148,7 @@ class HkiNotificationCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Alignment"}
-              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: ALIGNMENT_OPTIONS } }}
               .value=${this._config.alignment || "left"}
               @value-changed=${(e) => this._valueChanged(e, "alignment")}
             ></ha-selector>
@@ -3158,7 +3184,7 @@ class HkiNotificationCardEditor extends LitElement {
                                 <ha-selector
                   .hass=${this.hass}
                   .label=${"Weight"}
-                  .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w}'}] } }}
+                  .selector=${{ select: { mode: "dropdown", options: FONT_WEIGHT_OPTIONS } }}
                   .value=${this._config.font_weight || "Semi Bold"}
                   @value-changed=${(e) => this._valueChanged(e, "font_weight")}
                 ></ha-selector>

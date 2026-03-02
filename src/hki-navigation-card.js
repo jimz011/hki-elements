@@ -2443,7 +2443,7 @@ class HkiNavigationCardEditor extends LitElement {
         ` : html``}
         ${type === "fire-dom-event" ? html`
           <ha-textfield .label=${"Event Name (optional)"} .value=${act.event_name || ""} @change=${(e) => update({ event_name: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
-          ${this._yamlEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
+          ${this._renderCodeEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
         ` : html``}
 
         ${type === "toggle" || type === "more-info" ? html`<div class="hint">Uses the button’s <b>Entity</b> field (set above in Interaction & Data).</div>` : html``}
