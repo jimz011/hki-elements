@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-04 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-05 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -3505,6 +3505,8 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         // Slot-level popupConfig takes precedence over action-level (backward-compat) settings
         const mergedPopup = { ...finalAction, ...(popupConfig || {}) };
+        const popupEntityId = finalAction.entity || entityId;
+        const hasEntityOverride = !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
         // custom_popup_enabled gates the custom card; undefined = true for backward compat
         const popupCard = mergedPopup.custom_popup_enabled === false
           ? null
@@ -3522,7 +3524,7 @@ class HkiHeaderCard extends LitElement {
             return res?.result != null ? String(res.result) : str;
           } catch (_) { return str; }
         };
-        if (popupCard && customElements.get('hki-button-card')) {
+        if (!hasEntityOverride && popupCard && customElements.get('hki-button-card')) {
           // Custom popup card configured — open it inside the HKI popup frame
           Promise.all([
             resolveTemplate(mergedPopup.popup_name),
@@ -3546,7 +3548,6 @@ class HkiHeaderCard extends LitElement {
           }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
         } else {
           // No custom popup card — open the domain-appropriate HKI popup for the entity
-          const popupEntityId = finalAction.entity || entityId;
           if (popupEntityId && customElements.get('hki-button-card')) {
             Promise.all([
               resolveTemplate(mergedPopup.popup_name),
@@ -3562,6 +3563,7 @@ class HkiHeaderCard extends LitElement {
                 entity: popupEntityId,
                 ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
                 });
+                if (hasEntityOverride) btn._forceDomainPopupOnce = true;
                 this._activePopupProxyCards.add(btn);
                 btn._openPopup();
               } catch (err) {
@@ -10969,18 +10971,17 @@ window.customCards.push({
 
         document.body.appendChild(overlay);
 
-        const eatEvent = (ev) => {
+        const stopEvent = (ev) => {
           ev.stopPropagation();
-          if (ev.cancelable) ev.preventDefault();
         };
-        overlay.addEventListener('click', eatEvent);
-        overlay.addEventListener('mousedown', eatEvent);
-        overlay.addEventListener('mouseup', eatEvent);
-        overlay.addEventListener('touchstart', eatEvent, { passive: false });
-        overlay.addEventListener('touchend', eatEvent, { passive: false });
-        overlay.addEventListener('pointerdown', eatEvent);
-        overlay.addEventListener('pointerup', eatEvent);
-        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', eatEvent);
+        overlay.addEventListener('click', stopEvent);
+        overlay.addEventListener('mousedown', stopEvent);
+        overlay.addEventListener('mouseup', stopEvent);
+        overlay.addEventListener('touchstart', stopEvent, { passive: true });
+        overlay.addEventListener('touchend', stopEvent, { passive: true });
+        overlay.addEventListener('pointerdown', stopEvent);
+        overlay.addEventListener('pointerup', stopEvent);
+        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', stopEvent);
 
         const onKeyDown = (ev) => {
           if (ev.key === 'Escape') close(false);
@@ -10989,13 +10990,13 @@ window.customCards.push({
         window.addEventListener('keydown', onKeyDown);
         keydownAttached = true;
 
-        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', (ev) => { eatEvent(ev); close(false); });
-        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { eatEvent(ev); verify(); });
+        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', (ev) => { stopEvent(ev); close(false); });
+        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { stopEvent(ev); verify(); });
 
         if (isPin) {
           overlay.querySelectorAll('[data-k]').forEach((btn) => {
             btn.addEventListener('click', (ev) => {
-              eatEvent(ev);
+              stopEvent(ev);
               if (this._isButtonLockInLockout()) {
                 syncLockoutUI();
                 return;
@@ -11022,9 +11023,7 @@ window.customCards.push({
               inputValue = inputEl.value || '';
               clearErrorVisual();
             });
-            inputEl.addEventListener('keydown', (ev) => {
-              ev.stopPropagation();
-            });
+            inputEl.addEventListener('keydown', (ev) => ev.stopPropagation());
           }
         }
 
@@ -11240,6 +11239,17 @@ window.customCards.push({
 
       // HKI specific - custom popup
       if (actionConfig.action === "hki-more-info") {
+        const entityId = actionConfig.entity || this._config.entity;
+        // Support entity override by opening a proxy HKI popup for that entity
+        // (same behavior pattern as header-card action handling).
+        if (entityId && entityId !== this._config.entity) {
+          if (this._openHkiPopupForEntity(entityId)) return;
+          // Fallback to native more-info only if proxy popup cannot be created.
+          const event = new Event('hass-more-info', { bubbles: true, composed: true });
+          event.detail = { entityId };
+          this.dispatchEvent(event);
+          return;
+        }
         this._openPopup();
         return;
       }
@@ -11247,7 +11257,7 @@ window.customCards.push({
       // Handle toggle action directly
       if (actionConfig.action === "toggle") {
         const domain = this._getDomain ? this._getDomain() : undefined;
-        const entityId = this._config.entity;
+        const entityId = actionConfig.entity || this._config.entity;
         if (!entityId) return;
 
         // Climate: toggle OFF <-> last used HVAC mode
@@ -11585,6 +11595,27 @@ window.customCards.push({
       this._ensureLightFavorites();
 
       this._renderPopupPortal();
+    }
+
+    _openHkiPopupForEntity(entityId) {
+      if (!entityId || !this.hass) return false;
+      if (!customElements.get('hki-button-card')) return false;
+      try {
+        const btn = document.createElement('hki-button-card');
+        btn.hass = this.hass;
+        const proxyConfig = {
+          ...this._config,
+          entity: entityId,
+          // Keep proxy interaction simple; lock applies to the original card action.
+          button_lock_enabled: false,
+        };
+        btn.setConfig(proxyConfig);
+        btn._openPopup();
+        return true;
+      } catch (err) {
+        console.error('[hki-button-card] Failed to open HKI popup for override entity:', err);
+        return false;
+      }
     }
 
     _closePopup(onDone) {
@@ -22734,14 +22765,19 @@ window.customCards.push({
                 </div>
               ` : ""}
               
-              ${currentAction === 'more-info' ? html`
+              ${currentAction === 'more-info' || currentAction === 'toggle' || currentAction === 'hki-more-info' ? html`
                 <ha-selector 
                   .hass=${this.hass} 
                   .selector=${{ entity: {} }} 
                   .value=${actionConfig.entity || ""} 
-                  .label=${"Entity (optional)"} 
+                  .label=${"Entity Override (optional)"} 
                   @value-changed=${(ev) => this._actionFieldSelectorChanged(ev, configKey, 'entity')}
                 ></ha-selector>
+                ${currentAction === 'hki-more-info' ? html`
+                  <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 0 0;">
+                    If override differs from card entity, HKI popup opens for that entity.
+                  </p>
+                ` : ''}
               ` : ''}
             </div>
           `;
@@ -26931,14 +26967,16 @@ class HkiNavigationCard extends LitElement {
       return;
     }
     if (type === "toggle") {
-      if (!btn?.entity) return;
-      hass.callService("homeassistant", "toggle", { entity_id: btn.entity });
+      const entityId = action.entity || btn?.entity;
+      if (!entityId) return;
+      hass.callService("homeassistant", "toggle", { entity_id: entityId });
       this._autoCloseTempMenus();
       return;
     }
     if (type === "more-info") {
-      if (!btn?.entity) return;
-      fireEvent(this, "hass-more-info", { entityId: btn.entity });
+      const entityId = action.entity || btn?.entity;
+      if (!entityId) return;
+      fireEvent(this, "hass-more-info", { entityId: entityId });
       this._autoCloseTempMenus();
       return;
     }
@@ -27530,7 +27568,10 @@ class HkiNavigationCardEditor extends LitElement {
           ${this._renderCodeEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
         ` : html``}
 
-        ${type === "toggle" || type === "more-info" ? html`<div class="hint">Uses the button’s <b>Entity</b> field (set above in Interaction & Data).</div>` : html``}
+        ${type === "toggle" || type === "more-info" ? html`
+          ${this._renderEntityPicker("Entity Override (optional)", act.entity || "", (v) => update({ entity: v || undefined }))}
+          <div class="hint">If empty, the button entity from Interaction & Data is used.</div>
+        ` : html``}
         ${type === "back" ? html`<div class="hint">Back uses browser history. (Tap action forces icon to mdi:chevron-left.)</div>` : html``}
       </div>`;
   }

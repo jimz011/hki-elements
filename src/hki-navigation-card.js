@@ -1847,14 +1847,16 @@ class HkiNavigationCard extends LitElement {
       return;
     }
     if (type === "toggle") {
-      if (!btn?.entity) return;
-      hass.callService("homeassistant", "toggle", { entity_id: btn.entity });
+      const entityId = action.entity || btn?.entity;
+      if (!entityId) return;
+      hass.callService("homeassistant", "toggle", { entity_id: entityId });
       this._autoCloseTempMenus();
       return;
     }
     if (type === "more-info") {
-      if (!btn?.entity) return;
-      fireEvent(this, "hass-more-info", { entityId: btn.entity });
+      const entityId = action.entity || btn?.entity;
+      if (!entityId) return;
+      fireEvent(this, "hass-more-info", { entityId: entityId });
       this._autoCloseTempMenus();
       return;
     }
@@ -2446,7 +2448,10 @@ class HkiNavigationCardEditor extends LitElement {
           ${this._renderCodeEditor("Event Data (YAML/JSON text)", act.event_data || "", (v) => update({ event_data: v || "" }), `${errorKey}:event_data`)}
         ` : html``}
 
-        ${type === "toggle" || type === "more-info" ? html`<div class="hint">Uses the button’s <b>Entity</b> field (set above in Interaction & Data).</div>` : html``}
+        ${type === "toggle" || type === "more-info" ? html`
+          ${this._renderEntityPicker("Entity Override (optional)", act.entity || "", (v) => update({ entity: v || undefined }))}
+          <div class="hint">If empty, the button entity from Interaction & Data is used.</div>
+        ` : html``}
         ${type === "back" ? html`<div class="hint">Back uses browser history. (Tap action forces icon to mdi:chevron-left.)</div>` : html``}
       </div>`;
   }

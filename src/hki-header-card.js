@@ -2856,6 +2856,8 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         // Slot-level popupConfig takes precedence over action-level (backward-compat) settings
         const mergedPopup = { ...finalAction, ...(popupConfig || {}) };
+        const popupEntityId = finalAction.entity || entityId;
+        const hasEntityOverride = !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
         // custom_popup_enabled gates the custom card; undefined = true for backward compat
         const popupCard = mergedPopup.custom_popup_enabled === false
           ? null
@@ -2873,7 +2875,7 @@ class HkiHeaderCard extends LitElement {
             return res?.result != null ? String(res.result) : str;
           } catch (_) { return str; }
         };
-        if (popupCard && customElements.get('hki-button-card')) {
+        if (!hasEntityOverride && popupCard && customElements.get('hki-button-card')) {
           // Custom popup card configured — open it inside the HKI popup frame
           Promise.all([
             resolveTemplate(mergedPopup.popup_name),
@@ -2897,7 +2899,6 @@ class HkiHeaderCard extends LitElement {
           }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
         } else {
           // No custom popup card — open the domain-appropriate HKI popup for the entity
-          const popupEntityId = finalAction.entity || entityId;
           if (popupEntityId && customElements.get('hki-button-card')) {
             Promise.all([
               resolveTemplate(mergedPopup.popup_name),
@@ -2913,6 +2914,7 @@ class HkiHeaderCard extends LitElement {
                 entity: popupEntityId,
                 ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
                 });
+                if (hasEntityOverride) btn._forceDomainPopupOnce = true;
                 this._activePopupProxyCards.add(btn);
                 btn._openPopup();
               } catch (err) {
