@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.1-dev-12 ',
+  '%c HKI-ELEMENTS %c v1.4.1-dev-13 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11570,8 +11570,9 @@ window.customCards.push({
       portal.__hkiPopupChromeObserver = observer;
       const actionHandler = (ev) => {
         if (this._config?.popup_close_on_action !== true) return;
-        const action = ev?.detail?.config?.action || ev?.detail?.action;
-        if (action === "perform-action" || action === "call-service") {
+        if (this._isPopupBarActionEvent(ev)) return;
+        const action = this._resolveHassActionType(ev);
+        if (action && action !== "none") {
           setTimeout(() => this._closePopup(), 0);
         }
       };
@@ -11590,6 +11591,31 @@ window.customCards.push({
       delete portal.__hkiPopupChromeObserver;
       delete portal.__hkiPopupChromeObserverAttached;
       delete portal.__hkiPopupActionHandler;
+    }
+
+    _isPopupBarActionEvent(ev) {
+      const barSelector = ".hki-popup-header, .hki-light-popup-header, .popup-header, .hki-popup-nav, .popup-nav";
+      const path = typeof ev?.composedPath === "function" ? ev.composedPath() : [];
+      for (const node of path) {
+        if (!(node instanceof Element)) continue;
+        if (typeof node.matches === "function" && node.matches(barSelector)) return true;
+        if (typeof node.closest === "function" && node.closest(barSelector)) return true;
+      }
+      const target = ev?.target;
+      return target instanceof Element && typeof target.closest === "function" && !!target.closest(barSelector);
+    }
+
+    _resolveHassActionType(ev) {
+      const detail = ev?.detail || {};
+      const directConfigAction = detail?.config?.action;
+      if (typeof directConfigAction === "string" && directConfigAction) return directConfigAction;
+      const directAction = detail?.action;
+      if (typeof directAction === "string" && !["tap", "hold", "double_tap"].includes(directAction)) {
+        return directAction;
+      }
+      if (!["tap", "hold", "double_tap"].includes(directAction)) return "";
+      const nestedAction = detail?.config?.[`${directAction}_action`]?.action;
+      return typeof nestedAction === "string" ? nestedAction : "";
     }
 
 
@@ -17870,9 +17896,6 @@ window.customCards.push({
         const serviceStr = action.service || action.perform_action || '';
         const [d, s] = serviceStr.split('.');
         if (d && s) this.hass.callService(d, s, { entity_id: entityId, ...(action.service_data || action.data || {}) });
-        if (this._config?.popup_close_on_action === true && this._popupOpen) {
-          setTimeout(() => this._closePopup(), 0);
-        }
       } else if (act === 'url') {
         if (action.url_path) window.open(action.url_path, '_blank');
       } else if (act === 'fire-dom-event') {
