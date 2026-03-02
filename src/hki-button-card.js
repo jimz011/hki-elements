@@ -2526,11 +2526,18 @@
 
         document.body.appendChild(overlay);
 
-        overlay.addEventListener('click', (ev) => {
-          // Keep dialog open for retries; close explicitly via Cancel/Escape.
-          if (ev.target === overlay) ev.stopPropagation();
-        });
-        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', (ev) => ev.stopPropagation());
+        const eatEvent = (ev) => {
+          ev.stopPropagation();
+          if (ev.cancelable) ev.preventDefault();
+        };
+        overlay.addEventListener('click', eatEvent);
+        overlay.addEventListener('mousedown', eatEvent);
+        overlay.addEventListener('mouseup', eatEvent);
+        overlay.addEventListener('touchstart', eatEvent, { passive: false });
+        overlay.addEventListener('touchend', eatEvent, { passive: false });
+        overlay.addEventListener('pointerdown', eatEvent);
+        overlay.addEventListener('pointerup', eatEvent);
+        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', eatEvent);
 
         const onKeyDown = (ev) => {
           if (ev.key === 'Escape') close(false);
@@ -2539,12 +2546,13 @@
         window.addEventListener('keydown', onKeyDown);
         keydownAttached = true;
 
-        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', () => close(false));
-        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', () => verify());
+        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', (ev) => { eatEvent(ev); close(false); });
+        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { eatEvent(ev); verify(); });
 
         if (isPin) {
           overlay.querySelectorAll('[data-k]').forEach((btn) => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (ev) => {
+              eatEvent(ev);
               if (this._isButtonLockInLockout()) {
                 syncLockoutUI();
                 return;
@@ -2570,6 +2578,9 @@
             inputEl.addEventListener('input', () => {
               inputValue = inputEl.value || '';
               clearErrorVisual();
+            });
+            inputEl.addEventListener('keydown', (ev) => {
+              ev.stopPropagation();
             });
           }
         }

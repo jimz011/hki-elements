@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-03 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-04 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -6920,10 +6920,22 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="URL" .value=${action.url_path || ""} data-field="${field}.url_path" @input=${this._changed}></ha-textfield>
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+        <ha-selector
+          .hass=${this.hass}
+          .label=${"Entity (optional)"}
+          .selector=${{ entity: {} }}
+          .value=${action.entity || ""}
+          @value-changed=${(e) => this._changed(e, field + ".entity")}
+        ></ha-selector>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+        <ha-selector
+          .hass=${this.hass}
+          .label=${"Override Entity"}
+          .selector=${{ entity: {} }}
+          .value=${action.entity || ""}
+          @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
+        ></ha-selector>
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "fire-dom-event" ? html`
@@ -10957,11 +10969,18 @@ window.customCards.push({
 
         document.body.appendChild(overlay);
 
-        overlay.addEventListener('click', (ev) => {
-          // Keep dialog open for retries; close explicitly via Cancel/Escape.
-          if (ev.target === overlay) ev.stopPropagation();
-        });
-        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', (ev) => ev.stopPropagation());
+        const eatEvent = (ev) => {
+          ev.stopPropagation();
+          if (ev.cancelable) ev.preventDefault();
+        };
+        overlay.addEventListener('click', eatEvent);
+        overlay.addEventListener('mousedown', eatEvent);
+        overlay.addEventListener('mouseup', eatEvent);
+        overlay.addEventListener('touchstart', eatEvent, { passive: false });
+        overlay.addEventListener('touchend', eatEvent, { passive: false });
+        overlay.addEventListener('pointerdown', eatEvent);
+        overlay.addEventListener('pointerup', eatEvent);
+        overlay.querySelector('.hki-auth-dialog')?.addEventListener('click', eatEvent);
 
         const onKeyDown = (ev) => {
           if (ev.key === 'Escape') close(false);
@@ -10970,12 +10989,13 @@ window.customCards.push({
         window.addEventListener('keydown', onKeyDown);
         keydownAttached = true;
 
-        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', () => close(false));
-        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', () => verify());
+        overlay.querySelector('[data-act="cancel"]')?.addEventListener('click', (ev) => { eatEvent(ev); close(false); });
+        overlay.querySelector('[data-act="ok"]')?.addEventListener('click', (ev) => { eatEvent(ev); verify(); });
 
         if (isPin) {
           overlay.querySelectorAll('[data-k]').forEach((btn) => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (ev) => {
+              eatEvent(ev);
               if (this._isButtonLockInLockout()) {
                 syncLockoutUI();
                 return;
@@ -11001,6 +11021,9 @@ window.customCards.push({
             inputEl.addEventListener('input', () => {
               inputValue = inputEl.value || '';
               clearErrorVisual();
+            });
+            inputEl.addEventListener('keydown', (ev) => {
+              ev.stopPropagation();
             });
           }
         }

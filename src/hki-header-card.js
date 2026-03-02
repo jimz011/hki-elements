@@ -6271,10 +6271,22 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="URL" .value=${action.url_path || ""} data-field="${field}.url_path" @input=${this._changed}></ha-textfield>
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+        <ha-selector
+          .hass=${this.hass}
+          .label=${"Entity (optional)"}
+          .selector=${{ entity: {} }}
+          .value=${action.entity || ""}
+          @value-changed=${(e) => this._changed(e, field + ".entity")}
+        ></ha-selector>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+        <ha-selector
+          .hass=${this.hass}
+          .label=${"Override Entity"}
+          .selector=${{ entity: {} }}
+          .value=${action.entity || ""}
+          @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
+        ></ha-selector>
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "fire-dom-event" ? html`
