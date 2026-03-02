@@ -2323,10 +2323,28 @@ class HkiNavigationCardEditor extends LitElement {
     };
     return html`
       <div class="subsection"><div class="subheader">${title}</div>
-        <ha-select .label=${"Action type"} .value=${type} @selected=${(e) => update({ action: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>${ACTIONS.map((a) => html`<mwc-list-item .value=${a.value}>${a.label}</mwc-list-item>`)}</ha-select>
+                <ha-selector
+          .hass=${this.hass}
+          .label=${""}
+          .selector=${{ select: { mode: "dropdown", options: ACTIONS } }}
+          .value=${type}
+          @value-changed=${(e) => update({ action: (window.HKI.getSelectValue(e)) })}
+        ></ha-selector>
         ${type === "navigate" ? html`${this._renderNavigationPathPicker("Navigation path", act.navigation_path || "", (v) => update({ navigation_path: v }))}` : html``}
         ${type === "url" ? html`<ha-textfield .label=${"URL"} .value=${act.url_path || ""} placeholder="https://example.com" @change=${(e) => update({ url_path: (window.HKI.getSelectValue(e)) })}></ha-textfield><ha-formfield .label=${"Open in new tab"}><ha-switch .checked=${act.new_tab !== false} @change=${(e) => update({ new_tab: e.target.checked })}></ha-switch></ha-formfield>` : html``}
-        ${type === "toggle-group" ? html`<div class="grid2"><ha-select .label=${"Target group"} .value=${act.target || "vertical"} @selected=${(e) => update({ target: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>${GROUP_TARGETS.map((g) => html`<mwc-list-item .value=${g.value}>${g.label}</mwc-list-item>`)}</ha-select><ha-select .label=${"Mode"} .value=${act.mode || "toggle"} @selected=${(e) => update({ mode: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>${GROUP_ACTIONS.map((m) => html`<mwc-list-item .value=${m.value}>${m.label}</mwc-list-item>`)}</ha-select></div><div class="hint">Tip: Disable a group below, then use this action to open it temporarily. It auto-closes after pressing any other button.</div>` : html``}
+        ${type === "toggle-group" ? html`<div class="grid2">        <ha-selector
+          .hass=${this.hass}
+          .label=${""}
+          .selector=${{ select: { mode: "dropdown", options: GROUP_TARGETS } }}
+          .value=${act.target || "vertical"}
+          @value-changed=${(e) => update({ target: (window.HKI.getSelectValue(e)) })}
+        ></ha-selector>        <ha-selector
+          .hass=${this.hass}
+          .label=${""}
+          .selector=${{ select: { mode: "dropdown", options: GROUP_ACTIONS } }}
+          .value=${act.mode || "toggle"}
+          @value-changed=${(e) => update({ mode: (window.HKI.getSelectValue(e)) })}
+        ></ha-selector></div><div class="hint">Tip: Disable a group below, then use this action to open it temporarily. It auto-closes after pressing any other button.</div>` : html``}
         ${type === "perform-action" ? html`
           ${customElements.get("ha-service-picker") ? html`
             <ha-service-picker
@@ -2351,36 +2369,32 @@ class HkiNavigationCardEditor extends LitElement {
               const services = (domain && this.hass?.services?.[domain]) ? Object.keys(this.hass.services[domain]).sort() : [];
               return html`
                 <div class="grid2">
-                  <ha-select
-                    .label=${"Domain"}
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...Object.keys(this.hass?.services || {}).sort().map(d => ({value: d, label: d}))] } }}
                     .value=${domain || undefined}
-                    @selected=${(e) => {
+                    @value-changed=${(e) => {
                       const nextDomain = (window.HKI.getSelectValue(e)) || '';
                       this._paDomainCache[key] = nextDomain;
                       // Clear service when domain changes
                       update({ perform_action: '' });
                       this.requestUpdate();
                     }}
-                    @closed=${(e) => e.stopPropagation()}
-                  >
-                    <mwc-list-item value=""></mwc-list-item>
-                    ${Object.keys(this.hass?.services || {}).sort().map((d) => html`<mwc-list-item .value=${d}>${d}</mwc-list-item>`)}
-                  </ha-select>
+                  ></ha-selector>
 
-                  <ha-select
-                    .label=${"Service"}
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: '', label: ''}, ...services.map(s => ({value: s, label: s}))] } }}
                     .value=${derivedService || undefined}
                     .disabled=${!domain}
-                    @selected=${(e) => {
+                    @value-changed=${(e) => {
                       const service = (window.HKI.getSelectValue(e)) || '';
                       const d = this._paDomainCache[key] || domain;
                       update({ perform_action: (d && service) ? `${d}.${service}` : '' });
                     }}
-                    @closed=${(e) => e.stopPropagation()}
-                  >
-                    <mwc-list-item value=""></mwc-list-item>
-                    ${services.map((s) => html`<mwc-list-item .value=${s}>${s}</mwc-list-item>`)}
-                  </ha-select>
+                  ></ha-selector>
                 </div>
               `;
             })()}
@@ -2447,16 +2461,40 @@ class HkiNavigationCardEditor extends LitElement {
     return html`
       <div class="subsection">
         <div class="subheader row"><span>Visibility</span><mwc-button outlined @click=${add}><ha-icon icon="mdi:plus"></ha-icon>&nbsp;Add condition</mwc-button></div>
-        <ha-select .label=${"Condition mode"} .value=${mode} @selected=${(e) => setBtnFn({ ...btn, conditions_mode: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}><mwc-list-item value="all">All conditions (AND)</mwc-list-item><mwc-list-item value="any">Any condition (OR)</mwc-list-item></ha-select>
+                <ha-selector
+          .hass=${this.hass}
+          .label=${""}
+          .selector=${{ select: { mode: "dropdown", options: [{value: 'all', label: 'All conditions (AND)'}, {value: 'any', label: 'Any condition (OR)'}] } }}
+          .value=${mode}
+          @value-changed=${(e) => setBtnFn({ ...btn, conditions_mode: (window.HKI.getSelectValue(e)) })}
+        ></ha-selector>
         ${conditions.length === 0 ? html`<div class="hint">No conditions → button is always visible.</div>` : html``}
         ${conditions.map((cond) => {
           const type = cond.type || "entity";
           const title = type === "entity" ? (cond.entity || "(entity)") : type === "user" ? "User" : type === "view" ? "View" : "Screen";
-          return html`<div class="cond"><div class="cond-head"><div class="cond-title">${title}${cond.invert ? " • inverted" : ""}</div><mwc-icon-button title="Remove" @click=${() => remove(cond.id)}><ha-icon icon="mdi:trash-can-outline"></ha-icon></mwc-icon-button></div><div class="grid2"><ha-select .label=${"Condition type"} .value=${type} @selected=${(e) => setCond(cond.id, { type: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>${CONDITION_TYPES.map((t) => html`<mwc-list-item .value=${t.value}>${t.label}</mwc-list-item>`)}</ha-select><ha-formfield .label=${"Invert result"}><ha-switch .checked=${!!cond.invert} @change=${(e) => setCond(cond.id, { invert: e.target.checked })}></ha-switch></ha-formfield></div>
-              ${type === "entity" ? html`<div class="grid2">${this._renderEntityPicker("Entity", cond.entity || "", (v) => setCond(cond.id, { entity: v }))}<ha-textfield .label=${"Attribute (optional)"} .value=${cond.attribute || ""} placeholder="brightness" @change=${(e) => setCond(cond.id, { attribute: (window.HKI.getSelectValue(e)) })}></ha-textfield><ha-select .label=${"Operator"} .value=${cond.operator || "equals"} @selected=${(e) => setCond(cond.id, { operator: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}>${ENTITY_OPERATORS.map((o) => html`<mwc-list-item .value=${o.value}>${o.label}</mwc-list-item>`)}</ha-select>${(cond.operator === "exists" || cond.operator === "not_exists") ? html`<div></div>` : html`<ha-textfield .label=${"Value"} .value=${cond.value ?? ""} placeholder="on" @change=${(e) => setCond(cond.id, { value: (window.HKI.getSelectValue(e)) })}></ha-textfield>`}</div>` : html``}
+          return html`<div class="cond"><div class="cond-head"><div class="cond-title">${title}${cond.invert ? " • inverted" : ""}</div><mwc-icon-button title="Remove" @click=${() => remove(cond.id)}><ha-icon icon="mdi:trash-can-outline"></ha-icon></mwc-icon-button></div><div class="grid2">          <ha-selector
+            .hass=${this.hass}
+            .label=${""}
+            .selector=${{ select: { mode: "dropdown", options: CONDITION_TYPES } }}
+            .value=${type}
+            @value-changed=${(e) => setCond(cond.id, { type: (window.HKI.getSelectValue(e)) })}
+          ></ha-selector><ha-formfield .label=${"Invert result"}><ha-switch .checked=${!!cond.invert} @change=${(e) => setCond(cond.id, { invert: e.target.checked })}></ha-switch></ha-formfield></div>
+              ${type === "entity" ? html`<div class="grid2">${this._renderEntityPicker("Entity", cond.entity || "", (v) => setCond(cond.id, { entity: v }))}<ha-textfield .label=${"Attribute (optional)"} .value=${cond.attribute || ""} placeholder="brightness" @change=${(e) => setCond(cond.id, { attribute: (window.HKI.getSelectValue(e)) })}></ha-textfield>              <ha-selector
+                .hass=${this.hass}
+                .label=${""}
+                .selector=${{ select: { mode: "dropdown", options: ENTITY_OPERATORS } }}
+                .value=${cond.operator || "equals"}
+                @value-changed=${(e) => setCond(cond.id, { operator: (window.HKI.getSelectValue(e)) })}
+              ></ha-selector>${(cond.operator === "exists" || cond.operator === "not_exists") ? html`<div></div>` : html`<ha-textfield .label=${"Value"} .value=${cond.value ?? ""} placeholder="on" @change=${(e) => setCond(cond.id, { value: (window.HKI.getSelectValue(e)) })}></ha-textfield>`}</div>` : html``}
               ${type === "user" ? html`<ha-textfield .label=${"Users (comma-separated names)"} .value=${csvString(cond.users)} placeholder="Jimmy Schings, Alex" @change=${(e) => setCond(cond.id, { users: parseCsv((window.HKI.getSelectValue(e))) })}></ha-textfield>` : html``}
               ${type === "view" ? html`<ha-textfield .label=${"Views (comma-separated paths)"} .value=${csvString(cond.views)} placeholder="/lovelace/0, /lovelace/home" @change=${(e) => setCond(cond.id, { views: parseCsv((window.HKI.getSelectValue(e))) })}></ha-textfield>` : html``}
-              ${type === "screen" ? html`<ha-select .label=${"Screen mode"} .value=${cond.mode || "mobile"} @selected=${(e) => setCond(cond.id, { mode: (window.HKI.getSelectValue(e)) })} @closed=${(e) => e.stopPropagation()}><mwc-list-item value="mobile">Mobile</mwc-list-item><mwc-list-item value="desktop">Desktop</mwc-list-item></ha-select>` : html``}</div>`;
+              ${type === "screen" ? html`              <ha-selector
+                .hass=${this.hass}
+                .label=${""}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'mobile', label: 'Mobile'}, {value: 'desktop', label: 'Desktop'}] } }}
+                .value=${cond.mode || "mobile"}
+                @value-changed=${(e) => setCond(cond.id, { mode: (window.HKI.getSelectValue(e)) })}
+              ></ha-selector>` : html``}</div>`;
         })}
       </div>`;
   }
@@ -2469,7 +2507,13 @@ class HkiNavigationCardEditor extends LitElement {
       <details><summary class="cat-head">Visual Customization</summary><div class="cat-content">
         ${hasIconPicker ? html`<ha-icon-picker .label=${"Icon"} .value=${btn.icon || ""} @value-changed=${(e) => setBtnFn({ ...btn, icon: e.detail.value })}></ha-icon-picker>` : html`<ha-textfield .label=${"Icon (mdi:...)"} .value=${btn.icon || ""} placeholder="mdi:home" @change=${(e) => setBtnFn({ ...btn, icon: (window.HKI.getSelectValue(e)) })}></ha-textfield>`}
         <div class="grid2">
-            <ha-select .label=${"Button Type"} .value=${effectiveType} @selected=${(e) => { const v = (window.HKI.getSelectValue(e)); setBtnFn({ ...btn, button_type: v === INHERIT ? "" : v }); }} @closed=${(e) => e.stopPropagation()}><mwc-list-item .value=${INHERIT}>(inherit default)</mwc-list-item>${BUTTON_TYPES.map((t) => html`<mwc-list-item .value=${t.value}>${t.label}</mwc-list-item>`)}</ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${""}
+              .selector=${{ select: { mode: "dropdown", options: BUTTON_TYPES } }}
+              .value=${effectiveType}
+              @value-changed=${(e) => { const v = (window.HKI.getSelectValue(e)); setBtnFn({ ...btn, button_type: v === INHERIT ? "" : v }); }}
+            ></ha-selector>
             <ha-textfield .label=${"Tooltip (optional)"} .value=${btn.tooltip || ""} @change=${(e) => setBtnFn({ ...btn, tooltip: (window.HKI.getSelectValue(e)) })}></ha-textfield>
         </div>
         <div class="subheader" style="margin: 10px 0 6px 0;">Button label</div>
@@ -2534,7 +2578,13 @@ class HkiNavigationCardEditor extends LitElement {
         ${pillTypeSelected ? html`<div class="grid2"><ha-textfield type="number" .label=${`Pill width override (px) — blank = inherit global / auto (min ${MIN_PILL_WIDTH})`} .value=${btn.pill_width ?? ""} @change=${(e) => { const v = safeString((window.HKI.getSelectValue(e))).trim(); if (!v) return setBtnFn({ ...btn, pill_width: "" }); const n = Math.max(MIN_PILL_WIDTH, Number(v)); setBtnFn({ ...btn, pill_width: String(n) }); }}></ha-textfield><div class="hint">Fixed width keeps pills aligned and prevents awkward spacing.</div></div>` : html``}
         <div class="subsection"><div class="subheader">Label style overrides (optional)</div><div class="grid2">
             <ha-textfield type="number" .label=${"Font size (px) — blank = inherit"} .value=${btn.label_style?.font_size ?? ""} @change=${(e) => { const next = { ...(btn.label_style || {}) }; if (safeString((window.HKI.getSelectValue(e))).trim() === "") delete next.font_size; else next.font_size = Number((window.HKI.getSelectValue(e))); setBtnFn({ ...btn, label_style: next }); }}></ha-textfield>
-            <ha-select .label=${"Font weight — blank = inherit"} .value=${btn.label_style?.font_weight !== undefined ? String(btn.label_style.font_weight) : INHERIT} @selected=${(e) => { const next = { ...(btn.label_style || {}) }; if ((window.HKI.getSelectValue(e)) === INHERIT) delete next.font_weight; else next.font_weight = Number((window.HKI.getSelectValue(e))); setBtnFn({ ...btn, label_style: next }); }} @closed=${(e) => e.stopPropagation()}><mwc-list-item .value=${INHERIT}>(inherit)</mwc-list-item>${FONT_WEIGHTS.map((fw) => html`<mwc-list-item .value=${String(fw.value)}>${fw.label}</mwc-list-item>`)}</ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${""}
+              .selector=${{ select: { mode: "dropdown", options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
+              .value=${btn.label_style?.font_weight !== undefined ? String(btn.label_style.font_weight) : INHERIT}
+              @value-changed=${(e) => { const next = { ...(btn.label_style || {}) }; if ((window.HKI.getSelectValue(e)) === INHERIT) delete next.font_weight; else next.font_weight = Number((window.HKI.getSelectValue(e))); setBtnFn({ ...btn, label_style: next }); }}
+            ></ha-selector>
             <ha-textfield .label=${"Text color — blank = inherit"} .value=${btn.label_style?.color ?? ""} placeholder="(blank = inherit)" @change=${(e) => { const next = { ...(btn.label_style || {}) }; if (safeString((window.HKI.getSelectValue(e))).trim() === "") delete next.color; else next.color = (window.HKI.getSelectValue(e)); setBtnFn({ ...btn, label_style: next }); }}></ha-textfield>
             <ha-textfield .label=${"Label background — blank = inherit"} .value=${btn.label_style?.background ?? ""} placeholder="(blank = inherit)" @change=${(e) => { const next = { ...(btn.label_style || {}) }; if (safeString((window.HKI.getSelectValue(e))).trim() === "") delete next.background; else next.background = (window.HKI.getSelectValue(e)); setBtnFn({ ...btn, label_style: next }); }}></ha-textfield>
             <ha-textfield type="number" .label=${"Label background opacity — blank = inherit"} .value=${btn.label_style?.background_opacity ?? ""} @change=${(e) => { const next = { ...(btn.label_style || {}) }; if (safeString((window.HKI.getSelectValue(e))).trim() === "") delete next.background_opacity; else next.background_opacity = Number((window.HKI.getSelectValue(e))); setBtnFn({ ...btn, label_style: next }); }}></ha-textfield>
@@ -2654,7 +2704,13 @@ class HkiNavigationCardEditor extends LitElement {
           <div class="grid2">
             <ha-formfield .label=${"Reserve bottom space"}><ha-switch .checked=${!!c.reserve_space} @change=${(e) => this._setBool("reserve_space", e.target.checked)}></ha-switch></ha-formfield>
             ${c.reserve_space ? html`<div class="hint" style="grid-column: 1/-1; margin-top: -6px;">ℹ️ <b>Reserve bottom space</b> only works when this card is the <b>last card</b> on the view (so the spacer ends up at the bottom of the page).</div>` : html``}
-            <ha-select .label=${"Position"} .value=${c.position} @selected=${(e) => this._setValue("position", (window.HKI.getSelectValue(e)))} @closed=${(e) => e.stopPropagation()}><mwc-list-item value="bottom-left">Bottom left</mwc-list-item><mwc-list-item value="bottom-center">Bottom center</mwc-list-item><mwc-list-item value="bottom-right">Bottom right</mwc-list-item></ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${""}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'bottom-left', label: 'Bottom left'}, {value: 'bottom-center', label: 'Bottom center'}, {value: 'bottom-right', label: 'Bottom right'}] } }}
+              .value=${c.position}
+              @value-changed=${(e) => this._setValue("position", (window.HKI.getSelectValue(e)))}
+            ></ha-selector>
             <ha-textfield type="number" .label=${"Offset X (px)"} .value=${String(c.offset_x)} @change=${(e) => this._setValue("offset_x", Number((window.HKI.getSelectValue(e))))}></ha-textfield>
             <ha-textfield type="number" .label=${"Offset Y (px)"} .value=${String(c.offset_y)} @change=${(e) => this._setValue("offset_y", Number((window.HKI.getSelectValue(e))))}></ha-textfield>
             <div style="grid-column: 1/-1; margin-top: 8px;"><details><summary style="cursor: pointer; user-select: none; padding: 8px 0; color: var(--primary-text-color); font-weight: 500;">⚙️ Advanced: Screen-size-specific offsets (optional)</summary><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; padding: 12px; background: rgba(var(--rgb-primary-text-color), 0.05); border-radius: 8px;"><div class="hint" style="grid-column: 1/-1; margin: 0 0 8px 0;">Override the base Offset X for specific screen sizes. Leave blank to use the base offset. This is probably only useful when buttons are positioned on the left.</div><ha-textfield type="number" .label=${"Mobile offset X (< 768px)"} .value=${c.offset_x_mobile !== undefined && c.offset_x_mobile !== null ? String(c.offset_x_mobile) : ""} placeholder="Uses base offset X" @change=${(e) => { const val = (window.HKI.getSelectValue(e)).trim(); this._setValue("offset_x_mobile", val === "" ? null : Number(val)); }}></ha-textfield><ha-textfield type="number" .label=${"Tablet offset X (768-1024px)"} .value=${c.offset_x_tablet !== undefined && c.offset_x_tablet !== null ? String(c.offset_x_tablet) : ""} placeholder="Uses base offset X" @change=${(e) => { const val = (window.HKI.getSelectValue(e)).trim(); this._setValue("offset_x_tablet", val === "" ? null : Number(val)); }}></ha-textfield><ha-textfield type="number" .label=${"Desktop offset X (> 1024px)"} .value=${c.offset_x_desktop !== undefined && c.offset_x_desktop !== null ? String(c.offset_x_desktop) : ""} placeholder="Uses base offset X" @change=${(e) => { const val = (window.HKI.getSelectValue(e)).trim(); this._setValue("offset_x_desktop", val === "" ? null : Number(val)); }}></ha-textfield></div></details></div>
@@ -2684,7 +2740,13 @@ class HkiNavigationCardEditor extends LitElement {
               <summary>Button styling defaults</summary>
               <div class="cat-content">
                 <div class="grid2">
-                  <ha-select .label=${"Default Button Type"} .value=${c.default_button_type} @selected=${(e) => this._setValue("default_button_type", (window.HKI.getSelectValue(e)))} @closed=${(e) => e.stopPropagation()}>${BUTTON_TYPES.map((t) => html`<mwc-list-item .value=${t.value}>${t.label}</mwc-list-item>`)}</ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { mode: "dropdown", options: BUTTON_TYPES } }}
+                    .value=${c.default_button_type}
+                    @value-changed=${(e) => this._setValue("default_button_type", (window.HKI.getSelectValue(e)))}
+                  ></ha-selector>
                   ${showPillWidthGlobal ? html`<ha-textfield type="number" .label=${`Global pill width (px) — 0 = auto (min ${MIN_PILL_WIDTH})`} .value=${String(c.pill_width || 0)} @change=${(e) => this._setGlobalPillWidth(Number((window.HKI.getSelectValue(e))))}></ha-textfield>` : html`<div class="hint">Global pill width appears when Default Button Type is a pill type.</div>`}
                   <ha-textfield .label=${"Default background (optional override)"} .value=${c.default_background || ""} placeholder="(blank = theme accent/primary)" @change=${(e) => this._setDefaultBackground((window.HKI.getSelectValue(e)))}></ha-textfield>
                   <ha-textfield type="number" step="0.01" min="0" max="1" .label=${"Default button background opacity (0..1)"} .value=${String(c.default_button_opacity ?? 1)} @change=${(e) => this._setDefaultButtonOpacity((window.HKI.getSelectValue(e)))}></ha-textfield>
@@ -2703,9 +2765,21 @@ class HkiNavigationCardEditor extends LitElement {
                 <div class="hint">These defaults are used when a button label style is left blank (inherit).</div>
                 <div class="grid2">
                   <ha-textfield type="number" .label=${"Font size (px)"} .value=${String(c.label_style?.font_size ?? DEFAULT_LABEL_STYLE.font_size)} @change=${(e) => this._setLabelStyleGlobal("font_size", Number((window.HKI.getSelectValue(e))))}></ha-textfield>
-                  <ha-select .label=${"Font weight"} .value=${String(c.label_style?.font_weight ?? DEFAULT_LABEL_STYLE.font_weight)} @selected=${(e) => this._setLabelStyleGlobal("font_weight", Number((window.HKI.getSelectValue(e))))} @closed=${(e) => e.stopPropagation()}>${FONT_WEIGHTS.map((fw) => html`<mwc-list-item .value=${String(fw.value)}>${fw.label}</mwc-list-item>`)}</ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { mode: "dropdown", options: FONT_WEIGHTS.map(fw => ({value: String(fw.value), label: fw.label})) } }}
+                    .value=${String(c.label_style?.font_weight ?? DEFAULT_LABEL_STYLE.font_weight)}
+                    @value-changed=${(e) => this._setLabelStyleGlobal("font_weight", Number((window.HKI.getSelectValue(e))))}
+                  ></ha-selector>
                   <ha-textfield type="number" .label=${"Letter spacing (px)"} .value=${String(c.label_style?.letter_spacing ?? DEFAULT_LABEL_STYLE.letter_spacing)} @change=${(e) => this._setLabelStyleGlobal("letter_spacing", Number((window.HKI.getSelectValue(e))))}></ha-textfield>
-                  <ha-select .label=${"Text transform"} .value=${c.label_style?.text_transform ?? "none"} @selected=${(e) => this._setLabelStyleGlobal("text_transform", (window.HKI.getSelectValue(e)))} @closed=${(e) => e.stopPropagation()}><mwc-list-item value="none">None</mwc-list-item><mwc-list-item value="uppercase">Uppercase</mwc-list-item><mwc-list-item value="lowercase">Lowercase</mwc-list-item><mwc-list-item value="capitalize">Capitalize</mwc-list-item></ha-select>
+                                    <ha-selector
+                    .hass=${this.hass}
+                    .label=${""}
+                    .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'uppercase', label: 'Uppercase'}, {value: 'lowercase', label: 'Lowercase'}, {value: 'capitalize', label: 'Capitalize'}] } }}
+                    .value=${c.label_style?.text_transform ?? "none"}
+                    @value-changed=${(e) => this._setLabelStyleGlobal("text_transform", (window.HKI.getSelectValue(e)))}
+                  ></ha-selector>
                   <ha-textfield .label=${"Text color (optional)"} .value=${c.label_style?.color ?? ""} placeholder="(blank = theme/currentColor)" @change=${(e) => this._setLabelStyleGlobal("color", (window.HKI.getSelectValue(e)))}></ha-textfield>
                   <ha-textfield .label=${"Label background (optional)"} .value=${c.label_style?.background ?? ""} placeholder="(blank = theme card rgba)" @change=${(e) => this._setLabelStyleGlobal("background", (window.HKI.getSelectValue(e)))}></ha-textfield>
                   <ha-textfield type="number" .label=${"Label background opacity"} .value=${String(c.label_style?.background_opacity ?? DEFAULT_LABEL_STYLE.background_opacity)} @change=${(e) => this._setLabelStyleGlobal("background_opacity", Number((window.HKI.getSelectValue(e))))}></ha-textfield>
@@ -2853,4 +2927,3 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/jimz011/hki-navigation-card",
 });
-

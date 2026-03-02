@@ -385,15 +385,13 @@ class HkiSettingsBase extends LitElement {
   _renderSelect(scope, key, label, options) {
     const current = this._config?.[scope]?.[key];
     return html`
-      <ha-select
-        .label=${label}
+            <ha-selector
+        .hass=${this.hass}
+        .label=${""}
+        .selector=${{ select: { mode: "dropdown", options: options.map(opt => ({value: String(opt.value), label: opt.label})) } }}
         .value=${current !== undefined ? String(current) : "__inherit__"}
-        @selected=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
-        @closed=${(e) => e.stopPropagation()}
-      >
-        <mwc-list-item .value=${"__inherit__"}>(inherit)</mwc-list-item>
-        ${options.map((opt) => html`<mwc-list-item .value=${String(opt.value)}>${opt.label}</mwc-list-item>`)}
-      </ha-select>
+        @value-changed=${(e) => this._setSelect(scope, key, (window.HKI.getSelectValue(e)))}
+      ></ha-selector>
     `;
   }
 

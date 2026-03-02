@@ -2754,12 +2754,13 @@ class HkiNotificationCardEditor extends LitElement {
         <details class="box-section">
           <summary>Notification Style & Behavior</summary>
           <div class="box-content">
-            <ha-select label="Display Mode" .value=${mode} @selected=${(e) => this._modeChanged(e)} @closed=${(e) => e.stopPropagation()}>
-               <mwc-list-item value="ticker">Ticker (Cycle One by One)</mwc-list-item>
-               <mwc-list-item value="marquee">Marquee (Scrollable List)</mwc-list-item>
-               <mwc-list-item value="list">List (Vertical Stack)</mwc-list-item>
-               <mwc-list-item value="button">Button (Icon Only)</mwc-list-item>
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Display Mode"}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'ticker', label: 'Ticker (Cycle One by One)'}, {value: 'marquee', label: 'Marquee (Scrollable List)'}, {value: 'list', label: 'List (Vertical Stack)'}, {value: 'button', label: 'Button (Icon Only)'}] } }}
+              .value=${mode}
+              @value-changed=${(e) => this._modeChanged(e)}
+            ></ha-selector>
             
             ${mode !== 'button' ? html`
             <div class="side-by-side">
@@ -2783,12 +2784,20 @@ class HkiNotificationCardEditor extends LitElement {
                 </div>
                 ${this._renderSwitch("Auto Cycle Messages", "auto_cycle", this._config.auto_cycle)}
                 <div class="side-by-side">
-                    <ha-select label="Animation" .value=${this._config.animation || "slide"} @selected=${(e) => this._valueChanged(e, "animation")} @closed=${(e) => e.stopPropagation()}>
-                      ${["slide","scale","fade","flip","glitch","wobble","bounce","rotate","zoom","blur","elastic","swing"].map(a => html`<mwc-list-item .value=${a}>${a.charAt(0).toUpperCase() + a.slice(1)}</mwc-list-item>`)}
-                    </ha-select>
-                    <ha-select label="Direction" .value=${this._config.direction || "right"} @selected=${(e) => this._valueChanged(e, "direction")} @closed=${(e) => e.stopPropagation()}>
-                      ${["left","right","top","bottom"].map(d => html`<mwc-list-item .value=${d}>From ${d.charAt(0).toUpperCase() + d.slice(1)}</mwc-list-item>`)}
-                    </ha-select>
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Animation"}
+                      .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+                      .value=${this._config.animation || "slide"}
+                      @value-changed=${(e) => this._valueChanged(e, "animation")}
+                    ></ha-selector>
+                                        <ha-selector
+                      .hass=${this.hass}
+                      .label=${"Direction"}
+                      .selector=${{ select: { mode: "dropdown", options: [{value: 'd', label: 'From ${d.charAt(0).toUpperCase() + d.slice(1)}'}] } }}
+                      .value=${this._config.direction || "right"}
+                      @value-changed=${(e) => this._valueChanged(e, "direction")}
+                    ></ha-selector>
                 </div>
             ` : ''}
           </div>
@@ -2800,44 +2809,38 @@ class HkiNotificationCardEditor extends LitElement {
             ${mode === 'button' ? html`
               ${this._renderInput("Popup Title", "popup_title", this._config.popup_title || "Notifications")}
               ${this._renderSwitch("Show Timestamps", "show_popup_timestamp", this._config.show_popup_timestamp !== false)}
-              <ha-select label="Time Format" .value=${this._config.time_format || "auto"} @selected=${(e) => this._valueChanged(e, "time_format")} @closed=${(e) => e.stopPropagation()}>
-                <mwc-list-item value="auto">Auto (System Locale)</mwc-list-item>
-                <mwc-list-item value="24">24-hour</mwc-list-item>
-                <mwc-list-item value="12">12-hour</mwc-list-item>
-                            </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Time Format"}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
+                .value=${this._config.time_format || "auto"}
+                @value-changed=${(e) => this._valueChanged(e, "time_format")}
+              ></ha-selector>
 
               <div class="separator"></div>
               <strong>Popup Container</strong>
               ${this._renderInput("Border Radius (px)", "popup_border_radius", this._config.popup_border_radius ?? 16, "number")}
               <div class="side-by-side">
-                <ha-select
-                  label="Width"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Width"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_width || 'auto'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_width")}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                  <mwc-list-item value="default">Default (400px)</mwc-list-item>
-                  <mwc-list-item value="custom">Custom</mwc-list-item>
-                </ha-select>
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_width")}
+                ></ha-selector>
                 ${this._config.popup_width === 'custom'
                   ? this._renderInput("Custom Width (px)", "popup_width_custom", this._config.popup_width_custom ?? 400, "number")
                   : html`<div></div>`}
               </div>
 
               <div class="side-by-side">
-                <ha-select
-                  label="Height"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Height"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_height || 'auto'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_height")}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                  <mwc-list-item value="default">Default (600px)</mwc-list-item>
-                  <mwc-list-item value="custom">Custom</mwc-list-item>
-                </ha-select>
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_height")}
+                ></ha-selector>
                 ${this._config.popup_height === 'custom'
                   ? this._renderInput("Custom Height (px)", "popup_height_custom", this._config.popup_height_custom ?? 600, "number")
                   : html`<div></div>`}
@@ -2874,40 +2877,20 @@ class HkiNotificationCardEditor extends LitElement {
 <div class="separator"></div>
               <strong>Popup Animation</strong>
               <div class="side-by-side">
-                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
-                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="none">None</mwc-list-item>
-                  <mwc-list-item value="fade">Fade</mwc-list-item>
-                  <mwc-list-item value="scale">Scale</mwc-list-item>
-                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                  <mwc-list-item value="flip">Flip</mwc-list-item>
-                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                  <mwc-list-item value="drop">Drop</mwc-list-item>
-                  <mwc-list-item value="swing">Swing</mwc-list-item>
-                </ha-select>
-                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
-                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="none">None</mwc-list-item>
-                  <mwc-list-item value="fade">Fade</mwc-list-item>
-                  <mwc-list-item value="scale">Scale</mwc-list-item>
-                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                  <mwc-list-item value="flip">Flip</mwc-list-item>
-                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                  <mwc-list-item value="drop">Drop</mwc-list-item>
-                  <mwc-list-item value="swing">Swing</mwc-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Open Animation"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .value=${this._config.popup_open_animation || 'scale'}
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                ></ha-selector>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Close Animation"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .value=${this._config.popup_close_animation || 'scale'}
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                ></ha-selector>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
               ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
@@ -2927,44 +2910,38 @@ class HkiNotificationCardEditor extends LitElement {
                 ${this._renderSwitch("Popup Timestamps", "show_popup_timestamp", this._config.show_popup_timestamp !== false)}
                 ${this._renderSwitch("List Timestamps", "show_list_timestamp", this._config.show_list_timestamp)}
               </div>
-              <ha-select label="Time Format" .value=${this._config.time_format || "auto"} @selected=${(e) => this._valueChanged(e, "time_format")} @closed=${(e) => e.stopPropagation()}>
-                <mwc-list-item value="auto">Auto (System Locale)</mwc-list-item>
-                <mwc-list-item value="24">24-hour</mwc-list-item>
-                <mwc-list-item value="12">12-hour</mwc-list-item>
-                            </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Time Format"}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (System Locale)'}, {value: '24', label: '24-hour'}, {value: '12', label: '12-hour'}] } }}
+                .value=${this._config.time_format || "auto"}
+                @value-changed=${(e) => this._valueChanged(e, "time_format")}
+              ></ha-selector>
 
               <div class="separator"></div>
               <strong>Popup Container</strong>
               ${this._renderInput("Border Radius (px)", "popup_border_radius", this._config.popup_border_radius ?? 16, "number")}
               <div class="side-by-side">
-                <ha-select
-                  label="Width"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Width"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (400px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_width || 'auto'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_width")}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                  <mwc-list-item value="default">Default (400px)</mwc-list-item>
-                  <mwc-list-item value="custom">Custom</mwc-list-item>
-                </ha-select>
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_width")}
+                ></ha-selector>
                 ${this._config.popup_width === 'custom'
                   ? this._renderInput("Custom Width (px)", "popup_width_custom", this._config.popup_width_custom ?? 400, "number")
                   : html`<div></div>`}
               </div>
 
               <div class="side-by-side">
-                <ha-select
-                  label="Height"
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Height"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'auto', label: 'Auto (Responsive) - Default'}, {value: 'default', label: 'Default (600px)'}, {value: 'custom', label: 'Custom'}] } }}
                   .value=${this._config.popup_height || 'auto'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_height")}
-                  @closed=${(e) => e.stopPropagation()}
-                  @click=${(e) => e.stopPropagation()}
-                >
-                  <mwc-list-item value="auto">Auto (Responsive) - Default</mwc-list-item>
-                  <mwc-list-item value="default">Default (600px)</mwc-list-item>
-                  <mwc-list-item value="custom">Custom</mwc-list-item>
-                </ha-select>
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_height")}
+                ></ha-selector>
                 ${this._config.popup_height === 'custom'
                   ? this._renderInput("Custom Height (px)", "popup_height_custom", this._config.popup_height_custom ?? 600, "number")
                   : html`<div></div>`}
@@ -3002,40 +2979,20 @@ class HkiNotificationCardEditor extends LitElement {
               <div class="separator"></div>
               <strong>Popup Animation</strong>
               <div class="side-by-side">
-                <ha-select label="Open Animation" .value=${this._config.popup_open_animation || 'scale'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_open_animation")}
-                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="none">None</mwc-list-item>
-                  <mwc-list-item value="fade">Fade</mwc-list-item>
-                  <mwc-list-item value="scale">Scale</mwc-list-item>
-                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                  <mwc-list-item value="flip">Flip</mwc-list-item>
-                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                  <mwc-list-item value="drop">Drop</mwc-list-item>
-                  <mwc-list-item value="swing">Swing</mwc-list-item>
-                </ha-select>
-                <ha-select label="Close Animation" .value=${this._config.popup_close_animation || 'scale'}
-                  @selected=${(ev) => this._valueChanged(ev, "popup_close_animation")}
-                  @closed=${(e) => e.stopPropagation()} @click=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="none">None</mwc-list-item>
-                  <mwc-list-item value="fade">Fade</mwc-list-item>
-                  <mwc-list-item value="scale">Scale</mwc-list-item>
-                  <mwc-list-item value="slide-up">Slide Up</mwc-list-item>
-                  <mwc-list-item value="slide-down">Slide Down</mwc-list-item>
-                  <mwc-list-item value="slide-left">Slide Left</mwc-list-item>
-                  <mwc-list-item value="slide-right">Slide Right</mwc-list-item>
-                  <mwc-list-item value="flip">Flip</mwc-list-item>
-                  <mwc-list-item value="bounce">Bounce</mwc-list-item>
-                  <mwc-list-item value="zoom">Zoom</mwc-list-item>
-                  <mwc-list-item value="rotate">Rotate</mwc-list-item>
-                  <mwc-list-item value="drop">Drop</mwc-list-item>
-                  <mwc-list-item value="swing">Swing</mwc-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Open Animation"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .value=${this._config.popup_open_animation || 'scale'}
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_open_animation")}
+                ></ha-selector>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Close Animation"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'fade', label: 'Fade'}, {value: 'scale', label: 'Scale'}, {value: 'slide-up', label: 'Slide Up'}, {value: 'slide-down', label: 'Slide Down'}, {value: 'slide-left', label: 'Slide Left'}, {value: 'slide-right', label: 'Slide Right'}, {value: 'flip', label: 'Flip'}, {value: 'bounce', label: 'Bounce'}, {value: 'zoom', label: 'Zoom'}, {value: 'rotate', label: 'Rotate'}, {value: 'drop', label: 'Drop'}, {value: 'swing', label: 'Swing'}] } }}
+                  .value=${this._config.popup_close_animation || 'scale'}
+                  @value-changed=${(ev) => this._valueChanged(ev, "popup_close_animation")}
+                ></ha-selector>
               </div>
               ${this._renderInput("Animation Duration (ms)", "popup_animation_duration", this._config.popup_animation_duration ?? 300, "number")}
               ${this._renderSwitch("Hide Top Bar", "popup_hide_top_bar", this._config.popup_hide_top_bar === true)}
@@ -3061,21 +3018,26 @@ class HkiNotificationCardEditor extends LitElement {
         <details class="box-section">
           <summary>Button Style</summary>
           <div class="box-content">
-            <ha-select label="Alignment" .value=${this._config.alignment || "left"} @selected=${(e) => this._valueChanged(e, "alignment")} @closed=${(e) => e.stopPropagation()}>
-              ${["left","center","right"].map(a => html`<mwc-list-item .value=${a}>${a.charAt(0).toUpperCase() + a.slice(1)}</mwc-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Alignment"}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .value=${this._config.alignment || "left"}
+              @value-changed=${(e) => this._valueChanged(e, "alignment")}
+            ></ha-selector>
             ${this._renderSwitch("Full Width", "full_width", this._config.full_width)}
             
             ${this._renderIconPicker("Button Icon", "button_icon", this._config.button_icon || "mdi:bell")}
             ${this._renderInput("Button Label (optional)", "button_label", this._config.button_label || "")}
             
             ${this._config.button_label ? html`
-              <ha-select label="Label Position" .value=${this._config.button_label_position || "below"} @selected=${(e) => this._valueChanged(e, "button_label_position")} @closed=${(e) => e.stopPropagation()}>
-                <mwc-list-item value="below">Below Icon</mwc-list-item>
-                <mwc-list-item value="left">Left of Icon</mwc-list-item>
-                <mwc-list-item value="right">Right of Icon</mwc-list-item>
-                <mwc-list-item value="inside">Inside (Pill Style)</mwc-list-item>
-              </ha-select>
+                            <ha-selector
+                .hass=${this.hass}
+                .label=${"Label Position"}
+                .selector=${{ select: { mode: "dropdown", options: [{value: 'below', label: 'Below Icon'}, {value: 'left', label: 'Left of Icon'}, {value: 'right', label: 'Right of Icon'}, {value: 'inside', label: 'Inside (Pill Style)'}] } }}
+                .value=${this._config.button_label_position || "below"}
+                @value-changed=${(e) => this._valueChanged(e, "button_label_position")}
+              ></ha-selector>
             ` : ''}
             
             ${(this._config.button_label_position !== 'inside' || !this._config.button_label) ? html`
@@ -3097,12 +3059,13 @@ class HkiNotificationCardEditor extends LitElement {
                 ${this._renderInput("Border Radius", "button_pill_border_radius", this._config.button_pill_border_radius ?? 99, "number")}
               </div>
               <div class="side-by-side">
-                <ha-select label="Border Style" .value=${this._config.button_pill_border_style || "solid"} @selected=${(e) => this._valueChanged(e, "button_pill_border_style")} @closed=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="solid">Solid</mwc-list-item>
-                  <mwc-list-item value="dashed">Dashed</mwc-list-item>
-                  <mwc-list-item value="dotted">Dotted</mwc-list-item>
-                  <mwc-list-item value="none">None</mwc-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Border Style"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'none', label: 'None'}] } }}
+                  .value=${this._config.button_pill_border_style || "solid"}
+                  @value-changed=${(e) => this._valueChanged(e, "button_pill_border_style")}
+                ></ha-selector>
                 ${this._renderInput("Border Width", "button_pill_border_width", this._config.button_pill_border_width ?? 1, "number")}
               </div>
             `}
@@ -3111,10 +3074,13 @@ class HkiNotificationCardEditor extends LitElement {
             ${this._renderSwitch("Show Badge", "button_show_badge", this._config.button_show_badge !== false)}
             ${this._config.button_show_badge !== false ? html`
               ${(this._config.button_label_position === 'inside' && this._config.button_label) ? html`
-                <ha-select label="Badge Position" .value=${this._config.button_pill_badge_position || "inside"} @selected=${(e) => this._valueChanged(e, "button_pill_badge_position")} @closed=${(e) => e.stopPropagation()}>
-                  <mwc-list-item value="inside">Inside Pill</mwc-list-item>
-                  <mwc-list-item value="outside">Outside Pill (Corner)</mwc-list-item>
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Badge Position"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'inside', label: 'Inside Pill'}, {value: 'outside', label: 'Outside Pill (Corner)'}] } }}
+                  .value=${this._config.button_pill_badge_position || "inside"}
+                  @value-changed=${(e) => this._valueChanged(e, "button_pill_badge_position")}
+                ></ha-selector>
               ` : ''}
               <div class="side-by-side">
                 ${this._renderColorPicker("Badge Color", "button_badge_color", this._config.button_badge_color || "#ff4444")}
@@ -3153,9 +3119,13 @@ class HkiNotificationCardEditor extends LitElement {
                ${mode !== 'marquee' ? this._renderSwitch("Full Width", "full_width", this._config.full_width) : ''}
             </div>
 
-            <ha-select label="Alignment" .value=${this._config.alignment || "left"} @selected=${(e) => this._valueChanged(e, "alignment")} @closed=${(e) => e.stopPropagation()}>
-              ${["left","center","right"].map(a => html`<mwc-list-item .value=${a}>${a.charAt(0).toUpperCase() + a.slice(1)}</mwc-list-item>`)}
-            </ha-select>
+                        <ha-selector
+              .hass=${this.hass}
+              .label=${"Alignment"}
+              .selector=${{ select: { mode: "dropdown", options: [{value: 'a', label: '${a.charAt(0).toUpperCase() + a.slice(1)}'}] } }}
+              .value=${this._config.alignment || "left"}
+              @value-changed=${(e) => this._valueChanged(e, "alignment")}
+            ></ha-selector>
 
             <div class="side-by-side">
               ${this._renderColorPicker("Text Color", "text_color", this._config.text_color)}
@@ -3185,14 +3155,22 @@ class HkiNotificationCardEditor extends LitElement {
           <div class="box-content">
             <div class="side-by-side">
                 ${this._renderInput("Size (px)", "font_size", this._config.font_size, "number")}
-                <ha-select label="Weight" .value=${this._config.font_weight || "Semi Bold"} @selected=${(e) => this._valueChanged(e, "font_weight")} @closed=${(e) => e.stopPropagation()}>
-                  ${["Light","Regular","Medium","Semi Bold","Bold","Extra Bold"].map(w => html`<mwc-list-item .value=${w}>${w}</mwc-list-item>`)}
-                </ha-select>
+                                <ha-selector
+                  .hass=${this.hass}
+                  .label=${"Weight"}
+                  .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w}'}] } }}
+                  .value=${this._config.font_weight || "Semi Bold"}
+                  @value-changed=${(e) => this._valueChanged(e, "font_weight")}
+                ></ha-selector>
             </div>
             
-<ha-select label="Font Family" .value=${fontFamily} @selected=${(e) => this._valueChanged(e, "font_family")} @closed=${(e) => e.stopPropagation()}>
-              ${FONTS.map(f => html`<mwc-list-item .value=${f}>${f === "Custom" ? "Custom..." : f.split(',')[0]}</mwc-list-item>`)}
-            </ha-select>
+<ha-selector
+  .hass=${this.hass}
+  .label=${"Font Family"}
+  .selector=${{ select: { mode: "dropdown", options: FONTS.map(f => ({value: f, label: f === "Custom" ? "Custom..." : f.split(',')[0]})) } }}
+  .value=${fontFamily}
+  @value-changed=${(e) => this._valueChanged(e, "font_family")}
+></ha-selector>
             ${showCustomFont ? html`
               ${this._renderInput("Custom Font Family", "custom_font_family", this._config.custom_font_family || "", "text")}
               <p class="helper-text">Enter a CSS font-family value (e.g., "Comic Sans MS, cursive")</p>
