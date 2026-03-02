@@ -739,6 +739,7 @@
           icon_badge_offset_x: 0, icon_badge_offset_y: 0,
           brightness_offset_x: 0, brightness_offset_y: 0,
           temp_badge_offset_x: 0, temp_badge_offset_y: 0,
+          button_lock_offset_x: -10, button_lock_offset_y: 10,
         };
         for (const [k, v] of Object.entries(__googleOffsetDefaults)) {
           if (!Object.prototype.hasOwnProperty.call(cfg, k)) this._config[k] = v;
@@ -772,11 +773,7 @@
         this._config.show_label = false;
       }
 
-      applyGlobalDefaultsToConfig({
-        scope: "button",
-        config: this._config,
-        sourceConfig: cfg,
-        fields: [
+      const __buttonGlobalFields = [
           "card_color",
           "card_opacity",
           "border_radius",
@@ -863,7 +860,26 @@
           "show_tile_slider",
           "tile_slider_fill_color",
           "tile_slider_track_color",
-        ],
+      ];
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: __buttonGlobalFields,
+      });
+      const __buttonStyleScope = (() => {
+        const layout = (this._config.card_layout || 'square');
+        if (layout === 'google_default') return 'button_google_default';
+        if (layout === 'hki_tile') return 'button_hki_tile';
+        if (layout === 'badge') return 'button_badge';
+        return 'button_hki_default';
+      })();
+      applyGlobalDefaultsToConfig({
+        scope: __buttonStyleScope,
+        config: this._config,
+        sourceConfig: cfg,
+        fields: __buttonGlobalFields,
       });
       applyGlobalDefaultsToConfig({
         scope: "popup",
@@ -2836,7 +2852,8 @@
 
       // HKI specific - custom popup
       if (actionConfig.action === "hki-more-info") {
-        const entityId = actionConfig.entity || this._config.entity;
+        const customPopupEnabled = this._config?.custom_popup?.enabled === true || this._config?.custom_popup_enabled === true;
+        const entityId = customPopupEnabled ? this._config.entity : (actionConfig.entity || this._config.entity);
         // Support entity override by opening a proxy HKI popup for that entity
         // (same behavior pattern as header-card action handling).
         if (entityId && entityId !== this._config.entity) {
@@ -13672,6 +13689,8 @@
       brightness_offset_y: 0,
       temp_badge_offset_x: 0,
       temp_badge_offset_y: 0,
+      button_lock_offset_x: -10,
+      button_lock_offset_y: 10,
     };
 
     _getOffsetUiValue(field) {
@@ -14363,6 +14382,13 @@
               ` : ""}
               
               ${currentAction === 'more-info' || currentAction === 'toggle' || currentAction === 'hki-more-info' ? html`
+                ${(() => {
+                  const customPopupEnabled = this._config?.custom_popup?.enabled === true || this._config?.custom_popup_enabled === true;
+                  const lockOverride = currentAction === 'hki-more-info' && customPopupEnabled;
+                  if (lockOverride) {
+                    return html`<p style="font-size: 11px; opacity: 0.7; margin: 4px 0 0 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>`;
+                  }
+                  return html`
                 <ha-selector 
                   .hass=${this.hass} 
                   .selector=${{ entity: {} }} 
@@ -14370,11 +14396,8 @@
                   .label=${"Entity Override (optional)"} 
                   @value-changed=${(ev) => this._actionFieldSelectorChanged(ev, configKey, 'entity')}
                 ></ha-selector>
-                ${currentAction === 'hki-more-info' ? html`
-                  <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 0 0;">
-                    If override differs from card entity, HKI popup opens for that entity.
-                  </p>
-                ` : ''}
+                  `;
+                })()}
               ` : ''}
             </div>
           `;
@@ -15917,8 +15940,8 @@
                 <div class="separator"></div>
                 <strong>Action Lock Icon</strong>
                 <div class="side-by-side">
-                    <ha-textfield label="Lock Icon X" type="number" .value=${this._config.button_lock_offset_x ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
-                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._config.button_lock_offset_y ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
+                    <ha-textfield label="Lock Icon X" type="number" .value=${this._getOffsetUiValue("button_lock_offset_x")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
+                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._getOffsetUiValue("button_lock_offset_y")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
                 </div>
                 ` : ''}
              </div>

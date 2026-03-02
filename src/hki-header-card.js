@@ -1926,7 +1926,6 @@ class HkiHeaderCard extends LitElement {
       sourceConfig: workingConfig,
       fields: [
         "card_border_radius",
-        "card_border_radius_top",
         "card_border_radius_bottom",
         "card_box_shadow",
         "card_border_style",
@@ -1941,6 +1940,34 @@ class HkiHeaderCard extends LitElement {
         "subtitle_weight",
         "title_color",
         "subtitle_color",
+        "info_size_px",
+        "info_weight",
+        "info_color",
+        "info_text_shadow",
+        "info_icon_shadow",
+        "info_pill",
+        "info_pill_background",
+        "info_pill_padding_x",
+        "info_pill_padding_y",
+        "info_pill_radius",
+        "info_pill_blur",
+        "info_pill_border_style",
+        "info_pill_border_width",
+        "info_pill_border_color",
+        "bottom_info_size_px",
+        "bottom_info_weight",
+        "bottom_info_color",
+        "bottom_info_text_shadow",
+        "bottom_info_icon_shadow",
+        "bottom_info_pill",
+        "bottom_info_pill_background",
+        "bottom_info_pill_padding_x",
+        "bottom_info_pill_padding_y",
+        "bottom_info_pill_radius",
+        "bottom_info_pill_blur",
+        "bottom_info_pill_border_style",
+        "bottom_info_pill_border_width",
+        "bottom_info_pill_border_color",
       ],
     });
 
@@ -2856,8 +2883,9 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         // Slot-level popupConfig takes precedence over action-level (backward-compat) settings
         const mergedPopup = { ...finalAction, ...(popupConfig || {}) };
-        const popupEntityId = finalAction.entity || entityId;
-        const hasEntityOverride = !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
+        const customPopupEnabled = mergedPopup.custom_popup_enabled === true;
+        const popupEntityId = customPopupEnabled ? entityId : (finalAction.entity || entityId);
+        const hasEntityOverride = !customPopupEnabled && !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
         // custom_popup_enabled gates the custom card; undefined = true for backward compat
         const popupCard = mergedPopup.custom_popup_enabled === false
           ? null
@@ -5438,6 +5466,7 @@ class HkiHeaderCardEditor extends LitElement {
 
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              const buttonPopupEnabled = btn?.popup?.custom_popup_enabled === true || btn?.custom_popup_enabled === true;
               const domain = (btn.entity || "").split(".")[0];
               const defaultInfoAction = this._defaultInfoActionForDomain(domain);
               const defaultTapAction = (["switch", "climate", "input_boolean", "automation", "light"].includes(domain))
@@ -5470,8 +5499,12 @@ class HkiHeaderCardEditor extends LitElement {
                     <ha-textfield label="URL" .value=${actionObj.url_path || ""} @input=${(e) => setAction({ ...actionObj, url_path: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
                   ` : ''}
                   ${(actionObj.action === "more-info" || actionObj.action === "toggle" || actionObj.action === "hki-more-info") ? html`
-                    <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
-                      @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    ${(actionObj.action === "hki-more-info" && buttonPopupEnabled) ? html`
+                      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+                    ` : html`
+                      <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
+                        @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    `}
                   ` : ''}
                   ${(actionObj.action === "fire-dom-event") ? html`
                     <ha-textfield label="Event Name (optional)" .value=${actionObj.event_name || ""}
@@ -6238,6 +6271,8 @@ class HkiHeaderCardEditor extends LitElement {
   _renderSlotActionEditor(field) {
     const action = this._config?.[field] || { action: "none" };
     const actionType = action.action || "none";
+    const actionPrefix = field.replace(/(?:tap|hold|double_tap)_action$/, "");
+    const customPopupEnabled = this._config?.[`${actionPrefix}custom_popup_enabled`] === true;
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
@@ -6282,13 +6317,17 @@ class HkiHeaderCardEditor extends LitElement {
         ></ha-selector>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-selector
-          .hass=${this.hass}
-          .label=${"Override Entity"}
-          .selector=${{ entity: {} }}
-          .value=${action.entity || ""}
-          @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
-        ></ha-selector>
+        ${customPopupEnabled ? html`
+          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+        ` : html`
+          <ha-selector
+            .hass=${this.hass}
+            .label=${"Override Entity"}
+            .selector=${{ entity: {} }}
+            .value=${action.entity || ""}
+            @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
+          ></ha-selector>
+        `}
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "fire-dom-event" ? html`
@@ -6409,6 +6448,7 @@ class HkiHeaderCardEditor extends LitElement {
 
   _renderPersonActionEditors(personIndex) {
     const personConfig = this._config.persons_entities[personIndex];
+    const personCustomPopupEnabled = personConfig?.custom_popup_enabled === true;
     
     const renderPersonAction = (label, actionType) => {
       const action = personConfig[actionType] || { action: actionType === "tap_action" ? "more-info" : "none" };
@@ -6449,7 +6489,11 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
           ` : ''}
           ${actionValue === "hki-more-info" ? html`
-            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            ${personCustomPopupEnabled ? html`
+              <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+            ` : html`
+              <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            `}
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
           ` : ''}
           ${actionValue === "fire-dom-event" ? html`

@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -558,12 +558,25 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
   try {
     const raw = window.localStorage?.getItem(key);
     if (!raw) {
-      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
+      window.HKI._globalSettingsCache = {
+        button: {},
+        button_hki_default: {},
+        button_google_default: {},
+        button_hki_tile: {},
+        button_badge: {},
+        header: {},
+        navigation: {},
+        popup: {},
+      };
       return window.HKI._globalSettingsCache;
     }
     const parsed = JSON.parse(raw);
     const next = {
       button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
+      button_hki_default: (parsed?.button_hki_default && typeof parsed.button_hki_default === "object") ? parsed.button_hki_default : {},
+      button_google_default: (parsed?.button_google_default && typeof parsed.button_google_default === "object") ? parsed.button_google_default : {},
+      button_hki_tile: (parsed?.button_hki_tile && typeof parsed.button_hki_tile === "object") ? parsed.button_hki_tile : {},
+      button_badge: (parsed?.button_badge && typeof parsed.button_badge === "object") ? parsed.button_badge : {},
       header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
       navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
       popup: (parsed?.popup && typeof parsed.popup === "object") ? parsed.popup : {},
@@ -571,7 +584,16 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
     window.HKI._globalSettingsCache = next;
     return next;
   } catch (_) {
-    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
+    window.HKI._globalSettingsCache = {
+      button: {},
+      button_hki_default: {},
+      button_google_default: {},
+      button_hki_tile: {},
+      button_badge: {},
+      header: {},
+      navigation: {},
+      popup: {},
+    };
     return window.HKI._globalSettingsCache;
   }
 });
@@ -585,6 +607,18 @@ window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) 
     button: hasOwn(settings, "button")
       ? (((settings && settings.button) && typeof settings.button === "object") ? { ...settings.button } : {})
       : { ...(current.button || {}) },
+    button_hki_default: hasOwn(settings, "button_hki_default")
+      ? (((settings && settings.button_hki_default) && typeof settings.button_hki_default === "object") ? { ...settings.button_hki_default } : {})
+      : { ...(current.button_hki_default || {}) },
+    button_google_default: hasOwn(settings, "button_google_default")
+      ? (((settings && settings.button_google_default) && typeof settings.button_google_default === "object") ? { ...settings.button_google_default } : {})
+      : { ...(current.button_google_default || {}) },
+    button_hki_tile: hasOwn(settings, "button_hki_tile")
+      ? (((settings && settings.button_hki_tile) && typeof settings.button_hki_tile === "object") ? { ...settings.button_hki_tile } : {})
+      : { ...(current.button_hki_tile || {}) },
+    button_badge: hasOwn(settings, "button_badge")
+      ? (((settings && settings.button_badge) && typeof settings.button_badge === "object") ? { ...settings.button_badge } : {})
+      : { ...(current.button_badge || {}) },
     header: hasOwn(settings, "header")
       ? (((settings && settings.header) && typeof settings.header === "object") ? { ...settings.header } : {})
       : { ...(current.header || {}) },

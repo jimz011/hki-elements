@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.2-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.4.2-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -558,12 +558,25 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
   try {
     const raw = window.localStorage?.getItem(key);
     if (!raw) {
-      window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
+      window.HKI._globalSettingsCache = {
+        button: {},
+        button_hki_default: {},
+        button_google_default: {},
+        button_hki_tile: {},
+        button_badge: {},
+        header: {},
+        navigation: {},
+        popup: {},
+      };
       return window.HKI._globalSettingsCache;
     }
     const parsed = JSON.parse(raw);
     const next = {
       button: (parsed?.button && typeof parsed.button === "object") ? parsed.button : {},
+      button_hki_default: (parsed?.button_hki_default && typeof parsed.button_hki_default === "object") ? parsed.button_hki_default : {},
+      button_google_default: (parsed?.button_google_default && typeof parsed.button_google_default === "object") ? parsed.button_google_default : {},
+      button_hki_tile: (parsed?.button_hki_tile && typeof parsed.button_hki_tile === "object") ? parsed.button_hki_tile : {},
+      button_badge: (parsed?.button_badge && typeof parsed.button_badge === "object") ? parsed.button_badge : {},
       header: (parsed?.header && typeof parsed.header === "object") ? parsed.header : {},
       navigation: (parsed?.navigation && typeof parsed.navigation === "object") ? parsed.navigation : {},
       popup: (parsed?.popup && typeof parsed.popup === "object") ? parsed.popup : {},
@@ -571,7 +584,16 @@ window.HKI.getGlobalSettings = window.HKI.getGlobalSettings || (() => {
     window.HKI._globalSettingsCache = next;
     return next;
   } catch (_) {
-    window.HKI._globalSettingsCache = { button: {}, header: {}, navigation: {}, popup: {} };
+    window.HKI._globalSettingsCache = {
+      button: {},
+      button_hki_default: {},
+      button_google_default: {},
+      button_hki_tile: {},
+      button_badge: {},
+      header: {},
+      navigation: {},
+      popup: {},
+    };
     return window.HKI._globalSettingsCache;
   }
 });
@@ -585,6 +607,18 @@ window.HKI.setGlobalSettings = window.HKI.setGlobalSettings || ((settings = {}) 
     button: hasOwn(settings, "button")
       ? (((settings && settings.button) && typeof settings.button === "object") ? { ...settings.button } : {})
       : { ...(current.button || {}) },
+    button_hki_default: hasOwn(settings, "button_hki_default")
+      ? (((settings && settings.button_hki_default) && typeof settings.button_hki_default === "object") ? { ...settings.button_hki_default } : {})
+      : { ...(current.button_hki_default || {}) },
+    button_google_default: hasOwn(settings, "button_google_default")
+      ? (((settings && settings.button_google_default) && typeof settings.button_google_default === "object") ? { ...settings.button_google_default } : {})
+      : { ...(current.button_google_default || {}) },
+    button_hki_tile: hasOwn(settings, "button_hki_tile")
+      ? (((settings && settings.button_hki_tile) && typeof settings.button_hki_tile === "object") ? { ...settings.button_hki_tile } : {})
+      : { ...(current.button_hki_tile || {}) },
+    button_badge: hasOwn(settings, "button_badge")
+      ? (((settings && settings.button_badge) && typeof settings.button_badge === "object") ? { ...settings.button_badge } : {})
+      : { ...(current.button_badge || {}) },
     header: hasOwn(settings, "header")
       ? (((settings && settings.header) && typeof settings.header === "object") ? { ...settings.header } : {})
       : { ...(current.header || {}) },
@@ -642,6 +676,7 @@ window.HKI.applyGlobalDefaultsToConfig = window.HKI.applyGlobalDefaultsToConfig 
 
   return config;
 });
+
 // ============================================================
 // hki-header-card
 // ============================================================
@@ -2575,7 +2610,6 @@ class HkiHeaderCard extends LitElement {
       sourceConfig: workingConfig,
       fields: [
         "card_border_radius",
-        "card_border_radius_top",
         "card_border_radius_bottom",
         "card_box_shadow",
         "card_border_style",
@@ -2590,6 +2624,34 @@ class HkiHeaderCard extends LitElement {
         "subtitle_weight",
         "title_color",
         "subtitle_color",
+        "info_size_px",
+        "info_weight",
+        "info_color",
+        "info_text_shadow",
+        "info_icon_shadow",
+        "info_pill",
+        "info_pill_background",
+        "info_pill_padding_x",
+        "info_pill_padding_y",
+        "info_pill_radius",
+        "info_pill_blur",
+        "info_pill_border_style",
+        "info_pill_border_width",
+        "info_pill_border_color",
+        "bottom_info_size_px",
+        "bottom_info_weight",
+        "bottom_info_color",
+        "bottom_info_text_shadow",
+        "bottom_info_icon_shadow",
+        "bottom_info_pill",
+        "bottom_info_pill_background",
+        "bottom_info_pill_padding_x",
+        "bottom_info_pill_padding_y",
+        "bottom_info_pill_radius",
+        "bottom_info_pill_blur",
+        "bottom_info_pill_border_style",
+        "bottom_info_pill_border_width",
+        "bottom_info_pill_border_color",
       ],
     });
 
@@ -3505,8 +3567,9 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         // Slot-level popupConfig takes precedence over action-level (backward-compat) settings
         const mergedPopup = { ...finalAction, ...(popupConfig || {}) };
-        const popupEntityId = finalAction.entity || entityId;
-        const hasEntityOverride = !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
+        const customPopupEnabled = mergedPopup.custom_popup_enabled === true;
+        const popupEntityId = customPopupEnabled ? entityId : (finalAction.entity || entityId);
+        const hasEntityOverride = !customPopupEnabled && !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
         // custom_popup_enabled gates the custom card; undefined = true for backward compat
         const popupCard = mergedPopup.custom_popup_enabled === false
           ? null
@@ -6087,6 +6150,7 @@ class HkiHeaderCardEditor extends LitElement {
 
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              const buttonPopupEnabled = btn?.popup?.custom_popup_enabled === true || btn?.custom_popup_enabled === true;
               const domain = (btn.entity || "").split(".")[0];
               const defaultInfoAction = this._defaultInfoActionForDomain(domain);
               const defaultTapAction = (["switch", "climate", "input_boolean", "automation", "light"].includes(domain))
@@ -6119,8 +6183,12 @@ class HkiHeaderCardEditor extends LitElement {
                     <ha-textfield label="URL" .value=${actionObj.url_path || ""} @input=${(e) => setAction({ ...actionObj, url_path: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
                   ` : ''}
                   ${(actionObj.action === "more-info" || actionObj.action === "toggle" || actionObj.action === "hki-more-info") ? html`
-                    <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
-                      @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    ${(actionObj.action === "hki-more-info" && buttonPopupEnabled) ? html`
+                      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+                    ` : html`
+                      <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
+                        @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    `}
                   ` : ''}
                   ${(actionObj.action === "fire-dom-event") ? html`
                     <ha-textfield label="Event Name (optional)" .value=${actionObj.event_name || ""}
@@ -6887,6 +6955,8 @@ class HkiHeaderCardEditor extends LitElement {
   _renderSlotActionEditor(field) {
     const action = this._config?.[field] || { action: "none" };
     const actionType = action.action || "none";
+    const actionPrefix = field.replace(/(?:tap|hold|double_tap)_action$/, "");
+    const customPopupEnabled = this._config?.[`${actionPrefix}custom_popup_enabled`] === true;
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
@@ -6931,13 +7001,17 @@ class HkiHeaderCardEditor extends LitElement {
         ></ha-selector>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-selector
-          .hass=${this.hass}
-          .label=${"Override Entity"}
-          .selector=${{ entity: {} }}
-          .value=${action.entity || ""}
-          @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
-        ></ha-selector>
+        ${customPopupEnabled ? html`
+          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+        ` : html`
+          <ha-selector
+            .hass=${this.hass}
+            .label=${"Override Entity"}
+            .selector=${{ entity: {} }}
+            .value=${action.entity || ""}
+            @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
+          ></ha-selector>
+        `}
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "fire-dom-event" ? html`
@@ -7058,6 +7132,7 @@ class HkiHeaderCardEditor extends LitElement {
 
   _renderPersonActionEditors(personIndex) {
     const personConfig = this._config.persons_entities[personIndex];
+    const personCustomPopupEnabled = personConfig?.custom_popup_enabled === true;
     
     const renderPersonAction = (label, actionType) => {
       const action = personConfig[actionType] || { action: actionType === "tap_action" ? "more-info" : "none" };
@@ -7098,7 +7173,11 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
           ` : ''}
           ${actionValue === "hki-more-info" ? html`
-            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            ${personCustomPopupEnabled ? html`
+              <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+            ` : html`
+              <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            `}
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
           ` : ''}
           ${actionValue === "fire-dom-event" ? html`
@@ -9184,6 +9263,7 @@ window.customCards.push({
           icon_badge_offset_x: 0, icon_badge_offset_y: 0,
           brightness_offset_x: 0, brightness_offset_y: 0,
           temp_badge_offset_x: 0, temp_badge_offset_y: 0,
+          button_lock_offset_x: -10, button_lock_offset_y: 10,
         };
         for (const [k, v] of Object.entries(__googleOffsetDefaults)) {
           if (!Object.prototype.hasOwnProperty.call(cfg, k)) this._config[k] = v;
@@ -9217,11 +9297,7 @@ window.customCards.push({
         this._config.show_label = false;
       }
 
-      applyGlobalDefaultsToConfig({
-        scope: "button",
-        config: this._config,
-        sourceConfig: cfg,
-        fields: [
+      const __buttonGlobalFields = [
           "card_color",
           "card_opacity",
           "border_radius",
@@ -9308,7 +9384,26 @@ window.customCards.push({
           "show_tile_slider",
           "tile_slider_fill_color",
           "tile_slider_track_color",
-        ],
+      ];
+
+      applyGlobalDefaultsToConfig({
+        scope: "button",
+        config: this._config,
+        sourceConfig: cfg,
+        fields: __buttonGlobalFields,
+      });
+      const __buttonStyleScope = (() => {
+        const layout = (this._config.card_layout || 'square');
+        if (layout === 'google_default') return 'button_google_default';
+        if (layout === 'hki_tile') return 'button_hki_tile';
+        if (layout === 'badge') return 'button_badge';
+        return 'button_hki_default';
+      })();
+      applyGlobalDefaultsToConfig({
+        scope: __buttonStyleScope,
+        config: this._config,
+        sourceConfig: cfg,
+        fields: __buttonGlobalFields,
       });
       applyGlobalDefaultsToConfig({
         scope: "popup",
@@ -11281,7 +11376,8 @@ window.customCards.push({
 
       // HKI specific - custom popup
       if (actionConfig.action === "hki-more-info") {
-        const entityId = actionConfig.entity || this._config.entity;
+        const customPopupEnabled = this._config?.custom_popup?.enabled === true || this._config?.custom_popup_enabled === true;
+        const entityId = customPopupEnabled ? this._config.entity : (actionConfig.entity || this._config.entity);
         // Support entity override by opening a proxy HKI popup for that entity
         // (same behavior pattern as header-card action handling).
         if (entityId && entityId !== this._config.entity) {
@@ -22117,6 +22213,8 @@ window.customCards.push({
       brightness_offset_y: 0,
       temp_badge_offset_x: 0,
       temp_badge_offset_y: 0,
+      button_lock_offset_x: -10,
+      button_lock_offset_y: 10,
     };
 
     _getOffsetUiValue(field) {
@@ -22808,6 +22906,13 @@ window.customCards.push({
               ` : ""}
               
               ${currentAction === 'more-info' || currentAction === 'toggle' || currentAction === 'hki-more-info' ? html`
+                ${(() => {
+                  const customPopupEnabled = this._config?.custom_popup?.enabled === true || this._config?.custom_popup_enabled === true;
+                  const lockOverride = currentAction === 'hki-more-info' && customPopupEnabled;
+                  if (lockOverride) {
+                    return html`<p style="font-size: 11px; opacity: 0.7; margin: 4px 0 0 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>`;
+                  }
+                  return html`
                 <ha-selector 
                   .hass=${this.hass} 
                   .selector=${{ entity: {} }} 
@@ -22815,11 +22920,8 @@ window.customCards.push({
                   .label=${"Entity Override (optional)"} 
                   @value-changed=${(ev) => this._actionFieldSelectorChanged(ev, configKey, 'entity')}
                 ></ha-selector>
-                ${currentAction === 'hki-more-info' ? html`
-                  <p style="font-size: 11px; opacity: 0.7; margin: 4px 0 0 0;">
-                    If override differs from card entity, HKI popup opens for that entity.
-                  </p>
-                ` : ''}
+                  `;
+                })()}
               ` : ''}
             </div>
           `;
@@ -24362,8 +24464,8 @@ window.customCards.push({
                 <div class="separator"></div>
                 <strong>Action Lock Icon</strong>
                 <div class="side-by-side">
-                    <ha-textfield label="Lock Icon X" type="number" .value=${this._config.button_lock_offset_x ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
-                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._config.button_lock_offset_y ?? 0} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
+                    <ha-textfield label="Lock Icon X" type="number" .value=${this._getOffsetUiValue("button_lock_offset_x")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
+                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._getOffsetUiValue("button_lock_offset_y")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
                 </div>
                 ` : ''}
              </div>
@@ -25152,6 +25254,7 @@ window.customCards.push({
     preview: true 
   });
 })();
+
 })();
 
 // ============================================================
@@ -28223,6 +28326,14 @@ function normalizeConfig(config) {
   if (typeof c.title !== "string" || !c.title.trim()) delete c.title;
   if (c.button && typeof c.button === "object") c.button = { ...c.button };
   else delete c.button;
+  if (c.button_hki_default && typeof c.button_hki_default === "object") c.button_hki_default = { ...c.button_hki_default };
+  else delete c.button_hki_default;
+  if (c.button_google_default && typeof c.button_google_default === "object") c.button_google_default = { ...c.button_google_default };
+  else delete c.button_google_default;
+  if (c.button_hki_tile && typeof c.button_hki_tile === "object") c.button_hki_tile = { ...c.button_hki_tile };
+  else delete c.button_hki_tile;
+  if (c.button_badge && typeof c.button_badge === "object") c.button_badge = { ...c.button_badge };
+  else delete c.button_badge;
   if (c.header && typeof c.header === "object") c.header = { ...c.header };
   else delete c.header;
   if (c.navigation && typeof c.navigation === "object") c.navigation = { ...c.navigation };
@@ -28348,6 +28459,18 @@ class HkiSettingsBase extends LitElement {
     if (!normalized.button && persisted.button && Object.keys(persisted.button).length) {
       normalized.button = { ...persisted.button };
     }
+    if (!normalized.button_hki_default && persisted.button_hki_default && Object.keys(persisted.button_hki_default).length) {
+      normalized.button_hki_default = { ...persisted.button_hki_default };
+    }
+    if (!normalized.button_google_default && persisted.button_google_default && Object.keys(persisted.button_google_default).length) {
+      normalized.button_google_default = { ...persisted.button_google_default };
+    }
+    if (!normalized.button_hki_tile && persisted.button_hki_tile && Object.keys(persisted.button_hki_tile).length) {
+      normalized.button_hki_tile = { ...persisted.button_hki_tile };
+    }
+    if (!normalized.button_badge && persisted.button_badge && Object.keys(persisted.button_badge).length) {
+      normalized.button_badge = { ...persisted.button_badge };
+    }
     if (!normalized.header && persisted.header && Object.keys(persisted.header).length) {
       normalized.header = { ...persisted.header };
     }
@@ -28385,6 +28508,10 @@ class HkiSettingsBase extends LitElement {
     try {
       window.HKI?.setGlobalSettings?.({
         button: sanitizeScope(next.button || {}),
+        button_hki_default: sanitizeScope(next.button_hki_default || {}),
+        button_google_default: sanitizeScope(next.button_google_default || {}),
+        button_hki_tile: sanitizeScope(next.button_hki_tile || {}),
+        button_badge: sanitizeScope(next.button_badge || {}),
         header: sanitizeScope(next.header || {}),
         navigation: sanitizeScope(next.navigation || {}),
         popup: sanitizeScope(next.popup || {}),
@@ -28404,6 +28531,10 @@ class HkiSettingsBase extends LitElement {
     const cfg = this._config || DEFAULT_CONFIG;
     window.HKI?.setGlobalSettings?.({
       button: sanitizeScope(cfg.button || {}),
+      button_hki_default: sanitizeScope(cfg.button_hki_default || {}),
+      button_google_default: sanitizeScope(cfg.button_google_default || {}),
+      button_hki_tile: sanitizeScope(cfg.button_hki_tile || {}),
+      button_badge: sanitizeScope(cfg.button_badge || {}),
       header: sanitizeScope(cfg.header || {}),
       navigation: sanitizeScope(cfg.navigation || {}),
       popup: sanitizeScope(cfg.popup || {}),
@@ -28613,6 +28744,105 @@ class HkiSettingsBase extends LitElement {
     `;
   }
 
+  _renderButtonScope(scope, title, subtitle) {
+    return html`
+      <details class="category-accordion">
+        <summary>${title}</summary>
+        <div class="category">
+          ${this._renderScopeHeader(title, scope, subtitle)}
+          <div class="grid">
+            ${this._renderTemplateInput(scope, "card_color", "Card color (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "card_opacity", "Card opacity (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "border_radius", "Border radius (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "box_shadow", "Box shadow (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "border_width", "Border width (Template/CSS)")}
+            ${this._renderSelect(scope, "border_style", "Border style", BORDER_STYLES)}
+            ${this._renderTemplateInput(scope, "border_color", "Border color (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "icon_color", "Icon color (Template/CSS/Jinja)")}
+            ${this._renderTemplateInput(scope, "icon_animation", "Icon animation (Template/Jinja)")}
+            ${this._renderSwitch(scope, "enable_icon_animation", "Enable icon animation")}
+            ${this._renderSelect(scope, "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
+            ${this._renderInput(scope, "size_icon", "Icon size (px)", "number")}
+            ${this._renderTemplateInput(scope, "icon_circle_bg", "Circle background (Template/CSS/Jinja)")}
+            ${this._renderSelect(scope, "icon_circle_border_style", "Circle border style", BORDER_STYLES)}
+            ${this._renderTemplateInput(scope, "icon_circle_border_width", "Circle border width (Template/CSS/Jinja)")}
+            ${this._renderTemplateInput(scope, "icon_circle_border_color", "Circle border color (Template/CSS/Jinja)")}
+            ${this._renderTemplateInput(scope, "badge_bg", "Badge background (Template/CSS/Jinja)")}
+            ${this._renderSelect(scope, "badge_border_style", "Badge border style", BORDER_STYLES)}
+            ${this._renderTemplateInput(scope, "badge_border_width", "Badge border width (Template/CSS/Jinja)")}
+            ${this._renderTemplateInput(scope, "badge_border_color", "Badge border color (Template/CSS/Jinja)")}
+            ${this._renderInput(scope, "badge_border_radius", "Badge border radius", "number")}
+            ${this._renderInput(scope, "badge_box_shadow", "Badge box shadow")}
+            ${this._renderSwitch(scope, "badge_circle", "Badge circle")}
+            ${this._renderInput(scope, "badge_size", "Badge size (px)", "number")}
+            ${this._renderInput(scope, "size_badge", "Badge font size", "number")}
+            ${this._renderSelect(scope, "badge_font_family", "Badge font family", FONT_FAMILIES)}
+            ${this._renderSelect(scope, "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
+            ${this._renderInput(scope, "temp_badge_size", "Temp badge size (px)", "number")}
+            ${this._renderInput(scope, "size_temp_badge", "Temp badge font size", "number")}
+            ${this._renderInput(scope, "temp_badge_text_color", "Temp badge text color")}
+            ${this._renderInput(scope, "temp_badge_border_color", "Temp badge border color")}
+            ${this._renderSelect(scope, "temp_badge_border_style", "Temp badge border style", BORDER_STYLES)}
+            ${this._renderInput(scope, "temp_badge_border_width", "Temp badge border width", "number")}
+            ${this._renderInput(scope, "temp_badge_border_radius", "Temp badge border radius", "number")}
+            ${this._renderInput(scope, "temp_badge_box_shadow", "Temp badge box shadow")}
+            ${this._renderSelect(scope, "temp_badge_font_family", "Temp badge font family", FONT_FAMILIES)}
+            ${this._renderInput(scope, "temp_badge_font_custom", "Temp badge custom font")}
+            ${this._renderSelect(scope, "temp_badge_font_weight", "Temp badge font weight", FONT_WEIGHTS)}
+            ${this._renderSelect(scope, "name_font_family", "Name font family", FONT_FAMILIES)}
+            ${this._renderInput(scope, "name_font_custom", "Name custom font")}
+            ${this._renderSelect(scope, "name_font_weight", "Name font weight", FONT_WEIGHTS)}
+            ${this._renderSelect(scope, "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
+            ${this._renderInput(scope, "size_name", "Name size", "number")}
+            ${this._renderTemplateInput(scope, "name_color", "Name color (Template/CSS)")}
+            ${this._renderSelect(scope, "state_font_family", "State font family", FONT_FAMILIES)}
+            ${this._renderInput(scope, "state_font_custom", "State custom font")}
+            ${this._renderSelect(scope, "state_font_weight", "State font weight", FONT_WEIGHTS)}
+            ${this._renderSelect(scope, "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
+            ${this._renderInput(scope, "size_state", "State size", "number")}
+            ${this._renderTemplateInput(scope, "state_color", "State color (Template/CSS)")}
+            ${this._renderSelect(scope, "label_font_family", "Label font family", FONT_FAMILIES)}
+            ${this._renderInput(scope, "label_font_custom", "Label custom font")}
+            ${this._renderSelect(scope, "label_font_weight", "Label font weight", FONT_WEIGHTS)}
+            ${this._renderSelect(scope, "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
+            ${this._renderInput(scope, "size_label", "Label size", "number")}
+            ${this._renderTemplateInput(scope, "label_color", "Label color (Template/CSS)")}
+            ${this._renderSelect(scope, "brightness_font_family", "Info font family", FONT_FAMILIES)}
+            ${this._renderInput(scope, "brightness_font_custom", "Info custom font")}
+            ${this._renderSelect(scope, "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
+            ${this._renderSelect(scope, "brightness_text_align", "Info text align", TEXT_ALIGN_OPTIONS)}
+            ${this._renderInput(scope, "size_brightness", "Info size", "number")}
+            ${this._renderTemplateInput(scope, "brightness_color", "Info color (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "brightness_color_on", "Info color (On) (Template/CSS)")}
+            ${this._renderTemplateInput(scope, "brightness_color_off", "Info color (Off) (Template/CSS)")}
+            ${this._renderInput(scope, "tile_height", "Tile height", "number")}
+            ${this._renderSwitch(scope, "show_tile_slider", "Show tile slider")}
+            ${this._renderTemplateInput(scope, "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
+            ${this._renderTemplateInput(scope, "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
+            ${this._renderInput(scope, "name_offset_x", "Name offset X", "number")}
+            ${this._renderInput(scope, "name_offset_y", "Name offset Y", "number")}
+            ${this._renderInput(scope, "state_offset_x", "State offset X", "number")}
+            ${this._renderInput(scope, "state_offset_y", "State offset Y", "number")}
+            ${this._renderInput(scope, "label_offset_x", "Label offset X", "number")}
+            ${this._renderInput(scope, "label_offset_y", "Label offset Y", "number")}
+            ${this._renderInput(scope, "icon_offset_x", "Icon offset X", "number")}
+            ${this._renderInput(scope, "icon_offset_y", "Icon offset Y", "number")}
+            ${this._renderInput(scope, "icon_circle_offset_x", "Icon circle offset X", "number")}
+            ${this._renderInput(scope, "icon_circle_offset_y", "Icon circle offset Y", "number")}
+            ${this._renderInput(scope, "icon_badge_offset_x", "Icon badge offset X", "number")}
+            ${this._renderInput(scope, "icon_badge_offset_y", "Icon badge offset Y", "number")}
+            ${this._renderInput(scope, "badge_offset_x", "Badge offset X", "number")}
+            ${this._renderInput(scope, "badge_offset_y", "Badge offset Y", "number")}
+            ${this._renderInput(scope, "brightness_offset_x", "Info offset X", "number")}
+            ${this._renderInput(scope, "brightness_offset_y", "Info offset Y", "number")}
+            ${this._renderInput(scope, "temp_badge_offset_x", "Temp badge offset X", "number")}
+            ${this._renderInput(scope, "temp_badge_offset_y", "Temp badge offset Y", "number")}
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
   _renderForm() {
     const cfg = this._config || DEFAULT_CONFIG;
     return html`
@@ -28628,115 +28858,11 @@ class HkiSettingsBase extends LitElement {
         <details class="scope-accordion">
           <summary>Button Card Defaults</summary>
           <section class="scope">
-            ${this._renderScopeHeader("Button Card Defaults", "button", "Applied to hki-button-card when a field is empty.")}
-            ${this._renderCategoryAccordion("Card", html`
-              ${this._renderTemplateInput("button", "card_color", "Card color (Template/CSS)")}
-              ${this._renderTemplateInput("button", "card_opacity", "Card opacity (Template/CSS)")}
-              ${this._renderTemplateInput("button", "border_radius", "Border radius (Template/CSS)")}
-              ${this._renderTemplateInput("button", "box_shadow", "Box shadow (Template/CSS)")}
-              ${this._renderTemplateInput("button", "border_width", "Border width (Template/CSS)")}
-              ${this._renderSelect("button", "border_style", "Border style", BORDER_STYLES)}
-              ${this._renderTemplateInput("button", "border_color", "Border color (Template/CSS)")}
-            `, "Styles the outer button container.")}
-            ${this._renderCategoryAccordion("Icon", html`
-              ${this._renderTemplateInput("button", "icon_color", "Icon color (Template/CSS/Jinja)")}
-              ${this._renderTemplateInput("button", "icon_animation", "Icon animation (Template/Jinja)")}
-              ${this._renderSwitch("button", "enable_icon_animation", "Enable icon animation")}
-              ${this._renderSelect("button", "icon_align", "Icon align", ICON_ALIGN_OPTIONS)}
-              ${this._renderInput("button", "size_icon", "Icon size (px)", "number")}
-            `, "Global icon style for button cards.")}
-            ${this._renderCategoryAccordion("Icon Circle", html`
-              ${this._renderTemplateInput("button", "icon_circle_bg", "Circle background (Template/CSS/Jinja)")}
-              ${this._renderSelect("button", "icon_circle_border_style", "Circle border style", BORDER_STYLES)}
-              ${this._renderTemplateInput("button", "icon_circle_border_width", "Circle border width (Template/CSS/Jinja)")}
-              ${this._renderTemplateInput("button", "icon_circle_border_color", "Circle border color (Template/CSS/Jinja)")}
-            `, "Styles for the optional icon circle.")}
-            ${this._renderCategoryAccordion("Badge (Icon Badge)", html`
-              ${this._renderTemplateInput("button", "badge_bg", "Badge background (Template/CSS/Jinja)")}
-              ${this._renderSelect("button", "badge_border_style", "Badge border style", BORDER_STYLES)}
-              ${this._renderTemplateInput("button", "badge_border_width", "Badge border width (Template/CSS/Jinja)")}
-              ${this._renderTemplateInput("button", "badge_border_color", "Badge border color (Template/CSS/Jinja)")}
-              ${this._renderInput("button", "badge_border_radius", "Badge border radius", "number")}
-              ${this._renderInput("button", "badge_box_shadow", "Badge box shadow")}
-              ${this._renderSwitch("button", "badge_circle", "Badge circle")}
-              ${this._renderInput("button", "badge_size", "Badge size (px)", "number")}
-              ${this._renderInput("button", "size_badge", "Badge font size", "number")}
-              ${this._renderSelect("button", "badge_font_family", "Badge font family", FONT_FAMILIES)}
-              ${this._renderSelect("button", "badge_font_weight", "Badge font weight", FONT_WEIGHTS)}
-            `, "Styles for the small icon badge/chip.")}
-            ${this._renderCategoryAccordion("Temperature Badge", html`
-              ${this._renderInput("button", "temp_badge_size", "Temp badge size (px)", "number")}
-              ${this._renderInput("button", "size_temp_badge", "Temp badge font size", "number")}
-              ${this._renderInput("button", "temp_badge_text_color", "Temp badge text color")}
-              ${this._renderInput("button", "temp_badge_border_color", "Temp badge border color")}
-              ${this._renderSelect("button", "temp_badge_border_style", "Temp badge border style", BORDER_STYLES)}
-              ${this._renderInput("button", "temp_badge_border_width", "Temp badge border width", "number")}
-              ${this._renderInput("button", "temp_badge_border_radius", "Temp badge border radius", "number")}
-              ${this._renderInput("button", "temp_badge_box_shadow", "Temp badge box shadow")}
-              ${this._renderSelect("button", "temp_badge_font_family", "Temp badge font family", FONT_FAMILIES)}
-              ${this._renderInput("button", "temp_badge_font_custom", "Temp badge custom font")}
-              ${this._renderSelect("button", "temp_badge_font_weight", "Temp badge font weight", FONT_WEIGHTS)}
-            `, "Climate temperature corner badge styling.")}
-            ${this._renderCategoryAccordion("Name Typography", html`
-              ${this._renderSelect("button", "name_font_family", "Name font family", FONT_FAMILIES)}
-              ${this._renderInput("button", "name_font_custom", "Name custom font")}
-              ${this._renderSelect("button", "name_font_weight", "Name font weight", FONT_WEIGHTS)}
-              ${this._renderSelect("button", "name_text_align", "Name text align", TEXT_ALIGN_OPTIONS)}
-              ${this._renderInput("button", "size_name", "Name size", "number")}
-              ${this._renderTemplateInput("button", "name_color", "Name color (Template/CSS)")}
-            `, "Applies to the entity name text.")}
-            ${this._renderCategoryAccordion("State Typography", html`
-              ${this._renderSelect("button", "state_font_family", "State font family", FONT_FAMILIES)}
-              ${this._renderInput("button", "state_font_custom", "State custom font")}
-              ${this._renderSelect("button", "state_font_weight", "State font weight", FONT_WEIGHTS)}
-              ${this._renderSelect("button", "state_text_align", "State text align", TEXT_ALIGN_OPTIONS)}
-              ${this._renderInput("button", "size_state", "State size", "number")}
-              ${this._renderTemplateInput("button", "state_color", "State color (Template/CSS)")}
-            `, "Applies to the entity state text.")}
-            ${this._renderCategoryAccordion("Label Typography", html`
-              ${this._renderSelect("button", "label_font_family", "Label font family", FONT_FAMILIES)}
-              ${this._renderInput("button", "label_font_custom", "Label custom font")}
-              ${this._renderSelect("button", "label_font_weight", "Label font weight", FONT_WEIGHTS)}
-              ${this._renderSelect("button", "label_text_align", "Label text align", TEXT_ALIGN_OPTIONS)}
-              ${this._renderInput("button", "size_label", "Label size", "number")}
-              ${this._renderTemplateInput("button", "label_color", "Label color (Template/CSS)")}
-            `, "Applies to optional label text.")}
-            ${this._renderCategoryAccordion("Info/Brightness Typography", html`
-              ${this._renderSelect("button", "brightness_font_family", "Info font family", FONT_FAMILIES)}
-              ${this._renderInput("button", "brightness_font_custom", "Info custom font")}
-              ${this._renderSelect("button", "brightness_font_weight", "Info font weight", FONT_WEIGHTS)}
-              ${this._renderSelect("button", "brightness_text_align", "Info text align", TEXT_ALIGN_OPTIONS)}
-              ${this._renderInput("button", "size_brightness", "Info size", "number")}
-              ${this._renderTemplateInput("button", "brightness_color", "Info color (Template/CSS)")}
-              ${this._renderTemplateInput("button", "brightness_color_on", "Info color (On) (Template/CSS)")}
-              ${this._renderTemplateInput("button", "brightness_color_off", "Info color (Off) (Template/CSS)")}
-            `, "Applies to info/brightness line text.")}
-            ${this._renderCategoryAccordion("Tile", html`
-              ${this._renderInput("button", "tile_height", "Tile height", "number")}
-              ${this._renderSwitch("button", "show_tile_slider", "Show tile slider")}
-              ${this._renderTemplateInput("button", "tile_slider_track_color", "Tile slider track color (Template/CSS/Jinja)")}
-              ${this._renderTemplateInput("button", "tile_slider_fill_color", "Tile slider fill color (Template/CSS/Jinja)")}
-            `, "Global defaults for hki_tile layout.")}
-            ${this._renderCategoryAccordion("Offsets", html`
-              ${this._renderInput("button", "name_offset_x", "Name offset X", "number")}
-              ${this._renderInput("button", "name_offset_y", "Name offset Y", "number")}
-              ${this._renderInput("button", "state_offset_x", "State offset X", "number")}
-              ${this._renderInput("button", "state_offset_y", "State offset Y", "number")}
-              ${this._renderInput("button", "label_offset_x", "Label offset X", "number")}
-              ${this._renderInput("button", "label_offset_y", "Label offset Y", "number")}
-              ${this._renderInput("button", "icon_offset_x", "Icon offset X", "number")}
-              ${this._renderInput("button", "icon_offset_y", "Icon offset Y", "number")}
-              ${this._renderInput("button", "icon_circle_offset_x", "Icon circle offset X", "number")}
-              ${this._renderInput("button", "icon_circle_offset_y", "Icon circle offset Y", "number")}
-              ${this._renderInput("button", "icon_badge_offset_x", "Icon badge offset X", "number")}
-              ${this._renderInput("button", "icon_badge_offset_y", "Icon badge offset Y", "number")}
-              ${this._renderInput("button", "badge_offset_x", "Badge offset X", "number")}
-              ${this._renderInput("button", "badge_offset_y", "Badge offset Y", "number")}
-              ${this._renderInput("button", "brightness_offset_x", "Info offset X", "number")}
-              ${this._renderInput("button", "brightness_offset_y", "Info offset Y", "number")}
-              ${this._renderInput("button", "temp_badge_offset_x", "Temp badge offset X", "number")}
-              ${this._renderInput("button", "temp_badge_offset_y", "Temp badge offset Y", "number")}
-            `, "Global element positioning offsets.")}
+            ${this._renderButtonScope("button", "Common (All Button Styles)", "Applied to all hki-button-card layouts when a field is empty.")}
+            ${this._renderButtonScope("button_hki_default", "HKI Default Style", "Applied only when card layout is HKI Default (square).")}
+            ${this._renderButtonScope("button_google_default", "Google Default Style", "Applied only when card layout is Google Default.")}
+            ${this._renderButtonScope("button_hki_tile", "HKI Tile Style", "Applied only when card layout is HKI Tile.")}
+            ${this._renderButtonScope("button_badge", "Badge Style", "Applied only when card layout is Badge.")}
           </section>
         </details>
 
@@ -28834,7 +28960,6 @@ class HkiSettingsBase extends LitElement {
             ${this._renderScopeHeader("Header Card Defaults", "header", "Applied to hki-header-card when a field is empty.")}
             ${this._renderCategoryAccordion("Card", html`
               ${this._renderTemplateInput("header", "card_border_radius", "Card border radius (Template/CSS)")}
-              ${this._renderTemplateInput("header", "card_border_radius_top", "Top border radius (Template/CSS)")}
               ${this._renderTemplateInput("header", "card_border_radius_bottom", "Bottom border radius (Template/CSS)")}
               ${this._renderTemplateInput("header", "card_box_shadow", "Card box shadow (Template/CSS)")}
               ${this._renderInput("header", "card_border_width", "Card border width", "number")}
@@ -28852,6 +28977,38 @@ class HkiSettingsBase extends LitElement {
               ${this._renderTemplateInput("header", "title_color", "Title color (Template/CSS)")}
               ${this._renderTemplateInput("header", "subtitle_color", "Subtitle color (Template/CSS)")}
             `, "Title/subtitle font and text color defaults.")}
+            ${this._renderCategoryAccordion("Top Bar Widgets", html`
+              ${this._renderInput("header", "info_size_px", "Font size (px)", "number")}
+              ${this._renderSelect("header", "info_weight", "Font weight", HEADER_WEIGHT_OPTIONS)}
+              ${this._renderTemplateInput("header", "info_color", "Text color (Template/CSS)")}
+              ${this._renderTemplateInput("header", "info_text_shadow", "Text shadow (Template/CSS)")}
+              ${this._renderTemplateInput("header", "info_icon_shadow", "Icon shadow (Template/CSS)")}
+              ${this._renderSwitch("header", "info_pill", "Use pill background")}
+              ${this._renderTemplateInput("header", "info_pill_background", "Pill background (Template/CSS)")}
+              ${this._renderInput("header", "info_pill_padding_x", "Pill padding X", "number")}
+              ${this._renderInput("header", "info_pill_padding_y", "Pill padding Y", "number")}
+              ${this._renderInput("header", "info_pill_radius", "Pill radius", "number")}
+              ${this._renderInput("header", "info_pill_blur", "Pill blur", "number")}
+              ${this._renderSelect("header", "info_pill_border_style", "Pill border style", BORDER_STYLES)}
+              ${this._renderInput("header", "info_pill_border_width", "Pill border width", "number")}
+              ${this._renderTemplateInput("header", "info_pill_border_color", "Pill border color (Template/CSS)")}
+            `, "Global styling defaults for top bar widgets (weather/date/notifications/buttons).")}
+            ${this._renderCategoryAccordion("Bottom Bar Widgets", html`
+              ${this._renderInput("header", "bottom_info_size_px", "Font size (px)", "number")}
+              ${this._renderSelect("header", "bottom_info_weight", "Font weight", HEADER_WEIGHT_OPTIONS)}
+              ${this._renderTemplateInput("header", "bottom_info_color", "Text color (Template/CSS)")}
+              ${this._renderTemplateInput("header", "bottom_info_text_shadow", "Text shadow (Template/CSS)")}
+              ${this._renderTemplateInput("header", "bottom_info_icon_shadow", "Icon shadow (Template/CSS)")}
+              ${this._renderSwitch("header", "bottom_info_pill", "Use pill background")}
+              ${this._renderTemplateInput("header", "bottom_info_pill_background", "Pill background (Template/CSS)")}
+              ${this._renderInput("header", "bottom_info_pill_padding_x", "Pill padding X", "number")}
+              ${this._renderInput("header", "bottom_info_pill_padding_y", "Pill padding Y", "number")}
+              ${this._renderInput("header", "bottom_info_pill_radius", "Pill radius", "number")}
+              ${this._renderInput("header", "bottom_info_pill_blur", "Pill blur", "number")}
+              ${this._renderSelect("header", "bottom_info_pill_border_style", "Pill border style", BORDER_STYLES)}
+              ${this._renderInput("header", "bottom_info_pill_border_width", "Pill border width", "number")}
+              ${this._renderTemplateInput("header", "bottom_info_pill_border_color", "Pill border color (Template/CSS)")}
+            `, "Global styling defaults for bottom bar widgets.")}
           </section>
         </details>
 
@@ -29129,6 +29286,7 @@ window.customCards.push({
   description: "Global style defaults for HKI cards.",
   preview: false,
 });
+
 })();
 
 // ============================================================
