@@ -8,6 +8,14 @@ const toNum = (v, fallback) => { const n = +v; return Number.isFinite(n) ? n : f
 const WEIGHT_MAP = Object.freeze({
   light: 300, regular: 400, medium: 500, semibold: 600, bold: 700, black: 900,
 });
+const WEIGHT_KEY_OPTIONS = Object.freeze([
+  { value: "light", label: "Light" },
+  { value: "regular", label: "Regular" },
+  { value: "medium", label: "Medium" },
+  { value: "semibold", label: "Semi-bold" },
+  { value: "bold", label: "Bold" },
+  { value: "black", label: "Black" },
+]);
 
 const BG_SIZE_PRESETS = Object.freeze(["cover", "contain", "auto"]);
 
@@ -1918,7 +1926,6 @@ class HkiHeaderCard extends LitElement {
       sourceConfig: workingConfig,
       fields: [
         "card_border_radius",
-        "card_border_radius_top",
         "card_border_radius_bottom",
         "card_box_shadow",
         "card_border_style",
@@ -1933,6 +1940,34 @@ class HkiHeaderCard extends LitElement {
         "subtitle_weight",
         "title_color",
         "subtitle_color",
+        "info_size_px",
+        "info_weight",
+        "info_color",
+        "info_text_shadow",
+        "info_icon_shadow",
+        "info_pill",
+        "info_pill_background",
+        "info_pill_padding_x",
+        "info_pill_padding_y",
+        "info_pill_radius",
+        "info_pill_blur",
+        "info_pill_border_style",
+        "info_pill_border_width",
+        "info_pill_border_color",
+        "bottom_info_size_px",
+        "bottom_info_weight",
+        "bottom_info_color",
+        "bottom_info_text_shadow",
+        "bottom_info_icon_shadow",
+        "bottom_info_pill",
+        "bottom_info_pill_background",
+        "bottom_info_pill_padding_x",
+        "bottom_info_pill_padding_y",
+        "bottom_info_pill_radius",
+        "bottom_info_pill_blur",
+        "bottom_info_pill_border_style",
+        "bottom_info_pill_border_width",
+        "bottom_info_pill_border_color",
       ],
     });
 
@@ -2848,6 +2883,9 @@ class HkiHeaderCard extends LitElement {
       case "hki-more-info": {
         // Slot-level popupConfig takes precedence over action-level (backward-compat) settings
         const mergedPopup = { ...finalAction, ...(popupConfig || {}) };
+        const customPopupEnabled = mergedPopup.custom_popup_enabled === true;
+        const popupEntityId = customPopupEnabled ? entityId : (finalAction.entity || entityId);
+        const hasEntityOverride = !customPopupEnabled && !!finalAction.entity && !!entityId && finalAction.entity !== entityId;
         // custom_popup_enabled gates the custom card; undefined = true for backward compat
         const popupCard = mergedPopup.custom_popup_enabled === false
           ? null
@@ -2865,7 +2903,7 @@ class HkiHeaderCard extends LitElement {
             return res?.result != null ? String(res.result) : str;
           } catch (_) { return str; }
         };
-        if (popupCard && customElements.get('hki-button-card')) {
+        if (!hasEntityOverride && popupCard && customElements.get('hki-button-card')) {
           // Custom popup card configured — open it inside the HKI popup frame
           Promise.all([
             resolveTemplate(mergedPopup.popup_name),
@@ -2889,7 +2927,6 @@ class HkiHeaderCard extends LitElement {
           }).catch(err => console.error('[hki-header-card] Popup promise error:', err));
         } else {
           // No custom popup card — open the domain-appropriate HKI popup for the entity
-          const popupEntityId = finalAction.entity || entityId;
           if (popupEntityId && customElements.get('hki-button-card')) {
             Promise.all([
               resolveTemplate(mergedPopup.popup_name),
@@ -2905,6 +2942,7 @@ class HkiHeaderCard extends LitElement {
                 entity: popupEntityId,
                 ...this._buildPopupConfig(mergedPopup, resolvedName, resolvedState, resolvedIcon),
                 });
+                if (hasEntityOverride) btn._forceDomainPopupOnce = true;
                 this._activePopupProxyCards.add(btn);
                 btn._openPopup();
               } catch (err) {
@@ -5277,7 +5315,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Content Type"}
         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'spacer', label: 'Spacer'}, {value: 'weather', label: 'Weather'}, {value: 'datetime', label: 'Date/Time'}, {value: 'notifications', label: 'Notifications'}, {value: 'card', label: 'Custom Card'}, {value: 'button', label: 'Badge'}] } }}
         .value=${displayType}
-        @value-changed=${this._changed}
+        @value-changed=${(ev) => this._changed(ev, `${bar}_${slotName}`)}
       ></ha-selector>
       
       ${type !== "none" && type !== "spacer" ? html`
@@ -5287,8 +5325,8 @@ class HkiHeaderCardEditor extends LitElement {
           .label=${"Content Alignment"}
           .selector=${{ select: { mode: "dropdown", options: [{value: 'start', label: 'Start (left)'}, {value: 'center', label: 'Center'}, {value: 'end', label: 'End (right)'}, {value: 'stretch', label: 'Stretch (fill available slots)'}] } }}
           .value=${this._config[prefix + "align"] || (slotName === "left" ? "start" : slotName === "right" ? "end" : "center")}
-          @value-changed=${this._changed}
-        ></ha-selector>
+          @value-changed=${(ev) => this._changed(ev, `${prefix}align`)}
+            ></ha-selector>
         <div class="section" style="margin-top: 12px;">Position Offset</div>
         <div class="inline-fields-2">
           <ha-textfield label="X offset (px)" type="number" .value=${String(this._config[prefix + "offset_x"] || 0)} data-field="${prefix}offset_x" @input=${this._changed}></ha-textfield>
@@ -5331,14 +5369,14 @@ class HkiHeaderCardEditor extends LitElement {
             .label=${"Icon color mode"}
             .selector=${{ select: { mode: "dropdown", options: [{value: 'state', label: 'By condition'}, {value: 'custom', label: 'Custom'}, {value: 'inherit', label: 'Inherit'}] } }}
             .value=${this._config[prefix + "weather_icon_color_mode"] || "state"}
-            @value-changed=${this._changed}
+            @value-changed=${(ev) => this._changed(ev, `${prefix}weather_icon_color_mode`)}
           ></ha-selector>
                     <ha-selector
             .hass=${this.hass}
             .label=${"Icon animation"}
             .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'float', label: 'Float'}, {value: 'pulse', label: 'Pulse'}, {value: 'spin', label: 'Spin'}] } }}
             .value=${this._config[prefix + "animate_icon"] || "none"}
-            @value-changed=${this._changed}
+            @value-changed=${(ev) => this._changed(ev, `${prefix}animate_icon`)}
           ></ha-selector>
         </div>
         ${this._config[prefix + "weather_icon_color_mode"] === "custom" ? html`
@@ -5428,6 +5466,7 @@ class HkiHeaderCardEditor extends LitElement {
 
             ${buttons.map((btn, idx) => {
               const badgeSource = btn.badge_source === "template" ? "template" : "entity";
+              const buttonPopupEnabled = btn?.popup?.custom_popup_enabled === true || btn?.custom_popup_enabled === true;
               const domain = (btn.entity || "").split(".")[0];
               const defaultInfoAction = this._defaultInfoActionForDomain(domain);
               const defaultTapAction = (["switch", "climate", "input_boolean", "automation", "light"].includes(domain))
@@ -5460,8 +5499,12 @@ class HkiHeaderCardEditor extends LitElement {
                     <ha-textfield label="URL" .value=${actionObj.url_path || ""} @input=${(e) => setAction({ ...actionObj, url_path: (window.HKI.getSelectValue(e)) || "" })}></ha-textfield>
                   ` : ''}
                   ${(actionObj.action === "more-info" || actionObj.action === "toggle" || actionObj.action === "hki-more-info") ? html`
-                    <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
-                      @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    ${(actionObj.action === "hki-more-info" && buttonPopupEnabled) ? html`
+                      <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+                    ` : html`
+                      <ha-entity-picker .hass=${this.hass} .value=${actionObj.entity || ""} label="Entity override"
+                        @value-changed=${(e) => setAction({ ...actionObj, entity: e.detail.value || undefined })}></ha-entity-picker>
+                    `}
                   ` : ''}
                   ${(actionObj.action === "fire-dom-event") ? html`
                     <ha-textfield label="Event Name (optional)" .value=${actionObj.event_name || ""}
@@ -5783,9 +5826,9 @@ class HkiHeaderCardEditor extends LitElement {
                         <ha-selector
               .hass=${this.hass}
               .label=${"Font Weight"}
-              .selector=${{ select: { mode: "dropdown", options: [{value: '', label: 'Use Global'}, {value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+              .selector=${{ select: { mode: "dropdown", options: [{ value: "", label: "Use Global" }, ...WEIGHT_KEY_OPTIONS] } }}
               .value=${this._config[prefix + "weight"] || ""}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, `${prefix}weight`)}
             ></ha-selector>
           </div>
           <ha-textfield label="Text Color (Jinja supported)" .value=${this._config[prefix + "color"] || ""} data-field="${prefix}color" @input=${this._changed}></ha-textfield>
@@ -6228,6 +6271,8 @@ class HkiHeaderCardEditor extends LitElement {
   _renderSlotActionEditor(field) {
     const action = this._config?.[field] || { action: "none" };
     const actionType = action.action || "none";
+    const actionPrefix = field.replace(/(?:tap|hold|double_tap)_action$/, "");
+    const customPopupEnabled = this._config?.[`${actionPrefix}custom_popup_enabled`] === true;
 
     const setAction = (nextAction) => {
       this._config = { ...this._config, [field]: nextAction };
@@ -6254,7 +6299,7 @@ class HkiHeaderCardEditor extends LitElement {
         .label=${"Action"}
         .selector=${{ select: { mode: "dropdown", options: headerActionOptions } }}
         .value=${actionType}
-        @value-changed=${this._changed}
+        @value-changed=${(ev) => this._changed(ev, field + ".action")}
       ></ha-selector>
       ${actionType === "navigate" ? html`
         ${this._renderNavigationPathPicker("Navigation path", action.navigation_path || "", (v) => patchAction({ navigation_path: v }))}
@@ -6263,10 +6308,26 @@ class HkiHeaderCardEditor extends LitElement {
         <ha-textfield label="URL" .value=${action.url_path || ""} data-field="${field}.url_path" @input=${this._changed}></ha-textfield>
       ` : ''}
       ${actionType === "more-info" || actionType === "toggle" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} @value-changed=${(e) => this._changed(e, field + ".entity")}></ha-entity-picker>
+        <ha-selector
+          .hass=${this.hass}
+          .label=${"Entity (optional)"}
+          .selector=${{ entity: {} }}
+          .value=${action.entity || ""}
+          @value-changed=${(e) => this._changed(e, field + ".entity")}
+        ></ha-selector>
       ` : ''}
       ${actionType === "hki-more-info" ? html`
-        <ha-entity-picker .hass=${this.hass} .value=${action.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+        ${customPopupEnabled ? html`
+          <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+        ` : html`
+          <ha-selector
+            .hass=${this.hass}
+            .label=${"Override Entity"}
+            .selector=${{ entity: {} }}
+            .value=${action.entity || ""}
+            @value-changed=${(e) => patchAction({ entity: e.detail?.value || undefined })}
+          ></ha-selector>
+        `}
         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings (card, animations, header) are configured in the slot's "Custom Popup" section above.</p>
       ` : ''}
       ${actionType === "fire-dom-event" ? html`
@@ -6387,6 +6448,7 @@ class HkiHeaderCardEditor extends LitElement {
 
   _renderPersonActionEditors(personIndex) {
     const personConfig = this._config.persons_entities[personIndex];
+    const personCustomPopupEnabled = personConfig?.custom_popup_enabled === true;
     
     const renderPersonAction = (label, actionType) => {
       const action = personConfig[actionType] || { action: actionType === "tap_action" ? "more-info" : "none" };
@@ -6427,7 +6489,11 @@ class HkiHeaderCardEditor extends LitElement {
             <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} @value-changed=${(e) => patchAction({ entity: e.detail.value })}></ha-entity-picker>
           ` : ''}
           ${actionValue === "hki-more-info" ? html`
-            <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            ${personCustomPopupEnabled ? html`
+              <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Entity override is disabled while Custom HKI Popup is enabled.</p>
+            ` : html`
+              <ha-entity-picker .hass=${this.hass} .value=${action.entity || personConfig.entity || ""} label="Override Entity" @value-changed=${(e) => patchAction({ entity: e.detail.value || undefined })}></ha-entity-picker>
+            `}
             <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Popup settings are configured in the person's "Custom Popup" section.</p>
           ` : ''}
           ${actionValue === "fire-dom-event" ? html`
@@ -6983,7 +7049,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Text alignment"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
               .value=${this._config.text_align}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "text_align")}
             ></ha-selector>
           </div>
         </details>
@@ -7068,55 +7134,58 @@ class HkiHeaderCardEditor extends LitElement {
                       </div>
                     </div>
                     
-                    <ha-entity-picker
+                    <ha-selector
                       .hass=${this.hass}
+                      .selector=${{ entity: { domain: "person" } }}
                       .value=${entityId}
                       .label=${"Person Entity"}
-                      .includeDomains=${["person"]}
                       @value-changed=${(e) => {
+                        const val = (window.HKI.getSelectValue(e)) || "";
                         const updated = [...this._config.persons_entities];
                         if (typeof updated[index] === 'string') {
                           updated[index] = {
-                            entity: e.detail.value,
+                            entity: val,
                             tap_action: { action: "more-info" },
                             hold_action: { action: "none" },
                             double_tap_action: { action: "none" }
                           };
                         } else {
-                          updated[index] = { ...updated[index], entity: e.detail.value };
+                          updated[index] = { ...updated[index], entity: val };
                         }
                         this._config = { ...this._config, persons_entities: updated };
                         const strippedConfig = this._stripDefaults(this._config);
                         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                         this.requestUpdate();
                       }}
-                    ></ha-entity-picker>
+                    ></ha-selector>
 
                     ${this._config.persons_grayscale_away ? html`
-                      <ha-entity-picker
+                      <ha-selector
                         .hass=${this.hass}
+                        .selector=${{ entity: {} }}
                         .value=${typeof personConfig !== 'string' ? (personConfig.grayscale_entity || "") : ""}
                         .label=${"State Override Entity (optional)"}
                         helper="Override person state with this entity: ON = home/color, OFF = away/grayscale"
                         @value-changed=${(e) => {
+                          const val = (window.HKI.getSelectValue(e)) || "";
                           const updated = [...this._config.persons_entities];
                           if (typeof updated[index] === 'string') {
                             updated[index] = {
                               entity: updated[index],
-                              grayscale_entity: e.detail.value || "",
+                              grayscale_entity: val,
                               tap_action: { action: "more-info" },
                               hold_action: { action: "none" },
                               double_tap_action: { action: "none" }
                             };
                           } else {
-                            updated[index] = { ...updated[index], grayscale_entity: e.detail.value || "" };
+                            updated[index] = { ...updated[index], grayscale_entity: val };
                           }
                           this._config = { ...this._config, persons_entities: updated };
                           const strippedConfig = this._stripDefaults(this._config);
                           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: strippedConfig } }));
                           this.requestUpdate();
                         }}
-                      ></ha-entity-picker>
+                      ></ha-selector>
                     ` : ''}
 
                     <details class="box-section" style="margin-top: 8px;">
@@ -7258,8 +7327,8 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Persons alignment"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}] } }}
                 .value=${this._config.persons_align || "left"}
-                @value-changed=${this._changed}
-              ></ha-selector>
+                @value-changed=${(ev) => this._changed(ev, "persons_align")}
+          ></ha-selector>
 
               <div class="section">Appearance</div>
               <div class="inline-fields-2">
@@ -7272,8 +7341,8 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Stack order"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'ascending', label: 'Ascending (last on top)'}, {value: 'descending', label: 'Descending (first on top)'}] } }}
                 .value=${this._config.persons_stack_order || "ascending"}
-                @value-changed=${this._changed}
-              ></ha-selector>
+                @value-changed=${(ev) => this._changed(ev, "persons_stack_order")}
+          ></ha-selector>
 
               <div class="inline-fields-2">
                 <ha-textfield label="Border width (px)" type="number" .value=${String(this._config.persons_border_width || 1)} data-field="persons_border_width" @input=${this._changed}></ha-textfield>
@@ -7282,7 +7351,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Border style"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}, {value: 'none', label: 'None'}] } }}
                   .value=${this._config.persons_border_style || "solid"}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "persons_border_style")}
                 ></ha-selector>
               </div>
 
@@ -7336,7 +7405,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background position"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'top', label: 'Top'}, {value: 'center', label: 'Center'}, {value: 'bottom', label: 'Bottom'}, {value: 'left', label: 'Left'}, {value: 'right', label: 'Right'}] } }}
                   .value=${this._config.background_position}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_position")}
                 ></ha-selector>
 
                                 <ha-selector
@@ -7344,7 +7413,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background repeat"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'no-repeat', label: 'No repeat'}, {value: 'repeat', label: 'Repeat'}, {value: 'repeat-x', label: 'Repeat horizontally'}, {value: 'repeat-y', label: 'Repeat vertically'}] } }}
                   .value=${this._config.background_repeat}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_repeat")}
                 ></ha-selector>
             </div>
 
@@ -7362,7 +7431,7 @@ class HkiHeaderCardEditor extends LitElement {
                   .label=${"Background blend mode"}
                   .selector=${{ select: { mode: "dropdown", options: [{value: 'normal', label: 'Normal'}, {value: 'multiply', label: 'Multiply'}, {value: 'screen', label: 'Screen'}, {value: 'overlay', label: 'Overlay'}, {value: 'darken', label: 'Darken'}, {value: 'lighten', label: 'Lighten'}, {value: 'color-dodge', label: 'Color Dodge'}, {value: 'soft-light', label: 'Soft Light'}, {value: 'difference', label: 'Difference'}] } }}
                   .value=${this._config.background_blend_mode || "normal"}
-                  @value-changed=${this._changed}
+                  @value-changed=${(ev) => this._changed(ev, "background_blend_mode")}
                 ></ha-selector>
             </div>
             
@@ -7412,7 +7481,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Border Style"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}, {value: 'double', label: 'Double'}, {value: 'groove', label: 'Groove'}, {value: 'ridge', label: 'Ridge'}, {value: 'inset', label: 'Inset'}, {value: 'outset', label: 'Outset'}] } }}
                 .value=${this._config.card_border_style || "none"}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "card_border_style")}
               ></ha-selector>
               <ha-textfield label="Border Width (px)" type="number" .value=${String(this._config.card_border_width || 0)} data-field="card_border_width" @input=${this._changed}></ha-textfield>
               <ha-textfield label="Border Color" .value=${this._config.card_border_color || ""} data-field="card_border_color" @input=${this._changed}></ha-textfield>
@@ -7429,7 +7498,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Font family"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'inherit', label: 'Inherit'}, {value: 'system', label: 'System'}, {value: 'roboto', label: 'Roboto'}, {value: 'inter', label: 'Inter'}, {value: 'arial', label: 'Arial'}, {value: 'georgia', label: 'Georgia'}, {value: 'mono', label: 'Monospace'}, {value: 'custom', label: 'Custom…'}] } }}
               .value=${this._config.font_family}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "font_family")}
             ></ha-selector>
 
             ${showCustomFont ? html`<ha-textfield label="Custom font-family (CSS)" .value=${this._config.font_family_custom} data-field="font_family_custom" @input=${this._changed}></ha-textfield>` : ""}
@@ -7439,7 +7508,7 @@ class HkiHeaderCardEditor extends LitElement {
               .label=${"Font style"}
               .selector=${{ select: { mode: "dropdown", options: [{value: 'normal', label: 'Normal'}, {value: 'italic', label: 'Italic'}] } }}
               .value=${this._config.font_style}
-              @value-changed=${this._changed}
+              @value-changed=${(ev) => this._changed(ev, "font_style")}
             ></ha-selector>
 
             <div class="inline-fields-2">
@@ -7453,7 +7522,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Title weight"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
                 .value=${this._config.title_weight}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "title_weight")}
               ></ha-selector>
 
                             <ha-selector
@@ -7461,7 +7530,7 @@ class HkiHeaderCardEditor extends LitElement {
                 .label=${"Subtitle weight"}
                 .selector=${{ select: { mode: "dropdown", options: [{value: 'light', label: 'Light'}, {value: 'regular', label: 'Regular'}, {value: 'medium', label: 'Medium'}, {value: 'semibold', label: 'Semi-bold'}, {value: 'bold', label: 'Bold'}, {value: 'black', label: 'Black'}] } }}
                 .value=${this._config.subtitle_weight}
-                @value-changed=${this._changed}
+                @value-changed=${(ev) => this._changed(ev, "subtitle_weight")}
               ></ha-selector>
             </div>
           </div>
@@ -7488,9 +7557,9 @@ class HkiHeaderCardEditor extends LitElement {
                                             <ha-selector
                         .hass=${this.hass}
                         .label=${"Font Weight"}
-                        .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                        .selector=${{ select: { mode: "dropdown", options: WEIGHT_KEY_OPTIONS } }}
                         .value=${this._config.info_weight || "medium"}
-                        @value-changed=${this._changed}
+                        @value-changed=${(ev) => this._changed(ev, "info_weight")}
                       ></ha-selector>
                     </div>
                     <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.info_color || ""} data-field="info_color" @input=${this._changed}></ha-textfield>
@@ -7517,7 +7586,7 @@ class HkiHeaderCardEditor extends LitElement {
                           .label=${"Border Style"}
                           .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
                           .value=${this._config.info_pill_border_style || "none"}
-                          @value-changed=${this._changed}
+                          @value-changed=${(ev) => this._changed(ev, "info_pill_border_style")}
                         ></ha-selector>
                         <ha-textfield label="Border Width" type="number" .value=${String(this._config.info_pill_border_width ?? 0)} data-field="info_pill_border_width" @input=${this._changed}></ha-textfield>
                         <ha-textfield label="Border Color" .value=${this._config.info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="info_pill_border_color" @input=${this._changed}></ha-textfield>
@@ -7571,9 +7640,9 @@ class HkiHeaderCardEditor extends LitElement {
                                         <ha-selector
                       .hass=${this.hass}
                       .label=${"Font Weight"}
-                      .selector=${{ select: { mode: "dropdown", options: [{value: 'w', label: '${w.charAt(0).toUpperCase() + w.slice(1)}'}] } }}
+                      .selector=${{ select: { mode: "dropdown", options: WEIGHT_KEY_OPTIONS } }}
                       .value=${this._config.bottom_info_weight || "medium"}
-                      @value-changed=${this._changed}
+                      @value-changed=${(ev) => this._changed(ev, "bottom_info_weight")}
                     ></ha-selector>
                   </div>
                   <ha-textfield label="Text Color (Jinja supported)" .value=${this._config.bottom_info_color || ""} data-field="bottom_info_color" @input=${this._changed}></ha-textfield>
@@ -7600,7 +7669,7 @@ class HkiHeaderCardEditor extends LitElement {
                         .label=${"Border Style"}
                         .selector=${{ select: { mode: "dropdown", options: [{value: 'none', label: 'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}] } }}
                         .value=${this._config.bottom_info_pill_border_style || "none"}
-                        @value-changed=${this._changed}
+                        @value-changed=${(ev) => this._changed(ev, "bottom_info_pill_border_style")}
                       ></ha-selector>
                       <ha-textfield label="Border Width" type="number" .value=${String(this._config.bottom_info_pill_border_width ?? 0)} data-field="bottom_info_pill_border_width" @input=${this._changed}></ha-textfield>
                       <ha-textfield label="Border Color" .value=${this._config.bottom_info_pill_border_color || "rgba(255,255,255,0.1)"} data-field="bottom_info_pill_border_color" @input=${this._changed}></ha-textfield>
