@@ -49,7 +49,6 @@ nav:
           - Tips & Tricks: cards/hki-header-card/tips.md
           - Examples: cards/hki-header-card/examples.md
           - Screenshots: cards/hki-header-card/screenshots.md
-          - Troubleshooting: cards/hki-header-card/troubleshooting.md
       - HKI Navigation Card:
           - Features: cards/hki-navigation-card/overview.md
           - Basic Usage: cards/hki-navigation-card/basic-usage.md
@@ -57,7 +56,6 @@ nav:
           - Tips & Tricks: cards/hki-navigation-card/tips.md
           - Examples: cards/hki-navigation-card/examples.md
           - Screenshots: cards/hki-navigation-card/screenshots.md
-          - Troubleshooting: cards/hki-navigation-card/troubleshooting.md
       - HKI Button Card:
           - Features: cards/hki-button-card/overview.md
           - Basic Usage: cards/hki-button-card/basic-usage.md
@@ -65,7 +63,6 @@ nav:
           - Tips & Tricks: cards/hki-button-card/tips.md
           - Examples: cards/hki-button-card/examples.md
           - Screenshots: cards/hki-button-card/screenshots.md
-          - Troubleshooting: cards/hki-button-card/troubleshooting.md
       - HKI PostNL Card:
           - Features: cards/hki-postnl-card/overview.md
           - Basic Usage: cards/hki-postnl-card/basic-usage.md
@@ -81,15 +78,13 @@ nav:
           - Tips & Tricks: cards/hki-notification-card/tips.md
           - Examples: cards/hki-notification-card/examples.md
           - Screenshots: cards/hki-notification-card/screenshots.md
-          - Troubleshooting: cards/hki-notification-card/troubleshooting.md
-  - Components:
-      - HKI Notify:
-          - Features: components/hki-notify/overview.md
-          - Installation: components/hki-notify/installation.md
-          - Configuration: components/hki-notify/configuration.md
-          - Advanced Usage: componente/hki-notify/advanced-usage.md
-          - Examples: components/hki-notify/examples.md
-          - Troubleshooting: components/hki-notify/troubleshooting.md
+      - HKI Settings Card:
+          - Features: cards/hki-settings-card/overview.md
+          - Basic Usage: cards/hki-settings-card/basic-usage.md
+          - Configuration: cards/hki-settings-card/configuration.md
+          - Tips & Tricks: cards/hki-settings-card/tips.md
+          - Examples: cards/hki-settings-card/examples.md
+          - Screenshots: cards/hki-settings-card/screenshots.md
   - Migration: migration.md
 
 

@@ -6,7 +6,7 @@ This guide helps you migrate from individual HKI card installations to the unifi
 
 ## Why Migrate?
 
-- **Single installation**: Install all cards at once instead of managing five separate repositories
+- **Single installation**: Install all cards at once instead of managing six separate repositories
 - **Single resource**: Only one JavaScript file to load, potentially faster page loads
 - **Easier updates**: Update all cards together through one HACS update
 - **No breaking changes**: All card types remain exactly the same
@@ -25,20 +25,22 @@ This guide helps you migrate from individual HKI card installations to the unifi
 
 Before starting, identify which HKI cards you currently have installed:
 
-Go to **HACS → Frontend** and look for:
+Go to **HACS -> Frontend** and look for:
 - HKI Header Card
-- HKI Button Card  
+- HKI Button Card
 - HKI Navigation Card
 - HKI Notification Card
 - HKI PostNL Card
+- HKI Settings Card
 
-Also check **Settings → Dashboards → Resources** for entries like:
+Also check **Settings -> Dashboards -> Resources** for entries like:
 ```
 /hacsfiles/hki-header-card/hki-header-card.js
 /hacsfiles/hki-button-card/hki-button-card.js
 /hacsfiles/hki-navigation-card/hki-navigation-card.js
 /hacsfiles/hki-notification-card/hki-notification-card.js
 /hacsfiles/hki-postnl-card/hki-postnl-card.js
+/hacsfiles/hki-settings-card/hki-settings-card.js
 ```
 
 ### Step 2: Install HKI Elements
@@ -46,7 +48,7 @@ Also check **Settings → Dashboards → Resources** for entries like:
 #### Via HACS (Recommended):
 1. Open HACS in Home Assistant
 2. Click on "Integrations"
-3. Click the three dots menu → "Custom repositories"
+3. Click the three dots menu -> "Custom repositories"
 4. Add repository URL: `https://github.com/jimz011/hki-elements`
 5. Select category: "Dashboard"
 6. Click "Add"
@@ -56,7 +58,7 @@ Also check **Settings → Dashboards → Resources** for entries like:
 #### Manually:
 1. Download `hki-elements.js` from the [latest release](https://github.com/jimz011/hki-elements/releases)
 2. Place it in your `/config/www/` folder
-3. Go to **Settings → Dashboards → Resources**
+3. Go to **Settings -> Dashboards -> Resources**
 4. Add a new resource:
    - URL: `/local/hki-elements.js`
    - Type: JavaScript Module
@@ -71,7 +73,7 @@ After restarting:
 
 You should see the HKI Elements banner in the console:
 ```
- HKI-ELEMENTS  v1.0.0 
+ HKI-ELEMENTS  v1.0.0
 ```
 
 ### Step 4: Remove Old Individual Cards
@@ -79,27 +81,28 @@ You should see the HKI Elements banner in the console:
 Once verified that everything works:
 
 #### Remove from HACS:
-1. Go to **HACS → Frontend**
+1. Go to **HACS -> Frontend**
 2. For each individual HKI card:
    - Click on the card
-   - Click the three dots (⋮) menu
+   - Click the three dots (`...`) menu
    - Select **Remove**
    - Confirm removal
 
 #### Remove Old Resources:
-1. Go to **Settings → Dashboards → Resources**
+1. Go to **Settings -> Dashboards -> Resources**
 2. Remove these old entries (if present):
    - `/hacsfiles/hki-header-card/hki-header-card.js`
    - `/hacsfiles/hki-button-card/hki-button-card.js`
    - `/hacsfiles/hki-navigation-card/hki-navigation-card.js`
    - `/hacsfiles/hki-notification-card/hki-notification-card.js`
    - `/hacsfiles/hki-postnl-card/hki-postnl-card.js`
+   - `/hacsfiles/hki-settings-card/hki-settings-card.js`
 
 3. Restart Home Assistant (optional, but recommended)
 
 ### Step 5: Enjoy!
 
-You're now using the unified HKI Elements bundle! Future updates will update all cards at once.
+You're now using the unified HKI Elements bundle. Future updates will update all cards at once.
 
 ## Rollback (If Needed)
 
@@ -116,13 +119,13 @@ You can temporarily run both HKI Elements and individual cards:
 
 - Both will coexist without conflicts
 - The last loaded resource "wins" for each card type
-- Resources are loaded in the order shown in Settings → Resources
+- Resources are loaded in the order shown in Settings -> Resources
 - This is useful for testing before fully migrating
 
 ## FAQs
 
 **Q: Do I need to change my dashboard YAML?**  
-A: No! All card configurations remain exactly the same.
+A: No. All card configurations remain exactly the same.
 
 **Q: Can I uninstall individual cards immediately after installing HKI Elements?**  
 A: Yes, but we recommend testing first to ensure everything works.
@@ -131,13 +134,13 @@ A: Yes, but we recommend testing first to ensure everything works.
 A: Nothing changes. All configuration options are preserved.
 
 **Q: Will my card editor still work?**  
-A: Yes! All visual editors are included in the bundle.
+A: Yes. All visual editors are included in the bundle.
 
 **Q: Can I still use theme customizations?**  
-A: Absolutely! All theming and customizations work exactly as before.
+A: Absolutely. All theming and customizations work exactly as before.
 
 **Q: What if I only use some HKI cards?**  
-A: That's fine! The bundle includes all cards, but you only use the ones you need. The file size is still reasonable.
+A: That's fine. The bundle includes all cards, but you only use the ones you need. The file size is still reasonable.
 
 **Q: How do I update HKI Elements?**  
 A: Through HACS like any other frontend integration. You'll get a notification when updates are available.
@@ -147,7 +150,7 @@ A: Through HACS like any other frontend integration. You'll get a notification w
 If you encounter issues during migration:
 
 1. Check the browser console (F12) for errors
-2. Verify resource URLs in Settings → Dashboards → Resources
+2. Verify resource URLs in Settings -> Dashboards -> Resources
 3. Try a hard refresh (Ctrl+F5 or Cmd+Shift+R)
 4. Open an issue on [GitHub](https://github.com/jimz011/hki-elements/issues)
 

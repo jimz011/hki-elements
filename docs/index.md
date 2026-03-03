@@ -14,17 +14,17 @@ All cards support Jinja2 templates, real-time updates, and can inherit styling f
 
 ## Components
 
-### 📋 HKI Header Card
+### HKI Header Card
 Beautiful dashboard headers with backgrounds, weather displays, date/time, and person tracking. Perfect for setting the tone of your views.
 
 ---
 
-### 🧭 HKI Navigation Card
+### HKI Navigation Card
 Floating navigation buttons with horizontal and vertical layouts, conditional visibility, and extensive styling options.
 
 ---
 
-### 🔔 HKI Notification System
+### HKI Notification System
 
 **HKI Notify Integration** - Creates notification sensors and provides services to send, update, and dismiss notifications with rich styling and actions.
 
@@ -32,13 +32,18 @@ Floating navigation buttons with horizontal and vertical layouts, conditional vi
 
 ---
 
-### 📦 HKI PostNL Card
+### HKI PostNL Card
 Package tracking for PostNL deliveries with animated visualizations and detailed shipment information.
 
 ---
 
-### 🎛️ HKI Button Card
+### HKI Button Card
 Advanced entity control card with multiple layouts (square, badge, tile, Google) and rich popups for lights, climate, and locks.
+
+---
+
+### HKI Settings Card
+Global HKI defaults editor for button, header, navigation, and popup styling. Configure once and reuse across your HKI cards.
 
 ---
 
