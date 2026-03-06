@@ -76,6 +76,7 @@
     if (p.temp) {
       out.type = 'temp';
       out.kelvin = p.temp;
+      out.color_temp_kelvin = p.temp;
       out.color_temp = Math.round(1000000 / p.temp);
     } else if (p.rgb) {
       out.type = 'rgb';
@@ -1336,11 +1337,13 @@
       if (!this._popupPortal) return;
       const entity = this._getEntity();
       if (this._getDomain() === 'climate') { this._renderClimatePopupPortal(entity); return; }
-      if (!entity || !entity.attributes.color_temp) return;
+      if (!entity) return;
+      const currentTemp = this._getColorTempMireds(entity.attributes || {});
+      if (typeof currentTemp !== 'number') return;
       
       const range = this._tempMax - this._tempMin;
-      const currentTempPct = 100 - (((this._currentTemp - this._tempMin) / range) * 100);
-      const kelvin = Math.round(1000000 / this._currentTemp);
+      const currentTempPct = 100 - (((currentTemp - this._tempMin) / range) * 100);
+      const kelvin = this._miredToKelvin(currentTemp);
       
       const fill = this._popupPortal.querySelector('.vertical-slider-fill');
       const thumb = this._popupPortal.querySelector('.vertical-slider-thumb');
@@ -1990,11 +1993,8 @@
         const attrs = entity.attributes || {};
         if (attrs.rgb_color) return `rgb(${attrs.rgb_color.join(',')})`;
         if (attrs.hs_color) return `hsl(${attrs.hs_color[0]}, ${attrs.hs_color[1]}%, 50%)`;
-        if (attrs.color_temp) {
-          if (attrs.color_temp > 400) return '#FFD700';
-          if (attrs.color_temp < 200) return '#E8F0FF';
-          return '#FFF5E6';
-        }
+        const tempColor = this._getTempTintFromAttrs(attrs);
+        if (tempColor) return tempColor;
         // Default warm white for lights that are on but have no color info
         return '#FDB750';
       }
@@ -2017,12 +2017,8 @@
       const attrs = stateObj.attributes || {};
       if (Array.isArray(attrs.rgb_color)) return `rgb(${attrs.rgb_color.join(',')})`;
       if (Array.isArray(attrs.hs_color)) return `hsl(${attrs.hs_color[0]}, ${attrs.hs_color[1]}%, 50%)`;
-      if (typeof attrs.color_temp === 'number') {
-        // crude warm/cool approximation like the main icon
-        if (attrs.color_temp > 400) return '#FFD700';
-        if (attrs.color_temp < 200) return '#E8F0FF';
-        return '#FFF5E6';
-      }
+      const tempColor = this._getTempTintFromAttrs(attrs);
+      if (tempColor) return tempColor;
       return '#FFD700';
     }
 
@@ -2050,9 +2046,11 @@
       if (!entity) return;
       const attrs = entity.attributes;
 
-      if (attrs.min_mireds) this._tempMin = attrs.min_mireds;
-      if (attrs.max_mireds) this._tempMax = attrs.max_mireds;
-      if (attrs.color_temp) this._currentTemp = attrs.color_temp;
+      const tempRange = this._getTempRangeMireds(attrs);
+      this._tempMin = tempRange.min;
+      this._tempMax = tempRange.max;
+      const currentTemp = this._getColorTempMireds(attrs);
+      if (typeof currentTemp === 'number') this._currentTemp = currentTemp;
       
       if (attrs.hs_color && attrs.hs_color.length === 2) {
           this._hue = attrs.hs_color[0];
@@ -3363,6 +3361,86 @@
       return 'Cool Daylight';
     }
 
+    _miredToKelvin(mireds) {
+      const value = Number(mireds);
+      if (!Number.isFinite(value) || value <= 0) return null;
+      return Math.round(1000000 / value);
+    }
+
+    _kelvinToMired(kelvin) {
+      const value = Number(kelvin);
+      if (!Number.isFinite(value) || value <= 0) return null;
+      return Math.round(1000000 / value);
+    }
+
+    _getColorTempMireds(attrs = {}) {
+      if (typeof attrs.color_temp === 'number' && Number.isFinite(attrs.color_temp)) return attrs.color_temp;
+      if (typeof attrs.color_temp_kelvin === 'number' && Number.isFinite(attrs.color_temp_kelvin)) {
+        return this._kelvinToMired(attrs.color_temp_kelvin);
+      }
+      if (typeof attrs.kelvin === 'number' && Number.isFinite(attrs.kelvin)) {
+        return this._kelvinToMired(attrs.kelvin);
+      }
+      return null;
+    }
+
+    _getColorTempKelvin(attrs = {}) {
+      if (typeof attrs.color_temp_kelvin === 'number' && Number.isFinite(attrs.color_temp_kelvin)) return attrs.color_temp_kelvin;
+      if (typeof attrs.kelvin === 'number' && Number.isFinite(attrs.kelvin)) return attrs.kelvin;
+      if (typeof attrs.color_temp === 'number' && Number.isFinite(attrs.color_temp)) {
+        return this._miredToKelvin(attrs.color_temp);
+      }
+      return null;
+    }
+
+    _getTempRangeMireds(attrs = {}) {
+      const min = typeof attrs.min_mireds === 'number'
+        ? attrs.min_mireds
+        : this._kelvinToMired(attrs.max_color_temp_kelvin);
+      const max = typeof attrs.max_mireds === 'number'
+        ? attrs.max_mireds
+        : this._kelvinToMired(attrs.min_color_temp_kelvin);
+      return {
+        min: Number.isFinite(min) ? min : 153,
+        max: Number.isFinite(max) ? max : 500,
+      };
+    }
+
+    _supportsColorTempKelvin(attrs = {}) {
+      return ['color_temp_kelvin', 'min_color_temp_kelvin', 'max_color_temp_kelvin']
+        .some((key) => typeof attrs[key] === 'number' && Number.isFinite(attrs[key]));
+    }
+
+    _supportsColorTemp(attrs = {}) {
+      const scm = Array.isArray(attrs.supported_color_modes) ? attrs.supported_color_modes : [];
+      return scm.includes('color_temp')
+        || this._supportsColorTempKelvin(attrs)
+        || typeof attrs.color_temp === 'number'
+        || typeof attrs.color_temp_kelvin === 'number';
+    }
+
+    _buildColorTempServiceData(entityId, colorTempMireds, attrs = {}) {
+      const data = { entity_id: entityId };
+      const tempMireds = Number(colorTempMireds);
+      if (!Number.isFinite(tempMireds) || tempMireds <= 0) return data;
+
+      if (this._supportsColorTempKelvin(attrs)) {
+        const kelvin = this._miredToKelvin(tempMireds);
+        if (Number.isFinite(kelvin)) data.color_temp_kelvin = kelvin;
+      } else {
+        data.color_temp = Math.round(tempMireds);
+      }
+      return data;
+    }
+
+    _getTempTintFromAttrs(attrs = {}) {
+      const kelvin = this._getColorTempKelvin(attrs);
+      if (!Number.isFinite(kelvin)) return null;
+      if (kelvin <= 2500) return '#FFD700';
+      if (kelvin >= 5000) return '#E8F0FF';
+      return '#FFF5E6';
+    }
+
     _ensureLightFavorites() {
       try {
         const entityId = this._config?.entity;
@@ -3532,8 +3610,14 @@
       const attrs = entity.attributes || {};
 
       // Default name: use color names (Warm White, Indigo, etc.) when applicable.
+      const currentTempMireds = (typeof this._currentTemp === 'number')
+        ? this._currentTemp
+        : this._getColorTempMireds(attrs);
+      const currentTempKelvin = (typeof currentTempMireds === 'number')
+        ? this._miredToKelvin(currentTempMireds)
+        : this._getColorTempKelvin(attrs);
       const defaultName = (this._activeView === 'temperature')
-        ? this._getTempName(Math.round(1000000 / (this._currentTemp || attrs.color_temp || 326)))
+        ? this._getTempName(currentTempKelvin || this._miredToKelvin(326))
         : (this._activeView === 'color')
           ? this._getColorName(this._hue, this._saturation)
           : (this._config.name || attrs.friendly_name || 'Favorite');
@@ -3561,11 +3645,12 @@
 
       // IMPORTANT: Save only ONE color descriptor based on the current view
       if (this._activeView === 'temperature') {
-        const ct = (typeof this._currentTemp === 'number' ? this._currentTemp : attrs.color_temp);
+        const ct = currentTempMireds;
         if (typeof ct === 'number' && !Number.isNaN(ct)) {
           fav.type = 'temp';
           fav.color_temp = ct;
-          fav.kelvin = Math.round(1000000 / ct);
+          fav.kelvin = this._miredToKelvin(ct);
+          fav.color_temp_kelvin = fav.kelvin;
           fav.color = (fav.kelvin < 3500) ? '#FFE4B5' : (fav.kelvin < 5000 ? '#FFF5E6' : '#E8F0FF');
         }
       } else if (this._activeView === 'color') {
@@ -3625,9 +3710,15 @@
         // - brightness slider => don't force a color descriptor
         const memberMode = opts.pickerMode || this._groupMemberModes?.[eid] || 'brightness';
         if (memberMode === 'temp') {
-          if (typeof a.color_temp === 'number') {
+          const colorTempMireds = this._getColorTempMireds(a);
+          const colorTempKelvin = this._getColorTempKelvin(a);
+          if (typeof colorTempMireds === 'number') {
             snap.type = 'temp';
-            snap.color_temp = a.color_temp;
+            snap.color_temp = colorTempMireds;
+            if (typeof colorTempKelvin === 'number') {
+              snap.kelvin = colorTempKelvin;
+              snap.color_temp_kelvin = colorTempKelvin;
+            }
           }
         } else if (memberMode === 'color') {
           if (Array.isArray(a.rgb_color)) {
@@ -3705,8 +3796,13 @@
           if (typeof snap.brightness === 'number') d.brightness = snap.brightness;
           if (snap.effect) d.effect = snap.effect;
           if (snap.type === 'temp') {
-            if (typeof snap.kelvin === 'number') d.kelvin = snap.kelvin;
-            else if (typeof snap.color_temp === 'number') d.color_temp = snap.color_temp;
+            if (typeof snap.color_temp === 'number' || typeof snap.kelvin === 'number' || typeof snap.color_temp_kelvin === 'number') {
+              const stAttrs = this.hass?.states?.[eid]?.attributes || {};
+              const tempMireds = typeof snap.color_temp === 'number'
+                ? snap.color_temp
+                : this._kelvinToMired(snap.color_temp_kelvin ?? snap.kelvin);
+              Object.assign(d, this._buildColorTempServiceData(eid, tempMireds, stAttrs));
+            }
           } else if (snap.type === 'rgb') {
             if (Array.isArray(snap.rgb_color)) d.rgb_color = snap.rgb_color;
           } else if (snap.type === 'hs') {
@@ -3724,10 +3820,12 @@
 
       // IMPORTANT: only one color descriptor per service call
       if (fav.type === 'temp') {
-        if (typeof fav.kelvin === 'number' && !Number.isNaN(fav.kelvin)) {
-          data.kelvin = fav.kelvin;
-        } else if (typeof fav.color_temp === 'number' && !Number.isNaN(fav.color_temp)) {
-          data.color_temp = fav.color_temp;
+        const attrs = this._getEntity()?.attributes || {};
+        const tempMireds = typeof fav.color_temp === 'number'
+          ? fav.color_temp
+          : this._kelvinToMired(fav.color_temp_kelvin ?? fav.kelvin);
+        if (typeof tempMireds === 'number' && !Number.isNaN(tempMireds)) {
+          Object.assign(data, this._buildColorTempServiceData(this._config.entity, tempMireds, attrs));
         }
       } else if (fav.type === 'rgb') {
         if (Array.isArray(fav.rgb_color)) data.rgb_color = fav.rgb_color;
@@ -3737,8 +3835,15 @@
         // Backward compatibility for older saved favorites
         if (Array.isArray(fav.rgb_color)) data.rgb_color = fav.rgb_color;
         else if (Array.isArray(fav.hs_color)) data.hs_color = fav.hs_color;
-        else if (typeof fav.kelvin === 'number') data.kelvin = fav.kelvin;
-        else if (typeof fav.color_temp === 'number') data.color_temp = fav.color_temp;
+        else if (typeof fav.kelvin === 'number' || typeof fav.color_temp_kelvin === 'number' || typeof fav.color_temp === 'number') {
+          const attrs = this._getEntity()?.attributes || {};
+          const tempMireds = typeof fav.color_temp === 'number'
+            ? fav.color_temp
+            : this._kelvinToMired(fav.color_temp_kelvin ?? fav.kelvin);
+          if (typeof tempMireds === 'number' && !Number.isNaN(tempMireds)) {
+            Object.assign(data, this._buildColorTempServiceData(this._config.entity, tempMireds, attrs));
+          }
+        }
       }
 
       this.hass.callService('light', 'turn_on', data);
@@ -3880,8 +3985,7 @@
       const brightness = this._getBrightness();
       const supportsColor = entity && entity.attributes.supported_color_modes && 
         entity.attributes.supported_color_modes.some(m => ['hs', 'rgb', 'xy', 'rgbw'].includes(m));
-      const supportsTemp = entity && entity.attributes.supported_color_modes && 
-        entity.attributes.supported_color_modes.some(m => m === 'color_temp');
+      const supportsTemp = entity ? this._supportsColorTemp(entity.attributes || {}) : false;
       
       const effectList = entity && entity.attributes.effect_list ? entity.attributes.effect_list : [];
       const currentEffect = entity && entity.attributes.effect ? entity.attributes.effect : 'None';
@@ -5830,7 +5934,7 @@
       } else if (this._activeView === 'temperature') {
         const range = this._tempMax - this._tempMin;
         const currentTempPct = 100 - (((this._currentTemp - this._tempMin) / range) * 100);
-        const kelvin = Math.round(1000000 / this._currentTemp);
+      const kelvin = this._miredToKelvin(this._currentTemp);
         const tempName = this._getTempName(kelvin);
         // Clamp thumb position so it's always visible (at 0% and 100%)
         const thumbPos = currentTempPct <= 0 ? '0px' : currentTempPct >= 100 ? 'calc(100% - 6px)' : `calc(${currentTempPct}% - 6px)`;
@@ -10399,7 +10503,7 @@
       
       const pickDefaultMode = (child) => {
         const scm = child?.attributes?.supported_color_modes || [];
-        const hasTemp = scm.includes('color_temp');
+        const hasTemp = this._supportsColorTemp(child?.attributes || {});
         const hasColor = scm.some(m => ['hs','rgb','xy','rgbw','rgbww'].includes(m));
         
         // If default_section is configured and not 'last', use that setting
@@ -10422,7 +10526,7 @@
         const brightnessPct = childEntity.attributes.brightness ? Math.round((childEntity.attributes.brightness / 255) * 100) : 0;
 
         const scm = childEntity.attributes.supported_color_modes || [];
-        const supportsTemp = scm.includes('color_temp');
+        const supportsTemp = this._supportsColorTemp(childEntity.attributes || {});
         const supportsColor = scm.some(m => ['hs','rgb','xy','rgbw','rgbww'].includes(m));
         const supportsBrightness = scm.some(m => ['brightness', 'color_temp', 'hs', 'rgb', 'xy', 'rgbw', 'rgbww'].includes(m));
         
@@ -10480,9 +10584,10 @@
         let gradient = '';
         if (mode === 'temp') {
           sliderKind = 'temp';
-          const minM = childEntity.attributes.min_mireds || 153;
-          const maxM = childEntity.attributes.max_mireds || 500;
-          const ct = typeof childEntity.attributes.color_temp === 'number' ? childEntity.attributes.color_temp : minM;
+          const range = this._getTempRangeMireds(childEntity.attributes || {});
+          const minM = range.min;
+          const maxM = range.max;
+          const ct = this._getColorTempMireds(childEntity.attributes || {}) ?? minM;
           pct = Math.round(((ct - minM) / (maxM - minM)) * 100);
           gradient = 'background: linear-gradient(to right, #8ec5ff, #e8f0ff, #fff2c6, #ffd1a1);';
         } else if (mode === 'color') {
@@ -10801,7 +10906,7 @@
           const range = self._tempMax - self._tempMin;
           const mireds = Math.round(self._tempMax - (y * range));
           self._currentTemp = mireds;
-          const kelvin = Math.round(1000000 / mireds);
+          const kelvin = self._miredToKelvin(mireds);
           
           const fill = tempTrackVertical.querySelector('.vertical-slider-fill');
           const thumb = tempTrackVertical.querySelector('.vertical-slider-thumb');
@@ -10822,7 +10927,7 @@
           document.removeEventListener('touchend', finishTemp);
           
           self._isDragging = false;
-          self.hass.callService('light', 'turn_on', { entity_id: self._config.entity, color_temp: self._currentTemp });
+          self.hass.callService('light', 'turn_on', self._buildColorTempServiceData(self._config.entity, self._currentTemp, self._getEntity()?.attributes || {}));
         };
 
         const handleTouchTemp = (e) => { e.preventDefault(); updateTemp(e.touches[0]); };
@@ -11045,10 +11150,11 @@
           const a = st.attributes || {};
 
           if (mode === 'temp') {
-            const minM = a.min_mireds || 153;
-            const maxM = a.max_mireds || 500;
+            const range = this._getTempRangeMireds(a);
+            const minM = range.min;
+            const maxM = range.max;
             const ct = Math.round(minM + ((maxM - minM) * (pct / 100)));
-            await this.hass.callService('light', 'turn_on', { entity_id: entityId, color_temp: ct });
+            await this.hass.callService('light', 'turn_on', this._buildColorTempServiceData(entityId, ct, a));
           } else if (mode === 'color') {
             const hue = Math.round((pct / 100) * 360);
             await this.hass.callService('light', 'turn_on', { entity_id: entityId, hs_color: [hue, 100] });
