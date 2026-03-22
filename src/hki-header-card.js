@@ -253,6 +253,7 @@ function popupFlatKeyToNestedKey(flatKey) {
 }
 
 function popupNestedKeyToFlatKey(nestedKey) {
+  if (HKI_POPUP_CONFIG_KEYS.includes(nestedKey)) return nestedKey;
   if (nestedKey === "name") return "popup_name";
   if (nestedKey === "state") return "popup_state";
   if (nestedKey === "icon") return "popup_icon";
