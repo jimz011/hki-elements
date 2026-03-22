@@ -161,6 +161,7 @@ class HkiNotificationCard extends LitElement {
     this._swipeHandlers = {};
     this._marqueeNeedsDuplicate = false;
     this._confirmationPending = null;
+    this._lastPopupMessagesJSON = "";
     // CSS animation drag tracking
     this._cssScrollOffset = 0;
     this._cssDragOffset = 0;
@@ -711,6 +712,7 @@ _openPopup() {
   if (this._popupOpen) return;
   this._popupOpen = true;
   this._popupClosing = false;
+  this._lastPopupMessagesJSON = JSON.stringify(this._getMessages());
   this._createPopupPortal();
   window.HKI?.animatePopupOpen?.({
     portal: this._popupPortal,
@@ -1046,6 +1048,7 @@ _openPopup() {
   _refreshPopupPortal() {
     const portal = this._popupPortal;
     if (!portal) return;
+    this._lastPopupMessagesJSON = JSON.stringify(this._getMessages());
     const { markup, realMessages } = this._buildPopupPortalMarkup();
     portal.innerHTML = markup;
     this._bindPopupPortalEvents(portal, realMessages);
@@ -1550,8 +1553,15 @@ _openPopup() {
 
   updated(changedProps) {
     super.updated(changedProps);
-    if ((changedProps.has("hass") || changedProps.has("_config")) && this._popupOpen && !this._popupClosing) {
-      this._refreshPopupPortal();
+    if (this._popupOpen && !this._popupClosing) {
+      if (changedProps.has("_config")) {
+        this._refreshPopupPortal();
+      } else if (changedProps.has("hass")) {
+        const currentPopupMessagesJSON = JSON.stringify(this._getMessages());
+        if (currentPopupMessagesJSON !== this._lastPopupMessagesJSON) {
+          this._refreshPopupPortal();
+        }
+      }
     }
     if (this._config?.display_mode === 'marquee' && this._config?.auto_scroll !== false) {
       this._checkMarqueeOverflow();
