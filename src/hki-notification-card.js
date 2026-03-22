@@ -2081,8 +2081,6 @@ _openPopup() {
         <div class="wrapper button-mode-wrapper ${headerClass}" style="${containerStyles}">
           ${this._renderButton(realMessageCount)}
         </div>
-        ${this._popupOpen ? this._renderPopup(messages) : ''}
-        ${this._confirmationPending ? this._renderConfirmation(this._confirmationPending) : ''}
       `;
     }
     
@@ -2145,8 +2143,6 @@ _openPopup() {
              <div class="ticker-container">${this._renderPill(messages[this._tickerIndex % messages.length], messages.length === 1, "ticker")}</div>`
         }
       </div>
-      ${this._popupOpen ? this._renderPopup(messages) : ''}
-      ${this._confirmationPending ? this._renderConfirmation(this._confirmationPending) : ''}
     `;
   }
 

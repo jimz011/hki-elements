@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.4-dev-01 ',
+  '%c HKI-ELEMENTS %c v1.4.4-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -32361,8 +32361,6 @@ _openPopup() {
         <div class="wrapper button-mode-wrapper ${headerClass}" style="${containerStyles}">
           ${this._renderButton(realMessageCount)}
         </div>
-        ${this._popupOpen ? this._renderPopup(messages) : ''}
-        ${this._confirmationPending ? this._renderConfirmation(this._confirmationPending) : ''}
       `;
     }
     
@@ -32425,8 +32423,6 @@ _openPopup() {
              <div class="ticker-container">${this._renderPill(messages[this._tickerIndex % messages.length], messages.length === 1, "ticker")}</div>`
         }
       </div>
-      ${this._popupOpen ? this._renderPopup(messages) : ''}
-      ${this._confirmationPending ? this._renderConfirmation(this._confirmationPending) : ''}
     `;
   }
 
