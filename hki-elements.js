@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.4-dev-03 ',
+  '%c HKI-ELEMENTS %c v1.4.5 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9936,6 +9936,10 @@ window.customCards.push({
       return this._config?.entity ? this._config.entity.split('.')[0] : '';
     }
 
+    _getLocale() {
+      return this.hass?.language || this.hass?.locale?.language || undefined;
+    }
+
     /**
      * Get localized state string using Home Assistant's translation system
      * Same approach as used in HKI Header Card for weather states
@@ -9953,6 +9957,50 @@ window.customCards.push({
       
       // Fallback: title-case the state
       return String(state).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    _isActiveState(state, domain) {
+      const normalizedState = String(state || '').toLowerCase();
+      if (!normalizedState || normalizedState === 'unknown' || normalizedState === 'unavailable') return false;
+
+      switch (domain) {
+        case 'light':
+        case 'switch':
+        case 'input_boolean':
+        case 'automation':
+        case 'fan':
+        case 'humidifier':
+          return normalizedState === 'on';
+        case 'cover':
+          return normalizedState !== 'closed';
+        case 'lock':
+          return normalizedState === 'locked';
+        case 'climate':
+          return normalizedState !== 'off';
+        case 'alarm_control_panel':
+          return normalizedState !== 'disarmed';
+        case 'media_player':
+          return !['off', 'standby'].includes(normalizedState);
+        case 'device_tracker':
+        case 'person':
+          return normalizedState === 'home';
+        case 'binary_sensor':
+          return ['on', 'open', 'detected', 'motion', 'occupied', 'connected', 'problem', 'smoke', 'moisture'].includes(normalizedState);
+        default:
+          return normalizedState === 'on';
+      }
+    }
+
+    _getGroupBadgeCount(entity) {
+      const members = entity?.attributes?.entity_id;
+      if (!Array.isArray(members) || !members.length) return 0;
+
+      return members.reduce((count, entityId) => {
+        const member = this.hass?.states?.[entityId];
+        if (!member) return count;
+        const memberDomain = String(entityId || '').split('.')[0];
+        return count + (this._isActiveState(member.state, memberDomain) ? 1 : 0);
+      }, 0);
     }
 
     /**
@@ -10561,9 +10609,28 @@ window.customCards.push({
     _formatHistoryTime(date) {
       const mode = this._getEffectivePopupTimeFormat();
       const base = { hour: '2-digit', minute: '2-digit' };
-      if (mode === '12') return date.toLocaleTimeString([], { ...base, hour12: true });
-      if (mode === '24') return date.toLocaleTimeString([], { ...base, hour12: false });
-      return date.toLocaleTimeString([], base);
+      const locale = this._getLocale();
+      if (mode === '12') return date.toLocaleTimeString(locale, { ...base, hour12: true });
+      if (mode === '24') return date.toLocaleTimeString(locale, { ...base, hour12: false });
+      return date.toLocaleTimeString(locale, base);
+    }
+
+    _formatHistoryRangeLabel(date, rangeEnd) {
+      if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+      const locale = this._getLocale();
+      const sameDay = rangeEnd instanceof Date
+        && !isNaN(rangeEnd.getTime())
+        && date.getFullYear() === rangeEnd.getFullYear()
+        && date.getMonth() === rangeEnd.getMonth()
+        && date.getDate() === rangeEnd.getDate();
+
+      if (sameDay) return this._formatHistoryTime(date);
+
+      const mode = this._getEffectivePopupTimeFormat();
+      const opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      if (mode === '12') return date.toLocaleString(locale, { ...opts, hour12: true });
+      if (mode === '24') return date.toLocaleString(locale, { ...opts, hour12: false });
+      return date.toLocaleString(locale, opts);
     }
 
     _syncState() {
@@ -18265,32 +18332,28 @@ window.customCards.push({
         pts.sort((a, b) => a.t - b.t);
 
         const now = Date.now();
-        const t0 = pts[0].t;
-        const tSpan = now - t0;
+        const rangeStart = startTs.getTime();
+        const tSpan = Math.max(1, now - rangeStart);
         const segments = [];
         const activeSet = new Set(['on', 'home', 'detected', 'open', 'motion', 'occupied', 'connected', 'locked', 'problem', 'leak', 'smoke', 'fire', 'vibration', 'sound', 'power']);
 
         for (let i = 0; i < pts.length; i++) {
           const s = pts[i].s;
-          const start = pts[i].t;
+          const start = Math.max(pts[i].t, rangeStart);
           const end = i + 1 < pts.length ? pts[i + 1].t : now;
-          const width = ((end - start) / tSpan * 100).toFixed(2);
+          const width = ((Math.max(start, end) - start) / tSpan * 100).toFixed(2);
           const active = activeSet.has(s);
           const segColor = active ? activeColor : 'rgba(128,128,128,0.25)';
           const stateLabel = this._getLocalizedState(s, domain) || s;
           const dur = this._getTimeAgo(new Date(start));
           segments.push(`<div class="state-bar-segment" style="width:${width}%;background:${segColor}" data-tip="${stateLabel} ${dur}"></div>`);
         }
-
-        const tFmt = (ts) => {
-          const d = new Date(ts);
-          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        };
+        const rangeEndDate = new Date(now);
 
         wrap.innerHTML = `
           <div class="state-bar-title">Activity (24h)</div>
           <div class="state-bar-container">${segments.join('')}</div>
-          <div class="state-bar-labels"><span>${tFmt(t0)}</span><span>${tFmt(now)}</span></div>
+          <div class="state-bar-labels"><span>${this._formatHistoryRangeLabel(startTs, rangeEndDate)}</span><span>${this._formatHistoryRangeLabel(rangeEndDate, startTs)}</span></div>
         `;
       } catch (e) {
         wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">Error</div>';
@@ -20019,7 +20082,17 @@ window.customCards.push({
       const minutes = Math.floor(seconds / 60);
       const hours = Math.floor(minutes / 60);
       const days = Math.floor(hours / 24);
-      
+
+      const locale = this._getLocale();
+      if (typeof Intl !== 'undefined' && typeof Intl.RelativeTimeFormat === 'function') {
+        const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+        if (days > 0) return rtf.format(-days, 'day');
+        if (hours > 0) return rtf.format(-hours, 'hour');
+        if (minutes > 0) return rtf.format(-minutes, 'minute');
+        if (seconds > 5) return rtf.format(-seconds, 'second');
+        return rtf.format(0, 'second');
+      }
+
       if (days > 0) return days === 1 ? '1 day ago' : `${days} days ago`;
       if (hours > 0) return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
       if (minutes > 0) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
@@ -20428,10 +20501,7 @@ window.customCards.push({
         ? resolveAutoColor(this.renderTemplate('brightnessColor', this._config.brightness_color), 'inherit')
         : 'inherit';
             
-      const isGroup = !!(entity?.attributes?.entity_id && Array.isArray(entity.attributes.entity_id));
-      const badgeCount = isGroup
-        ? (entity?.attributes?.entity_id || []).filter((id) => this.hass?.states?.[id]?.state === 'on').length
-        : 0;
+      const badgeCount = this._getGroupBadgeCount(entity);
       
       // Animations should only run when the entity is effectively ON.
       // (Disabled for OFF and for UNAVAILABLE, which is treated as OFF elsewhere.)
@@ -33772,6 +33842,35 @@ class HKIPostNLCard extends HTMLElement {
         });
     }
 
+    _extractShipments(attrs) {
+        if (!attrs) return [];
+
+        if (Array.isArray(attrs)) {
+            return attrs;
+        }
+
+        const normalized = Object.entries(attrs).reduce((acc, [key, value]) => {
+            acc[String(key).toLowerCase()] = value;
+            return acc;
+        }, {});
+
+        const groupedKeys = ['enroute', 'en_route', 'delivered'];
+        const groupedShipments = groupedKeys.flatMap((key) => Array.isArray(normalized[key]) ? normalized[key] : []);
+        if (groupedShipments.length) {
+            return groupedShipments;
+        }
+
+        if (Array.isArray(normalized.shipments)) {
+            return normalized.shipments;
+        }
+
+        if (Array.isArray(normalized.parcels)) {
+            return normalized.parcels;
+        }
+
+        return Object.values(attrs).filter((item) => item && typeof item === 'object' && item.key);
+    }
+
     getData() {
         if (!this.config.entity) return null;
         const entityId = this.config.entity;
@@ -33780,21 +33879,7 @@ class HKIPostNLCard extends HTMLElement {
         if (!stateObj) return null;
 
         const attrs = stateObj.attributes;
-        let shipments = [];
-        
-        if (Array.isArray(attrs)) {
-            shipments = attrs;
-        } else if (attrs.enroute || attrs.en_route || attrs.delivered) {
-            const enrouteArray = Array.isArray(attrs.enroute) ? attrs.enroute : (Array.isArray(attrs.en_route) ? attrs.en_route : []);
-            const deliveredArray = Array.isArray(attrs.delivered) ? attrs.delivered : [];
-            shipments = [...enrouteArray, ...deliveredArray];
-        } else if (attrs.shipments) {
-            shipments = attrs.shipments;
-        } else if (attrs.parcels) {
-            shipments = attrs.parcels;
-        } else {
-            shipments = Object.values(attrs).filter(item => item && item.key);
-        }
+        let shipments = this._extractShipments(attrs);
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - (this.config.days_back || 90));
@@ -33814,24 +33899,7 @@ class HKIPostNLCard extends HTMLElement {
         const stateObj = this._hass ? this._hass.states[this.config.distribution_entity] : null;
         if (!stateObj) return [];
 
-        const attrs = stateObj.attributes;
-        let shipments = [];
-        
-        if (Array.isArray(attrs)) {
-            shipments = attrs;
-        } else if (attrs.en_route || attrs.delivered || attrs.Enroute || attrs.Delivered) {
-            const enroute = attrs.en_route || attrs.Enroute || [];
-            const delivered = attrs.delivered || attrs.Delivered || [];
-            shipments = [...enroute, ...delivered];
-        } else if (attrs.shipments) {
-            shipments = attrs.shipments;
-        } else if (attrs.parcels) {
-            shipments = attrs.parcels;
-        } else {
-            shipments = Object.values(attrs).filter(item => item && item.key);
-        }
-
-        return shipments;
+        return this._extractShipments(stateObj.attributes);
     }
 
     getFilteredShipments(shipments, distributionShipments) {
@@ -33912,6 +33980,25 @@ class HKIPostNLCard extends HTMLElement {
         const selectedParcelData = this._selectedParcel 
             ? displayedShipments.find(s => s.key === this._selectedParcel)
             : null;
+
+        if (this.config.show_animation && selectedParcelData?.delivered) {
+            animationEl.classList.add('animation-active');
+            animationEl.innerHTML = `
+                <div class="delivery-complete">
+                    <div class="delivery-complete-icon">
+                        <ha-icon icon="mdi:package-check"></ha-icon>
+                    </div>
+                    <div class="delivery-complete-text">
+                        <strong>${selectedParcelData.name}</strong>
+                        <span>Pakket bezorgd</span>
+                    </div>
+                </div>
+                <div class="animation-info">
+                    <strong>${selectedParcelData.name}</strong> - Bezorgd
+                </div>
+            `;
+            return;
+        }
 
         if (this.config.show_animation && selectedParcelData) {
             const vanPos = selectedParcelData.delivered ? '75%' : '25%';
@@ -34182,6 +34269,41 @@ class HKIPostNLCard extends HTMLElement {
             }
             .animation-info strong {
                 color: var(--primary-text-color);
+            }
+            .delivery-complete {
+                height: 118px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 14px;
+                background: linear-gradient(135deg, rgba(237, 140, 0, 0.12), rgba(76, 175, 80, 0.14));
+                border-radius: 12px;
+            }
+            .delivery-complete-icon {
+                width: 58px;
+                height: 58px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(76, 175, 80, 0.14);
+                color: #4caf50;
+                flex-shrink: 0;
+            }
+            .delivery-complete-icon ha-icon {
+                --mdc-icon-size: 30px;
+            }
+            .delivery-complete-text {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .delivery-complete-text strong {
+                color: var(--primary-text-color);
+            }
+            .delivery-complete-text span {
+                color: var(--secondary-text-color);
+                font-size: 0.9em;
             }
             .animation-placeholder {
                 display: flex;
