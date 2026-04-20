@@ -576,6 +576,7 @@
       this._customPopupYamlFocused = false;
       this._customPopupYamlDebounce = null;
       this._popupOpen = false;
+      this._popupClosing = false;
       this._popupPortal = null;
       this._popupSourceEntityId = null;
       this._popupEntitySwitchInProgress = false;
@@ -1064,6 +1065,7 @@
       if (changedProps.has("hass")) {
         // Popup updates
         if (this._popupOpen) {
+          if (this._popupClosing) return;
           if (this._isDragging) return;
           const oldHass = changedProps.get("hass");
           const trackedId = this._popupEntityId || this._config.entity;
@@ -1396,7 +1398,7 @@
           const isUnavailable = !!entity && String(entity.state || '').toLowerCase() === 'unavailable';
           const isOnEffective = isUnavailable ? false : isOn;
           const brightness = this._getBrightness();
-          const baseState = isOnEffective ? `${brightness}%` : (isUnavailable ? 'Unavailable' : 'Off');
+          const baseState = isOnEffective ? `${brightness}%` : (isUnavailable ? this._getLocalizedState('unavailable', this._getDomain(), entity) : this._getLocalizedState('off', this._getDomain(), entity));
           const lastSeen = entity ? this._formatLastTriggered(entity) : '';
           stateEl.textContent = `${this._getPopupHeaderState(baseState)}${lastSeen ? ` - ${lastSeen}` : ''}`;
       }
@@ -1419,19 +1421,52 @@
      * Get localized state string using Home Assistant's translation system
      * Same approach as used in HKI Header Card for weather states
      */
-    _getLocalizedState(state, domain) {
+    _getLocalizedState(state, domain, entityOverride = null) {
       if (!this.hass || !state) return state;
       
       // Get the entity object
-      const entity = this.hass.states[this._config.entity];
+      const entity = entityOverride || this.hass.states[this._config.entity];
       
       // Use HA's formatEntityState if available (same as header card)
       if (this.hass.formatEntityState && entity) {
-        return this.hass.formatEntityState(entity);
+        try {
+          return this.hass.formatEntityState({ ...entity, state });
+        } catch (_) {
+          return this.hass.formatEntityState(entity);
+        }
       }
       
       // Fallback: title-case the state
       return String(state).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+
+    _getPopupText(key, fallback = '') {
+      const locale = String(this._getLocale() || 'en').toLowerCase().split('-')[0];
+      const dict = {
+        nl: {
+          favorites: 'Favorieten',
+          effects: 'Effecten',
+          presets: 'Voorinstellingen',
+          heat: 'Verwarming',
+          close: 'Sluiten',
+          history: 'Geschiedenis',
+          controls: 'Bediening',
+          speed: 'Snelheid',
+          humidity: 'Luchtvochtigheid',
+          no_effects_available: 'Geen effecten beschikbaar voor dit apparaat',
+          no_effect: 'Geen effect',
+          loading_timeline: 'Tijdlijn laden...',
+          loading_history: 'Geschiedenis laden...',
+          loading_chart: 'Grafiek laden...',
+          loading_activity: 'Activiteit laden...',
+          activity_24h: 'Activiteit (24u)',
+          changed: 'Gewijzigd',
+          opened: 'Geopend',
+          closed: 'Gesloten',
+          empty: '(leeg)',
+        },
+      };
+      return dict[locale]?.[key] || fallback;
     }
 
     _isActiveState(state, domain) {
@@ -3303,10 +3338,13 @@
         if (typeof onDone === 'function') onDone();
         return;
       }
+      if (this._popupClosing) return;
+      this._popupClosing = true;
 
       const cleanup = () => {
         this._stopHistoryAutoRefresh();
         this._popupOpen = false;
+        this._popupClosing = false;
         this._isDragging = false;
         this._expandedEffects = false;
         this._detachPopupChromeObserver(portal);
@@ -4483,7 +4521,7 @@
               <span id="hkiHeaderIconSlot"></span>
               <span class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${this._getPopupHeaderState(isOnEffective ? brightness + '%' : (isUnavailable ? 'Unavailable' : 'Off'))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(isOnEffective ? brightness + '%' : (isUnavailable ? this._getLocalizedState('unavailable', domain, entity) : this._getLocalizedState('off', domain, entity)))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </span>
             </span>
             <div class="hki-light-popup-header-controls">
@@ -4499,10 +4537,10 @@
           
           <div class="hki-light-popup-tabs">
             ${this._config.popup_show_favorites !== false ? `
-              <button class="hki-light-popup-tab ${this._activeView === 'favorites' ? 'active' : ''}" id="scenesBtn" style="${this._activeView === 'favorites' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:star"></ha-icon><span>Favorites</span></button>
+              <button class="hki-light-popup-tab ${this._activeView === 'favorites' ? 'active' : ''}" id="scenesBtn" style="${this._activeView === 'favorites' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:star"></ha-icon><span>${this._getPopupText('favorites', 'Favorites')}</span></button>
             ` : ''}
             ${this._config.popup_show_effects !== false ? `
-              <button class="hki-light-popup-tab ${this._activeView === 'effects' ? 'active' : ''}" id="effectsBtn" style="${this._activeView === 'effects' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:auto-fix"></ha-icon><span>Effects</span></button>
+              <button class="hki-light-popup-tab ${this._activeView === 'effects' ? 'active' : ''}" id="effectsBtn" style="${this._activeView === 'effects' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:auto-fix"></ha-icon><span>${this._getPopupText('effects', 'Effects')}</span></button>
             ` : ''}
           </div>
           
@@ -4551,6 +4589,7 @@
       const container = portal.querySelector('.hki-light-popup-container');
       if (container) container.addEventListener('click', (e) => e.stopPropagation());
 
+      if (!portal.__hkiCustomPopupEventsBound) {
       let isBackgroundClick = false;
 
       portal.addEventListener('mousedown', (e) => {
@@ -4884,8 +4923,8 @@
           </div>
 
           <div class="hki-tabs">
-            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fire"></ha-icon><span>Heat</span></button>
-            ${(this._config.popup_show_presets !== false && presetList.length) ? `<button class="tab-btn ${this._activeView === 'presets' ? 'active' : ''}" id="tabPresets" style="${this._activeView === 'presets' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon><span>Presets</span></button>` : ''}
+            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fire"></ha-icon><span>${this._getPopupText('heat', 'Heat')}</span></button>
+            ${(this._config.popup_show_presets !== false && presetList.length) ? `<button class="tab-btn ${this._activeView === 'presets' ? 'active' : ''}" id="tabPresets" style="${this._activeView === 'presets' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon><span>${this._getPopupText('presets', 'Presets')}</span></button>` : ''}
             ${fanList.length ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon><span>Fan</span></button>` : ''}
           </div>
 
@@ -4930,7 +4969,7 @@
           this._activeView = 'history';
           const content = portal.querySelector('#popupContent');
           if (content) {
-            content.innerHTML = `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+            content.innerHTML = `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
             setTimeout(() => this._loadHistory(), 100);
           }
           portal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -6468,11 +6507,11 @@
           <div class="hki-light-popup-tabs">
             ${this._config.popup_show_favorites !== false ? `
               <button class="hki-light-popup-tab ${this._activeView === 'favorites' ? 'active' : ''}" id="coverTabFavorites" style="${this._activeView === 'favorites' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-                <ha-icon icon="mdi:star"></ha-icon> Favorites
+                <ha-icon icon="mdi:star"></ha-icon> ${this._getPopupText('favorites', 'Favorites')}
               </button>
             ` : ''}
             <button class="hki-light-popup-tab ${this._activeView !== 'favorites' ? 'active' : ''}" id="coverTabControls" style="${this._activeView !== 'favorites' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-              <ha-icon icon="mdi:tune-vertical"></ha-icon> Controls
+              <ha-icon icon="mdi:tune-vertical"></ha-icon> ${this._getPopupText('controls', 'Controls')}
             </button>
           </div>
 
@@ -6485,7 +6524,7 @@
           <div class="hki-light-popup-nav">
             <button class="nav-btn" id="coverOpen" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-up"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Open</span>'}</button>
             <button class="nav-btn" id="coverStop" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:stop"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Stop</span>'}</button>
-            <button class="nav-btn" id="coverClose" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-down"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Close</span>'}</button>
+            <button class="nav-btn" id="coverClose" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-down"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('close', 'Close')}</span>`}</button>
           </div>
         </div>
       `;
@@ -7288,7 +7327,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(isOn ? 'on' : 'off', domain, entity))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -7298,7 +7337,7 @@
           </div>
 
           <div class="hki-tabs">
-            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:water-percent"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Humidity</span>'}</button>
+            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:water-percent"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('humidity', 'Humidity')}</span>`}</button>
             ${modes.length > 0 ? `<button class="tab-btn ${this._activeView === 'modes' ? 'active' : ''}" id="tabModes" style="${this._activeView === 'modes' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Mode</span>'}</button>` : ''}
             ${hasFan ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Fan</span>'}</button>` : ''}
           </div>
@@ -8070,7 +8109,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? speed + '%' : this._getLocalizedState('off', domain, entity))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -8080,8 +8119,8 @@
           </div>
 
           <div class="hki-tabs">
-            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Speed</span>'}</button>
-            ${presetModes.length > 0 ? `<button class="tab-btn ${this._activeView === 'presets' ? 'active' : ''}" id="tabPresets" style="${this._activeView === 'presets' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon><span>Presets</span></button>` : ''}
+            <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('speed', 'Speed')}</span>`}</button>
+            ${presetModes.length > 0 ? `<button class="tab-btn ${this._activeView === 'presets' ? 'active' : ''}" id="tabPresets" style="${this._activeView === 'presets' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon><span>${this._getPopupText('presets', 'Presets')}</span></button>` : ''}
           </div>
 
           <div class="hki-popup-content" id="fanContent">
@@ -8247,7 +8286,7 @@
               <div class="vertical-slider-fill" style="height: ${pct}%; background: ${color};"></div>
               <div class="vertical-slider-thumb" style="bottom: ${thumbPos}"></div>
             </div>
-            <div class="slider-label">Speed</div>
+            <div class="slider-label">${this._getPopupText('speed', 'Speed')}</div>
           </div>
         </div>
       `;
@@ -8603,7 +8642,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(isOn ? 'On' : 'Off')}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(isOn ? 'on' : 'off', domain, entity))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -8835,7 +8874,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain))}${hasRealEntity && this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain, entity))}${hasRealEntity && this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -8855,6 +8894,7 @@
       // No stopPropagation on container - embedded cards need click events for their actions.
       // Background-click-to-close is handled below via the isBackgroundClick flag instead.
 
+      if (!portal.__hkiCustomPopupEventsBound) {
       let isBackgroundClick = false;
       portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
       portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
@@ -8890,6 +8930,8 @@
           }));
         });
       });
+      portal.__hkiCustomPopupEventsBound = true;
+      }
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -9820,15 +9862,16 @@
           const active = activeSet.has(s);
           const segColor = active ? activeColor : 'rgba(128,128,128,0.25)';
           const stateLabel = this._getLocalizedState(s, domain) || s;
-          const dur = this._getTimeAgo(new Date(start));
-          segments.push(`<div class="state-bar-segment" style="width:${width}%;background:${segColor}" data-tip="${stateLabel} ${dur}"></div>`);
+        const exactTime = new Date(start).toLocaleString(this._getLocale());
+        const dur = this._getTimeAgo(new Date(start));
+        segments.push(`<div class="state-bar-segment" style="width:${width}%;background:${segColor}" data-tip="${stateLabel} ${dur}" title="${exactTime}"></div>`);
         }
         const rangeEndDate = new Date(now);
 
         wrap.innerHTML = `
-          <div class="state-bar-title">Activity (24h)</div>
+          <div class="state-bar-title">${this._getPopupText('activity_24h', 'Activity (24h)')}</div>
           <div class="state-bar-container">${segments.join('')}</div>
-          <div class="state-bar-labels"><span>${this._formatHistoryRangeLabel(startTs, rangeEndDate)}</span><span>${this._formatHistoryRangeLabel(rangeEndDate, startTs)}</span></div>
+          <div class="state-bar-labels"><span title="${startTs.toLocaleString(this._getLocale())}">${this._formatHistoryRangeLabel(startTs, rangeEndDate)}</span><span title="${rangeEndDate.toLocaleString(this._getLocale())}">${this._formatHistoryRangeLabel(rangeEndDate, startTs)}</span></div>
         `;
       } catch (e) {
         wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">Error</div>';
@@ -10177,7 +10220,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(currentText || '(empty)')}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(currentText || this._getPopupText('empty', '(empty)'))}${this._formatLastTriggered(entity) ? ' - ' + this._formatLastTriggered(entity) : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -10392,7 +10435,7 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(color))}
               <div class="hki-popup-title-text">
                 ${name}
-                <span class="hki-popup-state">${this._getPopupHeaderState(state.charAt(0).toUpperCase() + state.slice(1))}${lastSeen ? ' — ' + lastSeen : ''}</span>
+                <span class="hki-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, domain, entity))}${lastSeen ? ' — ' + lastSeen : ''}</span>
               </div>
             </div>
             <div class="hki-popup-header-controls">
@@ -10700,10 +10743,10 @@
       let html = '<div class="effects-list-container" data-view-type="effects">';
       
       if (!effectList || effectList.length === 0) {
-        html += '<div style="padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px;">No effects available for this device</div>';
+        html += `<div style="padding: 40px 20px; text-align: center; opacity: 0.6; font-size: 14px;">${this._getPopupText('no_effects_available', 'No effects available for this device')}</div>`;
       } else {
         html += '<div class="effects-list expanded">';
-        html += `<div class="effect-item ${currentEffect === 'None' || !currentEffect ? 'active' : ''}" data-effect="None">No Effect</div>`;
+        html += `<div class="effect-item ${currentEffect === 'None' || !currentEffect ? 'active' : ''}" data-effect="None">${this._getPopupText('no_effect', 'No Effect')}</div>`;
         effectList.forEach(effect => {
           html += `<div class="effect-item ${effect === currentEffect ? 'active' : ''}" data-effect="${effect}">${effect}</div>`;
         });
@@ -11412,15 +11455,15 @@
           const timeStr = this._formatHistoryTime(date);
           const ago = this._getTimeAgo(date);
           
-          let stateText = 'Changed';
+          let stateText = this._getPopupText('changed', 'Changed');
           
           // Handle contact sensor events
           if (entry.isContactSensor) {
             const state = String(entry.state || '').toLowerCase();
             if (state === 'on' || state === 'open') {
-              stateText = `${entry.contactLabel} Opened`;
+              stateText = `${entry.contactLabel} ${this._getPopupText('opened', 'Opened')}`;
             } else if (state === 'off' || state === 'closed') {
-              stateText = `${entry.contactLabel} Closed`;
+              stateText = `${entry.contactLabel} ${this._getPopupText('closed', 'Closed')}`;
             }
           } else if (domain === 'alarm_control_panel') {
             // Alarmo often logs message; prefer that, else state

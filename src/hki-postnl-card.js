@@ -245,9 +245,7 @@ class HKIPostNLCard extends HTMLElement {
                         <span>Pakket bezorgd</span>
                     </div>
                 </div>
-                <div class="animation-info">
-                    <strong>${selectedParcelData.name}</strong> - Bezorgd
-                </div>
+                <div class="animation-info" style="display:none;"></div>
             `;
             return;
         }
