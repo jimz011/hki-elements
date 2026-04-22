@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.4.5-dev-03 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -13115,21 +13115,24 @@ window.customCards.push({
       if (container) container.addEventListener('click', (e) => e.stopPropagation());
 
       if (!portal.__hkiCustomPopupEventsBound) {
-      let isBackgroundClick = false;
+        let isBackgroundClick = false;
 
-      portal.addEventListener('mousedown', (e) => {
-        isBackgroundClick = (e.target === portal);
-      });
-      portal.addEventListener('touchstart', (e) => {
-        isBackgroundClick = (e.target === portal);
-      }, { passive: true });
+        portal.addEventListener('mousedown', (e) => {
+          isBackgroundClick = (e.target === portal);
+        });
+        portal.addEventListener('touchstart', (e) => {
+          isBackgroundClick = (e.target === portal);
+        }, { passive: true });
 
-      portal.addEventListener('click', (e) => {
-        if (isBackgroundClick && e.target === portal) {
-          this._closePopup();
-        }
-        isBackgroundClick = false;
-      });
+        portal.addEventListener('click', (e) => {
+          if (isBackgroundClick && e.target === portal) {
+            this._closePopup();
+          }
+          isBackgroundClick = false;
+        });
+
+        portal.__hkiCustomPopupEventsBound = true;
+      }
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -17420,7 +17423,7 @@ window.customCards.push({
       // Background-click-to-close is handled below via the isBackgroundClick flag instead.
 
       if (!portal.__hkiCustomPopupEventsBound) {
-      let isBackgroundClick = false;
+        let isBackgroundClick = false;
       portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
       portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
       portal.addEventListener('click', (e) => {
@@ -17455,7 +17458,7 @@ window.customCards.push({
           }));
         });
       });
-      portal.__hkiCustomPopupEventsBound = true;
+        portal.__hkiCustomPopupEventsBound = true;
       }
 
       if (!this._popupPortal) {

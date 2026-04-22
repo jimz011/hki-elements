@@ -4590,21 +4590,24 @@
       if (container) container.addEventListener('click', (e) => e.stopPropagation());
 
       if (!portal.__hkiCustomPopupEventsBound) {
-      let isBackgroundClick = false;
+        let isBackgroundClick = false;
 
-      portal.addEventListener('mousedown', (e) => {
-        isBackgroundClick = (e.target === portal);
-      });
-      portal.addEventListener('touchstart', (e) => {
-        isBackgroundClick = (e.target === portal);
-      }, { passive: true });
+        portal.addEventListener('mousedown', (e) => {
+          isBackgroundClick = (e.target === portal);
+        });
+        portal.addEventListener('touchstart', (e) => {
+          isBackgroundClick = (e.target === portal);
+        }, { passive: true });
 
-      portal.addEventListener('click', (e) => {
-        if (isBackgroundClick && e.target === portal) {
-          this._closePopup();
-        }
-        isBackgroundClick = false;
-      });
+        portal.addEventListener('click', (e) => {
+          if (isBackgroundClick && e.target === portal) {
+            this._closePopup();
+          }
+          isBackgroundClick = false;
+        });
+
+        portal.__hkiCustomPopupEventsBound = true;
+      }
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -8895,7 +8898,7 @@
       // Background-click-to-close is handled below via the isBackgroundClick flag instead.
 
       if (!portal.__hkiCustomPopupEventsBound) {
-      let isBackgroundClick = false;
+        let isBackgroundClick = false;
       portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
       portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
       portal.addEventListener('click', (e) => {
@@ -8930,7 +8933,7 @@
           }));
         });
       });
-      portal.__hkiCustomPopupEventsBound = true;
+        portal.__hkiCustomPopupEventsBound = true;
       }
 
       if (!this._popupPortal) {
