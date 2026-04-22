@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-07 ',
+  '%c HKI-ELEMENTS %c v1.4.5-dev-08 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -13003,6 +13003,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderPopupPortal() {
       // Reuse existing portal to avoid flicker on hass updates.
       const entity = this._getEntity();
+      const domain = this._getDomain();
       const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
@@ -16092,6 +16093,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderHumidifierPopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
@@ -16856,6 +16858,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderFanPopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;

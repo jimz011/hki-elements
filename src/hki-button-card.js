@@ -4089,6 +4089,7 @@
     _renderPopupPortal() {
       // Reuse existing portal to avoid flicker on hass updates.
       const entity = this._getEntity();
+      const domain = this._getDomain();
       const entityName = this._getPopupName(entity);
       const isOn = this._isOn();
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
@@ -7178,6 +7179,7 @@
     _renderHumidifierPopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
@@ -7942,6 +7944,7 @@
     _renderFanPopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const state = entity.state;
