@@ -25,6 +25,7 @@ VERBOSE_FILE="$DIST_DIR/hki-elements-verbose.js"
 # Card files in order
 CARDS=(
     "hki-header-card.js"
+    "hki-popup-translations.js"
     "hki-button-card.js"
     "hki-navigation-card.js"
     "hki-settings-card.js"

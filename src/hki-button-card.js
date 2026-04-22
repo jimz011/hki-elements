@@ -1441,120 +1441,7 @@
     }
 
     _getPopupText(key, fallback = '') {
-      const locale = String(this._getLocale() || 'en').toLowerCase().split('-')[0];
-      const dict = {
-        de: {
-          favorites: 'Favoriten',
-          effects: 'Effekte',
-          presets: 'Voreinstellungen',
-          heat: 'Heizung',
-          close: 'Schliessen',
-          history: 'Verlauf',
-          controls: 'Steuerung',
-          speed: 'Geschwindigkeit',
-          humidity: 'Luftfeuchtigkeit',
-          no_effects_available: 'Keine Effekte fuer dieses Geraet verfuegbar',
-          no_effect: 'Kein Effekt',
-          loading_timeline: 'Zeitachse wird geladen...',
-          loading_history: 'Verlauf wird geladen...',
-          loading_chart: 'Diagramm wird geladen...',
-          loading_activity: 'Aktivitaet wird geladen...',
-          activity_24h: 'Aktivitaet (24h)',
-          changed: 'Geaendert',
-          opened: 'Geoeffnet',
-          closed: 'Geschlossen',
-          empty: '(leer)',
-        },
-        fr: {
-          favorites: 'Favoris',
-          effects: 'Effets',
-          presets: 'Prereglages',
-          heat: 'Chauffage',
-          close: 'Fermer',
-          history: 'Historique',
-          controls: 'Commandes',
-          speed: 'Vitesse',
-          humidity: 'Humidite',
-          no_effects_available: 'Aucun effet disponible pour cet appareil',
-          no_effect: 'Aucun effet',
-          loading_timeline: 'Chargement de la chronologie...',
-          loading_history: 'Chargement de l historique...',
-          loading_chart: 'Chargement du graphique...',
-          loading_activity: 'Chargement de l activite...',
-          activity_24h: 'Activite (24h)',
-          changed: 'Modifie',
-          opened: 'Ouvert',
-          closed: 'Ferme',
-          empty: '(vide)',
-        },
-        it: {
-          favorites: 'Preferiti',
-          effects: 'Effetti',
-          presets: 'Preimpostazioni',
-          heat: 'Riscaldamento',
-          close: 'Chiudi',
-          history: 'Cronologia',
-          controls: 'Controlli',
-          speed: 'Velocita',
-          humidity: 'Umidita',
-          no_effects_available: 'Nessun effetto disponibile per questo dispositivo',
-          no_effect: 'Nessun effetto',
-          loading_timeline: 'Caricamento cronologia...',
-          loading_history: 'Caricamento storico...',
-          loading_chart: 'Caricamento grafico...',
-          loading_activity: 'Caricamento attivita...',
-          activity_24h: 'Attivita (24h)',
-          changed: 'Modificato',
-          opened: 'Aperto',
-          closed: 'Chiuso',
-          empty: '(vuoto)',
-        },
-        nl: {
-          favorites: 'Favorieten',
-          effects: 'Effecten',
-          presets: 'Voorinstellingen',
-          heat: 'Verwarming',
-          close: 'Sluiten',
-          history: 'Geschiedenis',
-          controls: 'Bediening',
-          speed: 'Snelheid',
-          humidity: 'Luchtvochtigheid',
-          no_effects_available: 'Geen effecten beschikbaar voor dit apparaat',
-          no_effect: 'Geen effect',
-          loading_timeline: 'Tijdlijn laden...',
-          loading_history: 'Geschiedenis laden...',
-          loading_chart: 'Grafiek laden...',
-          loading_activity: 'Activiteit laden...',
-          activity_24h: 'Activiteit (24u)',
-          changed: 'Gewijzigd',
-          opened: 'Geopend',
-          closed: 'Gesloten',
-          empty: '(leeg)',
-        },
-        es: {
-          favorites: 'Favoritos',
-          effects: 'Efectos',
-          presets: 'Ajustes preestablecidos',
-          heat: 'Calefaccion',
-          close: 'Cerrar',
-          history: 'Historial',
-          controls: 'Controles',
-          speed: 'Velocidad',
-          humidity: 'Humedad',
-          no_effects_available: 'No hay efectos disponibles para este dispositivo',
-          no_effect: 'Sin efecto',
-          loading_timeline: 'Cargando cronologia...',
-          loading_history: 'Cargando historial...',
-          loading_chart: 'Cargando grafico...',
-          loading_activity: 'Cargando actividad...',
-          activity_24h: 'Actividad (24h)',
-          changed: 'Cambiado',
-          opened: 'Abierto',
-          closed: 'Cerrado',
-          empty: '(vacio)',
-        },
-      };
-      return dict[locale]?.[key] || fallback;
+      return window.HKI?.getPopupText?.(this._getLocale(), key, fallback) || fallback;
     }
 
     _updateCustomPopupHeader(entity) {
@@ -1604,6 +1491,12 @@
         default:
           return normalizedState === 'on';
       }
+    }
+
+    _getEntityStateText(entity, fallbackState = null) {
+      if (!entity) return fallbackState ?? '';
+      const entityDomain = String(entity.entity_id || '').split('.')[0] || this._getDomain();
+      return this._getLocalizedState(fallbackState ?? entity.state, entityDomain, entity);
     }
 
     _getGroupBadgeCount(entity) {
@@ -4663,17 +4556,17 @@
                 : `
                   <button class="nav-btn ${isOnEffective ? "power-on" : ""}" id="powerBtn" style="${isOnEffective ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                     <ha-icon icon="mdi:power"></ha-icon>
-                    ${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Power</span>'}
+                    ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('power', 'Power')}</span>`}
                   </button>
                   <button class="nav-btn ${this._activeView === "brightness" ? "active" : ""}" id="brightnessBtn" style="${this._activeView === "brightness" ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                     <ha-icon icon="mdi:brightness-6"></ha-icon>
-                    ${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Bright</span>'}
+                    ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('brightness', 'Bright')}</span>`}
                   </button>
                   ${
                     supportsTemp
                       ? `<button class="nav-btn ${this._activeView === "temperature" ? "active" : ""}" id="temperatureBtn" style="${this._activeView === "temperature" ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                           <ha-icon icon="mdi:thermometer"></ha-icon>
-                          ${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Temp</span>'}
+                          ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('temperature', 'Temp')}</span>`}
                         </button>`
                       : ""
                   }
@@ -4681,7 +4574,7 @@
                     supportsColor
                       ? `<button class="nav-btn ${this._activeView === "color" ? "active" : ""}" id="colorBtn" style="${this._activeView === "color" ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                           <ha-icon icon="mdi:palette"></ha-icon>
-                          ${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Color</span>'}
+                          ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('color', 'Color')}</span>`}
                         </button>`
                       : ""
                   }
@@ -5026,14 +4919,14 @@
             <div class="hki-popup-header-controls">
                             <button class="header-btn" id="graphBtn"><ha-icon icon="mdi:chart-line"></ha-icon></button>
               <button class="header-btn" id="historyBtn"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
           <div class="hki-tabs">
             <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fire"></ha-icon><span>${this._getPopupText('heat', 'Heat')}</span></button>
             ${(this._config.popup_show_presets !== false && presetList.length) ? `<button class="tab-btn ${this._activeView === 'presets' ? 'active' : ''}" id="tabPresets" style="${this._activeView === 'presets' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon><span>${this._getPopupText('presets', 'Presets')}</span></button>` : ''}
-            ${fanList.length ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon><span>Fan</span></button>` : ''}
+            ${fanList.length ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon><span>${this._getPopupText('fan', 'Fan')}</span></button>` : ''}
           </div>
 
           <div class="hki-popup-content" id="popupContent">
@@ -5172,7 +5065,7 @@
       const mode = entity.state;
 
       if (this._activeView === 'history') {
-        return `<div class=\"timeline-container\" data-view-type=\"history\" id=\"historyContainer\"><div class=\"history-loading\">Loading Timeline...</div></div>`;
+        return `<div class=\"timeline-container\" data-view-type=\"history\" id=\"historyContainer\"><div class=\"history-loading\">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       if (this._activeView === 'graphs') {
@@ -5183,7 +5076,7 @@
       if (this._activeView === 'fan') return this._renderClimatePopupList(attrs.fan_modes, attrs.fan_mode, 'fan', color);
 
       if (mode === 'off') {
-        return `<div class="climate-controls-view"><div style="opacity: 0.5; font-size: 18px; font-weight: 500;">System is Off</div></div>`;
+        return `<div class="climate-controls-view"><div style="opacity: 0.5; font-size: 18px; font-weight: 500;">${this._getPopupText('system_is_off', 'System is Off')}</div></div>`;
       }
 
       // Use circular slider if enabled
@@ -5237,14 +5130,14 @@
 
       if (isRange) {
         const sliders = `<div class="sliders-wrapper">
-          ${renderSlider('target_temp_low', attrs.target_temp_low, 'Low')}
-          ${renderSlider('target_temp_high', attrs.target_temp_high, 'High')}
+          ${renderSlider('target_temp_low', attrs.target_temp_low, this._getPopupText('low', 'Low'))}
+          ${renderSlider('target_temp_high', attrs.target_temp_high, this._getPopupText('high', 'High'))}
         </div>`;
         return `<div class="climate-controls-view">${wrapWithButtons(sliders)}</div>`;
       }
 
       const slider = `<div class="sliders-wrapper">
-        ${renderSlider('temperature', attrs.temperature ?? attrs.current_temperature, 'Target')}
+        ${renderSlider('temperature', attrs.temperature ?? attrs.current_temperature, this._getPopupText('target', 'Target'))}
       </div>`;
       return `<div class="climate-controls-view">${wrapWithButtons(slider)}</div>`;
     }
@@ -5415,15 +5308,15 @@
       return `
         <div class="climate-controls-view">
           <div style="display:flex;gap:24px;justify-content:center;align-items:flex-start;width:100%;flex-wrap:wrap;">
-            ${renderMiniCircle('low', low, 'Cool to', '#1E90FF')}
-            ${renderMiniCircle('high', high, 'Heat to', 'darkorange')}
+            ${renderMiniCircle('low', low, this._getPopupText('cool_to', 'Cool to'), '#1E90FF')}
+            ${renderMiniCircle('high', high, this._getPopupText('heat_to', 'Heat to'), 'darkorange')}
           </div>
         </div>
       `;
     }
 
     _renderClimatePopupList(items, current, type, color) {
-      if (!items || !items.length) return '<div style="opacity:0.6">Not available</div>';
+      if (!items || !items.length) return `<div style="opacity:0.6">${this._getPopupText('not_available', 'Not available')}</div>`;
       return `
         <div class="list-container">
           ${items.map(item => `
@@ -5468,7 +5361,7 @@
 
         const climateEnt = this._getEntity();
         if (!climateEnt) {
-          host.innerHTML = '<div class="history-loading">No entity selected</div>';
+          host.innerHTML = `<div class="history-loading">${this._getPopupText('no_entity_selected', 'No entity selected')}</div>`;
           return;
         }
 
@@ -5536,7 +5429,7 @@
         addTile('pressure', 'current_pressure', 'hPa', pressOverride, pressAuto, attrKeys.pressure, this._config.climate_pressure_name);
 
         if (!tiles.length) {
-          host.innerHTML = '<div class="history-loading">No sensor data found. Configure Climate: Current Temp / Humidity / Pressure entities.</div>';
+          host.innerHTML = `<div class="history-loading">${this._getPopupText('no_sensor_data_found', 'No sensor data found. Configure Climate: Current Temp / Humidity / Pressure entities.')}</div>`;
           return;
         }
 
@@ -5653,7 +5546,7 @@
                 <div class="sensor-tile-value">${value}<span class="sensor-tile-unit">${unit}</span></div>
               </div>
               <div class="sensor-tile-graph" id="tileGraph-${idx}">
-                <div class="history-loading" style="padding: 10px 0;">Loading…</div>
+                <div class="history-loading" style="padding: 10px 0;">${this._getPopupText('loading', 'Loading...')}</div>
               </div>
             </div>`;
         }).join('');
@@ -5678,7 +5571,7 @@
             const pts = parseSeries(series, wantAttrs ? t.attrKey : null);
             const ds = downsample(pts, 80);
             if (!ds.length) {
-              holder.innerHTML = '<div class="history-loading" style="padding: 10px 0;">No history</div>';
+              holder.innerHTML = `<div class="history-loading" style="padding: 10px 0;">${this._getPopupText('no_history_data', 'No history data')}</div>`;
               return;
             }
             const res = buildSvg(ds, 260, 56);
@@ -6191,7 +6084,7 @@
         return this._renderEffectsView(effectList, currentEffect);
       } else if (view === 'history') {
         return `<div class="timeline-container" data-view-type="history" id="historyContainer">
-          <div class="history-loading">Loading Timeline...</div>
+          <div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div>
         </div>`;
       }
 
@@ -6227,15 +6120,15 @@
                 </div>`;
         };
     
-        if (mode === 'off') return `<div style="opacity:0.5; font-size:24px; font-weight:300;">System is Off</div>`;
+        if (mode === 'off') return `<div style="opacity:0.5; font-size:24px; font-weight:300;">${this._getPopupText('system_is_off', 'System is Off')}</div>`;
         
         if (isRange) {
             return `<div class="climate-dual-wrapper">
-                ${renderSlider('low', attrs.target_temp_low, 'Low')}
-                ${renderSlider('high', attrs.target_temp_high, 'High')}
+                ${renderSlider('low', attrs.target_temp_low, this._getPopupText('low', 'Low'))}
+                ${renderSlider('high', attrs.target_temp_high, this._getPopupText('high', 'High'))}
             </div>`;
         }
-        return renderSlider('single', attrs.temperature || attrs.current_temperature, 'Target');
+        return renderSlider('single', attrs.temperature || attrs.current_temperature, this._getPopupText('target', 'Target'));
     }
     
     _renderClimateNav(entity) {
@@ -6607,8 +6500,8 @@
             </div>
             <div class="hki-light-popup-header-controls">
               ${groupBtn}
-              <button class="header-btn" id="historyBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="historyBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -6630,8 +6523,8 @@
           </div>
 
           <div class="hki-light-popup-nav">
-            <button class="nav-btn" id="coverOpen" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-up"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Open</span>'}</button>
-            <button class="nav-btn" id="coverStop" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:stop"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span class="nav-label">Stop</span>'}</button>
+            <button class="nav-btn" id="coverOpen" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-up"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('open', 'Open')}</span>`}</button>
+            <button class="nav-btn" id="coverStop" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:stop"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('stop', 'Stop')}</span>`}</button>
             <button class="nav-btn" id="coverClose" style="${this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:arrow-down"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getPopupText('close', 'Close')}</span>`}</button>
           </div>
         </div>
@@ -6673,13 +6566,13 @@
       const borderRadius = this._config.popup_slider_radius ?? 12;
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
       if (this._coverHistoryOpen) {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       if (this._activeView === 'favorites') {
         const favs = Array.isArray(this._coverFavorites) ? this._coverFavorites : [];
         if (favs.length === 0) {
-          return `<div style="padding: 18px; text-align:center; opacity:0.6;">No favorites yet</div>`;
+          return `<div style="padding: 18px; text-align:center; opacity:0.6;">${this._getPopupText('no_favorites_yet', 'No favorites yet')}</div>`;
         }
         const tiles = favs.map((f, idx) => {
           const label = (f && f.name) ? f.name : `Preset ${idx + 1}`;
@@ -6698,7 +6591,7 @@
         return `
           <div class="favorites-view">
             <div class="favorites-sticky-header">
-              <button class="favorites-edit-btn" id="coverFavEdit"><ha-icon icon="mdi:pencil"></ha-icon> Edit</button>
+              <button class="favorites-edit-btn" id="coverFavEdit"><ha-icon icon="mdi:pencil"></ha-icon> ${this._getPopupText('edit', 'Edit')}</button>
             </div>
             <div class="favorites-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
               ${tiles}
@@ -6733,7 +6626,7 @@
           <div class="cover-members" data-view-type="cover-individual">
             ${rows}
           </div>
-          ${this._config.popup_show_favorites !== false ? `<button class="save-favorite-fab" id="coverGroupSave" title="Save favorite"><ha-icon icon="mdi:star-plus"></ha-icon></button>` : ''}
+          ${this._config.popup_show_favorites !== false ? `<button class="save-favorite-fab" id="coverGroupSave" title="${this._getPopupText('save_favorite', 'Save favorite')}"><ha-icon icon="mdi:star-plus"></ha-icon></button>` : ''}
         `;
       }
 
@@ -6751,10 +6644,10 @@
               <div class="vertical-slider-thumb" style="bottom:${thumbBottom}"></div>
               </div>
             </div>
-            <div style="opacity:0.55; letter-spacing:0.08em; font-size:${this._config.popup_label_font_size ?? 16}px; font-weight:${this._config.popup_label_font_weight ?? 400};">POSITION</div>
+            <div style="opacity:0.55; letter-spacing:0.08em; font-size:${this._config.popup_label_font_size ?? 16}px; font-weight:${this._config.popup_label_font_weight ?? 400};">${this._getPopupText('position', 'POSITION')}</div>
           </div>
         </div>
-        ${this._config.popup_show_favorites !== false ? `<button class="save-favorite-fab" id="coverSave" title="Save favorite"><ha-icon icon="mdi:star-plus"></ha-icon></button>` : ''}
+        ${this._config.popup_show_favorites !== false ? `<button class="save-favorite-fab" id="coverSave" title="${this._getPopupText('save_favorite', 'Save favorite')}"><ha-icon icon="mdi:star-plus"></ha-icon></button>` : ''}
       `;
     }
 
@@ -7115,12 +7008,12 @@
               ${this._getPopupHeaderIconHtml(entity, icon, this._getPopupIconColor(iconColor))}
               <div class="hki-light-popup-title-text">
                 ${safeTitle(entityName)}
-                <span class="hki-light-popup-state">${this._getPopupHeaderState(String(state).replace(/_/g,' '))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
+                <span class="hki-light-popup-state">${this._getPopupHeaderState(this._getLocalizedState(state, 'alarm_control_panel', entity))}${this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}</span>
               </div>
             </div>
             <div class="hki-light-popup-header-controls">
-              <button class="header-btn" id="alarmHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="alarmHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -7130,16 +7023,16 @@
 
           <div class="hki-alarm-nav" id="alarmBottomNav">
             <button class="alarm-nav-btn disarm ${state === 'disarmed' ? 'active' : ''}" id="btnDisarm" style="${state === 'disarmed' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-              <ha-icon icon="mdi:lock-open-variant"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Disarm</span>'}
+              <ha-icon icon="mdi:lock-open-variant"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('disarm', 'Disarm')}</span>`}
             </button>
             <button class="alarm-nav-btn home ${state === 'armed_home' ? 'active' : ''}" id="btnHome" style="${state === 'armed_home' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-              <ha-icon icon="mdi:home-lock"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Home</span>'}
+              <ha-icon icon="mdi:home-lock"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('home', 'Home')}</span>`}
             </button>
             <button class="alarm-nav-btn away ${state === 'armed_away' ? 'active' : ''}" id="btnAway" style="${state === 'armed_away' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-              <ha-icon icon="mdi:lock"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Away</span>'}
+              <ha-icon icon="mdi:lock"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('away', 'Away')}</span>`}
             </button>
             <button class="alarm-nav-btn night ${state === 'armed_night' ? 'active' : ''}" id="btnNight" style="${state === 'armed_night' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
-              <ha-icon icon="mdi:weather-night"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Night</span>'}
+              <ha-icon icon="mdi:weather-night"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('night', 'Night')}</span>`}
             </button>
           </div>
         </div>
@@ -7160,7 +7053,7 @@
         return `
           <div class="alarm-history-scroll">
             <div class="timeline-container" data-view-type="history" id="historyContainer">
-              <div class="history-loading">Loading Timeline...</div>
+              <div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div>
             </div>
           </div>
         `;
@@ -7169,14 +7062,14 @@
       const code = String(this._alarmCodeInput || '');
       const dots = code.length > 0
         ? `<div class="alarm-code-dots">${Array.from({length: code.length}).map(()=>'<div class="alarm-code-dot"></div>').join('')}</div>`
-        : `<span class="alarm-code-placeholder">Enter Code</span>`;
+        : `<span class="alarm-code-placeholder">${this._getPopupText('enter_code', 'Enter Code')}</span>`;
 
       return `
         <div class="hki-alarm-content" data-view-type="main">
           <div class="alarm-code-wrapper" id="alarmCodeWrapper">${dots}</div>
           <div class="alarm-keypad">
             ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="alarm-key" data-key="${n}">${n}</button>`).join('')}
-            <button class="alarm-key action" data-key="clear">CLR</button>
+            <button class="alarm-key action" data-key="clear">${this._getPopupText('clear', 'CLR')}</button>
             <button class="alarm-key" data-key="0">0</button>
             <div style="width:72px;"></div>
           </div>
@@ -7217,7 +7110,7 @@
             const code = String(this._alarmCodeInput || '');
             w.innerHTML = code.length > 0
               ? `<div class="alarm-code-dots">${Array.from({length: code.length}).map(()=>'<div class="alarm-code-dot"></div>').join('')}</div>`
-              : `<span class="alarm-code-placeholder">Enter Code</span>`;
+              : `<span class="alarm-code-placeholder">${this._getPopupText('enter_code', 'Enter Code')}</span>`;
           }
         });
       });
@@ -7257,7 +7150,7 @@
           setTimeout(() => {
             this._alarmCodeInput = '';
             if (wrapper) {
-              wrapper.innerHTML = `<span class="alarm-code-placeholder">Enter Code</span>`;
+              wrapper.innerHTML = `<span class="alarm-code-placeholder">${this._getPopupText('enter_code', 'Enter Code')}</span>`;
             }
           }, 350);
       
@@ -7440,14 +7333,14 @@
             </div>
             <div class="hki-popup-header-controls">
               <button class="header-btn" id="humidifierHistoryBtn"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
           <div class="hki-tabs">
             <button class="tab-btn ${this._activeView === 'main' ? 'active' : ''}" id="tabMain" style="${this._activeView === 'main' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:water-percent"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('humidity', 'Humidity')}</span>`}</button>
-            ${modes.length > 0 ? `<button class="tab-btn ${this._activeView === 'modes' ? 'active' : ''}" id="tabModes" style="${this._activeView === 'modes' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Mode</span>'}</button>` : ''}
-            ${hasFan ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : '<span>Fan</span>'}</button>` : ''}
+            ${modes.length > 0 ? `<button class="tab-btn ${this._activeView === 'modes' ? 'active' : ''}" id="tabModes" style="${this._activeView === 'modes' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:tune"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('mode', 'Mode')}</span>`}</button>` : ''}
+            ${hasFan ? `<button class="tab-btn ${this._activeView === 'fan' ? 'active' : ''}" id="tabFan" style="${this._activeView === 'fan' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}"><ha-icon icon="mdi:fan"></ha-icon>${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('fan', 'Fan')}</span>`}</button>` : ''}
           </div>
 
           <div class="hki-popup-content" id="humidifierContent">
@@ -7457,7 +7350,7 @@
           <div class="hki-popup-nav">
             <button class="nav-btn ${isOn ? 'active' : ''}" id="humidifierToggle" style="${isOn ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
               <ha-icon icon="${isOn ? 'mdi:power' : 'mdi:power-off'}"></ha-icon>
-              <span>${isOn ? 'On' : 'Off'}</span>
+              <span>${this._getEntityStateText(entity, isOn ? 'on' : 'off')}</span>
             </button>
           </div>
         </div>
@@ -7534,7 +7427,7 @@
 
     _renderHumidifierPopupContent(entity, color, minHumidity, maxHumidity, targetHumidity, currentHumidity, valueSize, valueWeight, borderRadius, hasFan, fanModes, currentFanMode) {
       if (this._activeView === 'history') {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
       if (this._activeView === 'modes') {
         const modes = entity.attributes.available_modes || [];
@@ -7549,7 +7442,7 @@
         return this._renderHumidifierFanList(liveFanModes, liveFanMode, color);
       }
       if (entity.state === 'off') {
-        return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><div style="opacity:0.5;font-size:18px;font-weight:500;">Humidifier is Off</div></div>`;
+        return `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;"><div style="opacity:0.5;font-size:18px;font-weight:500;">${this._getPopupText('humidifier_is_off', 'Humidifier is Off')}</div></div>`;
       }
 
       const attrs = entity.attributes || {};
@@ -7597,8 +7490,8 @@
       if (isRange) {
         const slidersHtml = `
           <div class="sliders-wrapper">
-            ${renderSlider('humidity_low', humLow, 'Low')}
-            ${renderSlider('humidity_high', humHigh, 'High')}
+            ${renderSlider('humidity_low', humLow, this._getPopupText('low', 'Low'))}
+            ${renderSlider('humidity_high', humHigh, this._getPopupText('high', 'High'))}
           </div>
         `;
         if (showButtons) {
@@ -7615,7 +7508,7 @@
         return `<div class="slider-with-buttons"><div class="slider-center">${slidersHtml}</div></div>`;
       }
 
-      const sliderHtml = `<div class="sliders-wrapper">${renderSlider('humidity', targetHumidity, 'Target')}</div>`;
+      const sliderHtml = `<div class="sliders-wrapper">${renderSlider('humidity', targetHumidity, this._getPopupText('target', 'Target'))}</div>`;
 
       return `
         <div class="slider-with-buttons">
@@ -7705,8 +7598,8 @@
       };
       return `
         <div class="circular-slider-wrapper">
-          ${buildArc(humLow, 'Low', 'humGradLow', '#29B6F6', '#8BC34A')}
-          ${buildArc(humHigh, 'High', 'humGradHigh', '#0277BD', '#29B6F6')}
+          ${buildArc(humLow, this._getPopupText('low', 'Low'), 'humGradLow', '#29B6F6', '#8BC34A')}
+          ${buildArc(humHigh, this._getPopupText('high', 'High'), 'humGradHigh', '#0277BD', '#29B6F6')}
           ${showButtons ? `
             <div class="circular-temp-buttons">
               <button class="circular-temp-btn plus" data-hum-action="plus-high"><ha-icon icon="mdi:plus"></ha-icon></button>
@@ -7730,7 +7623,7 @@
     }
 
     _renderHumidifierFanList(fanModes, currentFanMode, color) {
-      if (!fanModes || !fanModes.length) return `<div style="opacity:0.6;padding:20px;">No fan modes available</div>`;
+      if (!fanModes || !fanModes.length) return `<div style="opacity:0.6;padding:20px;">${this._getPopupText('no_fan_modes_available', 'No fan modes available')}</div>`;
       return `
         <div class="mode-list">
           ${fanModes.map(mode => `
@@ -8222,7 +8115,7 @@
             </div>
             <div class="hki-popup-header-controls">
               <button class="header-btn" id="fanHistoryBtn"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -8243,13 +8136,13 @@
             ${supportsDirection ? `
               <button class="nav-btn ${direction === 'reverse' ? 'active' : ''}" id="fanDirection" style="${direction === 'reverse' ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                 <ha-icon icon="${direction === 'reverse' ? 'mdi:rotate-left' : 'mdi:rotate-right'}"></ha-icon>
-                <span>${direction === 'reverse' ? 'Reverse' : 'Forward'}</span>
+                <span>${direction === 'reverse' ? this._getPopupText('reverse', 'Reverse') : this._getPopupText('forward', 'Forward')}</span>
               </button>
             ` : ''}
             ${supportsOscillate ? `
               <button class="nav-btn ${oscillating ? 'active' : ''}" id="fanOscillate" style="${oscillating ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
                 <ha-icon icon="${oscillating ? 'mdi:arrow-oscillating' : 'mdi:arrow-oscillating-off'}"></ha-icon>
-                <span>Oscillate</span>
+                <span>${this._getPopupText('oscillate', 'Oscillate')}</span>
               </button>
             ` : ''}
           </div>
@@ -8369,7 +8262,7 @@
 
     _renderFanPopupContent(entity, color, speed, valueSize, valueWeight, borderRadius) {
       if (this._activeView === 'history') {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       if (this._activeView === 'presets') {
@@ -8379,7 +8272,7 @@
       }
 
       if (entity.state === 'off') {
-        return `<div class="climate-controls-view"><div style="opacity: 0.5; font-size: 18px; font-weight: 500;">Fan is Off</div></div>`;
+        return `<div class="climate-controls-view"><div style="opacity: 0.5; font-size: 18px; font-weight: 500;">${this._getPopupText('fan_is_off', 'Fan is Off')}</div></div>`;
       }
 
       const pct = speed;
@@ -8573,7 +8466,7 @@
       const valueWeight = this._config.popup_value_font_weight || 300;
 
       const groupBtn = isGroup ? `
-        <button class="header-btn" id="switchGroupBtn" title="Group">
+        <button class="header-btn" id="switchGroupBtn" title="${this._getPopupText('group', 'Group')}">
           <ha-icon icon="mdi:format-list-bulleted"></ha-icon>
         </button>
       ` : '';
@@ -8755,8 +8648,8 @@
             </div>
             <div class="hki-popup-header-controls">
               ${groupBtn}
-              <button class="header-btn" id="switchHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="switchHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -8818,7 +8711,7 @@
 
     _renderSwitchPopupContent(entity, color, icon, isOn, borderRadius, valueSize, valueWeight) {
       if (this._activeView === 'history') {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
@@ -8828,13 +8721,14 @@
           if (!st) return '';
           const on = st.state === 'on';
           const nm = st.attributes?.friendly_name || id;
+          const stateLabel = this._getLocalizedState(st.state, String(id || '').split('.')[0], st);
           return `
             <div class="switch-row" data-entity-id="${id}">
               <div class="switch-row-left">
                 <ha-icon icon="${on ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off'}" style="color:${on ? 'var(--primary-color, #03a9f4)' : 'var(--disabled-text-color, #6f6f6f)'}; --mdc-icon-size:22px;"></ha-icon>
                 <div class="switch-row-text">
                   <div class="switch-row-name">${nm}</div>
-                  <div class="switch-row-state">${on ? 'On' : 'Off'}</div>
+                  <div class="switch-row-state">${stateLabel}</div>
                 </div>
               </div>
               <div class="switch-row-toggle ${on ? 'on' : ''}" data-toggle="1">
@@ -8849,12 +8743,12 @@
 
       return `
         <div class="switch-slider-container">
-          <div class="value-display">${isOn ? 'On' : 'Off'}</div>
+          <div class="value-display">${this._getEntityStateText(entity, isOn ? 'on' : 'off')}</div>
           <div class="vertical-slider-track" id="switchSlider">
             <div class="vertical-slider-fill"></div>
             <div class="vertical-slider-thumb"></div>
           </div>
-          <div class="slider-label">Switch</div>
+          <div class="slider-label">${this._getPopupText('switch', 'Switch')}</div>
         </div>
       `;
     }
@@ -8986,8 +8880,8 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              ${hasRealEntity ? `<button class="header-btn" id="historyBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>` : ''}
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              ${hasRealEntity ? `<button class="header-btn" id="historyBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>` : ''}
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -9079,7 +8973,7 @@
 
     _renderCustomPopupContent(entity) {
       if (this._activeView === 'history') {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       return `<div class="custom-card-container" id="customCardContainer"></div>`;
@@ -9400,7 +9294,7 @@
             </div>
             <div class="hki-popup-header-controls">
               <button class="header-btn" id="lockHistoryBtn"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
 
@@ -9412,7 +9306,7 @@
             ${canOpenDoor ? `
               <button class="nav-btn" id="openDoorBtn" style="${this._getPopupButtonStyle(false)}">
                 <ha-icon icon="mdi:door-open"></ha-icon>
-                ${this._config.popup_hide_button_text ? '' : '<span>Open Door</span>'}
+                ${this._config.popup_hide_button_text ? '' : `<span>${this._getPopupText('open_door', 'Open Door')}</span>`}
               </button>
             ` : ''}
           </div>
@@ -9473,7 +9367,7 @@
 
     _renderLockPopupContent(entity, color, icon, stateText, sliderPosition, borderRadius, valueSize, valueWeight) {
       if (this._activeView === 'history') {
-        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">Loading Timeline...</div></div>`;
+        return `<div class="timeline-container" data-view-type="history" id="historyContainer"><div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div></div>`;
       }
 
       return `
@@ -9483,7 +9377,7 @@
             <div class="vertical-slider-fill"></div>
             <div class="vertical-slider-thumb"></div>
           </div>
-          <div class="slider-label">Lock</div>
+          <div class="slider-label">${this._getPopupText('lock', 'Lock')}</div>
         </div>
       `;
     }
@@ -9511,7 +9405,7 @@
             fill.style.background = '#4CAF50';
           }
           if (thumb) thumb.style.bottom = 'calc(100% - 60px)';
-          if (display) display.textContent = 'Locking';
+          if (display) display.textContent = this._getPopupText('locking', 'Locking');
           
           this.hass.callService('lock', 'lock', { entity_id: this._config.entity });
         } else {
@@ -9521,7 +9415,7 @@
             fill.style.background = '#FFC107';
           }
           if (thumb) thumb.style.bottom = '4px';
-          if (display) display.textContent = 'Unlocking';
+          if (display) display.textContent = this._getPopupText('unlocking', 'Unlocking');
           
           this.hass.callService('lock', 'unlock', { entity_id: this._config.entity });
         }
@@ -9625,14 +9519,14 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="sensorHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="sensorHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="sensorContent">
             <div class="sensor-tile">
               <div class="sensor-value-row"><span class="sensor-tile-value">${state}</span><span class="sensor-tile-unit">${unit}</span></div>
-              <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">Loading chart…</div></div>
+              <div class="sensor-tile-graph" id="sensorSparkline"><div class="history-loading" style="padding:10px 0">${this._getPopupText('loading_chart', 'Loading chart...')}</div></div>
               <div class="sensor-hours-row">${[12,24,48,72].map(h => `<button class="sensor-hour-btn${h === sensorHours ? ' active' : ''}" data-hours="${h}">${h}h</button>`).join('')}</div>
             </div>
           </div>
@@ -9665,7 +9559,7 @@
 
       if (this._activeView === 'history') {
         const content = portal.querySelector('#sensorContent');
-        if (content) content.innerHTML = '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading history…</div></div>';
+        if (content) content.innerHTML = `<div id="historyContainer" class="timeline-container"><div class="history-loading">${this._getPopupText('loading_history', 'Loading history...')}</div></div>`;
         setTimeout(() => this._loadHistory(), 100);
       } else {
         // Load sparkline and wire hour picker
@@ -9702,7 +9596,7 @@
           pts.push({ t: new Date(ts).getTime(), v: n });
         }
         pts.sort((a, b) => a.t - b.t);
-        if (pts.length < 2) { wrap.innerHTML = '<div class="history-loading">Not enough data</div>'; return; }
+        if (pts.length < 2) { wrap.innerHTML = `<div class="history-loading">${this._getPopupText('not_enough_data', 'Not enough data')}</div>`; return; }
         // Downsample
         const maxN = 80;
         const ds = pts.length > maxN ? pts.filter((_, i) => i % Math.ceil(pts.length / maxN) === 0) : pts;
@@ -9796,7 +9690,7 @@
         </svg>`;
       } catch (e) {
         console.warn('sensor sparkline error', e);
-        wrap.innerHTML = '<div class="history-loading">Error loading chart</div>';
+        wrap.innerHTML = `<div class="history-loading">${this._getPopupText('error_loading_chart', 'Error loading chart')}</div>`;
       }
     }
 
@@ -9895,13 +9789,13 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="bsHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="bsHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="bsContent">
             ${this._activeView === 'history'
-              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              ? `<div id="historyContainer" class="timeline-container"><div class="history-loading">${this._getPopupText('loading', 'Loading...')}</div></div>`
               : `<div class="bs-state-card">
                   <div class="bs-icon-wrap"><ha-icon icon="${icon}"></ha-icon></div>
                   <div class="bs-state-label">${stateLabel}</div>
@@ -9948,7 +9842,7 @@
         const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const data = await this.hass.callApi('GET', `history/period/${startTs.toISOString()}?filter_entity_id=${encodeURIComponent(entityId)}&minimal_response`);
         const series = (Array.isArray(data) && data[0]) ? data[0] : [];
-        if (series.length < 2) { wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">No history data</div>'; return; }
+        if (series.length < 2) { wrap.innerHTML = `<div class="history-loading" style="padding:8px 0;">${this._getPopupText('no_history_data', 'No history data')}</div>`; return; }
 
         const pts = series.map(it => ({
           t: new Date(it?.lu ?? it?.last_updated ?? it?.last_changed ?? 0).getTime(),
@@ -9982,13 +9876,13 @@
           <div class="state-bar-labels"><span title="${startTs.toLocaleString(this._getLocale())}">${this._formatHistoryRangeLabel(startTs, rangeEndDate)}</span><span title="${rangeEndDate.toLocaleString(this._getLocale())}">${this._formatHistoryRangeLabel(rangeEndDate, startTs)}</span></div>
         `;
       } catch (e) {
-        wrap.innerHTML = '<div class="history-loading" style="padding:8px 0;">Error</div>';
+        wrap.innerHTML = `<div class="history-loading" style="padding:8px 0;">${this._getPopupText('error', 'Error')}</div>`;
       }
     }
 
     _buildStateBars(entity, domain, deviceClass, isActive, color) {
       // Returns placeholder — actual bar is loaded async via _loadBinaryStateBars
-      return `<div class="state-bar-section" id="bsStateBar"><div class="history-loading" style="padding:8px 0;">Loading activity…</div></div>`;
+      return `<div class="state-bar-section" id="bsStateBar"><div class="history-loading" style="padding:8px 0;">${this._getPopupText('loading_activity', 'Loading activity...')}</div></div>`;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -10059,13 +9953,13 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="selectHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="selectHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="selectContent">
             ${this._activeView === 'history'
-              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              ? `<div id="historyContainer" class="timeline-container"><div class="history-loading">${this._getPopupText('loading', 'Loading...')}</div></div>`
               : optionRows}
           </div>
           <div class="hki-popup-nav"></div>
@@ -10177,13 +10071,13 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="numHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="numHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="numContent">
             ${this._activeView === 'history'
-              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              ? `<div id="historyContainer" class="timeline-container"><div class="history-loading">${this._getPopupText('loading', 'Loading...')}</div></div>`
               : `<div class="number-slider-wrap">
                   <div class="value-display" id="numDisplay">${rawVal}<span class="slider-unit">${unit}</span></div>
                   <div class="vertical-slider-track" id="numTrack">
@@ -10332,21 +10226,21 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="txtHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="txtHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="textContent">
             ${this._activeView === 'history'
-              ? '<div id="historyContainer" class="timeline-container"><div class="history-loading">Loading…</div></div>'
+              ? `<div id="historyContainer" class="timeline-container"><div class="history-loading">${this._getPopupText('loading', 'Loading...')}</div></div>`
               : `<div class="text-field-wrap">
-                  <div class="text-current">Current: <strong>${currentText || '(empty)'}</strong></div>
+                  <div class="text-current">${this._getPopupText('current', 'Current')}: <strong>${currentText || this._getPopupText('empty', '(empty)')}</strong></div>
                   <input class="text-input" id="textInput" type="${mode === 'password' ? 'password' : 'text'}"
                     value="${currentText.replace(/"/g, '&quot;')}"
                     minlength="${minLen}" maxlength="${maxLen}"
-                    ${pattern ? `pattern="${pattern}"` : ''} placeholder="Enter text…">
-                  <div class="text-input-hint">Max ${maxLen} characters${minLen > 0 ? ', min ' + minLen : ''}</div>
-                  <button class="text-submit-btn" id="textSubmitBtn">Set Value</button>
+                    ${pattern ? `pattern="${pattern}"` : ''} placeholder="${this._getPopupText('enter_text', 'Enter text...')}">
+                  <div class="text-input-hint">${this._getPopupText('max_characters', 'Max')} ${maxLen} ${this._getPopupText('characters', 'characters')}${minLen > 0 ? `, ${this._getPopupText('min_short', 'min')} ${minLen}` : ''}</div>
+                  <button class="text-submit-btn" id="textSubmitBtn">${this._getPopupText('set_value', 'Set Value')}</button>
                 </div>`}
           </div>
           <div class="hki-popup-nav"></div>
@@ -10547,13 +10441,13 @@
               </div>
             </div>
             <div class="hki-popup-header-controls">
-              <button class="header-btn" id="personHistoryBtn" title="History"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
-              <button class="header-btn" id="closeBtn" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+              <button class="header-btn" id="personHistoryBtn" title="${this._getPopupText('history', 'History')}"><ha-icon icon="mdi:chart-box-outline"></ha-icon></button>
+              <button class="header-btn" id="closeBtn" title="${this._getPopupText('close', 'Close')}"><ha-icon icon="mdi:close"></ha-icon></button>
             </div>
           </div>
           <div class="hki-popup-content" id="personContent">
             ${this._activeView === 'history'
-              ? '<div class="timeline-container"><div id="historyContainer"><div class="history-loading">Loading…</div></div></div>'
+              ? `<div class="timeline-container"><div id="historyContainer"><div class="history-loading">${this._getPopupText('loading', 'Loading...')}</div></div></div>`
               : '<div class="person-map-card"><div id="personMapContainer"></div></div>'}
           </div>
           <div class="hki-popup-nav" id="personNav"></div>
@@ -10931,7 +10825,7 @@
               this._renderPopupPortal();
             } else {
               content.innerHTML = `<div class="timeline-container" data-view-type="history" id="historyContainer">
-                <div class="history-loading">Loading Timeline...</div>
+                <div class="history-loading">${this._getPopupText('loading_timeline', 'Loading Timeline...')}</div>
               </div>`;
               setTimeout(() => this._loadHistory(), 100);
             }
@@ -11509,7 +11403,7 @@
         }
         
         if ((!logbook || logbook.length === 0) && (!contactLogbook || contactLogbook.length === 0)) {
-          container.innerHTML = '<div class="history-loading">No history available</div>';
+          container.innerHTML = `<div class="history-loading">${this._getPopupText('no_history_data', 'No history data')}</div>`;
           return;
         }
 
