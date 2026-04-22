@@ -94,6 +94,35 @@ class HKIPostNLCard extends HTMLElement {
         });
     }
 
+    _extractShipments(attrs) {
+        if (!attrs) return [];
+
+        if (Array.isArray(attrs)) {
+            return attrs;
+        }
+
+        const normalized = Object.entries(attrs).reduce((acc, [key, value]) => {
+            acc[String(key).toLowerCase()] = value;
+            return acc;
+        }, {});
+
+        const groupedKeys = ['enroute', 'en_route', 'delivered'];
+        const groupedShipments = groupedKeys.flatMap((key) => Array.isArray(normalized[key]) ? normalized[key] : []);
+        if (groupedShipments.length) {
+            return groupedShipments;
+        }
+
+        if (Array.isArray(normalized.shipments)) {
+            return normalized.shipments;
+        }
+
+        if (Array.isArray(normalized.parcels)) {
+            return normalized.parcels;
+        }
+
+        return Object.values(attrs).filter((item) => item && typeof item === 'object' && item.key);
+    }
+
     getData() {
         if (!this.config.entity) return null;
         const entityId = this.config.entity;
@@ -102,21 +131,7 @@ class HKIPostNLCard extends HTMLElement {
         if (!stateObj) return null;
 
         const attrs = stateObj.attributes;
-        let shipments = [];
-        
-        if (Array.isArray(attrs)) {
-            shipments = attrs;
-        } else if (attrs.enroute || attrs.en_route || attrs.delivered) {
-            const enrouteArray = Array.isArray(attrs.enroute) ? attrs.enroute : (Array.isArray(attrs.en_route) ? attrs.en_route : []);
-            const deliveredArray = Array.isArray(attrs.delivered) ? attrs.delivered : [];
-            shipments = [...enrouteArray, ...deliveredArray];
-        } else if (attrs.shipments) {
-            shipments = attrs.shipments;
-        } else if (attrs.parcels) {
-            shipments = attrs.parcels;
-        } else {
-            shipments = Object.values(attrs).filter(item => item && item.key);
-        }
+        let shipments = this._extractShipments(attrs);
 
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - (this.config.days_back || 90));
@@ -136,24 +151,7 @@ class HKIPostNLCard extends HTMLElement {
         const stateObj = this._hass ? this._hass.states[this.config.distribution_entity] : null;
         if (!stateObj) return [];
 
-        const attrs = stateObj.attributes;
-        let shipments = [];
-        
-        if (Array.isArray(attrs)) {
-            shipments = attrs;
-        } else if (attrs.en_route || attrs.delivered || attrs.Enroute || attrs.Delivered) {
-            const enroute = attrs.en_route || attrs.Enroute || [];
-            const delivered = attrs.delivered || attrs.Delivered || [];
-            shipments = [...enroute, ...delivered];
-        } else if (attrs.shipments) {
-            shipments = attrs.shipments;
-        } else if (attrs.parcels) {
-            shipments = attrs.parcels;
-        } else {
-            shipments = Object.values(attrs).filter(item => item && item.key);
-        }
-
-        return shipments;
+        return this._extractShipments(stateObj.attributes);
     }
 
     getFilteredShipments(shipments, distributionShipments) {
@@ -234,6 +232,23 @@ class HKIPostNLCard extends HTMLElement {
         const selectedParcelData = this._selectedParcel 
             ? displayedShipments.find(s => s.key === this._selectedParcel)
             : null;
+
+        if (this.config.show_animation && selectedParcelData?.delivered) {
+            animationEl.classList.add('animation-active');
+            animationEl.innerHTML = `
+                <div class="delivery-complete">
+                    <div class="delivery-complete-icon">
+                        <ha-icon icon="mdi:package-check"></ha-icon>
+                    </div>
+                    <div class="delivery-complete-text">
+                        <strong>${selectedParcelData.name}</strong>
+                        <span>Pakket bezorgd</span>
+                    </div>
+                </div>
+                <div class="animation-info" style="display:none;"></div>
+            `;
+            return;
+        }
 
         if (this.config.show_animation && selectedParcelData) {
             const vanPos = selectedParcelData.delivered ? '75%' : '25%';
@@ -504,6 +519,41 @@ class HKIPostNLCard extends HTMLElement {
             }
             .animation-info strong {
                 color: var(--primary-text-color);
+            }
+            .delivery-complete {
+                height: 118px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 14px;
+                background: linear-gradient(135deg, rgba(237, 140, 0, 0.12), rgba(76, 175, 80, 0.14));
+                border-radius: 12px;
+            }
+            .delivery-complete-icon {
+                width: 58px;
+                height: 58px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(76, 175, 80, 0.14);
+                color: #4caf50;
+                flex-shrink: 0;
+            }
+            .delivery-complete-icon ha-icon {
+                --mdc-icon-size: 30px;
+            }
+            .delivery-complete-text {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .delivery-complete-text strong {
+                color: var(--primary-text-color);
+            }
+            .delivery-complete-text span {
+                color: var(--secondary-text-color);
+                font-size: 0.9em;
             }
             .animation-placeholder {
                 display: flex;
