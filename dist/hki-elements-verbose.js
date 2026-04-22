@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-06 ',
+  '%c HKI-ELEMENTS %c v1.4.5-dev-07 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -10413,6 +10413,14 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
       return this._getLocalizedState(fallbackState ?? entity.state, entityDomain, entity);
     }
 
+    _getClimateModeLabel(mode, entity = null) {
+      return this._getLocalizedState(mode, 'climate', entity || this._getEntity());
+    }
+
+    _getHumidifierModeLabel(mode, entity = null) {
+      return this._getLocalizedState(mode, 'humidifier', entity || this._getEntity());
+    }
+
     _getGroupBadgeCount(entity) {
       const members = entity?.attributes?.entity_id;
       if (!Array.isArray(members) || !members.length) return 0;
@@ -13000,8 +13008,10 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
       const isUnavailable = !entity || String(entity.state || '').toLowerCase() === 'unavailable';
       const isOnEffective = isUnavailable ? false : isOn;
       const brightness = this._getBrightness();
-      const supportsColor = entity && entity.attributes.supported_color_modes && 
-        entity.attributes.supported_color_modes.some(m => ['hs', 'rgb', 'xy', 'rgbw'].includes(m));
+      const mainSupportedColorModes = Array.isArray(entity?.attributes?.supported_color_modes)
+        ? entity.attributes.supported_color_modes
+        : [];
+      const supportsColor = mainSupportedColorModes.some((m) => ['hs', 'rgb', 'xy', 'rgbw', 'rgbww'].includes(m));
       const supportsTemp = entity ? this._supportsColorTemp(entity.attributes || {}) : false;
       
       const effectList = entity && entity.attributes.effect_list ? entity.attributes.effect_list : [];
@@ -14079,16 +14089,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
       const thumbY = 140 + 100 * Math.sin(totalAngle);
       
       // Get mode label
-      const modeLabels = {
-        'heat': 'HEATING',
-        'cool': 'COOLING',
-        'heat_cool': 'AUTO',
-        'auto': 'AUTO',
-        'dry': 'DRY',
-        'fan_only': 'FAN',
-        'off': 'OFF'
-      };
-      const modeLabel = modeLabels[mode] || mode.toUpperCase();
+      const modeLabel = String(this._getClimateModeLabel(mode, entity) || mode || '').toUpperCase();
       
       // Get font sizes from config
       const valueSize = this._config.popup_value_font_size || 64;
@@ -14154,7 +14155,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
               </svg>
               
               <div class="circular-value-display">
-                <div class="circular-temp-label-top" style="font-size: ${labelSize}px; font-weight: ${labelWeight};">${modeLabel} TO</div>
+                <div class="circular-temp-label-top" style="font-size: ${labelSize}px; font-weight: ${labelWeight};">${modeLabel}</div>
                 <div class="circular-temp-value" id="circularTempValue" style="font-size: ${valueSize}px; font-weight: ${valueWeight};">${value}<span style="font-size: ${valueSize / 2}px;">${unit}</span></div>
               </div>
             </div>
@@ -14246,17 +14247,17 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderClimatePopupHvacModes(entity) {
       const modes = entity?.attributes?.hvac_modes || [];
       const current = this._optimisticHvacMode ?? entity?.state;
-      const labelize = (s) => String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
       return modes.map(m => {
         const isActive = m === current;
         const customStyle = isActive ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false);
         const colorStyle = isActive ? `color:${(m === 'off') ? 'var(--primary-text-color)' : ((HVAC_COLORS && HVAC_COLORS[m]) || '')}` : '';
         const combinedStyle = [customStyle, colorStyle].filter(s => s).join('; ');
+        const label = this._getClimateModeLabel(m, entity);
         
         return `
         <button class="nav-btn ${isActive ? 'active' : ''}" data-mode="${m}" style="${combinedStyle}">
           <ha-icon icon="${HVAC_ICONS[m] || 'mdi:thermostat'}"></ha-icon>
-          ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${labelize(m)}</span>`}
+          ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${label}</span>`}
         </button>
       `;
       }).join('');
@@ -15048,15 +15049,12 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderClimateNav(entity) {
         const modes = entity.attributes.hvac_modes || [];
         const currentMode = this._optimisticHvacMode ?? entity.state;
-        const title = (s) => String(s || '')
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase());
         return modes.map(m => {
             const isActive = m === currentMode;
             return `
             <button class="nav-btn ${isActive ? 'active' : ''}" id="mode-${m}" style="${isActive ? `color:${HVAC_COLORS[m]}` : ''}">
                 <ha-icon icon="${HVAC_ICONS[m]}"></ha-icon>
-                ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${title(m)}</span>`}
+                ${this._config.popup_hide_button_text ? '' : `<span class="nav-label">${this._getClimateModeLabel(m, entity)}</span>`}
             </button>
         `;
         }).join('');
@@ -16528,7 +16526,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
         <div class="mode-list">
           ${modes.map(mode => `
             <div class="mode-item ${mode === currentMode ? 'active' : ''}" data-mode="${mode}">
-              <span style="text-transform:capitalize;">${mode.replace(/_/g, ' ')}</span>
+              <span>${this._getHumidifierModeLabel(mode)}</span>
               ${mode === currentMode ? '<ha-icon icon="mdi:check"></ha-icon>' : ''}
             </div>
           `).join('')}
@@ -19524,7 +19522,9 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
       const defaultSection = this._config.popup_default_section; // 'brightness', 'color', 'temperature', 'last', or undefined
       
       const pickDefaultMode = (child) => {
-        const scm = child?.attributes?.supported_color_modes || [];
+        const scm = Array.isArray(child?.attributes?.supported_color_modes)
+          ? child.attributes.supported_color_modes
+          : [];
         const hasTemp = this._supportsColorTemp(child?.attributes || {});
         const hasColor = scm.some(m => ['hs','rgb','xy','rgbw','rgbww'].includes(m));
         
@@ -19547,7 +19547,9 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
         const isOn = childEntity.state === 'on';
         const brightnessPct = childEntity.attributes.brightness ? Math.round((childEntity.attributes.brightness / 255) * 100) : 0;
 
-        const scm = childEntity.attributes.supported_color_modes || [];
+        const scm = Array.isArray(childEntity?.attributes?.supported_color_modes)
+          ? childEntity.attributes.supported_color_modes
+          : [];
         const supportsTemp = this._supportsColorTemp(childEntity.attributes || {});
         const supportsColor = scm.some(m => ['hs','rgb','xy','rgbw','rgbww'].includes(m));
         const supportsBrightness = scm.some(m => ['brightness', 'color_temp', 'hs', 'rgb', 'xy', 'rgbw', 'rgbww'].includes(m));
