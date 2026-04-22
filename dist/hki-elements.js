@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-03 ',
+  '%c HKI-ELEMENTS %c v1.4.5-dev-04 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -9650,8 +9650,8 @@ window.customCards.push({
               if (cardElement && cardElement.hass !== this.hass) {
                 cardElement.hass = this.hass;
               }
-              // Still re-render to update header state/timestamp
-              this._renderCustomPopupPortal(newEntity);
+              // Update the header in place; avoid rebuilding the portal.
+              this._updateCustomPopupHeader(newEntity);
               return;
             }
             if (this._getDomain() === 'climate') {
@@ -9968,6 +9968,72 @@ window.customCards.push({
     _getPopupText(key, fallback = '') {
       const locale = String(this._getLocale() || 'en').toLowerCase().split('-')[0];
       const dict = {
+        de: {
+          favorites: 'Favoriten',
+          effects: 'Effekte',
+          presets: 'Voreinstellungen',
+          heat: 'Heizung',
+          close: 'Schliessen',
+          history: 'Verlauf',
+          controls: 'Steuerung',
+          speed: 'Geschwindigkeit',
+          humidity: 'Luftfeuchtigkeit',
+          no_effects_available: 'Keine Effekte fuer dieses Geraet verfuegbar',
+          no_effect: 'Kein Effekt',
+          loading_timeline: 'Zeitachse wird geladen...',
+          loading_history: 'Verlauf wird geladen...',
+          loading_chart: 'Diagramm wird geladen...',
+          loading_activity: 'Aktivitaet wird geladen...',
+          activity_24h: 'Aktivitaet (24h)',
+          changed: 'Geaendert',
+          opened: 'Geoeffnet',
+          closed: 'Geschlossen',
+          empty: '(leer)',
+        },
+        fr: {
+          favorites: 'Favoris',
+          effects: 'Effets',
+          presets: 'Prereglages',
+          heat: 'Chauffage',
+          close: 'Fermer',
+          history: 'Historique',
+          controls: 'Commandes',
+          speed: 'Vitesse',
+          humidity: 'Humidite',
+          no_effects_available: 'Aucun effet disponible pour cet appareil',
+          no_effect: 'Aucun effet',
+          loading_timeline: 'Chargement de la chronologie...',
+          loading_history: 'Chargement de l historique...',
+          loading_chart: 'Chargement du graphique...',
+          loading_activity: 'Chargement de l activite...',
+          activity_24h: 'Activite (24h)',
+          changed: 'Modifie',
+          opened: 'Ouvert',
+          closed: 'Ferme',
+          empty: '(vide)',
+        },
+        it: {
+          favorites: 'Preferiti',
+          effects: 'Effetti',
+          presets: 'Preimpostazioni',
+          heat: 'Riscaldamento',
+          close: 'Chiudi',
+          history: 'Cronologia',
+          controls: 'Controlli',
+          speed: 'Velocita',
+          humidity: 'Umidita',
+          no_effects_available: 'Nessun effetto disponibile per questo dispositivo',
+          no_effect: 'Nessun effetto',
+          loading_timeline: 'Caricamento cronologia...',
+          loading_history: 'Caricamento storico...',
+          loading_chart: 'Caricamento grafico...',
+          loading_activity: 'Caricamento attivita...',
+          activity_24h: 'Attivita (24h)',
+          changed: 'Modificato',
+          opened: 'Aperto',
+          closed: 'Chiuso',
+          empty: '(vuoto)',
+        },
         nl: {
           favorites: 'Favorieten',
           effects: 'Effecten',
@@ -9990,8 +10056,47 @@ window.customCards.push({
           closed: 'Gesloten',
           empty: '(leeg)',
         },
+        es: {
+          favorites: 'Favoritos',
+          effects: 'Efectos',
+          presets: 'Ajustes preestablecidos',
+          heat: 'Calefaccion',
+          close: 'Cerrar',
+          history: 'Historial',
+          controls: 'Controles',
+          speed: 'Velocidad',
+          humidity: 'Humedad',
+          no_effects_available: 'No hay efectos disponibles para este dispositivo',
+          no_effect: 'Sin efecto',
+          loading_timeline: 'Cargando cronologia...',
+          loading_history: 'Cargando historial...',
+          loading_chart: 'Cargando grafico...',
+          loading_activity: 'Cargando actividad...',
+          activity_24h: 'Actividad (24h)',
+          changed: 'Cambiado',
+          opened: 'Abierto',
+          closed: 'Cerrado',
+          empty: '(vacio)',
+        },
       };
       return dict[locale]?.[key] || fallback;
+    }
+
+    _updateCustomPopupHeader(entity) {
+      const portal = this._popupPortal;
+      if (!portal || !entity) return;
+      const titleText = portal.querySelector('.hki-popup-title-text');
+      const stateEl = portal.querySelector('.hki-popup-state');
+      const hasRealEntity = !!entity?.entity_id;
+      const domain = this._getDomain();
+      const name = this._getPopupName(entity) || 'Popup';
+      const state = entity?.state || '';
+      if (titleText && titleText.firstChild) {
+        titleText.firstChild.textContent = name;
+      }
+      if (stateEl) {
+        stateEl.textContent = `${this._getPopupHeaderState(this._getLocalizedState(state, domain, entity))}${hasRealEntity && this._formatLastTriggered(entity) ? ` - ${this._formatLastTriggered(entity)}` : ''}`;
+      }
     }
 
     _isActiveState(state, domain) {
@@ -13470,12 +13575,12 @@ window.customCards.push({
       if (container) container.addEventListener('click', (e) => e.stopPropagation());
 
       let isBackgroundClick = false;
-      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
-      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
-      portal.addEventListener('click', (e) => {
-        if (isBackgroundClick && e.target === portal) this._closePopup();
-        isBackgroundClick = false;
-      });
+        portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+        portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+        portal.addEventListener('click', (e) => {
+          if (isBackgroundClick && e.target === portal) this._closePopup();
+          isBackgroundClick = false;
+        });
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -15063,12 +15168,12 @@ window.customCards.push({
       if (container) container.addEventListener('click', (e) => e.stopPropagation());
 
       let isBackgroundClick = false;
-      portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
-      portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
-      portal.addEventListener('click', (e) => {
-        if (isBackgroundClick && e.target === portal) this._closePopup();
-        isBackgroundClick = false;
-      });
+        portal.addEventListener('mousedown', (e) => { isBackgroundClick = (e.target === portal); });
+        portal.addEventListener('touchstart', (e) => { isBackgroundClick = (e.target === portal); }, { passive: true });
+        portal.addEventListener('click', (e) => {
+          if (isBackgroundClick && e.target === portal) this._closePopup();
+          isBackgroundClick = false;
+        });
 
       if (!this._popupPortal) {
         document.body.appendChild(portal);
@@ -17435,29 +17540,29 @@ window.customCards.push({
       // These cards fire hass-action events that need to reach the Lovelace handler.
       // The portal lives on document.body (outside the HA tree), so we re-dispatch
       // from `this` which IS inside the tree and will bubble to the correct handler.
-      portal.addEventListener('hass-action', (e) => {
-        e.stopPropagation();
-        this.dispatchEvent(new CustomEvent('hass-action', {
-          detail: e.detail,
-          bubbles: true,
-          composed: true,
-        }));
-      });
-
-      // Forward more-info and dialog events — tile/button cards fire these directly
-      // and they must reach the HA root to open the dialog.
-      // Close our popup first so the dialog is fully visible.
-      ['hass-more-info', 'hass-show-dialog', 'show-dialog'].forEach(evtName => {
-        portal.addEventListener(evtName, (e) => {
+        portal.addEventListener('hass-action', (e) => {
           e.stopPropagation();
-          this._closePopup();
-          this.dispatchEvent(new CustomEvent(evtName, {
+          this.dispatchEvent(new CustomEvent('hass-action', {
             detail: e.detail,
             bubbles: true,
             composed: true,
           }));
         });
-      });
+
+      // Forward more-info and dialog events — tile/button cards fire these directly
+      // and they must reach the HA root to open the dialog.
+      // Close our popup first so the dialog is fully visible.
+        ['hass-more-info', 'hass-show-dialog', 'show-dialog'].forEach(evtName => {
+          portal.addEventListener(evtName, (e) => {
+            e.stopPropagation();
+            this._closePopup();
+            this.dispatchEvent(new CustomEvent(evtName, {
+              detail: e.detail,
+              bubbles: true,
+              composed: true,
+            }));
+          });
+        });
         portal.__hkiCustomPopupEventsBound = true;
       }
 
