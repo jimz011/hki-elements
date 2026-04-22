@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-08 ',
+  '%c HKI-ELEMENTS %c v1.4.5-dev-09 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -11512,8 +11512,8 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
             }
             this._saveButtonLockState();
             const triesLeft = Math.max(0, maxTries - this._buttonLockFailedAttempts);
-            const msg = isPin ? 'Wrong PIN. Try again.' : 'Wrong password. Try again.';
-            markError(triesLeft > 0 ? `${msg} ${triesLeft} ${triesLeft === 1 ? "try" : "tries"} left.` : msg);
+            const msg = isPin ? this._getPopupText('wrong_pin', 'Wrong PIN. Try again.') : this._getPopupText('wrong_password', 'Wrong password. Try again.');
+            markError(triesLeft > 0 ? `${msg} ${triesLeft} ${triesLeft === 1 ? this._getPopupText('try_left', 'try') : this._getPopupText('tries_left', 'tries')} ${this._getPopupText('left', 'left')}.` : msg);
           }
           if (isPin) {
             overlay.querySelectorAll('.hki-auth-dot').forEach((dot) => {
@@ -11544,9 +11544,9 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
         const dotsHtml = Array.from({ length: pinLength }).map(() => '<span class="hki-auth-dot"></span>').join('');
         overlay.innerHTML = isPin ? `
           <div class="hki-auth-dialog" role="dialog" aria-modal="true">
-            <div class="hki-auth-head">Unlock Action</div>
+            <div class="hki-auth-head">${this._getPopupText('unlock_action', 'Unlock Action')}</div>
             <div class="hki-auth-body">
-              <p class="hki-auth-msg">Enter PIN to continue.</p>
+              <p class="hki-auth-msg">${this._getPopupText('enter_pin', 'Enter PIN to continue.')}</p>
               <div class="hki-auth-pin-display">${dotsHtml}</div>
               <div class="hki-auth-grid">
                 <button class="hki-auth-key" data-k="1">1</button>
@@ -11558,27 +11558,27 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
                 <button class="hki-auth-key" data-k="7">7</button>
                 <button class="hki-auth-key" data-k="8">8</button>
                 <button class="hki-auth-key" data-k="9">9</button>
-                <button class="hki-auth-key" data-k="clear">CLR</button>
+                <button class="hki-auth-key" data-k="clear">${this._getPopupText('clr', 'CLR')}</button>
                 <button class="hki-auth-key" data-k="0">0</button>
                 <button class="hki-auth-key" data-k="back"><ha-icon icon="mdi:backspace-outline"></ha-icon></button>
               </div>
               <div class="hki-auth-error-text"></div>
               <div class="hki-auth-actions">
-                <button class="hki-auth-btn" data-act="cancel">Cancel</button>
-                <button class="hki-auth-btn primary" data-act="ok">Unlock</button>
+                <button class="hki-auth-btn" data-act="cancel">${this._getPopupText('cancel', 'Cancel')}</button>
+                <button class="hki-auth-btn primary" data-act="ok">${this._getPopupText('unlock', 'Unlock')}</button>
               </div>
             </div>
           </div>
         ` : `
           <div class="hki-auth-dialog" role="dialog" aria-modal="true">
-            <div class="hki-auth-head">Unlock Action</div>
+            <div class="hki-auth-head">${this._getPopupText('unlock_action', 'Unlock Action')}</div>
             <div class="hki-auth-body">
-              <p class="hki-auth-msg">Enter password to continue.</p>
+              <p class="hki-auth-msg">${this._getPopupText('enter_password', 'Enter password to continue.')}</p>
               <input class="hki-auth-input" type="password" id="hkiAuthPasswordInput" autocomplete="off" />
               <div class="hki-auth-error-text"></div>
               <div class="hki-auth-actions">
-                <button class="hki-auth-btn" data-act="cancel">Cancel</button>
-                <button class="hki-auth-btn primary" data-act="ok">Unlock</button>
+                <button class="hki-auth-btn" data-act="cancel">${this._getPopupText('cancel', 'Cancel')}</button>
+                <button class="hki-auth-btn primary" data-act="ok">${this._getPopupText('unlock', 'Unlock')}</button>
               </div>
             </div>
           </div>
@@ -13589,6 +13589,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderClimatePopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const attrs = entity.attributes || {};
       const mode = entity.state;
@@ -15124,6 +15125,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderCoverPopupPortal(entity) {
       if (!entity) entity = this._getEntity();
       // Reuse existing portal to avoid flicker on hass updates.
+      const domain = this._getDomain();
       const isGroup = Array.isArray(entity.attributes?.entity_id) && entity.attributes.entity_id.length > 1;
       const entityName = this._getPopupName(entity);
       const pos = this._getCoverPosition(entity);
@@ -15775,6 +15777,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
       if (!entity) entity = this._getEntity();
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const entityName = this._getPopupName(entity);
       const state = entity.state || 'unknown';
       const popupRadius = this._config.popup_border_radius ?? 16;
@@ -16264,7 +16267,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
           <div class="hki-popup-nav">
             <button class="nav-btn ${isOn ? 'active' : ''}" id="humidifierToggle" style="${isOn ? this._getPopupButtonStyle(true) : this._getPopupButtonStyle(false)}">
               <ha-icon icon="${isOn ? 'mdi:power' : 'mdi:power-off'}"></ha-icon>
-              <span>${this._getEntityStateText(entity, isOn ? 'on' : 'off')}</span>
+              <span>${this._getPopupText(isOn ? 'on' : 'off', isOn ? 'On' : 'Off')}</span>
             </button>
           </div>
         </div>
@@ -18011,6 +18014,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     _renderLockPopupPortal(entity) {
       // Reuse existing portal to avoid flicker on hass updates.
 
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const state = entity.state;
       const isLocked = state === 'locked';
@@ -19295,6 +19299,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
     // PERSON POPUP — full-size HA map + configurable bottom bar
     // ─────────────────────────────────────────────────────────────
     _renderPersonPopupPortal(entity) {
+      const domain = this._getDomain();
       const name = this._getPopupName(entity);
       const entityId = entity.entity_id;
       const state = entity.state;
@@ -20350,7 +20355,7 @@ window.HKI.getPopupText = window.HKI.getPopupText || ((locale, key, fallback = '
           });
         
         // Add contact sensor state changes with a special flag
-        const contactSensorLabel = this._config.lock_contact_sensor_label || "Door";
+        const contactSensorLabel = this._config.lock_contact_sensor_label || this._getPopupText('door', 'Door');
         contactLogbook
           .filter(entry => {
             const state = String(entry.state || '').toLowerCase();
