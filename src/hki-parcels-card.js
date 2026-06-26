@@ -4,12 +4,22 @@
 // Standalone version: https://github.com/jonisnet/hki-parcels-card
 
 const { LitElement, html, css } = window.HKI.getLit();
-const CARD_VERSION = 'v1.0.1';
+const CARD_VERSION = 'v1.0.3';
 console.info(`%c HKI-PARCELS-CARD %c ${CARD_VERSION} `, 'color: white; background: #ed8c00; font-weight: bold;', 'color: #ed8c00; background: white; font-weight: bold;');
 
 const DEFAULT_CARRIER_ICON = 'mdi:package-variant-closed';
 const DEFAULT_CARRIER_COLOR = '#ed8c00';
 const DEFAULT_PLACEHOLDER_IMAGE = 'https://github.com/jonisnet/hki-parcels-card/blob/main/images/dutch-parcels.png?raw=true';
+
+function hasPhuIcons() {
+    return !!(window.customIconsets && window.customIconsets['phu']);
+}
+
+function getDefaultIcon(carrierType) {
+    const phuMap = { postnl: 'phu:postnl', dhl: 'phu:dhl', dpd: 'phu:dpd', postnl_legacy: 'phu:postnl' };
+    if (hasPhuIcons() && phuMap[carrierType]) return phuMap[carrierType];
+    return 'mdi:package-variant-closed';
+}
 
 // ============================================================
 // Translations
@@ -1029,7 +1039,7 @@ class HkiParcelsCardEditor extends LitElement {
         const templated = !isSingle && autoUser ? buildTemplatedEntities(autoUser, type) : {};
         carriers[index] = {
             ...current, type,
-            name: preset.label, icon: preset.icon, color: preset.color, schema: preset.schema,
+            name: preset.label, icon: getDefaultIcon(type), color: preset.color, schema: preset.schema,
             user: autoUser, _manualUser: !!current.user,
             entity_incoming:     isSingle ? '' : (templated.entity_incoming     ?? current.entity_incoming     ?? ''),
             entity_delivered:    isSingle ? '' : (templated.entity_delivered    ?? current.entity_delivered    ?? ''),
@@ -1085,7 +1095,7 @@ class HkiParcelsCardEditor extends LitElement {
         const autoUser = detected.length === 1 ? detected[0] : '';
         const templated = autoUser ? buildTemplatedEntities(autoUser, type) : {};
         const carriers = [...(this._config.carriers || []), {
-            type, name: preset.label, icon: preset.icon, color: preset.color,
+            type, name: preset.label, icon: getDefaultIcon(type), color: preset.color,
             schema: preset.schema, logo_path: '', van_path: '', banner_path: '',
             user: autoUser, _expanded: true, _manualUser: false,
             entity_incoming:  templated.entity_incoming  || '',
@@ -1256,9 +1266,29 @@ class HkiParcelsCardEditor extends LitElement {
                             <span class="color-hex">${currentColor}</span>
                         </div>
                     </div>
-                    ${this._renderUrlField(this._t('url_logo'),   carrier.logo_path,   assets.logo   || 'https://...', (ev) => this._carrierChanged(index, 'logo_path',   ev))}
-                    ${this._renderUrlField(this._t('url_van'),    carrier.van_path,    assets.van    || 'https://...', (ev) => this._carrierChanged(index, 'van_path',    ev))}
-                    ${this._renderUrlField(this._t('url_banner'), carrier.banner_path, assets.banner || 'https://...', (ev) => this._carrierChanged(index, 'banner_path', ev))}
+                    <ha-selector .hass=${this.hass}
+                        .selector=${{ image: {} }}
+                        .value=${carrier.logo_path || ''}
+                        .label=${this._t('url_logo')}
+                        @value-changed=${(ev) => {
+                            ev.stopPropagation();
+                            const carriers = [...(this._config.carriers || [])];
+                            carriers[index] = { ...carriers[index], logo_path: ev.detail.value };
+                            this._config = { ...this._config, carriers };
+                            this._emit();
+                        }}></ha-selector>
+                    ${this._renderUrlField(this._t('url_van'), carrier.van_path, assets.van || 'https://...', (ev) => this._carrierChanged(index, 'van_path', ev))}
+                    <ha-selector .hass=${this.hass}
+                        .selector=${{ image: {} }}
+                        .value=${carrier.banner_path || ''}
+                        .label=${this._t('url_banner')}
+                        @value-changed=${(ev) => {
+                            ev.stopPropagation();
+                            const carriers = [...(this._config.carriers || [])];
+                            carriers[index] = { ...carriers[index], banner_path: ev.detail.value };
+                            this._config = { ...this._config, carriers };
+                            this._emit();
+                        }}></ha-selector>
                 </div>
             </details>`;
     }
