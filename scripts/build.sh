@@ -13,10 +13,15 @@ echo -e "${BLUE}  HKI Elements Bundle Builder${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
+# Always run from the repository root, even when this script is started from
+# src/, scripts/, or another working directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT_DIR"
+
 # Directories
 SRC_DIR="src"
 DIST_DIR="dist"
-SCRIPTS_DIR="scripts"
 
 # Output files
 BUNDLE_FILE="$DIST_DIR/hki-elements.js"
@@ -30,6 +35,7 @@ CARDS=(
     "hki-navigation-card.js"
     "hki-settings-card.js"
     "hki-notification-card.js"
+    "hki-parcels-card.js"
     "hki-postnl-card.js"
 )
 
@@ -88,7 +94,8 @@ create_optimized_bundle() {
     cp "$VERBOSE_FILE" "$BUNDLE_FILE"
     
     # Comment out individual card banners but keep main bundle banner and important messages
-    sed -i '
+    local optimized_tmp="$BUNDLE_FILE.tmp"
+    sed '
         # Skip lines 1-20 (bundle header area)
         1,20 b
         # Skip the navigation card migration message
@@ -97,7 +104,8 @@ create_optimized_bundle() {
         s/^console\.info(/\/\/ console.info(/
         s/^  console\.info(/  \/\/ console.info(/
         s/^    console\.info(/    \/\/ console.info(/
-    ' "$BUNDLE_FILE"
+    ' "$BUNDLE_FILE" > "$optimized_tmp"
+    mv "$optimized_tmp" "$BUNDLE_FILE"
     
     echo -e "${GREEN}✓ Optimized bundle created: $BUNDLE_FILE${NC}"
     

@@ -147,6 +147,7 @@ class HkiSettingsBase extends LitElement {
 
   constructor() {
     super();
+    window.HKI.ensureEditorElements?.();
     this._templateDrafts = {};
     this._openSections = {};
   }
@@ -427,7 +428,7 @@ class HkiSettingsBase extends LitElement {
   _renderInput(scope, key, label, type = "text", placeholder = "") {
     const current = this._config?.[scope]?.[key];
     return html`
-      <ha-textfield
+      <hki-textfield
         .label=${label}
         .type=${type}
         .value=${current !== undefined ? String(current) : ""}
@@ -435,7 +436,7 @@ class HkiSettingsBase extends LitElement {
         @input=${(e) => (type === "number"
           ? this._setNumber(scope, key, (window.HKI.getSelectValue(e)))
           : this._setText(scope, key, (window.HKI.getSelectValue(e))))}
-      ></ha-textfield>
+      ></hki-textfield>
     `;
   }
 
@@ -1021,9 +1022,13 @@ class HkiSettingsBase extends LitElement {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
       }
-      ha-textfield, ha-select, ha-code-editor {
+      hki-textfield, ha-select, ha-selector, ha-code-editor {
         width: 100%;
+        display: block;
+        box-sizing: border-box;
+        min-height: 56px;
       }
+      ha-formfield { min-height: 40px; }
       ha-code-editor {
         border-radius: 8px;
         overflow: hidden;

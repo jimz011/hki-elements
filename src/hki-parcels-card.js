@@ -1,4 +1,4 @@
-﻿// HKI Parcels Card
+// HKI Parcels Card
 // Multi-carrier parcel tracker for PostNL, DHL, DPD and more.
 // Based on the original hki-postnl-card by jimz011/hki-elements.
 // Standalone version: https://github.com/jonisnet/hki-parcels-card
@@ -58,7 +58,7 @@ const TRANSLATIONS = {
         label_type:             'Type',
         type_letter:            'Brief',
         type_parcel:            'Pakket',
-        open_tracking:          'TRACK & TRACE OPENEN â†—',
+        open_tracking:          'TRACK & TRACE OPENEN ↗',
         no_parcels:             'Geen pakketten in deze categorie',
         post_section_upcoming:  'Nog te bezorgen',
         post_section_delivered: 'Bezorgd',
@@ -68,9 +68,9 @@ const TRANSLATIONS = {
         error_no_carriers:      'Geen carriers geconfigureerd, of geen van de geconfigureerde sensoren gevonden.',
         error_no_carriers_hint: 'Voeg minstens 1 carrier toe met een entity_incoming of entity_delivered.',
         // editor
-        editor_title:           'ðŸ“¦ Multi-carrier pakketten kaart',
-        editor_intro1:          'Voeg hieronder Ã©Ã©n of meer carriers toe (PostNL, DHL, DPD, ...). Elke carrier kan tot 4 sensoren hebben.',
-        editor_intro2:          'Kies het juiste PostNL-type: v4.x (peternijssen â‰¥4.0), v3.x (peternijssen â‰¤3.x) of arjenbos voor de oude single-entity integratie.',
+        editor_title:           '📦 Multi-carrier pakketten kaart',
+        editor_intro1:          'Voeg hieronder één of meer carriers toe (PostNL, DHL, DPD, ...). Elke carrier kan tot 4 sensoren hebben.',
+        editor_intro2:          'Kies het juiste PostNL-type: v4.x (peternijssen ≥4.0), v3.x (peternijssen ≤3.x) of arjenbos voor de oude single-entity integratie.',
         section_basic:          'Basis Instellingen',
         label_card_title:       'Kaartnaam',
         label_days_back:        'Aantal dagen geschiedenis (bezorgd)',
@@ -96,7 +96,7 @@ const TRANSLATIONS = {
         label_placeholder_img:  'Placeholder Afbeelding (URL, optioneel)',
         btn_remove_carrier:     'Verwijder carrier',
         label_carrier_name:     'Naam',
-        legacy_warning:         'RecreÃ«ert de originele hki-postnl-card: Ã©Ã©n entity met onderweg Ã©n bezorgde pakketten, plus een losse entity voor verzonden. Geen brieven, geen sensor-templating. Deze modus krijgt geen verdere updates zolang arjenbos/ha-postnl niet wordt bijgehouden.',
+        legacy_warning:         'Recreëert de originele hki-postnl-card: één entity met onderweg én bezorgde pakketten, plus een losse entity voor verzonden. Geen brieven, geen sensor-templating. Deze modus krijgt geen verdere updates zolang arjenbos/ha-postnl niet wordt bijgehouden.',
         label_account:          'Account / gebruikersdeel van de sensornaam',
         account_help_suffix:    '_incoming_parcels" etc. De 4 sensoren worden automatisch opgebouwd.',
         adv_sensors:            'Geavanceerd: sensoren handmatig overschrijven',
@@ -118,8 +118,8 @@ const TRANSLATIONS = {
         postnl_entity_label:    'PostNL Ontvangst Entity',
         postnl_dist_label:      'PostNL Verzending Entity (optioneel)',
         detected_one:           'Automatisch gevonden',
-        detected_multiple:      'Meerdere accounts gevonden â€” kies er Ã©Ã©n',
-        detected_none:          'Geen sensors gevonden â€” vul handmatig in',
+        detected_multiple:      'Meerdere accounts gevonden — kies er één',
+        detected_none:          'Geen sensors gevonden — vul handmatig in',
         no_prefix:              '(geen gebruikersnaam-prefix)',
         detected_badge:         'gevonden',
         label_icon_pick:        'Icoon',
@@ -162,7 +162,7 @@ const TRANSLATIONS = {
         label_type:             'Type',
         type_letter:            'Letter',
         type_parcel:            'Parcel',
-        open_tracking:          'OPEN TRACKING â†—',
+        open_tracking:          'OPEN TRACKING ↗',
         no_parcels:             'No parcels in this category',
         post_section_upcoming:  'Still to be delivered',
         post_section_delivered: 'Delivered',
@@ -172,9 +172,9 @@ const TRANSLATIONS = {
         error_no_carriers:      'No carriers configured, or none of the configured sensors were found.',
         error_no_carriers_hint: 'Add at least 1 carrier with an entity_incoming or entity_delivered.',
         // editor
-        editor_title:           'ðŸ“¦ Multi-carrier parcel card',
+        editor_title:           '📦 Multi-carrier parcel card',
         editor_intro1:          'Add one or more carriers below (PostNL, DHL, DPD, ...). Each carrier can have up to 4 sensors.',
-        editor_intro2:          'Pick the right PostNL type: v4.x (peternijssen â‰¥4.0), v3.x (peternijssen â‰¤3.x), or arjenbos for the legacy single-entity integration.',
+        editor_intro2:          'Pick the right PostNL type: v4.x (peternijssen ≥4.0), v3.x (peternijssen ≤3.x), or arjenbos for the legacy single-entity integration.',
         section_basic:          'Basic Settings',
         label_card_title:       'Card title',
         label_days_back:        'Days to show delivery history',
@@ -222,8 +222,8 @@ const TRANSLATIONS = {
         postnl_entity_label:    'PostNL Incoming Entity',
         postnl_dist_label:      'PostNL Outgoing Entity (optional)',
         detected_one:           'Auto-detected',
-        detected_multiple:      'Multiple accounts found â€” choose one',
-        detected_none:          'No sensors found â€” enter manually',
+        detected_multiple:      'Multiple accounts found — choose one',
+        detected_none:          'No sensors found — enter manually',
         no_prefix:              '(no account prefix)',
         detected_badge:         'found',
         label_icon_pick:        'Icon',
@@ -616,8 +616,8 @@ class HkiParcelsCard extends HTMLElement {
             });
         });
 
-        // If a letter appears in both entity_delivered (parcels flow â†’ bezorgd) and entity_letters
-        // (post flow â†’ postDelivered), remove the duplicate from bezorgd.
+        // If a letter appears in both entity_delivered (parcels flow → bezorgd) and entity_letters
+        // (post flow → postDelivered), remove the duplicate from bezorgd.
         const postKeys = new Set([...postUpcoming, ...postDelivered].map(l => l.key).filter(Boolean));
         if (postKeys.size > 0) {
             bezorgd = bezorgd.filter(i => !postKeys.has(i.key));
@@ -681,7 +681,7 @@ class HkiParcelsCard extends HTMLElement {
         if (!this._hass) return;
         // Match by mail item id (present in image entity attributes since ha-postnl v4.1.0).
         // The naming convention of image entities changed across versions so pattern matching
-        // is unreliable â€” id-based matching works for any naming scheme.
+        // is unreliable — id-based matching works for any naming scheme.
         const idMap = new Map();
         for (const [entityId, stateObj] of Object.entries(this._hass.states)) {
             if (!entityId.startsWith('image.')) continue;
@@ -795,7 +795,7 @@ class HkiParcelsCard extends HTMLElement {
             <div class="letter-popup-content">
                 <button class="letter-popup-close" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
                 <img src="${src}" alt="${name || ''}" />
-                <div class="letter-popup-caption"><strong>${name || ''}</strong>${dateLabel ? ` â€¢ ${dateLabel}` : ''}</div>
+                <div class="letter-popup-caption"><strong>${name || ''}</strong>${dateLabel ? ` • ${dateLabel}` : ''}</div>
             </div>`;
         popup.classList.add('open');
     }
@@ -805,10 +805,10 @@ class HkiParcelsCard extends HTMLElement {
     }
 
     // ------------------------------------------------------------------
-    // updateContent â€” partial DOM update (no full re-render)
+    // updateContent — partial DOM update (no full re-render)
     // ------------------------------------------------------------------
 
-    // Stable fingerprint for the displayed list â€” excludes image URLs (their time= param
+    // Stable fingerprint for the displayed list — excludes image URLs (their time= param
     // changes on every HA scan, which would cause constant re-renders and image flickering).
     _listFingerprint(displayed) {
         const items = Array.isArray(displayed)
@@ -824,7 +824,7 @@ class HkiParcelsCard extends HTMLElement {
 
         const displayed = this.getFilteredShipments(data);
         const lettersToday = this.hasAnyLettersConfigured() ? this._countLettersToday(data) : null;
-        const statsText = `${data.onderweg.length} ${this._t('stats_in_transit')} â€¢ ${data.bezorgd.length} ${this._t('stats_recent')}${lettersToday !== null ? ` â€¢ ${lettersToday} ${this._t('stats_letters')}` : ''}`;
+        const statsText = `${data.onderweg.length} ${this._t('stats_in_transit')} • ${data.bezorgd.length} ${this._t('stats_recent')}${lettersToday !== null ? ` • ${lettersToday} ${this._t('stats_letters')}` : ''}`;
 
         const statsEl    = this.shadowRoot.querySelector('.header-stats');
         const statsBarEl = this.shadowRoot.querySelector('.stats-text');
@@ -836,7 +836,7 @@ class HkiParcelsCard extends HTMLElement {
         );
         this.updateAnimation(displayed);
 
-        // Only rebuild the list DOM when items actually changed â€” avoids destroying
+        // Only rebuild the list DOM when items actually changed — avoids destroying
         // <img> elements on every hass tick, which causes letter images to flicker.
         const fp = this._listFingerprint(displayed);
         if (fp !== this._lastListFingerprint) {
@@ -866,7 +866,7 @@ class HkiParcelsCard extends HTMLElement {
                     </div>
                     <div class="delivery-complete-text">
                         <strong>${selected.name}</strong>
-                        <span>${isLetter ? this._t('letterbox_received') : this._t('parcel_delivered_msg')} â€¢ ${selected.carrier_name || ''}</span>
+                        <span>${isLetter ? this._t('letterbox_received') : this._t('parcel_delivered_msg')} • ${selected.carrier_name || ''}</span>
                     </div>
                 </div>`;
             return;
@@ -878,7 +878,7 @@ class HkiParcelsCard extends HTMLElement {
             animationEl.classList.add('animation-active');
             animationEl.innerHTML = `
                 <div class="visual-road">
-                    <div class="house-bg">ðŸ </div>
+                    <div class="house-bg">🏠</div>
                     <div class="road-line"></div>
                     ${selected.carrier_van
                         ? `<img class="carrier-van-gif" src="${selected.carrier_van}" alt="${selected.carrier_name || ''}" style="left:${vanPos};" />`
@@ -887,7 +887,7 @@ class HkiParcelsCard extends HTMLElement {
                         </div>`
                     }
                 </div>
-                <div class="animation-info"><strong>${selected.name}</strong> â€¢ ${statusText} â€¢ ${selected.carrier_name || ''}</div>`;
+                <div class="animation-info"><strong>${selected.name}</strong> • ${statusText} • ${selected.carrier_name || ''}</div>`;
         } else {
             animationEl.classList.remove('animation-active');
             if (!this.config.show_placeholder) {
@@ -1017,7 +1017,7 @@ class HkiParcelsCard extends HTMLElement {
 
         const displayed      = this.getFilteredShipments(data);
         const lettersToday   = this.hasAnyLettersConfigured() ? this._countLettersToday(data) : null;
-        const statsText      = `${data.onderweg.length} ${this._t('stats_in_transit')} â€¢ ${data.bezorgd.length} ${this._t('stats_recent')}${lettersToday !== null ? ` â€¢ ${lettersToday} ${this._t('stats_letters')}` : ''}`;
+        const statsText      = `${data.onderweg.length} ${this._t('stats_in_transit')} • ${data.bezorgd.length} ${this._t('stats_recent')}${lettersToday !== null ? ` • ${lettersToday} ${this._t('stats_letters')}` : ''}`;
         const headerColor    = this.config.header_color    || 'var(--card-background-color)';
         const headerTextColor = this.config.header_text_color || 'var(--primary-text-color)';
         const showLettersTab = this.config.show_letters && this.hasAnyLettersConfigured();
@@ -1147,6 +1147,7 @@ class HkiParcelsCardEditor extends LitElement {
 
     constructor() {
         super();
+        window.HKI.ensureEditorElements?.();
         this._config = { carriers: [], layout_order: ['header', 'animation', 'tabs', 'list'] };
     }
 
@@ -1300,7 +1301,7 @@ class HkiParcelsCardEditor extends LitElement {
     }
 
     // Returns an array of user-slugs detected in hass.states for a carrier type.
-    // e.g. for 'dhl' it matches sensor.*_dhl_incoming_parcels â†’ extracts the prefix.
+    // e.g. for 'dhl' it matches sensor.*_dhl_incoming_parcels → extracts the prefix.
     _detectUsers(carrierType) {
         if (!this.hass) return [];
         const preset = CARRIER_PRESETS[carrierType];
@@ -1321,7 +1322,7 @@ class HkiParcelsCardEditor extends LitElement {
         return users;
     }
 
-    // Sanitizes free-text account input: lowercase, non-alnum â†’ underscore, trim underscores.
+    // Sanitizes free-text account input: lowercase, non-alnum → underscore, trim underscores.
     _sanitizeUserInput(value) {
         return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     }
@@ -1372,10 +1373,16 @@ class HkiParcelsCardEditor extends LitElement {
             .section-details summary { list-style: none; }
             .section-details summary::-webkit-details-marker { display: none; }
             .section { margin-top: 24px; margin-bottom: 12px; font-weight: 600; font-size: 14px; color: var(--primary-text-color); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--divider-color); padding-bottom: 8px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; }
-            .section::after { content: 'â–¾'; font-size: 12px; transition: transform 0.2s ease; }
+            .section::after { content: '▾'; font-size: 12px; transition: transform 0.2s ease; }
             .section-details:not([open]) .section::after { transform: rotate(-90deg); }
             .helper-text { font-size: 12px; color: var(--secondary-text-color); margin: 4px 0 16px 0; font-style: italic; }
-            ha-selector, ha-textfield { width: 100%; margin-bottom: 16px; }
+            ha-selector, hki-textfield {
+                width: 100%;
+                display: block;
+                box-sizing: border-box;
+                min-height: 56px;
+                margin-bottom: 16px;
+            }
             .plain-field { margin-bottom: 16px; }
             .plain-field label { display: block; font-size: 12px; color: var(--secondary-text-color); margin-bottom: 4px; }
             .plain-field input { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color, white); color: var(--primary-text-color); font-family: inherit; }
@@ -1429,7 +1436,7 @@ class HkiParcelsCardEditor extends LitElement {
 
             /* URL field with preview */
             .url-field { margin-bottom: 8px; }
-            .url-field ha-textfield { width: 100%; margin-bottom: 4px; }
+            .url-field hki-textfield { width: 100%; margin-bottom: 4px; }
             .url-preview-wrap { padding: 6px 0 10px; }
             .url-preview { max-height: 56px; max-width: 120px; object-fit: contain; border-radius: 4px; border: 1px solid var(--divider-color); background: white; padding: 4px; display: block; }
             .url-preview-error { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--error-color, red); }
@@ -1440,8 +1447,8 @@ class HkiParcelsCardEditor extends LitElement {
     _renderUrlField(label, value, placeholder, onChange) {
         return html`
             <div class="url-field">
-                <ha-textfield label="${label}" .value=${value || ''} placeholder="${placeholder}"
-                    @input=${onChange}></ha-textfield>
+                <hki-textfield label="${label}" .value=${value || ''} placeholder="${placeholder}"
+                    @input=${onChange}></hki-textfield>
                 ${value ? html`
                     <div class="url-preview-wrap">
                         <img class="url-preview" src="${value}"
@@ -1517,7 +1524,7 @@ class HkiParcelsCardEditor extends LitElement {
                             this._config = { ...this._config, carriers };
                             this._emit();
                         }}></ha-selector>
-                    <!-- Vehicle GIF (URL only â€” GIFs are not in the media library) -->
+                    <!-- Vehicle GIF (URL only — GIFs are not in the media library) -->
                     ${this._renderUrlField(
                         this._t('url_van'),
                         carrier.van_path,
@@ -1541,7 +1548,7 @@ class HkiParcelsCardEditor extends LitElement {
     }
 
     // Renders the user/account detection block: badge if 1 found, dropdown if multiple, manual if none.
-    // Never mutates state during render â€” auto-fill happens in _addCarrier / _carrierTypeChanged.
+    // Never mutates state during render — auto-fill happens in _addCarrier / _carrierTypeChanged.
     _renderUserDetection(carrier, index, preset, supportsLetters) {
         const detected   = this._detectUsers(carrier.type);
         const entityPreview = carrier.entity_incoming ? html`
@@ -1553,7 +1560,7 @@ class HkiParcelsCardEditor extends LitElement {
                 ${supportsLetters && carrier.entity_letters ? html`<div>${carrier.entity_letters}</div>` : ''}
             </div>` : '';
 
-        // Single account found and not overridden by user â†’ show auto-detected badge.
+        // Single account found and not overridden by user → show auto-detected badge.
         if (detected.length === 1 && !carrier._manualUser) {
             return html`
                 <div class="detected-row">
@@ -1568,12 +1575,12 @@ class HkiParcelsCardEditor extends LitElement {
                             carriers[index] = { ...carriers[index], _manualUser: true };
                             this._config = { ...this._config, carriers };
                             this._emit();
-                        }}>âœŽ</button>
+                        }}>✎</button>
                 </div>
                 ${entityPreview}`;
         }
 
-        // Multiple accounts found and not overridden â†’ show dropdown.
+        // Multiple accounts found and not overridden → show dropdown.
         if (detected.length > 1 && !carrier._manualUser) {
             return html`
                 <div class="detected-row">
@@ -1585,7 +1592,7 @@ class HkiParcelsCardEditor extends LitElement {
                             carriers[index] = { ...carriers[index], _manualUser: true };
                             this._config = { ...this._config, carriers };
                             this._emit();
-                        }}>âœŽ</button>
+                        }}>✎</button>
                 </div>
                 <ha-selector .hass=${this.hass}
                     .selector=${{ select: {
@@ -1601,7 +1608,7 @@ class HkiParcelsCardEditor extends LitElement {
                 ${entityPreview}`;
         }
 
-        // 0 detected OR user chose manual entry â†’ text input with sanitization.
+        // 0 detected OR user chose manual entry → text input with sanitization.
         return html`
             ${detected.length > 0 ? html`
                 <div class="detected-row">
@@ -1613,7 +1620,7 @@ class HkiParcelsCardEditor extends LitElement {
                             carriers[index] = { ...carriers[index], _manualUser: false };
                             this._config = { ...this._config, carriers };
                             this._emit();
-                        }}>â†©</button>
+                        }}>↩</button>
                 </div>` : html`
                 <div class="detected-row">
                     <ha-icon icon="mdi:help-circle-outline" class="detected-icon none"></ha-icon>
@@ -1631,12 +1638,12 @@ class HkiParcelsCardEditor extends LitElement {
 
     _renderEntityPicker(label, value, helper, onChange) {
         return html`
-            <ha-textfield
+            <hki-textfield
                 .label=${label}
                 .value=${value || ''}
                 .helper=${helper || ''}
                 helperPersistent
-                @change=${onChange}></ha-textfield>`;
+                @change=${onChange}></hki-textfield>`;
     }
 
     _renderCarrier(carrier, index) {
@@ -1679,7 +1686,7 @@ class HkiParcelsCardEditor extends LitElement {
                         </div>
                     ` : carrier.type === 'postnl_legacy' ? html`
                         <div class="helper-text">
-                            âš  ${this._t('legacy_warning')}
+                            ⚠ ${this._t('legacy_warning')}
                             (<a href="https://github.com/arjenbos/ha-postnl" target="_blank">arjenbos/ha-postnl</a>)
                         </div>
                         ${this._renderEntityPicker(this._t('postnl_entity_label'), carrier.entity, 'e.g. sensor.postnl_delivery', (ev) => this._carrierChanged(index, 'entity', ev))}
@@ -1801,6 +1808,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
     type: "hki-parcels-card",
     name: "HKI Parcels Card",
-    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD) — fork of jimz011/hki-elements",
+    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD) � fork of jimz011/hki-elements",
     preview: true
 });

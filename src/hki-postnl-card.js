@@ -788,6 +788,7 @@ class HKIPostNLCardEditor extends LitElement {
 
     constructor() {
         super();
+        window.HKI.ensureEditorElements?.();
         this._config = {};
     }
 
@@ -907,8 +908,11 @@ class HKIPostNLCardEditor extends LitElement {
                 margin-bottom: 16px;
             }
             ha-selector,
-            ha-textfield {
+            hki-textfield {
                 width: 100%;
+                display: block;
+                box-sizing: border-box;
+                min-height: 56px;
                 margin-bottom: 16px;
             }
             .switch-row {
@@ -1018,15 +1022,15 @@ class HKIPostNLCardEditor extends LitElement {
                     "De entity voor verzonden pakketten (standaard: sensor.postnl_distribution)"
                 )}
 
-                <ha-textfield
+                <hki-textfield
                     label="Kaartnaam"
                     .value=${this._config.title || 'PostNL'}
                     placeholder="PostNL"
                     data-field="title"
                     @input=${this._changed}
-                ></ha-textfield>
+                ></hki-textfield>
 
-                <ha-textfield
+                <hki-textfield
                     label="Aantal dagen geschiedenis"
                     type="number"
                     .value=${String(this._config.days_back || 90)}
@@ -1034,7 +1038,7 @@ class HKIPostNLCardEditor extends LitElement {
                     max="365"
                     data-field="days_back"
                     @input=${this._changed}
-                ></ha-textfield>
+                ></hki-textfield>
 
                 <div class="section">Layout Volgorde</div>
                 <div class="helper-text">Gebruik de pijltjes om de blokken te herschikken</div>
@@ -1106,46 +1110,46 @@ class HKIPostNLCardEditor extends LitElement {
                 <div class="section">Uiterlijk</div>
 
                 <div class="inline-fields-2">
-                    <ha-textfield
+                    <hki-textfield
                         label="Header Kleur"
                         type="color"
                         .value=${this._config.header_color || '#f0f0f0'}
                         data-field="header_color"
                         @input=${this._changed}
-                    ></ha-textfield>
+                    ></hki-textfield>
 
-                    <ha-textfield
+                    <hki-textfield
                         label="Header Tekst Kleur"
                         type="color"
                         .value=${this._config.header_text_color || '#000000'}
                         data-field="header_text_color"
                         @input=${this._changed}
-                    ></ha-textfield>
+                    ></hki-textfield>
                 </div>
 
-                <ha-textfield
+                <hki-textfield
                     label="Placeholder Afbeelding (URL)"
                     .value=${this._config.placeholder_image || DEFAULT_BANNER}
                     placeholder="http://..."
                     data-field="placeholder_image"
                     @input=${this._changed}
-                ></ha-textfield>
+                ></hki-textfield>
 
-                <ha-textfield
+                <hki-textfield
                     label="PostNL Logo (URL)"
                     .value=${this._config.logo_path || DEFAULT_LOGO}
                     placeholder="http://..."
                     data-field="logo_path"
                     @input=${this._changed}
-                ></ha-textfield>
+                ></hki-textfield>
 
-                <ha-textfield
+                <hki-textfield
                     label="Bezorgbusje Afbeelding (URL)"
                     .value=${this._config.van_path || DEFAULT_VAN}
                     placeholder="http://..."
                     data-field="van_path"
                     @input=${this._changed}
-                ></ha-textfield>
+                ></hki-textfield>
             </div>
         `;
     }
