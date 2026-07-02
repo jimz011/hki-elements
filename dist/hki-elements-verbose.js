@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.7-dev-02 ',
+  '%c HKI-ELEMENTS %c v1.4.7-dev-03 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -1290,7 +1290,6 @@ const DEFAULTS = Object.freeze({
   title_color: "",
   subtitle_color: "",
   background: "https://github.com/jimz011/hki-header-card/blob/main/wallpapers/livingroom.jpg?raw=true",
-  background_transparent: false,
   background_color: "", // Background blend color for blending
   background_position: "center",
   background_repeat: "no-repeat",
@@ -1473,7 +1472,7 @@ function migrateToNestedFormat(oldConfig) {
   // Copy simple top-level properties
   const simpleProps = [
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
-    'background', 'background_transparent', 'background_color', 'background_position', 'background_repeat',
+    'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
     'grid_options', 'visibility',
     'blend_color', 'blend_stop', 'blend_enabled',
@@ -1668,7 +1667,7 @@ function flattenNestedFormat(nested) {
   // Copy simple top-level properties
   const simpleProps = [
     'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
-    'background', 'background_transparent', 'background_color', 'background_position', 'background_repeat',
+    'background', 'background_color', 'background_position', 'background_repeat',
     'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
     'grid_options', 'visibility',
     'blend_color', 'blend_stop', 'blend_enabled',
@@ -5103,7 +5102,7 @@ class HkiHeaderCard extends LitElement {
     let bgImage = "";
     let bgColor = "";
 
-    if (!cfg.background_transparent && bgTrim) {
+    if (bgTrim) {
       if (isGradient || isUrl) bgImage = bgTrim;
       else if (isPath) bgImage = `url('${bgTrim}')`;
       else bgColor = bgTrim;
@@ -5163,8 +5162,8 @@ class HkiHeaderCard extends LitElement {
       `height:${fixedHeaderHeight}px`,
       `min-height:${fixedHeaderHeight}px`,
       `max-height:${fixedHeaderHeight}px`,
-      cfg.background_transparent ? "background-color:transparent" : ((bgColor || cfg.background_color) ? `background-color:${bgColor || cfg.background_color}` : ""),
-      cfg.background_transparent ? "background-image:none" : (bgImage ? `background-image:${bgImage}` : ""),
+      (bgColor || cfg.background_color) ? `background-color:${bgColor || cfg.background_color}` : "",
+      bgImage ? `background-image:${bgImage}` : "",
       cfg.background_position ? `background-position:${cfg.background_position}` : "",
       cfg.background_repeat ? `background-repeat:${cfg.background_repeat}` : "",
       cfg.background_size ? `background-size:${cfg.background_size}` : "",
@@ -5484,7 +5483,7 @@ class HkiHeaderCardEditor extends LitElement {
     // Always include these essential fields even if they match defaults
     // This ensures Home Assistant recognizes this as a valid header card
     const alwaysInclude = [
-      'height_vh', 'min_height', 'max_height', 'background', 'background_transparent',
+      'height_vh', 'min_height', 'max_height', 'background',
       'persons_enabled',
       'top_bar_enabled'
     ];
@@ -5608,7 +5607,7 @@ class HkiHeaderCardEditor extends LitElement {
     // Simple top-level properties stay as-is
     const simpleProps = [
       'title', 'subtitle', 'text_align', 'title_color', 'subtitle_color',
-      'background', 'background_transparent', 'background_color', 'background_position', 'background_repeat',
+      'background', 'background_color', 'background_position', 'background_repeat',
       'background_size', 'background_blend_mode', 'height_vh', 'min_height', 'max_height',
       'grid_options', 'visibility',
       'blend_color', 'blend_stop', 'blend_enabled',
@@ -8241,11 +8240,6 @@ class HkiHeaderCardEditor extends LitElement {
 
             <div class="section">Background</div>
             <hki-textfield label="Background" helper="CSS color (hex, rgb, rgba, color name), gradient, or image URL (/local/image.jpg)" .value=${this._config.background} data-field="background" @input=${this._changed}></hki-textfield>
-            <div class="switch-row">
-              <ha-formfield label="Transparent background">
-                <ha-switch .checked=${this._config.background_transparent === true} data-field="background_transparent" @change=${this._changed}></ha-switch>
-              </ha-formfield>
-            </div>
 
             <div class="inline-fields-2">
                                 <ha-selector
