@@ -14398,9 +14398,9 @@
                 ></ha-selector>
             </div>
             ${this._config[`${prefix}_font_family`] === 'custom' ? html`
-                <ha-textfield .label=${"Custom Font Name"} .value=${this._config[`${prefix}_font_custom`] || ""} @input=${(ev) => this._textChanged(ev, `${prefix}_font_custom`)}></ha-textfield>
+                <hki-textfield .label=${"Custom Font Name"} .value=${this._config[`${prefix}_font_custom`] || ""} @input=${(ev) => this._textChanged(ev, `${prefix}_font_custom`)}></hki-textfield>
             ` : ''}
-            <ha-textfield label="Size (px)" type="number" .value=${this._config[`size_${prefix}`] || ""} @input=${(ev) => this._textChanged(ev, `size_${prefix}`)}></ha-textfield>
+            <hki-textfield label="Size (px)" type="number" .value=${this._config[`size_${prefix}`] || ""} @input=${(ev) => this._textChanged(ev, `size_${prefix}`)}></hki-textfield>
             <div class="tpl-field">
                 <div class="tpl-title">Color (supports templates)</div>
                 <ha-code-editor
@@ -14461,23 +14461,23 @@
                     @click=${(e) => e.stopPropagation()}
                   ></ha-selector>
                 ` : html`
-                  <ha-textfield
+                  <hki-textfield
                     label="Navigation Path"
                     .value=${actionConfig.navigation_path || ""}
                     @input=${(ev) => this._actionFieldChanged(ev, configKey, 'navigation_path')}
                     placeholder="/lovelace/0"
-                  ></ha-textfield>
+                  ></hki-textfield>
                 `}
               ` : ''}
 
 
               ${currentAction === 'url' ? html`
-                <ha-textfield 
+                <hki-textfield 
                   label="URL Path" 
                   .value=${actionConfig.url_path || ""} 
                   @input=${(ev) => this._actionFieldChanged(ev, configKey, 'url_path')}
                   placeholder="https://example.com"
-                ></ha-textfield>
+                ></hki-textfield>
               ` : ''}
               
               ${currentAction === "perform-action" ? html`
@@ -14595,12 +14595,12 @@
               ` : ""}
 
               ${currentAction === "fire-dom-event" ? html`
-                <ha-textfield
+                <hki-textfield
                   label="Event Name (optional)"
                   .value=${actionConfig.event_name || ""}
                   @input=${(ev) => this._actionFieldChanged(ev, configKey, "event_name")}
                   placeholder="browser_mod"
-                ></ha-textfield>
+                ></hki-textfield>
                 <div class="tpl-field">
                   <div class="tpl-title">Event Data (YAML/JSON text)</div>
                   <ha-code-editor
@@ -14742,7 +14742,7 @@
                 <ha-formfield .label=${"Use Entity Picture"}><ha-switch .checked=${this._config.use_entity_picture === true} @change=${(ev) => this._switchChanged(ev, "use_entity_picture")}></ha-switch></ha-formfield>
                 
                 ${this._config.use_entity_picture ? html`
-                  <ha-textfield .label=${"Entity Picture Override (optional)"} .value=${this._config.entity_picture_override || ""} @input=${(ev) => this._textChanged(ev, "entity_picture_override")}></ha-textfield>
+                  <hki-textfield .label=${"Entity Picture Override (optional)"} .value=${this._config.entity_picture_override || ""} @input=${(ev) => this._textChanged(ev, "entity_picture_override")}></hki-textfield>
                 ` : html`
                   <div class="tpl-field">
                     <div class="tpl-title">Icon</div>
@@ -14884,7 +14884,7 @@
                   </button>
                 </div>
 
-                <ha-textfield label="Temp Friendly Name (optional)" .value=${this._config.climate_temperature_name || ""} @input=${(ev) => this._textChanged(ev, "climate_temperature_name")}></ha-textfield>
+                <hki-textfield label="Temp Friendly Name (optional)" .value=${this._config.climate_temperature_name || ""} @input=${(ev) => this._textChanged(ev, "climate_temperature_name")}></hki-textfield>
 
                 <div class="side-by-side" style="align-items:center;">
                   <ha-selector 
@@ -14899,7 +14899,7 @@
                   </button>
                 </div>
 
-                <ha-textfield label="Humidity Friendly Name (optional)" .value=${this._config.climate_humidity_name || ""} @input=${(ev) => this._textChanged(ev, "climate_humidity_name")}></ha-textfield>
+                <hki-textfield label="Humidity Friendly Name (optional)" .value=${this._config.climate_humidity_name || ""} @input=${(ev) => this._textChanged(ev, "climate_humidity_name")}></hki-textfield>
 
                 <div class="side-by-side" style="align-items:center;">
                   <ha-selector 
@@ -14914,11 +14914,11 @@
                   </button>
                 </div>
 
-                <ha-textfield label="Pressure Friendly Name (optional)" .value=${this._config.climate_pressure_name || ""} @input=${(ev) => this._textChanged(ev, "climate_pressure_name")}></ha-textfield>
+                <hki-textfield label="Pressure Friendly Name (optional)" .value=${this._config.climate_pressure_name || ""} @input=${(ev) => this._textChanged(ev, "climate_pressure_name")}></hki-textfield>
                 
                 <div class="separator"></div>
                 <strong>Popup Slider Settings</strong>
-                <ha-textfield label="Temperature Step Size" type="number" step="0.1" .value=${this._config.climate_temp_step ?? 0.5} @input=${(ev) => this._textChanged(ev, "climate_temp_step")} placeholder="0.5"></ha-textfield>
+                <hki-textfield label="Temperature Step Size" type="number" step="0.1" .value=${this._config.climate_temp_step ?? 0.5} @input=${(ev) => this._textChanged(ev, "climate_temp_step")} placeholder="0.5"></hki-textfield>
                 <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.climate_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "climate_use_circular_slider")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.climate_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "climate_show_plus_minus")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show Gradient"}><ha-switch .checked=${this._config.climate_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "climate_show_gradient")}></ha-switch></ha-formfield>
@@ -14930,8 +14930,8 @@
                 </ha-formfield>
                 <strong>Temperature Badge Styling</strong>
                 <div class="side-by-side">
-                  <ha-textfield label="Size (px)" type="number" .value=${this._config.temp_badge_size ?? 40} @input=${(ev) => this._textChanged(ev, "temp_badge_size")}></ha-textfield>
-                  <ha-textfield label="Font Size (px)" type="number" .value=${this._config.size_temp_badge ?? 9} @input=${(ev) => this._textChanged(ev, "size_temp_badge")}></ha-textfield>
+                  <hki-textfield label="Size (px)" type="number" .value=${this._config.temp_badge_size ?? 40} @input=${(ev) => this._textChanged(ev, "temp_badge_size")}></hki-textfield>
+                  <hki-textfield label="Font Size (px)" type="number" .value=${this._config.size_temp_badge ?? 9} @input=${(ev) => this._textChanged(ev, "size_temp_badge")}></hki-textfield>
                 </div>
                 <div class="side-by-side">
                                     <ha-selector
@@ -14950,15 +14950,15 @@
                   ></ha-selector>
                 </div>
                 ${this._config.temp_badge_font_family === 'custom' ? html`
-                  <ha-textfield label="Custom Font Name" .value=${this._config.temp_badge_font_custom || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_font_custom")}></ha-textfield>
+                  <hki-textfield label="Custom Font Name" .value=${this._config.temp_badge_font_custom || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_font_custom")}></hki-textfield>
                 ` : ''}
                 <div class="side-by-side">
-                  <ha-textfield label="Border Radius" .value=${this._config.temp_badge_border_radius ?? ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_radius")}></ha-textfield>
-                  <ha-textfield label="Box Shadow" .value=${this._config.temp_badge_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_box_shadow")}></ha-textfield>
+                  <hki-textfield label="Border Radius" .value=${this._config.temp_badge_border_radius ?? ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_radius")}></hki-textfield>
+                  <hki-textfield label="Box Shadow" .value=${this._config.temp_badge_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_box_shadow")}></hki-textfield>
                 </div>
                 <div class="side-by-side">
-                  <ha-textfield label="Text Color" .value=${this._config.temp_badge_text_color || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_text_color")}></ha-textfield>
-                  <ha-textfield label="Border Color" .value=${this._config.temp_badge_border_color || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_color")}></ha-textfield>
+                  <hki-textfield label="Text Color" .value=${this._config.temp_badge_text_color || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_text_color")}></hki-textfield>
+                  <hki-textfield label="Border Color" .value=${this._config.temp_badge_border_color || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_color")}></hki-textfield>
                 </div>
                 <div class="side-by-side">
                                     <ha-selector
@@ -14968,7 +14968,7 @@
                     .value=${this._config.temp_badge_border_style || "none"}
                     @value-changed=${(ev) => this._dropdownChanged(ev, "temp_badge_border_style")}
                   ></ha-selector>
-                  <ha-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></ha-textfield>
+                  <hki-textfield label="Border Width" .value=${this._config.temp_badge_border_width || ""} @input=${(ev) => this._textChanged(ev, "temp_badge_border_width")}></hki-textfield>
                 </div>
             </div>
           </div>
@@ -14997,7 +14997,7 @@
 
                 <div class="separator"></div>
                 <strong>Popup Slider Settings</strong>
-                <ha-textfield label="Humidity Step Size" type="number" step="1" .value=${this._config.humidifier_humidity_step ?? 1} @input=${(ev) => this._textChanged(ev, "humidifier_humidity_step")} placeholder="1"></ha-textfield>
+                <hki-textfield label="Humidity Step Size" type="number" step="1" .value=${this._config.humidifier_humidity_step ?? 1} @input=${(ev) => this._textChanged(ev, "humidifier_humidity_step")} placeholder="1"></hki-textfield>
                 <ha-formfield .label=${"Use Circular Slider"}><ha-switch .checked=${this._config.humidifier_use_circular_slider === true} @change=${(ev) => this._switchChanged(ev, "humidifier_use_circular_slider")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show +/- Buttons"}><ha-switch .checked=${this._config.humidifier_show_plus_minus === true} @change=${(ev) => this._switchChanged(ev, "humidifier_show_plus_minus")}></ha-switch></ha-formfield>
                 <ha-formfield .label=${"Show Gradient"}><ha-switch .checked=${this._config.humidifier_show_gradient !== false} @change=${(ev) => this._switchChanged(ev, "humidifier_show_gradient")}></ha-switch></ha-formfield>
@@ -15037,8 +15037,8 @@
                 ></ha-selector>
                 <ha-switch .checked=${this._config.sensor_graph_gradient !== false} @change=${(ev) => this._switchChanged(ev, "sensor_graph_gradient")}></ha-switch>
               </ha-formfield>
-              <ha-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></ha-textfield>
-              <ha-textfield label="Line width (px)" type="number" .value=${this._config.sensor_line_width ?? 3} @input=${(ev) => this._textChanged(ev, "sensor_line_width")}></ha-textfield>
+              <hki-textfield label="Fixed line color (overrides gradient)" .value=${this._config.sensor_graph_color || ""} @input=${(ev) => this._textChanged(ev, "sensor_graph_color")} placeholder="e.g. #2196F3 or var(--primary-color)"></hki-textfield>
+              <hki-textfield label="Line width (px)" type="number" .value=${this._config.sensor_line_width ?? 3} @input=${(ev) => this._textChanged(ev, "sensor_line_width")}></hki-textfield>
                             <ha-selector
                 .hass=${this.hass}
                 .label=${"Graph time range"}
@@ -15072,12 +15072,12 @@
                   </button>
                 </div>
 
-                <ha-textfield 
+                <hki-textfield 
                   label="Open State Label (e.g., 'Door Open')" 
                   .value=${this._config.lock_contact_sensor_label || "Door Open"} 
                   @input=${(ev) => this._textChanged(ev, "lock_contact_sensor_label")}
                   placeholder="Door Open"
-                ></ha-textfield>
+                ></hki-textfield>
             </div>
           </div>
           ` : ''}
@@ -15126,7 +15126,7 @@
                 <ha-formfield .label=${"Show Lock Indicator"}>
                   <ha-switch .checked=${this._config.button_lock_show_indicator !== false} @change=${(ev) => this._switchChanged(ev, "button_lock_show_indicator")}></ha-switch>
                 </ha-formfield>
-                <ha-textfield
+                <hki-textfield
                   label="PIN Code (optional)"
                   type="password"
                   inputmode="numeric"
@@ -15134,37 +15134,37 @@
                   .value=${this._config.button_lock_pin || ""}
                   @input=${(ev) => this._textChanged(ev, "button_lock_pin")}
                   placeholder="e.g. 1234"
-                ></ha-textfield>
-                <ha-textfield
+                ></hki-textfield>
+                <hki-textfield
                   label="Password (optional)"
                   type="password"
                   autocomplete="new-password"
                   .value=${this._config.button_lock_password || ""}
                   @input=${(ev) => this._textChanged(ev, "button_lock_password")}
                   placeholder="If set (and no PIN), password popup is used"
-                ></ha-textfield>
-                <ha-textfield
+                ></hki-textfield>
+                <hki-textfield
                   label="Auto Relock (ms)"
                   type="number"
                   .value=${this._config.button_lock_relock_ms ?? 8000}
                   @input=${(ev) => this._textChanged(ev, "button_lock_relock_ms")}
                   placeholder="0 = no auto relock"
-                ></ha-textfield>
+                ></hki-textfield>
                 <div class="side-by-side" style="gap: 12px;">
-                  <ha-textfield
+                  <hki-textfield
                     label="Max Tries"
                     type="number"
                     .value=${this._config.button_lock_max_tries ?? 3}
                     @input=${(ev) => this._textChanged(ev, "button_lock_max_tries")}
-                  ></ha-textfield>
-                  <ha-textfield
+                  ></hki-textfield>
+                  <hki-textfield
                     label="Lockout (minutes)"
                     type="number"
                     step="0.5"
                     .value=${this._config.button_lock_lockout_minutes ?? 0}
                     @input=${(ev) => this._textChanged(ev, "button_lock_lockout_minutes")}
                     placeholder="0 = disabled"
-                  ></ha-textfield>
+                  ></hki-textfield>
                 </div>
                 <p style="font-size: 11px; opacity: 0.7; margin: 0;">
                   PIN has priority over password if both are filled. Wrong code now keeps the popup open with retry feedback.
@@ -15301,7 +15301,7 @@
                 </div>
                 ${this._config.card_layout === "hki_tile" ? html`
                   <div class="side-by-side">
-                    <ha-textfield
+                    <hki-textfield
                       label="Tile Height (px)"
                       type="number"
                       min="40"
@@ -15309,7 +15309,7 @@
                       placeholder="60"
                       .value=${this._config.tile_height ?? ""}
                       @input=${(ev) => this._textChanged(ev, "tile_height")}
-                    ></ha-textfield>
+                    ></hki-textfield>
                     <div></div>
                   </div>
                   <ha-formfield label="Show Slider (brightness/volume)">
@@ -15320,18 +15320,18 @@
                   </ha-formfield>
                   ${this._config.show_tile_slider === true ? html`
                     <div class="side-by-side">
-                      <ha-textfield
+                      <hki-textfield
                         label="Track Color (unfilled)"
                         placeholder="rgba(255, 255, 255, 0.2)"
                         .value=${this._config.tile_slider_track_color ?? ""}
                         @input=${(ev) => this._textChanged(ev, "tile_slider_track_color")}
-                      ></ha-textfield>
-                      <ha-textfield
+                      ></hki-textfield>
+                      <hki-textfield
                         label="Fill Color (filled)"
                         placeholder="rgba(255, 255, 255, 0.8)"
                         .value=${this._config.tile_slider_fill_color ?? ""}
                         @input=${(ev) => this._textChanged(ev, "tile_slider_fill_color")}
-                      ></ha-textfield>
+                      ></hki-textfield>
                     </div>
                   ` : ''}
                 ` : ''}
@@ -15366,7 +15366,7 @@
                 <ha-formfield .label=${"Show Icon"}>
                   <ha-switch .checked=${this._config.show_icon !== false} @change=${(ev) => { ev.stopPropagation(); this._switchChanged(ev, "show_icon"); }}></ha-switch>
                 </ha-formfield>
-                <ha-textfield label="Size (px)" type="number" .value=${this._config.size_icon || 24} @input=${(ev) => this._textChanged(ev, "size_icon")}></ha-textfield>
+                <hki-textfield label="Size (px)" type="number" .value=${this._config.size_icon || 24} @input=${(ev) => this._textChanged(ev, "size_icon")}></hki-textfield>
                 <div class="tpl-field">
                   <div class="tpl-title">Icon Color</div>
                   <div class="tpl-desc">Supports templates and plain values</div>
@@ -15706,14 +15706,14 @@
                             @value-changed=${(ev) => this._dropdownChanged(ev, 'popup_close_animation')}
                           ></ha-selector>
                         </div>
-                        <ha-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></ha-textfield>
+                        <hki-textfield label="Animation Duration (ms)" type="number" .value=${this._config.popup_animation_duration ?? 300} @input=${(ev) => this._textChanged(ev, 'popup_animation_duration')}></hki-textfield>
                       </div>
                     </div>
 
                     <div class="sub-accordion">
                       ${renderHeader("Container & Size", "popup_container")}
                       <div class="sub-accordion-content ${this._closedDetails['popup_container'] ? 'hidden' : ''}">
-                        <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></ha-textfield>
+                        <hki-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_border_radius ?? 16} @input=${(ev) => this._textChanged(ev, "popup_border_radius")}></hki-textfield>
                         <div class="side-by-side">
                                                     <ha-selector
                             .hass=${this.hass}
@@ -15723,7 +15723,7 @@
                             @value-changed=${(ev) => this._dropdownChanged(ev, "popup_width")}
                           ></ha-selector>
                           ${this._config.popup_width === 'custom' ? html`
-                            <ha-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></ha-textfield>
+                            <hki-textfield label="Custom Width (px)" type="number" .value=${this._config.popup_width_custom ?? 400} @input=${(ev) => this._textChanged(ev, "popup_width_custom")}></hki-textfield>
                           ` : html`<div></div>`}
                         </div>
                         <div class="side-by-side">
@@ -15735,7 +15735,7 @@
                             @value-changed=${(ev) => this._dropdownChanged(ev, "popup_height")}
                           ></ha-selector>
                           ${this._config.popup_height === 'custom' ? html`
-                            <ha-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></ha-textfield>
+                            <hki-textfield label="Custom Height (px)" type="number" .value=${this._config.popup_height_custom ?? 600} @input=${(ev) => this._textChanged(ev, "popup_height_custom")}></hki-textfield>
                           ` : html`<div></div>`}
                         </div>
                       </div>
@@ -15746,13 +15746,13 @@
                       <div class="sub-accordion-content ${this._closedDetails['popup_blur'] ? 'hidden' : ''}">
                         <p style="font-size: 11px; opacity: 0.7; margin: 0 0 4px 0;">Background (portal)</p>
                         <ha-formfield .label=${"Enable Background Blur"}><ha-switch .checked=${this._config.popup_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_blur_enabled")}></ha-switch></ha-formfield>
-                        <ha-textfield label="Blur Amount (px)" type="number" .value=${this._config.popup_blur_amount ?? 10} @input=${(ev) => this._textChanged(ev, "popup_blur_amount")} .disabled=${this._config.popup_blur_enabled === false}></ha-textfield>
+                        <hki-textfield label="Blur Amount (px)" type="number" .value=${this._config.popup_blur_amount ?? 10} @input=${(ev) => this._textChanged(ev, "popup_blur_amount")} .disabled=${this._config.popup_blur_enabled === false}></hki-textfield>
                         <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Card glass effect</p>
                         <p style="font-size: 10px; opacity: 0.6; margin: 0 0 6px 0; font-style: italic;">Creates a frosted glass effect on the popup card.</p>
                         <ha-formfield .label=${"Enable Card Blur"}><ha-switch .checked=${this._config.popup_card_blur_enabled !== false} @change=${(ev) => this._switchChanged(ev, "popup_card_blur_enabled")}></ha-switch></ha-formfield>
                         <div class="side-by-side">
-                          <ha-textfield label="Card Blur (px)" type="number" .value=${this._config.popup_card_blur_amount ?? 40} @input=${(ev) => this._textChanged(ev, "popup_card_blur_amount")} .disabled=${this._config.popup_card_blur_enabled === false}></ha-textfield>
-                          <ha-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_card_opacity ?? 0.4} @input=${(ev) => this._textChanged(ev, "popup_card_opacity")}></ha-textfield>
+                          <hki-textfield label="Card Blur (px)" type="number" .value=${this._config.popup_card_blur_amount ?? 40} @input=${(ev) => this._textChanged(ev, "popup_card_blur_amount")} .disabled=${this._config.popup_card_blur_enabled === false}></hki-textfield>
+                          <hki-textfield label="Card Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_card_opacity ?? 0.4} @input=${(ev) => this._textChanged(ev, "popup_card_opacity")}></hki-textfield>
                         </div>
                       </div>
                     </div>
@@ -15833,10 +15833,10 @@
                                 @value-changed=${(ev) => setEntry({ entity: ev.detail.value || undefined })}
                                 allow-custom-entity></ha-entity-picker>
                               ${entry.entity ? html`
-                                <ha-textfield label="Name (optional)" .value=${entry.name||""} placeholder="Custom name"
-                                  @input=${(ev) => setEntry({ name: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></ha-textfield>
-                                <ha-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
-                                  @input=${(ev) => setEntry({ icon: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></ha-textfield>
+                                <hki-textfield label="Name (optional)" .value=${entry.name||""} placeholder="Custom name"
+                                  @input=${(ev) => setEntry({ name: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></hki-textfield>
+                                <hki-textfield label="Custom Icon (optional)" .value=${entry.icon||""} placeholder="mdi:account"
+                                  @input=${(ev) => setEntry({ icon: window.HKI.getSelectValue(ev) || undefined })} style="margin-top:6px;"></hki-textfield>
 
                                                                 <ha-selector
                                   .hass=${this.hass}
@@ -15858,14 +15858,14 @@
                                       @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ navigation_path: ev.detail?.value || "" }); }}
                                       @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-navigation-picker>
                                   ` : html`
-                                    <ha-textfield label="Navigation Path" .value=${tapAction.navigation_path||""} placeholder="/lovelace/0"
-                                      @input=${(ev) => setTapAction({ navigation_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></ha-textfield>
+                                    <hki-textfield label="Navigation Path" .value=${tapAction.navigation_path||""} placeholder="/lovelace/0"
+                                      @input=${(ev) => setTapAction({ navigation_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></hki-textfield>
                                   `}
                                 ` : ''}
 
                                 ${currentAction === 'url' ? html`
-                                  <ha-textfield label="URL" .value=${tapAction.url_path||""} placeholder="https://..."
-                                    @input=${(ev) => setTapAction({ url_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></ha-textfield>
+                                  <hki-textfield label="URL" .value=${tapAction.url_path||""} placeholder="https://..."
+                                    @input=${(ev) => setTapAction({ url_path: window.HKI.getSelectValue(ev) })} style="margin-top:6px;"></hki-textfield>
                                 ` : ''}
 
                                 ${currentAction === 'perform-action' ? html`
@@ -15916,8 +15916,8 @@
                                   ` : ''}
                                 ` : ''}
                                 ${currentAction === 'fire-dom-event' ? html`
-                                  <ha-textfield label="Event Name (optional)" .value=${tapAction.event_name||""}
-                                    @input=${(ev) => setTapAction({ event_name: window.HKI.getSelectValue(ev) || "" })} style="margin-top:6px;"></ha-textfield>
+                                  <hki-textfield label="Event Name (optional)" .value=${tapAction.event_name||""}
+                                    @input=${(ev) => setTapAction({ event_name: window.HKI.getSelectValue(ev) || "" })} style="margin-top:6px;"></hki-textfield>
                                   <ha-code-editor .hass=${this.hass} mode="yaml" .value=${tapAction.event_data||""}
                                     @value-changed=${(ev) => { ev.stopPropagation(); setTapAction({ event_data: ev.detail?.value || "" }); }}
                                     @click=${(e) => e.stopPropagation()} style="margin-top:6px;"></ha-code-editor>
@@ -15989,17 +15989,17 @@
                       <div class="sub-accordion">
                         ${renderHeader("Content Display", "popup_content")}
                         <div class="sub-accordion-content ${this._closedDetails['popup_content'] ? 'hidden' : ''}">
-                          <ha-textfield label="Slider Border Radius (px)" type="number" .value=${this._config.popup_slider_radius ?? 12} @input=${(ev) => this._textChanged(ev, "popup_slider_radius")}></ha-textfield>
+                          <hki-textfield label="Slider Border Radius (px)" type="number" .value=${this._config.popup_slider_radius ?? 12} @input=${(ev) => this._textChanged(ev, "popup_slider_radius")}></hki-textfield>
                           <ha-formfield .label=${"Hide Text Under Buttons"}><ha-switch .checked=${this._config.popup_hide_button_text === true} @change=${(ev) => this._switchChanged(ev, "popup_hide_button_text")}></ha-switch></ha-formfield>
                           <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Value Display (Temperature/Brightness)</p>
                           <div class="side-by-side">
-                            <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_value_font_size ?? 36} @input=${(ev) => this._textChanged(ev, "popup_value_font_size")}></ha-textfield>
-                            <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_value_font_weight ?? 300} @input=${(ev) => this._textChanged(ev, "popup_value_font_weight")}></ha-textfield>
+                            <hki-textfield label="Font Size (px)" type="number" .value=${this._config.popup_value_font_size ?? 36} @input=${(ev) => this._textChanged(ev, "popup_value_font_size")}></hki-textfield>
+                            <hki-textfield label="Font Weight" type="number" .value=${this._config.popup_value_font_weight ?? 300} @input=${(ev) => this._textChanged(ev, "popup_value_font_weight")}></hki-textfield>
                           </div>
                           <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">Label Display (Color/Mode Names)</p>
                           <div class="side-by-side">
-                            <ha-textfield label="Font Size (px)" type="number" .value=${this._config.popup_label_font_size ?? 16} @input=${(ev) => this._textChanged(ev, "popup_label_font_size")}></ha-textfield>
-                            <ha-textfield label="Font Weight" type="number" .value=${this._config.popup_label_font_weight ?? 400} @input=${(ev) => this._textChanged(ev, "popup_label_font_weight")}></ha-textfield>
+                            <hki-textfield label="Font Size (px)" type="number" .value=${this._config.popup_label_font_size ?? 16} @input=${(ev) => this._textChanged(ev, "popup_label_font_size")}></hki-textfield>
+                            <hki-textfield label="Font Weight" type="number" .value=${this._config.popup_label_font_weight ?? 400} @input=${(ev) => this._textChanged(ev, "popup_label_font_weight")}></hki-textfield>
                           </div>
                           <p style="font-size: 11px; opacity: 0.7; margin: 8px 0 4px 0;">History/Logbook Time Format</p>
                                                     <ha-selector
@@ -16017,12 +16017,12 @@
                         <div class="sub-accordion-content ${this._closedDetails['popup_highlight'] ? 'hidden' : ''}">
                           <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize selected/highlighted buttons</p>
                           <div class="side-by-side">
-                            <ha-textfield label="Color" .value=${this._config.popup_highlight_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_color")} placeholder="var(--primary-color)"></ha-textfield>
-                            <ha-textfield label="Text Color" .value=${this._config.popup_highlight_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_text_color")} placeholder="white"></ha-textfield>
+                            <hki-textfield label="Color" .value=${this._config.popup_highlight_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_color")} placeholder="var(--primary-color)"></hki-textfield>
+                            <hki-textfield label="Text Color" .value=${this._config.popup_highlight_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_text_color")} placeholder="white"></hki-textfield>
                           </div>
                           <div class="side-by-side">
-                            <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_highlight_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_radius")} placeholder="8"></ha-textfield>
-                            <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_highlight_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_opacity")} placeholder="1"></ha-textfield>
+                            <hki-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_highlight_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_radius")} placeholder="8"></hki-textfield>
+                            <hki-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_highlight_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_opacity")} placeholder="1"></hki-textfield>
                           </div>
                           <div class="side-by-side">
                                                         <ha-selector
@@ -16032,10 +16032,10 @@
                               .value=${this._config.popup_highlight_border_style || "none"}
                               @value-changed=${(ev) => this._dropdownChanged(ev, "popup_highlight_border_style")}
                             ></ha-selector>
-                            <ha-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></ha-textfield>
+                            <hki-textfield label="Border Width (px)" .value=${this._config.popup_highlight_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_width")} placeholder="0"></hki-textfield>
                           </div>
-                          <ha-textfield label="Border Color" .value=${this._config.popup_highlight_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_color")}></ha-textfield>
-                          <ha-textfield label="Box Shadow" .value=${this._config.popup_highlight_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_box_shadow")} placeholder="0 2px 8px rgba(0,0,0,0.2)"></ha-textfield>
+                          <hki-textfield label="Border Color" .value=${this._config.popup_highlight_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_border_color")}></hki-textfield>
+                          <hki-textfield label="Box Shadow" .value=${this._config.popup_highlight_box_shadow || ""} @input=${(ev) => this._textChanged(ev, "popup_highlight_box_shadow")} placeholder="0 2px 8px rgba(0,0,0,0.2)"></hki-textfield>
                         </div>
                       </div>
 
@@ -16044,12 +16044,12 @@
                         <div class="sub-accordion-content ${this._closedDetails['popup_buttons'] ? 'hidden' : ''}">
                           <p style="font-size: 11px; opacity: 0.7; margin: 0 0 6px 0;">Customize unselected buttons</p>
                           <div class="side-by-side">
-                            <ha-textfield label="Background" .value=${this._config.popup_button_bg || ""} @input=${(ev) => this._textChanged(ev, "popup_button_bg")} placeholder="transparent"></ha-textfield>
-                            <ha-textfield label="Text Color" .value=${this._config.popup_button_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_text_color")} placeholder="inherit"></ha-textfield>
+                            <hki-textfield label="Background" .value=${this._config.popup_button_bg || ""} @input=${(ev) => this._textChanged(ev, "popup_button_bg")} placeholder="transparent"></hki-textfield>
+                            <hki-textfield label="Text Color" .value=${this._config.popup_button_text_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_text_color")} placeholder="inherit"></hki-textfield>
                           </div>
                           <div class="side-by-side">
-                            <ha-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_button_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_radius")} placeholder="8"></ha-textfield>
-                            <ha-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_button_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_opacity")} placeholder="1"></ha-textfield>
+                            <hki-textfield label="Border Radius (px)" type="number" .value=${this._config.popup_button_radius ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_radius")} placeholder="8"></hki-textfield>
+                            <hki-textfield label="Opacity" type="number" step="0.1" min="0" max="1" .value=${this._config.popup_button_opacity ?? ""} @input=${(ev) => this._textChanged(ev, "popup_button_opacity")} placeholder="1"></hki-textfield>
                           </div>
                           <div class="side-by-side">
                                                         <ha-selector
@@ -16059,9 +16059,9 @@
                               .value=${this._config.popup_button_border_style || "none"}
                               @value-changed=${(ev) => this._dropdownChanged(ev, "popup_button_border_style")}
                             ></ha-selector>
-                            <ha-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></ha-textfield>
+                            <hki-textfield label="Border Width (px)" .value=${this._config.popup_button_border_width || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_width")} placeholder="0"></hki-textfield>
                           </div>
-                          <ha-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></ha-textfield>
+                          <hki-textfield label="Border Color" .value=${this._config.popup_button_border_color || ""} @input=${(ev) => this._textChanged(ev, "popup_button_border_color")}></hki-textfield>
                         </div>
                       </div>
                     ` : ''}
@@ -16132,48 +16132,48 @@
              <div class="accordion-content ${this._closedDetails['offsets'] ? 'hidden' : ''}">
                 <p style="font-size: 11px; opacity: 0.7; margin-top: 0;">Adjust X/Y position in pixels.</p>
                 <div class="side-by-side">
-                    <ha-textfield label="Name X" type="number" .value=${this._getOffsetUiValue("name_offset_x")} @input=${(ev) => this._textChanged(ev, "name_offset_x")}></ha-textfield>
-                    <ha-textfield label="Name Y" type="number" .value=${this._getOffsetUiValue("name_offset_y")} @input=${(ev) => this._textChanged(ev, "name_offset_y")}></ha-textfield>
+                    <hki-textfield label="Name X" type="number" .value=${this._getOffsetUiValue("name_offset_x")} @input=${(ev) => this._textChanged(ev, "name_offset_x")}></hki-textfield>
+                    <hki-textfield label="Name Y" type="number" .value=${this._getOffsetUiValue("name_offset_y")} @input=${(ev) => this._textChanged(ev, "name_offset_y")}></hki-textfield>
                 </div>
                 <div class="side-by-side">
-                    <ha-textfield label="State X" type="number" .value=${this._getOffsetUiValue("state_offset_x")} @input=${(ev) => this._textChanged(ev, "state_offset_x")}></ha-textfield>
-                    <ha-textfield label="State Y" type="number" .value=${this._getOffsetUiValue("state_offset_y")} @input=${(ev) => this._textChanged(ev, "state_offset_y")}></ha-textfield>
+                    <hki-textfield label="State X" type="number" .value=${this._getOffsetUiValue("state_offset_x")} @input=${(ev) => this._textChanged(ev, "state_offset_x")}></hki-textfield>
+                    <hki-textfield label="State Y" type="number" .value=${this._getOffsetUiValue("state_offset_y")} @input=${(ev) => this._textChanged(ev, "state_offset_y")}></hki-textfield>
                 </div>
                 ${((this._config.card_layout || 'square') === 'square' || isGoogleLayout) ? html`
                 <div class="side-by-side">
-                    <ha-textfield label="Label X" type="number" .value=${this._getOffsetUiValue("label_offset_x")} @input=${(ev) => this._textChanged(ev, "label_offset_x")}></ha-textfield>
-                    <ha-textfield label="Label Y" type="number" .value=${this._getOffsetUiValue("label_offset_y")} @input=${(ev) => this._textChanged(ev, "label_offset_y")}></ha-textfield>
+                    <hki-textfield label="Label X" type="number" .value=${this._getOffsetUiValue("label_offset_x")} @input=${(ev) => this._textChanged(ev, "label_offset_x")}></hki-textfield>
+                    <hki-textfield label="Label Y" type="number" .value=${this._getOffsetUiValue("label_offset_y")} @input=${(ev) => this._textChanged(ev, "label_offset_y")}></hki-textfield>
                 </div>
                 ` : ''} 
 
                 <div class="side-by-side">
-                    <ha-textfield label="Icon X" type="number" .value=${this._getOffsetUiValue("icon_offset_x")} @input=${(ev) => this._textChanged(ev, "icon_offset_x")}></ha-textfield>
-                    <ha-textfield label="Icon Y" type="number" .value=${this._getOffsetUiValue("icon_offset_y")} @input=${(ev) => this._textChanged(ev, "icon_offset_y")}></ha-textfield>
+                    <hki-textfield label="Icon X" type="number" .value=${this._getOffsetUiValue("icon_offset_x")} @input=${(ev) => this._textChanged(ev, "icon_offset_x")}></hki-textfield>
+                    <hki-textfield label="Icon Y" type="number" .value=${this._getOffsetUiValue("icon_offset_y")} @input=${(ev) => this._textChanged(ev, "icon_offset_y")}></hki-textfield>
                 </div>
                 ${!isGoogleLayout ? html`
                 <div class="side-by-side">
-                    <ha-textfield label="Icon Badge X" type="number" .value=${this._config.badge_offset_x || 0} @input=${(ev) => this._textChanged(ev, "badge_offset_x")}></ha-textfield>
-                    <ha-textfield label="Icon Badge Y" type="number" .value=${this._config.badge_offset_y || 0} @input=${(ev) => this._textChanged(ev, "badge_offset_y")}></ha-textfield>
+                    <hki-textfield label="Icon Badge X" type="number" .value=${this._config.badge_offset_x || 0} @input=${(ev) => this._textChanged(ev, "badge_offset_x")}></hki-textfield>
+                    <hki-textfield label="Icon Badge Y" type="number" .value=${this._config.badge_offset_y || 0} @input=${(ev) => this._textChanged(ev, "badge_offset_y")}></hki-textfield>
                 </div>
                 ` : ''}
                 ${((this._config.card_layout || 'square') === 'square' || this._config.card_layout === 'hki_tile') ? html`
                 <div class="side-by-side">
-                    <ha-textfield label="Info X" type="number" .value=${this._getOffsetUiValue("brightness_offset_x")} @input=${(ev) => this._textChanged(ev, "brightness_offset_x")}></ha-textfield>
-                    <ha-textfield label="Info Y" type="number" .value=${this._getOffsetUiValue("brightness_offset_y")} @input=${(ev) => this._textChanged(ev, "brightness_offset_y")}></ha-textfield>
+                    <hki-textfield label="Info X" type="number" .value=${this._getOffsetUiValue("brightness_offset_x")} @input=${(ev) => this._textChanged(ev, "brightness_offset_x")}></hki-textfield>
+                    <hki-textfield label="Info Y" type="number" .value=${this._getOffsetUiValue("brightness_offset_y")} @input=${(ev) => this._textChanged(ev, "brightness_offset_y")}></hki-textfield>
                 </div>
                 ` : ''} 
                 ${isClimate ? html`
                 <div class="side-by-side">
-                    <ha-textfield label="Temp Badge X" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_x")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_x")}></ha-textfield>
-                    <ha-textfield label="Temp Badge Y" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_y")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_y")}></ha-textfield>
+                    <hki-textfield label="Temp Badge X" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_x")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_x")}></hki-textfield>
+                    <hki-textfield label="Temp Badge Y" type="number" .value=${this._getOffsetUiValue("temp_badge_offset_y")} @input=${(ev) => this._textChanged(ev, "temp_badge_offset_y")}></hki-textfield>
                 </div>
                 ` : ''}
                 ${this._config.button_lock_enabled === true ? html`
                 <div class="separator"></div>
                 <strong>Action Lock Icon</strong>
                 <div class="side-by-side">
-                    <ha-textfield label="Lock Icon X" type="number" .value=${this._getOffsetUiValue("button_lock_offset_x")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></ha-textfield>
-                    <ha-textfield label="Lock Icon Y" type="number" .value=${this._getOffsetUiValue("button_lock_offset_y")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></ha-textfield>
+                    <hki-textfield label="Lock Icon X" type="number" .value=${this._getOffsetUiValue("button_lock_offset_x")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_x")}></hki-textfield>
+                    <hki-textfield label="Lock Icon Y" type="number" .value=${this._getOffsetUiValue("button_lock_offset_y")} @input=${(ev) => this._textChanged(ev, "button_lock_offset_y")}></hki-textfield>
                 </div>
                 ` : ''}
              </div>
@@ -16193,7 +16193,7 @@
             'ha-selector',
             'ha-select', 
             'mwc-list-item',
-            'ha-textfield',
+            'hki-textfield',
             'input',
             'button',
             'ha-switch',
@@ -16418,7 +16418,7 @@
       this._fireChanged({ ...this._config, [actionKey]: newActionConfig });
     }
 
-    // For Textfields (ha-textfield)
+    // For Textfields (hki-textfield)
     _textChanged(ev, field) { 
         ev.stopPropagation(); 
         let value = window.HKI.getSelectValue(ev); 
@@ -16719,7 +16719,7 @@
             }
             
             .perform-action-config ha-selector,
-            .perform-action-config ha-textfield,
+            .perform-action-config hki-textfield,
             .perform-action-config ha-yaml-editor {
                 width: 100%;
             }
@@ -16895,7 +16895,7 @@
                 color: white;
             }
             
-            ha-textfield, ha-selector, ha-select, ha-yaml-editor { 
+            hki-textfield, ha-selector, ha-select, ha-yaml-editor { 
                 width: 100%; 
                 display: block; 
                 box-sizing: border-box;

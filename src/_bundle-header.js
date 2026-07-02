@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.7 ',
+  '%c HKI-ELEMENTS %c v1.4.7-dev-02 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -296,6 +296,134 @@ window.HKI.ensureEditorElements = window.HKI.ensureEditorElements || (() => {
     }
   };
 })();
+
+// Native fallback for HA text fields. Some HA builds leave ha-textfield with
+// labels only inside custom card editors; this keeps HKI editor inputs visible.
+window.HKI.ensureTextfield = window.HKI.ensureTextfield || (() => {
+  let done = false;
+  return () => {
+    if (done || customElements.get("hki-textfield")) return;
+    done = true;
+    const { LitElement: HKILitElement, html: hkiHtml, css: hkiCss } = window.HKI.getLit();
+    class HkiTextfield extends HKILitElement {
+      static get properties() {
+        return {
+          label: {},
+          value: {},
+          type: {},
+          placeholder: {},
+          helper: {},
+          disabled: { type: Boolean },
+          step: {},
+          min: {},
+          max: {},
+        };
+      }
+      constructor() {
+        super();
+        this.label = "";
+        this.value = "";
+        this.type = "text";
+        this.placeholder = "";
+        this.helper = "";
+        this.disabled = false;
+      }
+      _emit(name, originalEvent) {
+        originalEvent?.stopPropagation?.();
+        const input = this.renderRoot?.querySelector("input");
+        this.value = input?.value ?? "";
+        this.dispatchEvent(new CustomEvent(name, {
+          detail: { value: this.value },
+          bubbles: true,
+          composed: true,
+        }));
+        if (name === "input") {
+          this.dispatchEvent(new CustomEvent("value-changed", {
+            detail: { value: this.value },
+            bubbles: true,
+            composed: true,
+          }));
+        }
+      }
+      render() {
+        return hkiHtml`
+          <label class="field ${this.disabled ? "disabled" : ""}">
+            ${this.label ? hkiHtml`<span>${this.label}</span>` : ""}
+            <input
+              .type=${this.type || "text"}
+              .value=${this.value ?? ""}
+              .placeholder=${this.placeholder || ""}
+              .step=${this.step || ""}
+              .min=${this.min || ""}
+              .max=${this.max || ""}
+              ?disabled=${this.disabled}
+              @input=${(ev) => this._emit("input", ev)}
+              @change=${(ev) => this._emit("change", ev)}
+              @blur=${(ev) => this._emit("blur", ev)}
+            />
+            ${this.helper ? hkiHtml`<small>${this.helper}</small>` : ""}
+          </label>
+        `;
+      }
+      static get styles() {
+        return hkiCss`
+          :host {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 56px;
+            color: var(--primary-text-color);
+            font-family: var(--paper-font-body1_-_font-family, inherit);
+          }
+          .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+            min-height: 56px;
+            box-sizing: border-box;
+          }
+          span {
+            font-size: 12px;
+            line-height: 16px;
+            color: var(--secondary-text-color);
+            font-weight: 500;
+          }
+          input {
+            width: 100%;
+            min-height: 40px;
+            box-sizing: border-box;
+            border: none;
+            border-bottom: 1px solid var(--input-ink-color, var(--divider-color));
+            border-radius: 4px 4px 0 0;
+            background: var(--input-fill-color, rgba(255,255,255,0.08));
+            color: var(--primary-text-color);
+            padding: 8px 12px;
+            font: inherit;
+            outline: none;
+          }
+          input:focus {
+            border-bottom-color: var(--primary-color);
+          }
+          input::placeholder {
+            color: var(--secondary-text-color);
+            opacity: 0.65;
+          }
+          small {
+            color: var(--secondary-text-color);
+            font-size: 11px;
+            line-height: 14px;
+          }
+          .disabled {
+            opacity: 0.55;
+          }
+        `;
+      }
+    }
+    customElements.define("hki-textfield", HkiTextfield);
+  };
+})();
+window.HKI.ensureTextfield();
 
 // Inject popup animation keyframes once into the document
 window.HKI.ensurePopupAnimations = window.HKI.ensurePopupAnimations || (() => {

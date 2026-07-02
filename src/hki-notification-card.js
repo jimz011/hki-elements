@@ -2902,31 +2902,31 @@ class HkiNotificationCardEditor extends LitElement {
 
               <p class="helper-text" style="margin-top: 10px;">Background Blur (Backdrop)</p>
               ${this._renderSwitch("Enable Background Blur", "popup_blur_enabled", this._config.popup_blur_enabled !== false)}
-              <ha-textfield
+              <hki-textfield
                 label="Blur Amount (px)"
                 type="number"
                 .value=${this._config.popup_blur_amount ?? 10}
                 @input=${(ev) => this._valueChanged(ev, "popup_blur_amount")}
                 .disabled=${this._config.popup_blur_enabled === false}
-              ></ha-textfield>
+              ></hki-textfield>
 
               <p class="helper-text" style="margin-top: 10px;">Card Glass Effect</p>
               ${this._renderSwitch("Enable Card Blur", "popup_card_blur_enabled", this._config.popup_card_blur_enabled !== false)}
               <div class="side-by-side">
-                <ha-textfield
+                <hki-textfield
                   label="Card Blur (px)"
                   type="number"
                   .value=${this._config.popup_card_blur_amount ?? 40}
                   @input=${(ev) => this._valueChanged(ev, "popup_card_blur_amount")}
                   .disabled=${this._config.popup_card_blur_enabled === false}
-                ></ha-textfield>
-                <ha-textfield
+                ></hki-textfield>
+                <hki-textfield
                   label="Card Opacity (0-1)"
                   type="number"
                   step="0.05"
                   .value=${this._config.popup_card_opacity ?? 0.4}
                   @input=${(ev) => this._valueChanged(ev, "popup_card_opacity")}
-                ></ha-textfield>
+                ></hki-textfield>
               </div>
 <div class="separator"></div>
               <strong>Popup Animation</strong>
@@ -3003,31 +3003,31 @@ class HkiNotificationCardEditor extends LitElement {
 
               <p class="helper-text" style="margin-top: 10px;">Background Blur (Backdrop)</p>
               ${this._renderSwitch("Enable Background Blur", "popup_blur_enabled", this._config.popup_blur_enabled !== false)}
-              <ha-textfield
+              <hki-textfield
                 label="Blur Amount (px)"
                 type="number"
                 .value=${this._config.popup_blur_amount ?? 10}
                 @input=${(ev) => this._valueChanged(ev, "popup_blur_amount")}
                 .disabled=${this._config.popup_blur_enabled === false}
-              ></ha-textfield>
+              ></hki-textfield>
 
               <p class="helper-text" style="margin-top: 10px;">Card Glass Effect</p>
               ${this._renderSwitch("Enable Card Blur", "popup_card_blur_enabled", this._config.popup_card_blur_enabled !== false)}
               <div class="side-by-side">
-                <ha-textfield
+                <hki-textfield
                   label="Card Blur (px)"
                   type="number"
                   .value=${this._config.popup_card_blur_amount ?? 40}
                   @input=${(ev) => this._valueChanged(ev, "popup_card_blur_amount")}
                   .disabled=${this._config.popup_card_blur_enabled === false}
-                ></ha-textfield>
-                <ha-textfield
+                ></hki-textfield>
+                <hki-textfield
                   label="Card Opacity (0-1)"
                   type="number"
                   step="0.05"
                   .value=${this._config.popup_card_opacity ?? 0.4}
                   @input=${(ev) => this._valueChanged(ev, "popup_card_opacity")}
-                ></ha-textfield>
+                ></hki-textfield>
               </div>
 
               <div class="separator"></div>
@@ -3252,7 +3252,7 @@ class HkiNotificationCardEditor extends LitElement {
   }
 
   _renderInput(label, field, value, type = "text", step = null) {
-      return html`<ha-textfield .label=${label} .value=${value ?? ""} .type=${type} .step=${step || ""} @input=${(ev) => this._valueChanged(ev, field)}></ha-textfield>`;
+      return html`<hki-textfield .label=${label} .value=${value ?? ""} .type=${type} .step=${step || ""} @input=${(ev) => this._valueChanged(ev, field)}></hki-textfield>`;
   }
 
   _renderIconPicker(label, field, value) {
@@ -3333,7 +3333,7 @@ class HkiNotificationCardEditor extends LitElement {
           .card-config { display: flex; flex-direction: column; gap: 12px; padding: 8px; }
           .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
           .three-col { grid-template-columns: 1fr 1fr 1fr; }
-          ha-textfield, ha-select, ha-selector {
+          hki-textfield, ha-select, ha-selector {
             width: 100%;
             display: block;
             box-sizing: border-box;
