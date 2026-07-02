@@ -1,149 +1,5 @@
 # Configuration
 
-The card uses a **nested configuration structure** organized into logical groups:
-
-```yaml
-type: custom:hki-button-card
-entity: light.living_room
-
-# Core settings
-name: Living Room
-icon: mdi:floor-lamp
-card_layout: square
-
-# Visibility
-show_name: true
-show_state: true
-show_icon: true
-show_info_display: true
-
-# Actions
-tap_action:
-  action: toggle
-hold_action:
-  action: hki-more-info
-
-# Nested style groups
-styles:
-  card:
-    color: ""
-    opacity: 1
-    border_radius: 15
-    border_width: 0
-    box_shadow: ""
-  
-  icon:
-    color: ""
-    size: 30
-    circle:
-      bg: ""
-      border_width: 0
-      border_style: solid
-      border_color: ""
-  
-  typography:
-    name:
-      color: ""
-      size: 13
-      weight: bold
-      font_family: ""
-      text_align: left
-    
-    state:
-      color: ""
-      size: 12
-      weight: bold
-      font_family: ""
-      text_align: left
-    
-    label:
-      color: ""
-      size: 12
-      weight: normal
-      font_family: ""
-      text_align: left
-    
-    info_display:
-      color: ""
-      color_on: ""
-      color_off: ""
-      size: 12
-      weight: bold
-      font_family: ""
-      text_align: left
-
-# Nested offset groups
-offsets:
-  name:
-    x: -10
-    y: 17
-  
-  state:
-    x: -10
-    y: 10
-  
-  icon:
-    x: -10
-    y: -4
-  
-  info_display:
-    x: 10
-    y: 10
-
-# Climate settings (for climate entities)
-climate:
-  current_temperature_entity: ""
-  humidity_entity: ""
-  pressure_entity: ""
-  show_gradient: true
-  show_plus_minus: true
-  temp_step: 0.5
-  use_circular_slider: false
-
-# Popup configuration
-hki_popup:
-  blur_enabled: true
-  blur_amount: 10
-  card_blur_enabled: true
-  card_blur_amount: 40
-  card_opacity: 0.4
-  border_radius: 16
-  width: auto
-  height: auto
-  default_view: brightness
-  show_favorites: true
-  show_presets: true
-  show_effects: true
-  
-  button:
-    bg: ""
-    opacity: 1
-    radius: 12
-    text_color: ""
-    border_width: 0
-    border_style: solid
-    border_color: ""
-  
-  highlight:
-    color: ""
-    opacity: 1
-    radius: 12
-    text_color: ""
-    border_width: 2
-    border_style: solid
-    border_color: ""
-    box_shadow: ""
-
-# Lock settings (for lock entities)
-lock:
-  contact_sensor_entity: ""
-  contact_sensor_label: ""
-```
-
----
-
-## Configuration Reference
-
 ### Core Settings
 
 | Property | Type | Default | Description |
@@ -493,6 +349,31 @@ hki_popup:
   slider_radius: 12              # Slider border radius (px)
   time_format: auto              # Time format: auto, 12, 24
 ```
+
+#### Popup Animations
+
+```yaml
+hki_popup:
+  open_animation: scale          # Entrance animation (see values below)
+  close_animation: scale         # Exit animation (see values below)
+  animation_duration: 300        # Duration in milliseconds
+```
+
+| Value | Description |
+|-------|-------------|
+| `none` | Instant, no animation |
+| `fade` | Fade in / out |
+| `scale` *(default)* | Scale up from centre / scale down |
+| `slide-up` | Slides in from below / out downward |
+| `slide-down` | Slides in from above / out upward |
+| `slide-left` | Slides in from the right / out to the right |
+| `slide-right` | Slides in from the left / out to the left |
+| `flip` | Flip on Y axis |
+| `bounce` | Elastic bounce in / scale out |
+| `zoom` | Zoom in from large / zoom out |
+| `rotate` | Rotate and fade in / out |
+| `drop` | Drop in from above / drop out |
+| `swing` | Pendulum swing in / out |
 
 #### Popup Button Styling
 

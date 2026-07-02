@@ -2774,6 +2774,10 @@ _openPopup() {
 // --- EDITOR CLASS ---
 class HkiNotificationCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: { state: true } }; }
+  constructor() {
+    super();
+    window.HKI.ensureEditorElements?.();
+  }
   setConfig(config) { this._config = migrateNotificationConfig(config || {}); }
   
   render() {
@@ -3329,8 +3333,13 @@ class HkiNotificationCardEditor extends LitElement {
           .card-config { display: flex; flex-direction: column; gap: 12px; padding: 8px; }
           .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
           .three-col { grid-template-columns: 1fr 1fr 1fr; }
-          ha-textfield, ha-select, ha-selector { width: 100%; display: block; }
-          ha-formfield { display: flex; align-items: center; height: 56px; }
+          ha-textfield, ha-select, ha-selector {
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+            min-height: 56px;
+          }
+          ha-formfield { display: flex; align-items: center; min-height: 40px; }
           .helper-text { margin: -8px 0 8px 0; font-size: 12px; color: var(--secondary-text-color); }
           .color-field { display: flex; flex-direction: column; gap: 4px; }
           .color-field label { font-size: 12px; color: var(--secondary-text-color); margin-left: 4px; }

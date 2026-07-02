@@ -13953,6 +13953,7 @@
     
     constructor() {
       super();
+      window.HKI.ensureEditorElements?.();
       this._paDomainCache = {};
 
       this._closedDetails = {
@@ -16897,12 +16898,14 @@
             ha-textfield, ha-selector, ha-select, ha-yaml-editor { 
                 width: 100%; 
                 display: block; 
+                box-sizing: border-box;
+                min-height: 56px;
                 margin-bottom: 8px; 
             }
             ha-formfield { 
                 display: flex; 
                 align-items: center; 
-                height: 40px; 
+                min-height: 40px; 
             }
         
             .layout-actions{

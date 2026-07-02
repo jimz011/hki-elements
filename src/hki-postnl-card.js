@@ -788,6 +788,7 @@ class HKIPostNLCardEditor extends LitElement {
 
     constructor() {
         super();
+        window.HKI.ensureEditorElements?.();
         this._config = {};
     }
 
@@ -909,6 +910,9 @@ class HKIPostNLCardEditor extends LitElement {
             ha-selector,
             ha-textfield {
                 width: 100%;
+                display: block;
+                box-sizing: border-box;
+                min-height: 56px;
                 margin-bottom: 16px;
             }
             .switch-row {

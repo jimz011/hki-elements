@@ -2441,6 +2441,7 @@ class HkiNavigationCardEditor extends LitElement {
   }
   constructor() {
     super();
+    window.HKI.ensureEditorElements?.();
     this._expanded = {};
     this._yamlErrors = {};
     this._paDomainCache = {};
@@ -3600,6 +3601,13 @@ class HkiNavigationCardEditor extends LitElement {
       .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
       .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       .grid2 > * { min-width: 0; }
+      ha-textfield, ha-selector, ha-select, ha-combo-box, ha-navigation-picker, ha-entity-picker, ha-service-picker, ha-yaml-editor, ha-code-editor {
+        width: 100%;
+        display: block;
+        box-sizing: border-box;
+        min-height: 56px;
+      }
+      ha-formfield { min-height: 40px; }
       .empty { opacity: 0.7; padding: 8px 2px; }
       ha-textfield, ha-select, ha-service-picker, ha-entity-picker, ha-selector, ha-yaml-editor { width: 100%; max-width: 100%; display: block; }
       ha-expansion-panel { border-radius: 14px; overflow: visible; margin-top: 10px; background: rgba(0, 0, 0, 0.06); }

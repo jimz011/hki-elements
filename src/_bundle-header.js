@@ -2,7 +2,7 @@
 // A collection of custom Home Assistant cards by Jimz011
 
 console.info(
-  '%c HKI-ELEMENTS %c v1.4.5-dev-10 ',
+  '%c HKI-ELEMENTS %c v1.4.7 ',
   'color: white; background: #7017b8; font-weight: bold;',
   'color: #7017b8; background: white; font-weight: bold;'
 );
@@ -266,6 +266,34 @@ window.HKI.getLit = window.HKI.getLit || (() => {
     const cssRef = LitElementRef?.prototype?.css || window.css;
     cache = { LitElement: LitElementRef, html: htmlRef, css: cssRef };
     return cache;
+  };
+})();
+
+// HA lazy-loads several editor-only controls in some releases. Ask for them
+// before HKI editors render so ha-textfield/ha-formfield do not appear empty.
+window.HKI.ensureEditorElements = window.HKI.ensureEditorElements || (() => {
+  let requested = false;
+  return () => {
+    if (requested) return;
+    requested = true;
+    try {
+      if (typeof window.loadHaForm === "function") {
+        Promise.resolve(window.loadHaForm()).catch((err) =>
+          console.warn("[HKI] Unable to request HA form elements", err)
+        );
+      }
+    } catch (err) {
+      console.warn("[HKI] Unable to request HA form elements", err);
+    }
+    try {
+      if (typeof window.loadCardHelpers === "function") {
+        Promise.resolve(window.loadCardHelpers()).catch((err) =>
+          console.warn("[HKI] Unable to request HA card helpers", err)
+        );
+      }
+    } catch (err) {
+      console.warn("[HKI] Unable to request HA card helpers", err);
+    }
   };
 })();
 
