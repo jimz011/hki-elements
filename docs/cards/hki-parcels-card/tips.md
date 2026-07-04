@@ -104,6 +104,14 @@ header_text_color: "#e0e0e0"
 
 ---
 
+## Delivered Outgoing Parcels (Verzonden → Bezorgd)
+
+The Sent tab has two sections: *Still in transit* and *Delivered*. The Delivered section requires the `sensor.*_postnl_outgoing_delivered_parcels` sensor, which is available in peternijssen/ha-postnl ≥ 4.3.1.
+
+If the sensor is present, it is picked up automatically. If the Delivered section remains empty after upgrading ha-postnl, verify the sensor exists in **Developer Tools → States** and check that `entity_outgoing_delivered` is not overridden with an incorrect value.
+
+---
+
 ## Reordering Card Sections
 
 Change the visual order of the header, animation, tabs and list sections:

@@ -1,10 +1,10 @@
-// HKI Parcels Card
+﻿// HKI Parcels Card
 // Multi-carrier parcel tracker for PostNL, DHL, DPD and more.
 // Based on the original hki-postnl-card by jimz011/hki-elements.
 // Standalone version: https://github.com/jonisnet/hki-parcels-card
 
 const { LitElement, html, css } = window.HKI.getLit();
-const CARD_VERSION = 'v1.1.4';
+const CARD_VERSION = 'v1.2.1';
 console.info(`%c HKI-PARCELS-CARD %c ${CARD_VERSION} `, 'color: white; background: #ed8c00; font-weight: bold;', 'color: #ed8c00; background: white; font-weight: bold;');
 
 const DEFAULT_CARRIER_ICON = 'mdi:package-variant-closed';
@@ -93,7 +93,9 @@ const TRANSLATIONS = {
         section_appearance:     'Uiterlijk',
         label_header_color:     'Header Kleur',
         label_header_text:      'Header Tekst Kleur',
-        label_placeholder_img:  'Placeholder Afbeelding (URL, optioneel)',
+        label_placeholder_img:  'Placeholder Afbeelding',
+        color_default:          'Standaard',
+        color_custom:           'Aangepast',
         btn_remove_carrier:     'Verwijder carrier',
         label_carrier_name:     'Naam',
         legacy_warning:         'Recreëert de originele hki-postnl-card: één entity met onderweg én bezorgde pakketten, plus een losse entity voor verzonden. Geen brieven, geen sensor-templating. Deze modus krijgt geen verdere updates zolang arjenbos/ha-postnl niet wordt bijgehouden.',
@@ -120,6 +122,7 @@ const TRANSLATIONS = {
         detected_one:           'Automatisch gevonden',
         detected_multiple:      'Meerdere accounts gevonden — kies er één',
         detected_none:          'Geen sensors gevonden — vul handmatig in',
+        integration_not_found:  'Integratie niet gevonden. Installeer de integratie eerst:',
         no_prefix:              '(geen gebruikersnaam-prefix)',
         detected_badge:         'gevonden',
         label_icon_pick:        'Icoon',
@@ -129,6 +132,7 @@ const TRANSLATIONS = {
         url_banner:             'Banner URL',
         url_placeholder:        'Laat leeg voor de standaard afbeelding',
         url_preview_fail:       'Afbeelding niet gevonden',
+        browse_media:           'Bladeren',
     },
     en: {
         tab_in_transit:         'In Transit',
@@ -197,7 +201,9 @@ const TRANSLATIONS = {
         section_appearance:     'Appearance',
         label_header_color:     'Header color',
         label_header_text:      'Header text color',
-        label_placeholder_img:  'Placeholder image (URL, optional)',
+        label_placeholder_img:  'Placeholder image',
+        color_default:          'Default',
+        color_custom:           'Custom',
         btn_remove_carrier:     'Remove carrier',
         label_carrier_name:     'Name',
         legacy_warning:         'Recreates the original hki-postnl-card: one entity with both in-transit and delivered parcels, plus a separate entity for sent parcels. No letter support, no sensor templating. This mode will not receive further updates as long as arjenbos/ha-postnl is not actively maintained.',
@@ -224,6 +230,7 @@ const TRANSLATIONS = {
         detected_one:           'Auto-detected',
         detected_multiple:      'Multiple accounts found — choose one',
         detected_none:          'No sensors found — enter manually',
+        integration_not_found:  'Integration not found. Install the integration first:',
         no_prefix:              '(no account prefix)',
         detected_badge:         'found',
         label_icon_pick:        'Icon',
@@ -233,6 +240,7 @@ const TRANSLATIONS = {
         url_banner:             'Banner URL',
         url_placeholder:        'Leave empty to use the built-in default',
         url_preview_fail:       'Image not found',
+        browse_media:           'Browse',
     }
 };
 
@@ -246,6 +254,12 @@ function getT(lang) {
 // ============================================================
 
 const REPO_BASE = 'https://github.com/jonisnet/hki-parcels-card/blob/main/images';
+
+const CARRIER_REPO_URLS = {
+    postnl_v4: 'https://github.com/peternijssen/ha-postnl',
+    dhl:       'https://github.com/peternijssen/ha-dhl-nl',
+    dpd:       'https://github.com/peternijssen/ha-dpd',
+};
 
 const CARRIER_ASSETS = {
     postnl_v4: {
@@ -277,10 +291,11 @@ const CARRIER_ASSETS = {
 };
 
 const CARRIER_PRESETS = {
-    postnl_v4:    { label: 'PostNL (peternijssen v4.x)', icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'canonical',     supports_letters: true,  sensor_slug: 'postnl' },
+    postnl_v4:    { label: 'PostNL',                    icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'canonical',     supports_letters: true,  sensor_slug: 'postnl' },
     postnl:       { label: 'PostNL (peternijssen v3.x)', icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'legacy',        supports_letters: true,  sensor_slug: 'postnl' },
     dhl:          { label: 'DHL',                        icon: 'mdi:package-variant-closed', color: '#ffcc00', schema: 'canonical',     supports_letters: false, sensor_slug: 'dhl'    },
-    dpd:          { label: 'DPD',                        icon: 'mdi:package-variant-closed', color: '#dc0032', schema: 'canonical',     supports_letters: false, sensor_slug: 'dpd'    },
+    dpd:          { label: 'DPD',                        icon: 'mdi:package-variant-closed', color: '#dc0032', schema: 'canonical',     supports_letters: false, sensor_slug: 'dpd',
+                    slug_first_suffixes: { incoming: 'binnenkomende_pakketten', delivered: 'bezorgde_pakketten', outgoing: 'uitgaande_pakketten', outgoing_delivered: null, letters: null } },
     postnl_legacy:{ label: 'PostNL (arjenbos)',          icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'single_entity', supports_letters: false, sensor_slug: null     },
     custom:       { label: 'Custom',                     icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'canonical',     supports_letters: false, sensor_slug: null     }
 };
@@ -293,14 +308,26 @@ function slugifyUserSlug(text) {
         .replace(/^_+|_+$/g, '');
 }
 
-function buildTemplatedEntities(user, carrierType) {
+function buildTemplatedEntities(user, carrierType, slugFirst = false) {
     const preset = CARRIER_PRESETS[carrierType] || CARRIER_PRESETS.custom;
     const slug = preset.sensor_slug;
     if (!slug) {
         return { entity_incoming: null, entity_delivered: null, entity_outgoing: null, entity_outgoing_delivered: null, entity_letters: null };
     }
     const u = slugifyUserSlug(user);
-    // Support both "sensor.<user>_<slug>_*" (with prefix) and "sensor.<slug>_*" (no prefix).
+    // slugFirst: sensor.<slug>_<user>_* (e.g. sensor.dpd_keesb_binnenkomende_pakketten)
+    // userFirst: sensor.<user>_<slug>_* or sensor.<slug>_* when no prefix
+    if (slugFirst && u) {
+        const sf = preset.slug_first_suffixes;
+        const s = (key, fallback) => sf?.[key] != null ? `sensor.${slug}_${u}_${sf[key]}` : (sf?.[key] === null ? null : `sensor.${slug}_${u}_${fallback}`);
+        return {
+            entity_incoming:          s('incoming',          'incoming_parcels'),
+            entity_delivered:         s('delivered',         'delivered_parcels'),
+            entity_outgoing:          s('outgoing',          'outgoing_parcels'),
+            entity_outgoing_delivered:s('outgoing_delivered','outgoing_delivered_parcels'),
+            entity_letters: preset.supports_letters ? s('letters', 'letters') : null
+        };
+    }
     const prefix = u ? `${u}_` : '';
     return {
         entity_incoming:          `sensor.${prefix}${slug}_incoming_parcels`,
@@ -771,14 +798,16 @@ class HkiParcelsCard extends HTMLElement {
     }
 
     _getNoSelectionBackground() {
+        const DEFAULT_PLACEHOLDER = `${REPO_BASE}/dutch-parcels.png?raw=true`;
         const carriers = this.config.carriers || [];
-        if (carriers.length >= 2) return { image: this.config.placeholder_image || '', showText: !this.config.placeholder_image };
+        const placeholderImage = this.config.placeholder_image || DEFAULT_PLACEHOLDER;
+        if (carriers.length >= 2) return { image: placeholderImage, showText: false };
         if (carriers.length === 1) {
             const b = this._carrierBranding(carriers[0]);
             const image = b.carrier_banner || b.carrier_logo;
             if (image) return { image, showText: false };
         }
-        return { image: this.config.placeholder_image || '', showText: !this.config.placeholder_image };
+        return { image: placeholderImage, showText: false };
     }
 
     _openLetterPopup(src, name, dateLabel) {
@@ -896,7 +925,7 @@ class HkiParcelsCard extends HTMLElement {
                 return;
             }
             const bg = this._getNoSelectionBackground();
-            animationEl.style.backgroundImage = bg.image ? `url('${bg.image}')` : '';
+            animationEl.style.backgroundImage = bg.image ? `url("${bg.image.replace(/"/g, '%22')}")` : '';
             animationEl.innerHTML = bg.showText
                 ? `<div class="animation-placeholder"><div class="placeholder-text">${this._t('select_parcel')}</div></div>`
                 : '';
@@ -1147,8 +1176,8 @@ class HkiParcelsCardEditor extends LitElement {
 
     constructor() {
         super();
-        window.HKI.ensureEditorElements?.();
         this._config = { carriers: [], layout_order: ['header', 'animation', 'tabs', 'list'] };
+        this._openSections = {}; // tracks open state of advanced sections per carrier
     }
 
     // Shorthand: resolve a translation key using hass.language.
@@ -1214,14 +1243,16 @@ class HkiParcelsCardEditor extends LitElement {
         const current = carriers[index] || {};
         const isSingle = preset.schema === 'single_entity';
         // Auto-detect account when changing type (use existing user if already set).
-        const detected  = !isSingle ? this._detectUsers(type) : [];
-        const detectedUser = detected.length === 1 ? detected[0] : null;
-        const autoUser  = current.user != null ? current.user : (detectedUser !== null ? detectedUser : '');
-        const templated = !isSingle && detectedUser !== null ? buildTemplatedEntities(autoUser, type) : {};
+        const detected     = !isSingle ? this._detectUsers(type) : [];
+        const detectedEntry = detected.length === 1 ? detected[0] : null;
+        const autoUser     = current.user != null ? current.user : (detectedEntry?.user ?? '');
+        const slugFirst    = detectedEntry?.slugFirst ?? false;
+        const templated    = !isSingle && detectedEntry !== null ? buildTemplatedEntities(autoUser, type, slugFirst) : {};
         carriers[index] = {
             ...current, type,
             name: preset.label, icon: getDefaultIcon(type), color: preset.color, schema: preset.schema,
             user: autoUser,
+            _slugFirst: slugFirst,
             _manualUser: !!current.user,
             entity_incoming:    isSingle ? '' : (templated.entity_incoming    ?? current.entity_incoming    ?? ''),
             entity_delivered:   isSingle ? '' : (templated.entity_delivered   ?? current.entity_delivered   ?? ''),
@@ -1258,13 +1289,16 @@ class HkiParcelsCardEditor extends LitElement {
         const type   = 'postnl_v4';
         const preset = CARRIER_PRESETS[type];
         // Auto-detect user for the default carrier type immediately.
-        const detected = this._detectUsers(type);
-        const autoUser = detected.length === 1 ? detected[0] : null;
-        const templated = autoUser !== null ? buildTemplatedEntities(autoUser, type) : {};
+        const detected  = this._detectUsers(type);
+        const autoEntry = detected.length === 1 ? detected[0] : null;
+        const autoUser  = autoEntry?.user ?? null;
+        const slugFirst = autoEntry?.slugFirst ?? false;
+        const templated = autoUser !== null ? buildTemplatedEntities(autoUser, type, slugFirst) : {};
         const carriers = [...(this._config.carriers || []), {
             type, name: preset.label, icon: getDefaultIcon(type), color: preset.color,
             schema: preset.schema, logo_path: '', van_path: '', banner_path: '',
             user: autoUser ?? '',
+            _slugFirst: slugFirst,
             entity_incoming:  templated.entity_incoming  || '',
             entity_delivered: templated.entity_delivered || '',
             entity_outgoing:  templated.entity_outgoing  || '',
@@ -1300,26 +1334,26 @@ class HkiParcelsCardEditor extends LitElement {
         this._emit();
     }
 
-    // Returns an array of user-slugs detected in hass.states for a carrier type.
-    // e.g. for 'dhl' it matches sensor.*_dhl_incoming_parcels → extracts the prefix.
+    // Returns { user, slugFirst }[] for all detected accounts of a carrier type.
+    // Checks both "sensor.<user>_<slug>_incoming_parcels" and "sensor.<slug>_<user>_<incoming_suffix>".
     _detectUsers(carrierType) {
         if (!this.hass) return [];
         const preset = CARRIER_PRESETS[carrierType];
         if (!preset?.sensor_slug) return [];
         const slug = preset.sensor_slug;
-        // Match "sensor.<user>_<slug>_incoming_parcels" (with prefix) or "sensor.<slug>_incoming_parcels" (no prefix).
-        const patternWithPrefix = new RegExp(`^sensor\\.(.+)_${slug}_incoming_parcels$`);
-        const patternNoPrefix   = new RegExp(`^sensor\\.${slug}_incoming_parcels$`);
-        const users = [];
+        const slugFirstIncoming = preset.slug_first_suffixes?.incoming ?? 'incoming_parcels';
+        const patternUserFirst = new RegExp(`^sensor\\.(.+)_${slug}_incoming_parcels$`);
+        const patternSlugFirst = new RegExp(`^sensor\\.${slug}_(.+)_${slugFirstIncoming}$`);
+        const patternNoPrefix  = new RegExp(`^sensor\\.${slug}_incoming_parcels$`);
+        const seen = new Map(); // user → slugFirst
         for (const entityId of Object.keys(this.hass.states)) {
-            const match = patternWithPrefix.exec(entityId);
-            if (match) {
-                if (!users.includes(match[1])) users.push(match[1]);
-            } else if (patternNoPrefix.test(entityId) && !users.includes('')) {
-                users.push('');
-            }
+            const m1 = patternUserFirst.exec(entityId);
+            if (m1 && !seen.has(m1[1])) { seen.set(m1[1], false); continue; }
+            const m2 = patternSlugFirst.exec(entityId);
+            if (m2 && !seen.has(m2[1])) { seen.set(m2[1], true); continue; }
+            if (patternNoPrefix.test(entityId) && !seen.has('')) { seen.set('', false); }
         }
-        return users;
+        return [...seen.entries()].map(([user, slugFirst]) => ({ user, slugFirst }));
     }
 
     // Sanitizes free-text account input: lowercase, non-alnum → underscore, trim underscores.
@@ -1331,11 +1365,12 @@ class HkiParcelsCardEditor extends LitElement {
         ev.stopPropagation();
         const raw  = ev.target?.value ?? '';
         const user = this._sanitizeUserInput(raw);
-        // Feed sanitized value back into the input so the user sees it live.
+        // Show sanitized result after the user finishes typing (on change/blur).
         if (ev.target && ev.target.value !== user) ev.target.value = user;
         const carriers = [...(this._config.carriers || [])];
         const current  = carriers[index] || {};
-        const templated = buildTemplatedEntities(user, current.type);
+        const slugFirst = current._slugFirst ?? false;
+        const templated = buildTemplatedEntities(user, current.type, slugFirst);
         const supportsLetters = (CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom).supports_letters;
         carriers[index] = {
             ...current, user,
@@ -1352,10 +1387,14 @@ class HkiParcelsCardEditor extends LitElement {
     _carrierUserSelected(index, user) {
         const carriers = [...(this._config.carriers || [])];
         const current  = carriers[index] || {};
-        const templated = buildTemplatedEntities(user, current.type);
+        const detected = this._detectUsers(current.type);
+        const entry    = detected.find(d => d.user === user);
+        const slugFirst = entry?.slugFirst ?? current._slugFirst ?? false;
+        const templated = buildTemplatedEntities(user, current.type, slugFirst);
         const supportsLetters = (CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom).supports_letters;
         carriers[index] = {
             ...current, user,
+            _slugFirst: slugFirst,
             entity_incoming:  templated.entity_incoming  ?? '',
             entity_delivered: templated.entity_delivered ?? '',
             entity_outgoing:  templated.entity_outgoing  ?? '',
@@ -1376,13 +1415,7 @@ class HkiParcelsCardEditor extends LitElement {
             .section::after { content: '▾'; font-size: 12px; transition: transform 0.2s ease; }
             .section-details:not([open]) .section::after { transform: rotate(-90deg); }
             .helper-text { font-size: 12px; color: var(--secondary-text-color); margin: 4px 0 16px 0; font-style: italic; }
-            ha-selector, hki-textfield {
-                width: 100%;
-                display: block;
-                box-sizing: border-box;
-                min-height: 56px;
-                margin-bottom: 16px;
-            }
+            ha-selector, ha-textfield { width: 100%; margin-bottom: 16px; }
             .plain-field { margin-bottom: 16px; }
             .plain-field label { display: block; font-size: 12px; color: var(--secondary-text-color); margin-bottom: 4px; }
             .plain-field input { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color, white); color: var(--primary-text-color); font-family: inherit; }
@@ -1399,9 +1432,14 @@ class HkiParcelsCardEditor extends LitElement {
             .carrier-card-header-title .chevron { transition: transform 0.2s ease; flex-shrink: 0; }
             .carrier-card-header-title .chevron.expanded { transform: rotate(90deg); }
             .carrier-card-body { margin-top: 12px; }
-            .advanced-details { margin-top: 8px; }
-            .advanced-details summary { cursor: pointer; font-size: 13px; color: var(--secondary-text-color); padding: 6px 12px; user-select: none; border: 1px solid var(--divider-color); border-radius: 4px; display: inline-block; }
-            .advanced-details summary:hover { background: var(--card-background-color, white); color: var(--primary-text-color); }
+            .advanced-toggle { margin-top: 8px; margin-bottom: 4px; cursor: pointer; font-size: 13px; color: var(--secondary-text-color); padding: 6px 12px; user-select: none; border: 1px solid var(--divider-color); border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
+            .advanced-toggle:hover { background: var(--card-background-color, white); color: var(--primary-text-color); }
+            .advanced-toggle .adv-chevron { font-size: 10px; transition: transform 0.15s ease; }
+            .advanced-toggle.open .adv-chevron { transform: rotate(90deg); }
+            .advanced-body { padding: 12px 0 4px 0; }
+            .color-default-btn { background: none; border: 1px solid var(--divider-color); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--secondary-text-color); white-space: nowrap; }
+            .color-default-btn:hover:not(:disabled) { background: var(--secondary-background-color); }
+            .color-default-btn:disabled { opacity: 0.45; cursor: default; }
             .templated-preview { background: var(--card-background-color, white); border: 1px solid var(--divider-color); border-radius: 4px; padding: 8px 12px; margin-bottom: 16px; font-family: monospace; font-size: 11px; color: var(--secondary-text-color); line-height: 1.6; }
             .inline-fields-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
             ha-icon-button.danger { color: var(--error-color, red); }
@@ -1428,27 +1466,292 @@ class HkiParcelsCardEditor extends LitElement {
             .appearance-preview { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--card-background-color, white); border: 1px solid var(--divider-color); border-radius: 8px; flex-shrink: 0; }
             .appearance-field-grow { flex: 1; }
             .appearance-field-grow ha-selector { width: 100%; }
-            .color-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+            .color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
             .color-label { font-size: 12px; color: var(--secondary-text-color); white-space: nowrap; }
-            .color-input-wrap { display: flex; align-items: center; gap: 8px; }
-            .color-swatch { width: 40px; height: 32px; border: 1px solid var(--divider-color); border-radius: 4px; cursor: pointer; padding: 2px; background: none; }
-            .color-hex { font-family: monospace; font-size: 13px; color: var(--primary-text-color); }
+            .color-input-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+            .color-swatch { width: 40px; height: 32px; border: 1px solid var(--divider-color); border-radius: 4px; cursor: pointer; padding: 2px; background: none; flex-shrink: 0; }
+            .color-hex-input { font-family: monospace; font-size: 13px; color: var(--primary-text-color); width: 90px; padding: 4px 8px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color, white); box-sizing: border-box; }
+            .color-hex-input:focus { outline: none; border-color: var(--primary-color, #03a9f4); }
 
             /* URL field with preview */
             .url-field { margin-bottom: 8px; }
-            .url-field hki-textfield { width: 100%; margin-bottom: 4px; }
+            .url-input-row { display: flex; gap: 4px; align-items: center; }
+            .url-input-row input { flex: 1; min-width: 0; }
+            .browse-btn { flex-shrink: 0; background: var(--secondary-background-color, #2d2d2d); border: 1px solid var(--divider-color); border-radius: 4px; padding: 0 8px; cursor: pointer; color: var(--primary-text-color); display: flex; align-items: center; height: 38px; gap: 4px; font-size: 12px; white-space: nowrap; }
+            .browse-btn:hover { background: var(--primary-color, #03a9f4); color: white; border-color: var(--primary-color, #03a9f4); }
+            .browse-btn ha-icon { --mdc-icon-size: 16px; }
             .url-preview-wrap { padding: 6px 0 10px; }
             .url-preview { max-height: 56px; max-width: 120px; object-fit: contain; border-radius: 4px; border: 1px solid var(--divider-color); background: white; padding: 4px; display: block; }
             .url-preview-error { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--error-color, red); }
         `;
     }
 
-    // Renders a URL input field with a small live image preview below it.
+    // Opens a custom media browser overlay above all HA dialogs (z-index 100000).
+    // First tries the native HA dialog-media-player-browse (action:'pick') if loaded;
+    // falls back to our own WebSocket-based media browser otherwise.
+    _openImageBrowser(onSelect) {
+        if (!this.hass) return;
+        // --- Try native HA media browser dialog ---
+        const dialogTag = 'dialog-media-player-browse';
+        if (customElements.get(dialogTag)) {
+            const entityId = Object.keys(this.hass.states).find(id => id.startsWith('media_player.'));
+            if (entityId) {
+                const haRoot = document.querySelector('home-assistant');
+                if (haRoot) {
+                    haRoot.dispatchEvent(new CustomEvent('show-dialog', {
+                        bubbles: true,
+                        composed: true,
+                        detail: {
+                            dialogTag,
+                            dialogParams: {
+                                entityId,
+                                action: 'pick',
+                                mediaPickedCallback: (item) => {
+                                    const url = item?.media_content_id || item?.thumbnail;
+                                    if (url) onSelect(url);
+                                },
+                            },
+                        },
+                    }));
+                    return;
+                }
+            }
+        }
+        // --- Fall back to own media browser ---
+        // Use showModal() so our dialog enters the browser top-layer above HA's own dialog.
+        const backdropStyle = document.createElement('style');
+        backdropStyle.textContent = '#hki-media-picker::backdrop{background:rgba(0,0,0,0.65);}';
+        document.head.appendChild(backdropStyle);
+
+        const dlg = document.createElement('dialog');
+        dlg.id = 'hki-media-picker';
+        dlg.style.cssText = 'padding:0;border:none;border-radius:12px;background:transparent;width:520px;max-width:93vw;max-height:82vh;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.6);';
+
+        const close = () => {
+            dlg.close();
+            if (dlg.parentNode) dlg.parentNode.removeChild(dlg);
+            if (backdropStyle.parentNode) backdropStyle.parentNode.removeChild(backdropStyle);
+            blobUrls.forEach(u => URL.revokeObjectURL(u));
+        };
+
+        dlg.addEventListener('cancel', close); // ESC key
+
+        const panel = document.createElement('div');
+        panel.style.cssText = 'background:var(--card-background-color,#1c1c1c);width:100%;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;border-radius:12px;';
+
+        // Header
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:16px 16px 0;flex-shrink:0;';
+        const breadcrumb = document.createElement('div');
+        breadcrumb.style.cssText = 'flex:1;font-size:15px;font-weight:500;color:var(--primary-text-color,#fff);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        breadcrumb.textContent = this._t('browse_media');
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '✕';
+        closeBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:20px;color:var(--secondary-text-color,#aaa);line-height:1;padding:4px 6px;flex-shrink:0;';
+        closeBtn.onclick = close;
+        header.appendChild(breadcrumb);
+        header.appendChild(closeBtn);
+
+        // Manual URL input
+        const urlRow = document.createElement('div');
+        urlRow.style.cssText = 'display:flex;gap:8px;padding:12px 16px 0;flex-shrink:0;';
+        const urlInput = document.createElement('input');
+        urlInput.type = 'text';
+        urlInput.placeholder = '/local/afbeelding.png  of  https://...';
+        urlInput.style.cssText = 'flex:1;min-width:0;padding:7px 10px;font-size:13px;border:1px solid var(--divider-color,#444);border-radius:4px;background:var(--secondary-background-color,#2d2d2d);color:var(--primary-text-color,#fff);font-family:inherit;box-sizing:border-box;';
+        const urlOk = document.createElement('button');
+        urlOk.textContent = 'OK';
+        urlOk.style.cssText = 'padding:7px 14px;background:var(--primary-color,#03a9f4);color:white;border:none;border-radius:4px;cursor:pointer;font-weight:500;font-size:13px;';
+        urlOk.onclick = () => { const v = urlInput.value.trim(); if (v) { onSelect(v); close(); } };
+        urlRow.appendChild(urlInput);
+        urlRow.appendChild(urlOk);
+
+        const divLabel = document.createElement('div');
+        divLabel.style.cssText = 'padding:10px 16px 4px;font-size:11px;color:var(--secondary-text-color,#888);text-transform:uppercase;letter-spacing:0.05em;flex-shrink:0;';
+        divLabel.textContent = 'Mediabibliotheek';
+
+        const content = document.createElement('div');
+        content.style.cssText = 'flex:1;overflow-y:auto;padding:0 16px 16px;min-height:80px;';
+
+        panel.appendChild(header);
+        panel.appendChild(urlRow);
+        panel.appendChild(divLabel);
+        panel.appendChild(content);
+        dlg.appendChild(panel);
+        document.body.appendChild(dlg);
+        dlg.showModal();
+
+        const stack = [];
+        const blobUrls = []; // track for cleanup on close
+
+        // Get the HA auth token from any available source.
+        const getToken = () =>
+            this.hass.auth?.data?.access_token
+            || this.hass.connection?.options?.auth?.data?.access_token
+            || JSON.parse(localStorage.getItem('hassTokens') || 'null')?.access_token;
+
+        // Load thumbnail: first try direct (session cookie), then fetch with Bearer token.
+        const loadThumb = (imgEl, url, onFail) => {
+            if (!url) { onFail(); return; }
+            imgEl.src = url;
+            imgEl.onerror = () => {
+                const token = getToken();
+                if (!token) { onFail(); return; }
+                imgEl.onerror = () => onFail();
+                fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+                    .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
+                    .then(blob => {
+                        const bUrl = URL.createObjectURL(blob);
+                        blobUrls.push(bUrl);
+                        imgEl.src = bUrl;
+                    })
+                    .catch(() => onFail());
+            };
+        };
+
+        const MEDIA_EMOJI = { music: '🎵', audio: '🎵', podcast: '🎙', video: '🎬', movie: '🎬', tv_show: '📺', episode: '📺', channel: '📺', app: '📱', url: '🔗', image: '🖼', photo: '🖼' };
+
+        // Convert media-source://media_source/local/path → /local/path (served via HA's static file server)
+        const mediaSourceToLocal = (id) => {
+            if (!id) return null;
+            if (id.startsWith('media-source://media_source/local/')) {
+                return id.slice('media-source://media_source'.length);
+            }
+            return null;
+        };
+
+        const showImageInThumb = (thumb, url) => {
+            const img = document.createElement('img');
+            img.alt = '';
+            img.style.cssText = 'max-width:100%;max-height:72px;object-fit:contain;';
+            const onFail = () => { img.remove(); thumb.textContent = '🖼'; thumb.style.fontSize = '28px'; };
+            thumb.textContent = '';
+            thumb.appendChild(img);
+            loadThumb(img, url, onFail);
+        };
+
+        const renderItems = (items) => {
+            content.innerHTML = '';
+            if (stack.length > 0) {
+                const back = document.createElement('button');
+                back.innerHTML = '&#8592; Terug';
+                back.style.cssText = 'display:inline-flex;align-items:center;gap:4px;margin-bottom:10px;background:none;border:1px solid var(--divider-color,#444);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--primary-text-color,#fff);font-size:13px;';
+                back.onclick = () => { stack.pop(); browse(stack.length ? stack[stack.length-1].id : 'media-source://media_source/local'); breadcrumb.textContent = stack.length ? stack[stack.length-1].title : this._t('browse_media'); };
+                content.appendChild(back);
+            }
+            if (!items || items.length === 0) {
+                const msg = document.createElement('div');
+                msg.style.cssText = 'text-align:center;padding:32px 0;color:var(--secondary-text-color,#aaa);font-size:13px;font-style:italic;';
+                msg.textContent = 'Geen bestanden gevonden';
+                content.appendChild(msg);
+                return;
+            }
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;';
+            items.forEach(item => {
+                const isFolder = item.can_expand;
+                const isImage = ['image', 'photo'].includes(item.media_class);
+                const cell = document.createElement('div');
+                cell.style.cssText = 'cursor:pointer;border:2px solid transparent;border-radius:6px;overflow:hidden;background:var(--secondary-background-color,#2a2a2a);';
+                cell.title = item.title;
+                const thumb = document.createElement('div');
+                thumb.style.cssText = 'width:100%;height:72px;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                const defaultEmoji = isFolder ? '📁' : (MEDIA_EMOJI[item.media_class] || '📄');
+                thumb.textContent = defaultEmoji;
+                thumb.style.fontSize = '28px';
+
+                if (!isFolder) {
+                    if (item.thumbnail && !item.thumbnail.startsWith('media-source:')) {
+                        // HA provided a usable thumbnail URL — load it with auth support
+                        showImageInThumb(thumb, item.thumbnail);
+                    } else if (isImage && item.media_content_id) {
+                        // Image file: convert media-source://media_source/local/... → /local/...
+                        const localUrl = mediaSourceToLocal(item.media_content_id);
+                        if (localUrl) showImageInThumb(thumb, localUrl);
+                    }
+                }
+
+                const lbl = document.createElement('div');
+                lbl.textContent = item.title;
+                lbl.style.cssText = 'font-size:10px;color:var(--secondary-text-color,#aaa);padding:3px 5px 5px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;';
+                cell.appendChild(thumb);
+                cell.appendChild(lbl);
+                cell.addEventListener('mouseenter', () => cell.style.borderColor = 'var(--primary-color,#03a9f4)');
+                cell.addEventListener('mouseleave', () => cell.style.borderColor = 'transparent');
+                cell.addEventListener('click', () => {
+                    if (isFolder) {
+                        stack.push({ id: item.media_content_id, title: item.title });
+                        breadcrumb.textContent = item.title;
+                        browse(item.media_content_id);
+                    } else {
+                        const id = item.media_content_id;
+                        const thumb = item.thumbnail;
+                        // Never save media-source:// URLs — convert to /local/ path instead
+                        const localUrl = mediaSourceToLocal(id);
+                        const url = (thumb && !thumb.startsWith('media-source:')) ? thumb : (localUrl || id);
+                        onSelect(url);
+                        close();
+                    }
+                });
+                grid.appendChild(cell);
+            });
+            content.appendChild(grid);
+        };
+
+        const browse = async (mediaContentId) => {
+            content.innerHTML = '<div style="text-align:center;padding:32px;color:var(--secondary-text-color,#aaa);font-size:13px;">Laden…</div>';
+            try {
+                if (!this.hass?.callWS) throw new Error('callWS not available');
+                const result = await this.hass.callWS({
+                    type: 'media_source/browse_media',
+                    media_content_id: mediaContentId,
+                });
+                renderItems(result.children || []);
+            } catch (err) {
+                // Fallback: show image.* entities from HA state machine
+                if (!this.hass?.states) {
+                    content.innerHTML = '<div style="text-align:center;padding:32px;color:var(--secondary-text-color,#aaa);font-size:13px;">Geen verbinding met Home Assistant.</div>';
+                    return;
+                }
+                const imageEntities = Object.entries(this.hass.states)
+                    .filter(([id, s]) => id.startsWith('image.') && s.state !== 'unavailable')
+                    .map(([id, s]) => ({
+                        media_content_id: id,
+                        title: s.attributes?.friendly_name || id.replace('image.', ''),
+                        thumbnail: s.attributes?.entity_picture,
+                        can_expand: false,
+                        can_play: true,
+                        media_class: 'image',
+                    }))
+                    .filter(i => i.thumbnail);
+
+                if (imageEntities.length > 0) {
+                    divLabel.textContent = 'Afbeeldingen in Home Assistant';
+                    renderItems(imageEntities);
+                } else {
+                    content.innerHTML = '<div style="text-align:center;padding:32px;color:var(--secondary-text-color,#aaa);font-size:13px;">Geen mediabron beschikbaar — gebruik de URL invoer hierboven.</div>';
+                }
+            }
+        };
+
+        browse('media-source://media_source/local');
+    }
+
+    // Renders a URL input field with browse button and a small live image preview below it.
     _renderUrlField(label, value, placeholder, onChange) {
         return html`
             <div class="url-field">
-                <hki-textfield label="${label}" .value=${value || ''} placeholder="${placeholder}"
-                    @input=${onChange}></hki-textfield>
+                <div class="plain-field" style="margin-bottom:4px;">
+                    <label>${label}</label>
+                    <div class="url-input-row">
+                        <input type="text" .value=${value || ''} placeholder="${placeholder}" @input=${onChange} />
+                        <button class="browse-btn" title="${this._t('browse_media')}"
+                            @click=${() => this._openImageBrowser((val) => onChange({ target: { value: val }, stopPropagation: () => {}, preventDefault: () => {} }))}>
+                            <ha-icon icon="mdi:folder-open"></ha-icon>
+                            ${this._t('browse_media')}
+                        </button>
+                    </div>
+                </div>
                 ${value ? html`
                     <div class="url-preview-wrap">
                         <img class="url-preview" src="${value}"
@@ -1464,87 +1767,98 @@ class HkiParcelsCardEditor extends LitElement {
             </div>`;
     }
 
-    // Renders the "Advanced: appearance override" section with icon-picker, color swatch and URL previews.
+    // Renders a color swatch + hex input + always-visible Standaard button.
+    _renderColorPicker(label, currentColor, defaultColor, onChange, onReset) {
+        const isDefault = !currentColor || currentColor === defaultColor;
+        return html`
+            <div class="color-row">
+                <label class="color-label">${label}</label>
+                <div class="color-input-wrap">
+                    <input type="color" class="color-swatch"
+                        .value=${currentColor || defaultColor}
+                        @input=${(ev) => onChange(ev.target.value)} />
+                    <input type="text" class="color-hex-input"
+                        .value=${currentColor || defaultColor}
+                        placeholder="#rrggbb"
+                        @change=${(ev) => {
+                            const v = ev.target.value.trim();
+                            if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
+                        }} />
+                    <button class="color-default-btn"
+                        ?disabled=${isDefault}
+                        @click=${() => { if (!isDefault) onReset(); }}>
+                        ${this._t('color_default')}
+                    </button>
+                </div>
+            </div>`;
+    }
+
+    // Renders the "Advanced: appearance override" section with icon-picker, color swatch and image selectors.
     _renderAppearanceOverride(carrier, index, preset) {
         const assets       = CARRIER_ASSETS[carrier.type] || CARRIER_ASSETS.custom;
         const currentIcon  = carrier.icon  || preset.icon;
         const currentColor = carrier.color || preset.color;
+        const sectionKey   = `appearance-${index}`;
+        const isOpen       = !!this._openSections[sectionKey];
+
         return html`
-            <details class="advanced-details">
-                <summary>${this._t('adv_appearance')}</summary>
-                <div style="margin-top:12px;">
-                    <div class="helper-text">${this._t('appearance_help')}</div>
+            <div class="advanced-toggle ${isOpen ? 'open' : ''}"
+                @click=${() => { this._openSections = { ...this._openSections, [sectionKey]: !isOpen }; this.requestUpdate(); }}>
+                <span class="adv-chevron">▶</span>
+                ${this._t('adv_appearance')}
+            </div>
+            ${isOpen ? html`
+            <div class="advanced-body">
+                <div class="helper-text">${this._t('appearance_help')}</div>
 
-                    <!-- Icon picker -->
-                    <div class="appearance-row">
-                        <div class="appearance-preview">
-                            <ha-icon icon="${currentIcon}" style="color:${currentColor}; width:28px; height:28px;"></ha-icon>
-                        </div>
-                        <div class="appearance-field-grow">
-                            <ha-selector .hass=${this.hass}
-                                .selector=${{ icon: {} }}
-                                .value=${currentIcon}
-                                .label=${this._t('label_icon_pick')}
-                                @value-changed=${(ev) => {
-                                    ev.stopPropagation();
-                                    const carriers = [...(this._config.carriers || [])];
-                                    carriers[index] = { ...carriers[index], icon: ev.detail.value };
-                                    this._config = { ...this._config, carriers };
-                                    this._emit();
-                                }}></ha-selector>
-                        </div>
+                <!-- Icon picker -->
+                <div class="appearance-row">
+                    <div class="appearance-preview">
+                        <ha-icon icon="${currentIcon}" style="color:${currentColor}; width:28px; height:28px;"></ha-icon>
                     </div>
-
-                    <!-- Color -->
-                    <div class="color-row">
-                        <label class="color-label">${this._t('label_color_pick')}</label>
-                        <div class="color-input-wrap">
-                            <input type="color" class="color-swatch"
-                                .value=${currentColor}
-                                @input=${(ev) => {
-                                    ev.stopPropagation();
-                                    const carriers = [...(this._config.carriers || [])];
-                                    carriers[index] = { ...carriers[index], color: ev.target.value };
-                                    this._config = { ...this._config, carriers };
-                                    this._emit();
-                                }} />
-                            <span class="color-hex">${currentColor}</span>
-                        </div>
+                    <div class="appearance-field-grow">
+                        <ha-selector .hass=${this.hass}
+                            .selector=${{ icon: {} }}
+                            .value=${currentIcon}
+                            .label=${this._t('label_icon_pick')}
+                            @value-changed=${(ev) => {
+                                ev.stopPropagation();
+                                const carriers = [...(this._config.carriers || [])];
+                                carriers[index] = { ...carriers[index], icon: ev.detail.value };
+                                this._config = { ...this._config, carriers };
+                                this._emit();
+                            }}></ha-selector>
                     </div>
-
-                    <!-- Logo -->
-                    <ha-selector .hass=${this.hass}
-                        .selector=${{ image: {} }}
-                        .value=${carrier.logo_path || ''}
-                        .label=${this._t('url_logo')}
-                        @value-changed=${(ev) => {
-                            ev.stopPropagation();
-                            const carriers = [...(this._config.carriers || [])];
-                            carriers[index] = { ...carriers[index], logo_path: ev.detail.value };
-                            this._config = { ...this._config, carriers };
-                            this._emit();
-                        }}></ha-selector>
-                    <!-- Vehicle GIF (URL only — GIFs are not in the media library) -->
-                    ${this._renderUrlField(
-                        this._t('url_van'),
-                        carrier.van_path,
-                        assets.van || 'https://...',
-                        (ev) => this._carrierChanged(index, 'van_path', ev)
-                    )}
-                    <!-- Banner -->
-                    <ha-selector .hass=${this.hass}
-                        .selector=${{ image: {} }}
-                        .value=${carrier.banner_path || ''}
-                        .label=${this._t('url_banner')}
-                        @value-changed=${(ev) => {
-                            ev.stopPropagation();
-                            const carriers = [...(this._config.carriers || [])];
-                            carriers[index] = { ...carriers[index], banner_path: ev.detail.value };
-                            this._config = { ...this._config, carriers };
-                            this._emit();
-                        }}></ha-selector>
                 </div>
-            </details>`;
+
+                <!-- Color -->
+                ${this._renderColorPicker(
+                    this._t('label_color_pick'),
+                    carrier.color,
+                    preset.color,
+                    (val) => {
+                        const carriers = [...(this._config.carriers || [])];
+                        carriers[index] = { ...carriers[index], color: val };
+                        this._config = { ...this._config, carriers };
+                        this._emit();
+                    },
+                    () => {
+                        const carriers = [...(this._config.carriers || [])];
+                        carriers[index] = { ...carriers[index], color: undefined };
+                        this._config = { ...this._config, carriers };
+                        this._emit();
+                    }
+                )}
+
+                <!-- Logo -->
+                ${this._renderUrlField(this._t('url_logo'), carrier.logo_path, assets.logo || 'https://...', (ev) => this._carrierChanged(index, 'logo_path', ev))}
+
+                <!-- Vehicle GIF -->
+                ${this._renderUrlField(this._t('url_van'), carrier.van_path, assets.van || 'https://...', (ev) => this._carrierChanged(index, 'van_path', ev))}
+
+                <!-- Banner -->
+                ${this._renderUrlField(this._t('url_banner'), carrier.banner_path, assets.banner || 'https://...', (ev) => this._carrierChanged(index, 'banner_path', ev))}
+            </div>` : ''}`;
     }
 
     // Renders the user/account detection block: badge if 1 found, dropdown if multiple, manual if none.
@@ -1567,7 +1881,7 @@ class HkiParcelsCardEditor extends LitElement {
                     <ha-icon icon="mdi:check-circle" class="detected-icon ok"></ha-icon>
                     <div class="detected-info">
                         <div class="detected-label">${this._t('detected_one')}</div>
-                        <div class="detected-value">${(carrier.user != null ? carrier.user : detected[0]) || this._t('no_prefix')}</div>
+                        <div class="detected-value">${(carrier.user != null ? carrier.user : detected[0].user) || this._t('no_prefix')}</div>
                     </div>
                     <button class="detected-override" title="Enter manually"
                         @click=${() => {
@@ -1596,16 +1910,38 @@ class HkiParcelsCardEditor extends LitElement {
                 </div>
                 <ha-selector .hass=${this.hass}
                     .selector=${{ select: {
-                        options: detected.map(u => ({ value: u, label: u })),
+                        options: detected.map(u => ({ value: u.user, label: u.user })),
                         mode: 'dropdown'
                     } }}
-                    .value=${carrier.user || detected[0]}
+                    .value=${carrier.user || detected[0].user}
                     .label=${this._t('label_account')}
                     @value-changed=${(ev) => {
                         ev.stopPropagation();
                         this._carrierUserSelected(index, window.HKI.getSelectValue(ev));
                     }}></ha-selector>
                 ${entityPreview}`;
+        }
+
+        // 0 detected and no manual override yet → if a known repo URL exists, show install link instead of input.
+        if (detected.length === 0 && !carrier._manualUser) {
+            const repoUrl = CARRIER_REPO_URLS[carrier.type];
+            if (repoUrl) {
+                return html`
+                    <div class="detected-row">
+                        <ha-icon icon="mdi:alert-circle-outline" class="detected-icon none"></ha-icon>
+                        <div class="detected-info">
+                            <div class="detected-label">${this._t('integration_not_found')}</div>
+                            <a href="${repoUrl}" target="_blank" rel="noopener" style="font-size:12px;word-break:break-all;">${repoUrl}</a>
+                        </div>
+                        <button class="detected-override" title="Enter manually"
+                            @click=${() => {
+                                const carriers = [...(this._config.carriers || [])];
+                                carriers[index] = { ...carriers[index], _manualUser: true };
+                                this._config = { ...this._config, carriers };
+                                this._emit();
+                            }}>✎</button>
+                    </div>`;
+            }
         }
 
         // 0 detected OR user chose manual entry → text input with sanitization.
@@ -1630,7 +1966,7 @@ class HkiParcelsCardEditor extends LitElement {
                 <label for="hki-carrier-user-${index}">${this._t('label_account')}</label>
                 <input id="hki-carrier-user-${index}" type="text" placeholder="e.g. my_account"
                     .value=${carrier.user || ''}
-                    @input=${(ev) => this._carrierUserInputChanged(index, ev)} />
+                    @change=${(ev) => this._carrierUserInputChanged(index, ev)} />
             </div>
             <div class="helper-text">"_${preset.sensor_slug}${this._t('account_help_suffix')}</div>
             ${entityPreview}`;
@@ -1638,12 +1974,10 @@ class HkiParcelsCardEditor extends LitElement {
 
     _renderEntityPicker(label, value, helper, onChange) {
         return html`
-            <hki-textfield
-                .label=${label}
-                .value=${value || ''}
-                .helper=${helper || ''}
-                helperPersistent
-                @change=${onChange}></hki-textfield>`;
+            <div class="plain-field">
+                <label>${label}</label>
+                <input type="text" .value=${value || ''} placeholder="${helper || ''}" @change=${onChange} />
+            </div>`;
     }
 
     _renderCarrier(carrier, index) {
@@ -1668,11 +2002,11 @@ class HkiParcelsCardEditor extends LitElement {
                 <div class="carrier-card-body">
                     <ha-selector .hass=${this.hass}
                         .selector=${{ select: { options: [
-                            { value: 'postnl_v4',     label: 'PostNL (peternijssen v4.x)' },
-                            { value: 'postnl',        label: 'PostNL (peternijssen v3.x)' },
+                            { value: 'postnl_v4',     label: 'PostNL' },
                             { value: 'dhl',           label: 'DHL' },
                             { value: 'dpd',           label: 'DPD' },
-                            { value: 'postnl_legacy', label: 'PostNL (arjenbos)' },
+                            { value: 'postnl',        label: 'PostNL (<v4.x)' },
+                            { value: 'postnl_legacy', label: 'PostNL (ArjenBos)' },
                             { value: 'custom',        label: 'Custom' }
                         ], mode: 'dropdown' } }}
                         .value=${carrier.type || 'postnl_v4'} .label=${"Carrier"}
@@ -1693,18 +2027,27 @@ class HkiParcelsCardEditor extends LitElement {
                         ${this._renderEntityPicker(this._t('postnl_dist_label'), carrier.distribution_entity, 'e.g. sensor.postnl_distribution', (ev) => this._carrierChanged(index, 'distribution_entity', ev))}
                     ` : this._renderUserDetection(carrier, index, preset, supportsLetters)}
 
-                    ${carrier.type !== 'postnl_legacy' ? html`
-                    <details class="advanced-details">
-                        <summary>${this._t('adv_sensors')}</summary>
-                        <div class="helper-text" style="margin-top:12px;">${this._t('adv_sensors_help')}</div>
-                        ${this._renderEntityPicker(this._t('entity_incoming'), carrier.entity_incoming, 'e.g. sensor.dhl_incoming_parcels', (ev) => this._carrierChanged(index, 'entity_incoming', ev))}
-                        ${this._renderEntityPicker(this._t('entity_delivered'), carrier.entity_delivered, 'e.g. sensor.dhl_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_delivered', ev))}
-                        ${this._renderEntityPicker(this._t('entity_outgoing'), carrier.entity_outgoing, 'e.g. sensor.dhl_outgoing_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing', ev))}
-                        ${this._renderEntityPicker(this._t('entity_outgoing_delivered'), carrier.entity_outgoing_delivered, 'e.g. sensor.dhl_outgoing_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing_delivered', ev))}
-                        ${supportsLetters
-                            ? this._renderEntityPicker(this._t('entity_letters'), carrier.entity_letters, this._t('letters_entity_help'), (ev) => this._carrierChanged(index, 'entity_letters', ev))
-                            : html`<div class="helper-text">${this._t('no_letters_support')}</div>`}
-                    </details>` : ''}
+                    ${carrier.type !== 'postnl_legacy' ? (() => {
+                        const sk = `sensors-${index}`;
+                        const open = !!this._openSections[sk];
+                        return html`
+                        <div class="advanced-toggle ${open ? 'open' : ''}"
+                            @click=${() => { this._openSections = { ...this._openSections, [sk]: !open }; this.requestUpdate(); }}>
+                            <span class="adv-chevron">▶</span>
+                            ${this._t('adv_sensors')}
+                        </div>
+                        ${open ? html`
+                        <div class="advanced-body">
+                            <div class="helper-text">${this._t('adv_sensors_help')}</div>
+                            ${this._renderEntityPicker(this._t('entity_incoming'), carrier.entity_incoming, 'e.g. sensor.dhl_incoming_parcels', (ev) => this._carrierChanged(index, 'entity_incoming', ev))}
+                            ${this._renderEntityPicker(this._t('entity_delivered'), carrier.entity_delivered, 'e.g. sensor.dhl_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_delivered', ev))}
+                            ${this._renderEntityPicker(this._t('entity_outgoing'), carrier.entity_outgoing, 'e.g. sensor.dhl_outgoing_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing', ev))}
+                            ${this._renderEntityPicker(this._t('entity_outgoing_delivered'), carrier.entity_outgoing_delivered, 'e.g. sensor.dhl_outgoing_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing_delivered', ev))}
+                            ${supportsLetters
+                                ? this._renderEntityPicker(this._t('entity_letters'), carrier.entity_letters, this._t('letters_entity_help'), (ev) => this._carrierChanged(index, 'entity_letters', ev))
+                                : html`<div class="helper-text">${this._t('no_letters_support')}</div>`}
+                        </div>` : ''}`;
+                    })() : ''}
 
                     ${this._renderAppearanceOverride(carrier, index, preset)}
                 </div>` : ''}
@@ -1778,23 +2121,26 @@ class HkiParcelsCardEditor extends LitElement {
 
                 <details class="section-details">
                     <summary class="section">${this._t('section_appearance')}</summary>
-                    <div class="inline-fields-2">
-                        <div class="plain-field">
-                            <label for="hki-header-color-input">${this._t('label_header_color')}</label>
-                            <input id="hki-header-color-input" type="color" .value=${this._config.header_color || '#f0f0f0'}
-                                data-field="header_color" @input=${this._changed} />
-                        </div>
-                        <div class="plain-field">
-                            <label for="hki-header-text-color-input">${this._t('label_header_text')}</label>
-                            <input id="hki-header-text-color-input" type="color" .value=${this._config.header_text_color || '#000000'}
-                                data-field="header_text_color" @input=${this._changed} />
-                        </div>
-                    </div>
-                    <div class="plain-field">
-                        <label for="hki-placeholder-image-input">${this._t('label_placeholder_img')}</label>
-                        <input id="hki-placeholder-image-input" type="text" .value=${this._config.placeholder_image || ''}
-                            placeholder="https://..." data-field="placeholder_image" @input=${this._changed} />
-                    </div>
+                    ${this._renderColorPicker(
+                        this._t('label_header_color'),
+                        this._config.header_color,
+                        '',
+                        (val) => { this._config = { ...this._config, header_color: val }; this._emit(); },
+                        ()    => { this._config = { ...this._config, header_color: '' };  this._emit(); }
+                    )}
+                    ${this._renderColorPicker(
+                        this._t('label_header_text'),
+                        this._config.header_text_color,
+                        '',
+                        (val) => { this._config = { ...this._config, header_text_color: val }; this._emit(); },
+                        ()    => { this._config = { ...this._config, header_text_color: '' };  this._emit(); }
+                    )}
+                    ${this._renderUrlField(
+                        this._t('label_placeholder_img'),
+                        this._config.placeholder_image,
+                        'https://...',
+                        (ev) => { this._config = { ...this._config, placeholder_image: ev.target.value }; this._emit(); }
+                    )}
                 </details>
             </div>`;
     }
@@ -1808,6 +2154,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
     type: "hki-parcels-card",
     name: "HKI Parcels Card",
-    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD) � fork of jimz011/hki-elements",
+    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD) — fork of jimz011/hki-elements",
     preview: true
 });

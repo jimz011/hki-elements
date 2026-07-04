@@ -67,11 +67,11 @@ When `type: postnl_legacy` these options apply instead.
 
 | Type | Label in editor | Integration | Letters |
 | ---- | --------------- | ----------- | ------- |
-| `postnl_v4` | PostNL (peternijssen v4.x) | peternijssen/ha-postnl ≥ 4.0.0 | ✅ |
-| `postnl` | PostNL (peternijssen v3.x) | peternijssen/ha-postnl ≤ 3.x | ✅ |
+| `postnl_v4` | PostNL | peternijssen/ha-postnl ≥ 4.0.0 | ✅ |
 | `dhl` | DHL | peternijssen/ha-dhl-nl | — |
 | `dpd` | DPD | peternijssen/ha-dpd | — |
-| `postnl_legacy` | PostNL (arjenbos) | arjenbos/ha-postnl | — |
+| `postnl` | PostNL (&lt;v4.x) | peternijssen/ha-postnl ≤ 3.x | ✅ |
+| `postnl_legacy` | PostNL (ArjenBos) | arjenbos/ha-postnl | — |
 | `custom` | Custom | any | — |
 
 !!! tip "Which PostNL type should I use?"

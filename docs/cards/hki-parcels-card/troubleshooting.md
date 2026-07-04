@@ -37,6 +37,18 @@ Delivered parcels do not appear in the Bezorgd tab.
 
 ---
 
+## Delivered Sent Parcels Section Empty
+
+The *Delivered* section of the Verzonden tab shows no parcels.
+
+**Causes and solutions:**
+
+1. ha-postnl is older than 4.3.1 — the `sensor.*_postnl_outgoing_delivered_parcels` sensor was added in peternijssen/ha-postnl 4.3.1. Update the integration.
+2. The sensor exists but has a different entity ID — add a manual override: `entity_outgoing_delivered: sensor.<your_entity_id>`.
+3. No outgoing parcels have been delivered within the filter period — increase `days_back` or check the integration settings for the delivered filter.
+
+---
+
 ## Sent Parcels Not Visible
 
 The Verzonden tab is empty.

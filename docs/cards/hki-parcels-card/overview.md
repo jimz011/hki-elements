@@ -1,6 +1,6 @@
 # HKI Parcels Card
 
-A multi-carrier parcel tracking card for Home Assistant. Track parcels from PostNL, DHL and DPD in a single unified view, with support for letterbox mail images.
+A multi-carrier parcel tracking card for Home Assistant, designed primarily for Dutch parcel delivery services. Track parcels from PostNL, DHL and DPD in a single unified view, with support for letterbox mail images.
 
 !!! note
     HKI Cards were created for the visual editor in Home Assistant. It is possible that the documentation is not complete for all features.
