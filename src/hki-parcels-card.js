@@ -1,22 +1,86 @@
-﻿// HKI Parcels Card
-// Multi-carrier parcel tracker for PostNL, DHL, DPD and more.
-// Based on the original hki-postnl-card by jimz011/hki-elements.
-// Standalone version: https://github.com/jonisnet/hki-parcels-card
+// ============================================================
+// HKI Parcels Card (standalone fork)
+// ============================================================
+//
+// A generic, multi-carrier parcel-tracking card for Home Assistant
+// (PostNL, DHL, DPD, ...), with automatic per-carrier sensor templating
+// and a dedicated "Letters" tab for PostNL letterbox mail.
+//
+// This card started as a fork of the PostNL card from jimz011/hki-elements
+// (https://github.com/jimz011/hki-elements), originally a single-carrier
+// PostNL tracking card. It has since been substantially rewritten to
+// support multiple carriers, multiple account "users" per carrier, and
+// letter-image matching against Home Assistant's local image.* entities.
+// All credit for the original visual design and the PostNL card concept
+// goes to jimz011. See README.md for full attribution details.
+//
+// License: see LICENSE file in this repository.
 
+window.HKI = window.HKI || {};
+
+window.HKI.getLit = window.HKI.getLit || (() => {
+  let cache = null;
+  return () => {
+    if (cache) return cache;
+    const base =
+      customElements.get("hui-masonry-view") ||
+      customElements.get("ha-panel-lovelace") ||
+      customElements.get("ha-app");
+    const LitElementRef = base ? Object.getPrototypeOf(base) : window.LitElement;
+    const htmlRef = LitElementRef?.prototype?.html || window.html;
+    const cssRef = LitElementRef?.prototype?.css || window.css;
+    cache = { LitElement: LitElementRef, html: htmlRef, css: cssRef };
+    return cache;
+  };
+})();
+
+window.HKI.getSelectValue = window.HKI.getSelectValue || ((ev, options = null) => {
+  const detailValue = ev?.detail?.value;
+  if (detailValue !== undefined && detailValue !== null) return detailValue;
+  const targetValue = ev?.target?.value;
+  if (targetValue !== undefined && targetValue !== null) return targetValue;
+  const currentValue = ev?.currentTarget?.value;
+  if (currentValue !== undefined && currentValue !== null) return currentValue;
+  const idx = Number(ev?.detail?.index);
+  if (Number.isInteger(idx) && idx >= 0) {
+    if (Array.isArray(options)) {
+      const opt = options[idx];
+      if (opt && typeof opt === "object") {
+        if (opt.value !== undefined) return opt.value;
+        if (opt.label !== undefined) return opt.label;
+      }
+      if (opt !== undefined) return opt;
+    }
+    const listItems = ev?.currentTarget?.items || ev?.target?.items;
+    const item = Array.isArray(listItems)
+      ? listItems[idx]
+      : (listItems?.item ? listItems.item(idx) : null);
+    const itemValue = item?.value ?? item?.getAttribute?.("value");
+    if (itemValue !== undefined && itemValue !== null) return itemValue;
+  }
+  return undefined;
+});
+
+
+// ============================================================
+// hki-parcels-card
+// ============================================================
+
+(() => {
 const { LitElement, html, css } = window.HKI.getLit();
-const CARD_VERSION = 'v1.2.1';
+const CARD_VERSION = 'v1.4.0';
 console.info(`%c HKI-PARCELS-CARD %c ${CARD_VERSION} `, 'color: white; background: #ed8c00; font-weight: bold;', 'color: #ed8c00; background: white; font-weight: bold;');
 
 const DEFAULT_CARRIER_ICON = 'mdi:package-variant-closed';
 const DEFAULT_CARRIER_COLOR = '#ed8c00';
-const DEFAULT_PLACEHOLDER_IMAGE = 'https://github.com/jonisnet/hki-parcels-card/blob/main/images/dutch-parcels.png?raw=true';
+const DEFAULT_PLACEHOLDER_IMAGE = 'https://github.com/jonisnet/hki-parcels-card/blob/main/images/shared/dutch-parcels-2.png?raw=true';
 
 function hasPhuIcons() {
     return !!(window.customIconsets && window.customIconsets['phu']);
 }
 
 function getDefaultIcon(carrierType) {
-    const phuMap = { postnl: 'phu:postnl', postnl_v4: 'phu:postnl', dhl: 'phu:dhl', dpd: 'phu:dpd', postnl_legacy: 'phu:postnl' };
+    const phuMap = { postnl: 'phu:postnl', postnl_v4: 'phu:postnl', dhl: 'phu:dhl', dpd: 'phu:dpd', gls: 'phu:gls-group', postnl_legacy: 'phu:postnl' };
     if (hasPhuIcons() && phuMap[carrierType]) return phuMap[carrierType];
     return 'mdi:package-variant-closed';
 }
@@ -40,6 +104,20 @@ const TRANSLATIONS = {
         status_returning:       'Retour naar verzender',
         status_problem:         'Probleem',
         status_unknown:         'Onbekend',
+        step_label_registered:  'Aangemeld',
+        step_label_sorting:     'Sorteercentrum',
+        step_label_transit:     'Onderweg',
+        step_label_delivered:   'Bezorgd',
+        step_info_registered:   'Aangemeld om',
+        step_info_sorting:      'Bij sorteercentrum om',
+        step_info_transit_and:  'en',
+        step_info_delivered:    'Bezorgd op',
+        step_info_expected_delivery: 'Verwachte bezorging',
+        today:                  'Vandaag',
+        tomorrow:               'Morgen',
+        day_after_tomorrow:     'Overmorgen',
+        expected_on:            'Verwacht op',
+        between_time:           'tussen',
         parcel_from:            'Pakket van',
         unknown:                'Onbekend',
         mail_from:              'Post van',
@@ -101,6 +179,7 @@ const TRANSLATIONS = {
         legacy_warning:         'Recreëert de originele hki-postnl-card: één entity met onderweg én bezorgde pakketten, plus een losse entity voor verzonden. Geen brieven, geen sensor-templating. Deze modus krijgt geen verdere updates zolang arjenbos/ha-postnl niet wordt bijgehouden.',
         label_account:          'Account / gebruikersdeel van de sensornaam',
         account_help_suffix:    '_incoming_parcels" etc. De 4 sensoren worden automatisch opgebouwd.',
+        gls_account_help:       'GLS heeft geen account — vul de postcode van je GLS-hub in (bv. 1234AB, zoals ingesteld bij het toevoegen van de integratie).',
         adv_sensors:            'Geavanceerd: sensoren handmatig overschrijven',
         adv_sensors_help:       'Normaal hoef je dit niet aan te passen. Gebruik dit alleen als je sensoren een afwijkende naam hebben.',
         entity_incoming:        'Onderweg Entity (incoming)',
@@ -110,6 +189,7 @@ const TRANSLATIONS = {
         entity_letters:         'Post / Brieven Entity (letters)',
         letters_entity_help:    'Brief-afbeeldingen (image.* entiteiten) worden automatisch gekoppeld op datum.',
         no_letters_support:     'Post/Brieven wordt alleen ondersteund voor PostNL.',
+        no_outgoing_support:    'Verzonden pakketten worden niet ondersteund voor deze carrier.',
         adv_appearance:         'Geavanceerd: uiterlijk overschrijven',
         label_icon:             'Icoon (mdi:...)',
         label_color:            'Kleur',
@@ -148,6 +228,20 @@ const TRANSLATIONS = {
         status_returning:       'Returning to Sender',
         status_problem:         'Problem',
         status_unknown:         'Unknown',
+        step_label_registered:  'Registered',
+        step_label_sorting:     'Sorting centre',
+        step_label_transit:     'Out for delivery',
+        step_label_delivered:   'Delivered',
+        step_info_registered:   'Registered at',
+        step_info_sorting:      'At sorting centre at',
+        step_info_transit_and:  'and',
+        step_info_delivered:    'Delivered on',
+        step_info_expected_delivery: 'Expected delivery',
+        today:                  'Today',
+        tomorrow:               'Tomorrow',
+        day_after_tomorrow:     'The day after tomorrow',
+        expected_on:            'Expected on',
+        between_time:           'between',
         parcel_from:            'Parcel from',
         unknown:                'Unknown',
         mail_from:              'Mail from',
@@ -209,6 +303,7 @@ const TRANSLATIONS = {
         legacy_warning:         'Recreates the original hki-postnl-card: one entity with both in-transit and delivered parcels, plus a separate entity for sent parcels. No letter support, no sensor templating. This mode will not receive further updates as long as arjenbos/ha-postnl is not actively maintained.',
         label_account:          'Account / user part of the sensor name',
         account_help_suffix:    '_incoming_parcels" etc. The 4 sensors are built automatically.',
+        gls_account_help:       'GLS has no account — enter the postal code of your GLS hub (e.g. 1234AB, as set when adding the integration).',
         adv_sensors:            'Advanced: override sensors manually',
         adv_sensors_help:       'You normally don\'t need to change this. Use this only if your sensors have a non-standard name.',
         entity_incoming:        'In Transit entity (incoming)',
@@ -218,6 +313,7 @@ const TRANSLATIONS = {
         entity_letters:         'Letters entity',
         letters_entity_help:    'Letter scan images (image.* entities) are matched automatically by date.',
         no_letters_support:     'Letters are only supported for PostNL.',
+        no_outgoing_support:    'Sent parcels are not supported for this carrier.',
         adv_appearance:         'Advanced: override appearance',
         label_icon:             'Icon (mdi:...)',
         label_color:            'Color',
@@ -255,40 +351,92 @@ function getT(lang) {
 
 const REPO_BASE = 'https://github.com/jonisnet/hki-parcels-card/blob/main/images';
 
+// Per-carrier asset folders (images/<carrier>/...). Keeps the images directory navigable as
+// more carriers are added, instead of one flat folder of prefixed filenames.
+const IMG = {
+    postnl: `${REPO_BASE}/postnl`,
+    dhl:    `${REPO_BASE}/dhl`,
+    dpd:    `${REPO_BASE}/dpd`,
+    gls:    `${REPO_BASE}/gls`,
+};
+
 const CARRIER_REPO_URLS = {
     postnl_v4: 'https://github.com/peternijssen/ha-postnl',
     dhl:       'https://github.com/peternijssen/ha-dhl-nl',
     dpd:       'https://github.com/peternijssen/ha-dpd',
+    gls:       'https://github.com/peternijssen/ha-gls',
 };
 
 const CARRIER_ASSETS = {
     postnl_v4: {
-        logo:   `${REPO_BASE}/postnl-logo.png?raw=true`,
-        van:    `${REPO_BASE}/postnl-van.gif?raw=true`,
-        banner: `${REPO_BASE}/postnl-banner.jpg?raw=true`
+        logo:   `${IMG.postnl}/postnl-logo.png?raw=true`,
+        van:    `${IMG.postnl}/postnl-van.gif?raw=true`,
+        banner: `${IMG.postnl}/postnl-banner.jpg?raw=true`,
+        steps: {
+            registered:      `${IMG.postnl}/postnl_step_registered.png?raw=true`,
+            registered_mini: `${IMG.postnl}/postnl_step_registered_mini.png?raw=true`,
+            sorting:         `${IMG.postnl}/postnl_step_sorting.png?raw=true`,
+            transit:         `${IMG.postnl}/postnl_step_transit.png?raw=true`,
+            delivered:       `${IMG.postnl}/postnl_step_delivered.png?raw=true`,
+            delivered_mini:  `${IMG.postnl}/postnl_step_delivered_mini.png?raw=true`
+        }
     },
     postnl: {
-        logo:   `${REPO_BASE}/postnl-logo.png?raw=true`,
-        van:    `${REPO_BASE}/postnl-van.gif?raw=true`,
-        banner: `${REPO_BASE}/postnl-banner.jpg?raw=true`
+        logo:   `${IMG.postnl}/postnl-logo.png?raw=true`,
+        van:    `${IMG.postnl}/postnl-van.gif?raw=true`,
+        banner: `${IMG.postnl}/postnl-banner.jpg?raw=true`
     },
     dhl: {
-        logo:   `${REPO_BASE}/DHL_logo.png?raw=true`,
-        van:    null,
-        banner: `${REPO_BASE}/DHL_banner.png?raw=true`
+        logo:   `${IMG.dhl}/DHL_logo.png?raw=true`,
+        van:    `${IMG.dhl}/DHL_van.gif?raw=true`,
+        banner: `${IMG.dhl}/DHL_banner.png?raw=true`,
+        steps: {
+            registered:      `${IMG.dhl}/DHL_step_registered.png?raw=true`,
+            registered_mini: `${IMG.dhl}/DHL_step_registered_mini.png?raw=true`,
+            sorting:         `${IMG.dhl}/DHL_step_sorting.png?raw=true`,
+            transit:         `${IMG.dhl}/DHL_step_transit.png?raw=true`,
+            delivered:       `${IMG.dhl}/DHL_step_delivered.png?raw=true`,
+            delivered_mini:  `${IMG.dhl}/DHL_step_delivered_mini.png?raw=true`
+        }
     },
     dpd: {
-        logo:   `${REPO_BASE}/DPD_logo.png?raw=true`,
-        van:    null,
-        banner: `${REPO_BASE}/DPD_banner.png?raw=true`
+        logo:   `${IMG.dpd}/DPD_logo.png?raw=true`,
+        van:    `${IMG.dpd}/DPD_van.gif?raw=true`,
+        banner: `${IMG.dpd}/DPD_banner.png?raw=true`,
+        steps: {
+            registered:      `${IMG.dpd}/DPD_step_registered.png?raw=true`,
+            registered_mini: `${IMG.dpd}/DPD_step_registered_mini.png?raw=true`,
+            sorting:         `${IMG.dpd}/DPD_step_sorting.png?raw=true`,
+            transit:         `${IMG.dpd}/DPD_step_transit.png?raw=true`,
+            delivered:       `${IMG.dpd}/DPD_step_delivered.png?raw=true`,
+            delivered_mini:  `${IMG.dpd}/DPD_step_delivered_mini.png?raw=true`
+        }
+    },
+    gls: {
+        logo:   `${IMG.gls}/GLS_logo.png?raw=true`,
+        van:    `${IMG.gls}/GLS_van.gif?raw=true`,
+        banner: `${IMG.gls}/GLS_banner.png?raw=true`,
+        steps: {
+            registered:      `${IMG.gls}/GLS_step_registered.png?raw=true`,
+            registered_mini: `${IMG.gls}/GLS_step_registered_mini.png?raw=true`,
+            sorting:         `${IMG.gls}/GLS_step_sorting.png?raw=true`,
+            transit:         `${IMG.gls}/GLS_step_transit.png?raw=true`,
+            delivered:       `${IMG.gls}/GLS_step_delivered.png?raw=true`,
+            delivered_mini:  `${IMG.gls}/GLS_step_delivered_mini.png?raw=true`
+        }
     },
     postnl_legacy: {
-        logo:   `${REPO_BASE}/postnl-logo.png?raw=true`,
-        van:    `${REPO_BASE}/postnl-van.gif?raw=true`,
-        banner: `${REPO_BASE}/postnl-banner.jpg?raw=true`
+        logo:   `${IMG.postnl}/postnl-logo.png?raw=true`,
+        van:    `${IMG.postnl}/postnl-van.gif?raw=true`,
+        banner: `${IMG.postnl}/postnl-banner.jpg?raw=true`
     },
     custom: { logo: null, van: null, banner: null }
 };
+
+// Canonical parcel-status happy path, mapped to a 1-based step index.
+// Statuses outside this set (at_pickup_point, returning, problem, unknown) fall
+// back to the plain van/chip + status-text treatment rather than the step tracker.
+const STATUS_STEP_ORDER = ['registered', 'in_transit', 'out_for_delivery', 'delivered'];
 
 const CARRIER_PRESETS = {
     postnl_v4:    { label: 'PostNL',                    icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'canonical',     supports_letters: true,  sensor_slug: 'postnl' },
@@ -296,6 +444,7 @@ const CARRIER_PRESETS = {
     dhl:          { label: 'DHL',                        icon: 'mdi:package-variant-closed', color: '#ffcc00', schema: 'canonical',     supports_letters: false, sensor_slug: 'dhl'    },
     dpd:          { label: 'DPD',                        icon: 'mdi:package-variant-closed', color: '#dc0032', schema: 'canonical',     supports_letters: false, sensor_slug: 'dpd',
                     slug_first_suffixes: { incoming: 'binnenkomende_pakketten', delivered: 'bezorgde_pakketten', outgoing: 'uitgaande_pakketten', outgoing_delivered: null, letters: null } },
+    gls:          { label: 'GLS',                        icon: 'mdi:package-variant-closed', color: '#061ab1', schema: 'canonical',     supports_letters: false, supports_outgoing: false, sensor_slug: 'gls'    },
     postnl_legacy:{ label: 'PostNL (arjenbos)',          icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'single_entity', supports_letters: false, sensor_slug: null     },
     custom:       { label: 'Custom',                     icon: 'mdi:package-variant-closed', color: '#ed8c00', schema: 'canonical',     supports_letters: false, sensor_slug: null     }
 };
@@ -308,34 +457,151 @@ function slugifyUserSlug(text) {
         .replace(/^_+|_+$/g, '');
 }
 
-function buildTemplatedEntities(user, carrierType, slugFirst = false) {
+// Universal English/Dutch suffix alternates for each entity slot, tried by
+// every carrier on top of any carrier-specific override (e.g. DPD's own
+// word choices in slug_first_suffixes — those still take priority as the
+// primary guess, this is just an extra safety net). Needed because:
+// - a has_entity_name entity's entity_id is derived from whatever language
+//   HA was displaying when it was first created, not from the (English)
+//   translation_key — so the exact same integration code can produce an
+//   English or a Dutch suffix depending on the install.
+// - some integrations (seen on DHL and PostNL) keep legacy
+//   pre-has_entity_name sensors in one prefix ordering while brand-new
+//   ones land in the current <device-name-slug>_<entity-name-slug>
+//   ("slug first") ordering, within the very same account — so language
+//   AND ordering can each vary independently per sensor, not just per carrier.
+const CANONICAL_SUFFIXES = {
+    incoming:           ['incoming_parcels', 'inkomende_pakketten'],
+    delivered:          ['delivered_parcels', 'bezorgde_pakketten'],
+    outgoing:           ['outgoing_parcels', 'uitgaande_pakketten'],
+    outgoing_delivered: ['outgoing_delivered_parcels', 'delivered_outgoing_parcels', 'bezorgde_uitgaande_pakketten', 'uitgaande_bezorgde_pakketten'],
+    letters:            ['letters', 'brieven'],
+};
+
+// Builds a candidate entity_id and, when `hass` is available, verifies it
+// against real state before accepting it. Tries the primary guess
+// (`base` + `suffix`) first, then `base` + every alternate in
+// `preset.translated_suffixes[slotKey]` (carrier-specific, if any) and
+// `CANONICAL_SUFFIXES[slotKey]` (universal), then repeats all of that
+// against `altBase` — the *other* prefix/slug ordering. Falls back to the
+// primary guess as a placeholder when nothing matches (fresh install,
+// sensor not created yet).
+function resolveEntityId(hass, base, altBase, slotKey, suffix, preset) {
+    const guess = `sensor.${base}_${suffix}`;
+    if (!hass?.states) return guess;
+
+    const suffixes = [suffix, ...(preset.translated_suffixes?.[slotKey] || []), ...(CANONICAL_SUFFIXES[slotKey] || [])];
+    for (const b of [base, altBase]) {
+        for (const suf of suffixes) {
+            const candidate = `sensor.${b}_${suf}`;
+            if (hass.states[candidate]) return candidate;
+        }
+    }
+    return guess;
+}
+
+function buildTemplatedEntities(user, carrierType, slugFirst = false, hass = null) {
     const preset = CARRIER_PRESETS[carrierType] || CARRIER_PRESETS.custom;
     const slug = preset.sensor_slug;
     if (!slug) {
         return { entity_incoming: null, entity_delivered: null, entity_outgoing: null, entity_outgoing_delivered: null, entity_letters: null };
     }
     const u = slugifyUserSlug(user);
+    const userFirstBase = u ? `${u}_${slug}` : slug;
+    const slugFirstBase = u ? `${slug}_${u}` : slug;
     // slugFirst: sensor.<slug>_<user>_* (e.g. sensor.dpd_keesb_binnenkomende_pakketten)
     // userFirst: sensor.<user>_<slug>_* or sensor.<slug>_* when no prefix
     if (slugFirst && u) {
         const sf = preset.slug_first_suffixes;
-        const s = (key, fallback) => sf?.[key] != null ? `sensor.${slug}_${u}_${sf[key]}` : (sf?.[key] === null ? null : `sensor.${slug}_${u}_${fallback}`);
+        const s = (key, fallback) => sf?.[key] != null
+            ? resolveEntityId(hass, slugFirstBase, userFirstBase, key, sf[key], preset)
+            : (sf?.[key] === null ? null : resolveEntityId(hass, slugFirstBase, userFirstBase, key, fallback, preset));
         return {
             entity_incoming:          s('incoming',          'incoming_parcels'),
             entity_delivered:         s('delivered',         'delivered_parcels'),
-            entity_outgoing:          s('outgoing',          'outgoing_parcels'),
-            entity_outgoing_delivered:s('outgoing_delivered','outgoing_delivered_parcels'),
+            entity_outgoing:          preset.supports_outgoing !== false ? s('outgoing',          'outgoing_parcels') : null,
+            entity_outgoing_delivered:preset.supports_outgoing !== false ? s('outgoing_delivered','outgoing_delivered_parcels') : null,
             entity_letters: preset.supports_letters ? s('letters', 'letters') : null
         };
     }
-    const prefix = u ? `${u}_` : '';
     return {
-        entity_incoming:          `sensor.${prefix}${slug}_incoming_parcels`,
-        entity_delivered:         `sensor.${prefix}${slug}_delivered_parcels`,
-        entity_outgoing:          `sensor.${prefix}${slug}_outgoing_parcels`,
-        entity_outgoing_delivered:`sensor.${prefix}${slug}_outgoing_delivered_parcels`,
-        entity_letters: preset.supports_letters ? `sensor.${prefix}${slug}_letters` : null
+        entity_incoming:          resolveEntityId(hass, userFirstBase, slugFirstBase, 'incoming', 'incoming_parcels', preset),
+        entity_delivered:         resolveEntityId(hass, userFirstBase, slugFirstBase, 'delivered', 'delivered_parcels', preset),
+        entity_outgoing:          preset.supports_outgoing !== false ? resolveEntityId(hass, userFirstBase, slugFirstBase, 'outgoing', 'outgoing_parcels', preset) : null,
+        entity_outgoing_delivered:preset.supports_outgoing !== false ? resolveEntityId(hass, userFirstBase, slugFirstBase, 'outgoing_delivered', 'outgoing_delivered_parcels', preset) : null,
+        entity_letters: preset.supports_letters ? resolveEntityId(hass, userFirstBase, slugFirstBase, 'letters', 'letters', preset) : null
     };
+}
+
+// Returns { user, slugFirst }[] for all detected accounts of a carrier type.
+// Tries every known "incoming" suffix — the carrier's own override (if any)
+// plus the universal English/Dutch alternates in CANONICAL_SUFFIXES — against
+// both "sensor.<user>_<slug>_<suffix>" and "sensor.<slug>_<user>_<suffix>",
+// since language and prefix ordering can each vary independently per sensor
+// (see CANONICAL_SUFFIXES / resolveEntityId above). Module-level (not tied to
+// the editor instance) so both the editor's account-detection UI and
+// HkiParcelsCard.getStubConfig() (auto-populating carriers on first add) can
+// use it.
+function detectCarrierUsers(hass, carrierType) {
+    if (!hass) return [];
+    const preset = CARRIER_PRESETS[carrierType];
+    if (!preset?.sensor_slug) return [];
+    const slug = preset.sensor_slug;
+    const incomingSuffixes = [
+        ...(preset.slug_first_suffixes?.incoming != null ? [preset.slug_first_suffixes.incoming] : []),
+        ...CANONICAL_SUFFIXES.incoming,
+    ];
+    const patterns = incomingSuffixes.map(suffix => ({
+        userFirst: new RegExp(`^sensor\\.(.+)_${slug}_${suffix}$`),
+        slugFirst: new RegExp(`^sensor\\.${slug}_(.+)_${suffix}$`),
+        noPrefix:  new RegExp(`^sensor\\.${slug}_${suffix}$`),
+    }));
+    const seen = new Map(); // user → slugFirst
+    for (const entityId of Object.keys(hass.states)) {
+        for (const { userFirst, slugFirst, noPrefix } of patterns) {
+            const m1 = userFirst.exec(entityId);
+            if (m1 && !seen.has(m1[1])) { seen.set(m1[1], false); break; }
+            const m2 = slugFirst.exec(entityId);
+            if (m2 && !seen.has(m2[1])) { seen.set(m2[1], true); break; }
+            if (noPrefix.test(entityId) && !seen.has('')) { seen.set('', false); break; }
+        }
+    }
+    return [...seen.entries()].map(([user, slugFirst]) => ({ user, slugFirst }));
+}
+
+// The carrier types offered for auto-population when the card is first added
+// (HkiParcelsCard.getStubConfig). Excludes postnl (legacy v3.x — same
+// sensor_slug as postnl_v4, so detection can't tell them apart; v4 is the
+// recommended default and the user can switch the type manually if they're
+// still on v3.x) and postnl_legacy / custom (sensor_slug is null — no
+// entity-based detection is possible for those).
+const AUTO_DETECT_CARRIER_TYPES = ['postnl_v4', 'dhl', 'dpd', 'gls'];
+
+// Infers a sensible days_back for a freshly auto-populated card: the number
+// of days since the oldest currently-visible delivered parcel, across every
+// detected carrier's delivered sensor, whichever is largest. This is an
+// approximation, not the integration's own configured delivered-filter
+// setting — a Lovelace card has no supported way to read another
+// integration's stored config-entry options (that only lives in its own
+// options-flow, not in any entity state/attribute a card can see). Falls
+// back to 90 (the long-standing static default) when nothing is known yet
+// (fresh accounts with no delivered history, or hass unavailable).
+function inferDaysBack(hass, carriers) {
+    const DEFAULT_DAYS_BACK = 90;
+    if (!hass?.states) return DEFAULT_DAYS_BACK;
+    const now = Date.now();
+    let maxDays = 0;
+    for (const carrier of carriers) {
+        const stateObj = hass.states[carrier.entity_delivered];
+        for (const parcel of stateObj?.attributes?.parcels || []) {
+            if (!parcel?.delivered_at) continue;
+            const deliveredMs = Date.parse(parcel.delivered_at);
+            if (Number.isNaN(deliveredMs)) continue;
+            const daysAgo = Math.ceil((now - deliveredMs) / 86400000);
+            if (daysAgo > maxDays) maxDays = daysAgo;
+        }
+    }
+    return maxDays > 0 ? maxDays : DEFAULT_DAYS_BACK;
 }
 
 // Both lowercase (DHL/DPD) and uppercase (ha-postnl v4.x) enum values are accepted.
@@ -397,20 +663,41 @@ class HkiParcelsCard extends HTMLElement {
         return document.createElement("hki-parcels-card-editor");
     }
 
-    static getStubConfig() {
-        return {
-            title: "Parcels",
-            days_back: 90,
-            show_delivered: true,
-            show_sent: true,
-            show_letters: true,
-            show_animation: true,
-            show_header: true,
-            show_placeholder: true,
-            header_color: '',
-            header_text_color: '',
-            placeholder_image: DEFAULT_PLACEHOLDER_IMAGE,
-            carriers: [
+    // HA calls this with the live `hass` object when the card is first added
+    // to a dashboard, before the editor opens. Auto-populates one carrier
+    // entry per detected account across every installed carrier integration
+    // (PostNL, DHL, DPD, GLS), fully filled in via the same detection/entity
+    // resolution the editor itself uses — instead of a fixed PostNL+DHL
+    // example that had nothing to do with what's actually installed.
+    // Falls back to that static example when hass isn't available yet or
+    // nothing gets detected (fresh HA instance, no carriers configured).
+    static getStubConfig(hass) {
+        const carriers = [];
+        if (hass) {
+            for (const type of AUTO_DETECT_CARRIER_TYPES) {
+                const preset = CARRIER_PRESETS[type];
+                for (const { user, slugFirst } of detectCarrierUsers(hass, type)) {
+                    const templated = buildTemplatedEntities(user, type, slugFirst, hass);
+                    carriers.push({
+                        type,
+                        name: preset.label,
+                        icon: getDefaultIcon(type),
+                        color: preset.color,
+                        schema: preset.schema,
+                        logo_path: '', van_path: '', banner_path: '',
+                        user,
+                        entity_incoming: templated.entity_incoming || '',
+                        entity_delivered: templated.entity_delivered || '',
+                        entity_outgoing: preset.supports_outgoing === false ? '' : (templated.entity_outgoing || ''),
+                        entity_outgoing_delivered: preset.supports_outgoing === false ? '' : (templated.entity_outgoing_delivered || ''),
+                        entity_letters: preset.supports_letters ? (templated.entity_letters || '') : ''
+                    });
+                }
+            }
+        }
+
+        if (!carriers.length) {
+            carriers.push(
                 {
                     type: 'postnl',
                     name: 'PostNL',
@@ -437,7 +724,22 @@ class HkiParcelsCard extends HTMLElement {
                     entity_outgoing_delivered: 'sensor.dhl_outgoing_delivered_parcels',
                     entity_letters: ''
                 }
-            ],
+            );
+        }
+
+        return {
+            title: "Parcels",
+            days_back: inferDaysBack(hass, carriers),
+            show_delivered: true,
+            show_sent: true,
+            show_letters: true,
+            show_animation: true,
+            show_header: true,
+            show_placeholder: true,
+            header_color: '',
+            header_text_color: '',
+            placeholder_image: DEFAULT_PLACEHOLDER_IMAGE,
+            carriers,
             show_tracking_link: true,
             layout_order: ['header', 'animation', 'tabs', 'list']
         };
@@ -481,7 +783,8 @@ class HkiParcelsCard extends HTMLElement {
             carrier_color:  carrier.color  || preset.color || DEFAULT_CARRIER_COLOR,
             carrier_logo:   carrier.logo_path   || assets.logo   || '',
             carrier_van:    carrier.van_path    || assets.van    || '',
-            carrier_banner: carrier.banner_path || assets.banner || ''
+            carrier_banner: carrier.banner_path || assets.banner || '',
+            carrier_steps:  assets.steps || null
         };
     }
 
@@ -552,6 +855,14 @@ class HkiParcelsCard extends HTMLElement {
     }
 
     _getCarrierSensorItems(carrier, entityField) {
+        // Carriers without a sender/account concept (e.g. GLS) never have real outgoing
+        // sensors. Ignoring the field here — not just hiding it in the editor — also
+        // protects against a saved config that still has a stale entity reference left
+        // over from switching a carrier's type (e.g. postnl_v4 -> gls) before this was fixed.
+        if ((entityField === 'entity_outgoing' || entityField === 'entity_outgoing_delivered')
+            && (CARRIER_PRESETS[carrier.type] || CARRIER_PRESETS.custom).supports_outgoing === false) {
+            return [];
+        }
         const entityId = carrier[entityField];
         if (!entityId || !this._hass) return [];
         const stateObj = this._hass.states[entityId];
@@ -798,15 +1109,36 @@ class HkiParcelsCard extends HTMLElement {
     }
 
     _getNoSelectionBackground() {
-        const DEFAULT_PLACEHOLDER = `${REPO_BASE}/dutch-parcels.png?raw=true`;
         const carriers = this.config.carriers || [];
-        const placeholderImage = this.config.placeholder_image || DEFAULT_PLACEHOLDER;
-        if (carriers.length >= 2) return { image: placeholderImage, showText: false };
+        // setConfig() always fills placeholder_image with DEFAULT_PLACEHOLDER_IMAGE when the
+        // user leaves it blank, so a plain truthiness check can't tell "default" from "custom".
+        const hasCustomPlaceholder = !!this.config.placeholder_image
+            && this.config.placeholder_image !== DEFAULT_PLACEHOLDER_IMAGE;
+        const placeholderImage = this.config.placeholder_image || DEFAULT_PLACEHOLDER_IMAGE;
+
         if (carriers.length === 1) {
             const b = this._carrierBranding(carriers[0]);
             const image = b.carrier_banner || b.carrier_logo;
             if (image) return { image, showText: false };
+            return { image: placeholderImage, showText: false };
         }
+
+        // 2+ carriers: build a combo banner showing only the configured carriers'
+        // own logos, instead of a static image with every possible carrier on it.
+        // A user-supplied placeholder_image always wins over this.
+        if (carriers.length >= 2 && !hasCustomPlaceholder) {
+            const seen = new Set();
+            const combo = [];
+            for (const c of carriers) {
+                const b = this._carrierBranding(c);
+                const key = b.carrier_logo || `${c.type}:${b.carrier_name}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                combo.push(b);
+            }
+            if (combo.length) return { image: null, showText: false, comboLogos: combo };
+        }
+
         return { image: placeholderImage, showText: false };
     }
 
@@ -874,6 +1206,160 @@ class HkiParcelsCard extends HTMLElement {
         }
     }
 
+    // Renders the 4-step happy-path tracker: a small progress row (registered / in_transit /
+    // out_for_delivery / delivered) plus a large "hero" for the current step — the carrier's own
+    // step illustration for registered/sorting/delivered, or the existing driving-van visual for
+    // out_for_delivery (stepIndex 3), since that's already exactly what "onderweg met bezorger" is.
+    _renderStatusTracker(selected, stepIndex) {
+        const color = selected.carrier_color || DEFAULT_CARRIER_COLOR;
+        const stepKeys = ['registered', 'sorting', 'transit', 'delivered'];
+        const stepMiniKeys = ['registered_mini', 'sorting', 'transit', 'delivered_mini'];
+        const stepLabelKeys = ['step_label_registered', 'step_label_sorting', 'step_label_transit', 'step_label_delivered'];
+        const steps = selected.carrier_steps || {};
+        const isFinalStep = stepIndex === STATUS_STEP_ORDER.length;
+        const dots = STATUS_STEP_ORDER.map((_, i) => {
+            const n = i + 1;
+            // Reaching the last step (delivered) IS completion, so it gets the done/checkmark
+            // treatment too, not just the "current" ring — there's no step after it to await.
+            const state = n < stepIndex || (n === stepIndex && isFinalStep) ? 'done' : n === stepIndex ? 'current' : 'upcoming';
+            const colorVar = state !== 'upcoming' ? ` style="--step-color:${color};"` : '';
+            // Mini icons never carry a baked-in checkmark (registered/delivered have a plain
+            // variant) — completion is shown only via the overlay badge below, never both.
+            const icon = steps[stepMiniKeys[i]] || steps[stepKeys[i]];
+            const label = this._t(stepLabelKeys[i]);
+            const col = `
+                <div class="status-step-col">
+                    <div class="status-step-icon-wrap ${state}">
+                        ${icon ? `<img class="status-step-icon" src="${icon}" alt="${label}" />` : ''}
+                        ${state === 'done' ? `<div class="status-step-check"${colorVar}><ha-icon icon="mdi:check"></ha-icon></div>` : ''}
+                    </div>
+                    <div class="status-step-label ${state !== 'upcoming' ? 'active' : ''}">${label}</div>
+                </div>`;
+            if (n === STATUS_STEP_ORDER.length) return col;
+            const lineDone = n < stepIndex;
+            return `${col}<div class="status-step-line ${lineDone ? 'done' : ''}"${lineDone ? ` style="--step-color:${color};"` : ''}></div>`;
+        }).join('');
+
+        let heroImgHtml;
+        if (stepIndex === 3) {
+            heroImgHtml = `
+                <div class="visual-road">
+                    <div class="house-bg">🏠</div>
+                    <div class="road-line"></div>
+                    ${selected.carrier_van
+                        ? `<img class="carrier-van-gif" src="${selected.carrier_van}" alt="${selected.carrier_name || ''}" style="left:25%;" />`
+                        : `<div class="carrier-chip" style="background:${color}; left:25%;"><ha-icon icon="${selected.carrier_icon || DEFAULT_CARRIER_ICON}"></ha-icon></div>`}
+                </div>`;
+        } else {
+            const key = stepIndex === 1 ? 'registered' : stepIndex === 2 ? 'sorting' : 'delivered';
+            const img = steps[key];
+            heroImgHtml = img ? `<div class="status-hero"><img class="status-hero-img" src="${img}" alt="" /></div>` : '';
+        }
+
+        const infos = this._stepHeroInfo(selected, stepIndex);
+        const heroHtml = heroImgHtml ? `
+            <div class="status-hero-row">
+                ${heroImgHtml}
+                ${infos.length ? `
+                <div class="status-hero-info">
+                    ${infos.map(info => `
+                    <div class="status-hero-info-block">
+                        <div class="status-hero-info-label">${info.label}</div>
+                        <div class="status-hero-info-time">${info.time}</div>
+                    </div>`).join('')}
+                </div>` : ''}
+            </div>` : '';
+
+        return `
+            <div class="status-tracker">
+                <div class="status-steps">${dots}</div>
+                ${heroHtml}
+            </div>
+            <div class="animation-info"><strong>${selected.name}</strong> • ${selected.status_message || ''} • ${selected.carrier_name || ''}</div>`;
+    }
+
+    // Time/date detail(s) shown beside the hero image for the current step, each as a label line
+    // plus a bold time/date line underneath it. Registered/sorting times come from the optional
+    // per-parcel `history` array (only populated when the integration's "include history" option
+    // is on). Every non-delivered step additionally shows the expected delivery window (if known)
+    // using the same relative-day wording as the parcel list ("Today between 16:00 and 18:00") —
+    // for "out for delivery" that's the only block, since it has no step-specific timestamp of its
+    // own. Delivered uses delivered_at only; nothing is "expected" once it's already arrived.
+    // Returns [] when no relevant data is available rather than showing a placeholder.
+    _stepHeroInfo(selected, stepIndex) {
+        const infos = [];
+        const historyTime = (status) => {
+            const entry = Array.isArray(selected.history) ? selected.history.find(h => h?.status === status) : null;
+            return entry?.timestamp ? this._formatTime(entry.timestamp) : null;
+        };
+        if (stepIndex === 1) {
+            const time = historyTime('registered');
+            if (time) infos.push({ label: this._t('step_info_registered'), time });
+        } else if (stepIndex === 2) {
+            const time = historyTime('in_transit');
+            if (time) infos.push({ label: this._t('step_info_sorting'), time });
+        } else if (stepIndex === 4) {
+            const dt = this.formatDate(selected.delivered_at);
+            if (dt) infos.push({ label: this._t('step_info_delivered'), time: dt });
+        }
+        if (stepIndex !== 4) {
+            const parts = this._expectedDeliveryParts(selected);
+            if (parts) infos.push({ label: this._t('step_info_expected_delivery'), time: `${parts.dayPart} ${parts.timePart}` });
+        }
+        return infos;
+    }
+
+    // Shared building block for "expected delivery" wording — a relative-day label ("Today" /
+    // "Tomorrow" / "The day after tomorrow", or an "Expected on {date}" fallback beyond that) plus
+    // the planned time or window. Used by both the parcel list and the step tracker hero info so
+    // they read consistently. Returns null when there's no planned_from to work with.
+    _expectedDeliveryParts(item) {
+        if (!item.planned_from) return null;
+        const dayLabel = this._relativeDayLabel(item.planned_from);
+        const fromTime = this._formatTime(item.planned_from);
+        const toTime = item.planned_to ? this._formatTime(item.planned_to) : null;
+        const dayPart = dayLabel || `${this._t('expected_on')} ${this._formatDateOnly(item.planned_from)}`;
+        const timePart = toTime ? `${this._t('between_time')} ${fromTime} ${this._t('step_info_transit_and')} ${toTime}` : fromTime;
+        return { dayPart, timePart };
+    }
+
+    _formatTime(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleTimeString(this._hass?.language || 'en', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    _formatDateOnly(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString(this._hass?.language || 'en', { day: 'numeric', month: 'short' });
+    }
+
+    // 'Today' / 'Tomorrow' / 'the day after tomorrow' for a date within the next 2 calendar
+    // days; null otherwise so the caller can fall back to an actual date.
+    _relativeDayLabel(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        const now = new Date();
+        const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+        const diffDays = Math.round((startOfDay(d) - startOfDay(now)) / 86400000);
+        if (diffDays === 0) return this._t('today');
+        if (diffDays === 1) return this._t('tomorrow');
+        if (diffDays === 2) return this._t('day_after_tomorrow');
+        return null;
+    }
+
+    // The parcel list row's date label. An expected delivery window (planned_from/planned_to —
+    // "verwachte levertijd") always wins over any other date for a parcel still in transit, since
+    // it's the most actionable info; shown as "Today between 16:00 and 18:00" or, beyond the next
+    // 2 days, "Expected on 12 Jul between 16:00 and 18:00". Delivered parcels are unaffected —
+    // they show their actual delivery timestamp, never an "expected" one.
+    _parcelDateLabel(item) {
+        if (!item.delivered) {
+            const parts = this._expectedDeliveryParts(item);
+            if (parts) return `${parts.dayPart} ${parts.timePart}`;
+        }
+        return this.formatDate(item.delivery_date || item.planned_date || item.planned_to);
+    }
+
     updateAnimation(displayed) {
         const animationEl = this.shadowRoot.querySelector('.header-animation');
         if (!animationEl) return;
@@ -884,6 +1370,21 @@ class HkiParcelsCard extends HTMLElement {
             : null;
 
         animationEl.style.backgroundImage = '';
+        animationEl.classList.remove('combo-placeholder');
+        animationEl.classList.remove('status-tracker-active');
+
+        // 4-step happy-path tracker (registered -> in_transit -> out_for_delivery -> delivered),
+        // only for canonical-schema carriers that have step illustrations configured. Letters and
+        // any other status (at_pickup_point, returning, problem, unknown) fall through to the
+        // plain van/chip + status-text treatment below, unchanged.
+        const stepIndex = (selected && !selected.is_letter && selected.carrier_steps)
+            ? STATUS_STEP_ORDER.indexOf(selected.status) + 1 : 0;
+        if (this.config.show_animation && selected && stepIndex > 0) {
+            animationEl.classList.add('animation-active');
+            animationEl.classList.add('status-tracker-active');
+            animationEl.innerHTML = this._renderStatusTracker(selected, stepIndex);
+            return;
+        }
 
         if (this.config.show_animation && selected?.delivered) {
             const isLetter = !!selected.is_letter;
@@ -925,6 +1426,18 @@ class HkiParcelsCard extends HTMLElement {
                 return;
             }
             const bg = this._getNoSelectionBackground();
+            if (bg.comboLogos) {
+                animationEl.classList.add('combo-placeholder');
+                animationEl.innerHTML = `<div class="combo-logo-row">${bg.comboLogos.map(c => `
+                    <div class="combo-panel" style="--panel-color:${c.carrier_color || DEFAULT_CARRIER_COLOR};" title="${c.carrier_name || ''}">
+                        <div class="combo-panel-bg"></div>
+                        ${c.carrier_logo
+                            ? `<img class="combo-logo" src="${c.carrier_logo}" alt="${c.carrier_name || ''}" />`
+                            : `<div class="combo-logo-chip" style="background:${c.carrier_color || DEFAULT_CARRIER_COLOR};"><ha-icon icon="${c.carrier_icon || DEFAULT_CARRIER_ICON}"></ha-icon></div>`}
+                    </div>`
+                ).join('')}</div>`;
+                return;
+            }
             animationEl.style.backgroundImage = bg.image ? `url("${bg.image.replace(/"/g, '%22')}")` : '';
             animationEl.innerHTML = bg.showText
                 ? `<div class="animation-placeholder"><div class="placeholder-text">${this._t('select_parcel')}</div></div>`
@@ -936,7 +1449,7 @@ class HkiParcelsCard extends HTMLElement {
         const isDelivered = item.delivered;
         const isLetter    = !!item.is_letter;
         const statusMsg   = item.status_message || (isLetter ? this._t('letterbox_mail') : (isDelivered ? this._t('status_delivered') : this._t('status_in_transit')));
-        const dateLabel   = this.formatDate(item.delivery_date || item.planned_date || item.planned_to);
+        const dateLabel   = this._parcelDateLabel(item);
         const statusIcon  = isLetter ? 'mdi:email' : (isDelivered ? 'mdi:check-circle' : 'mdi:truck-delivery');
         const isSelected  = this._selectedParcel === item.key;
 
@@ -1060,7 +1573,7 @@ class HkiParcelsCard extends HTMLElement {
             }
             ha-card { background: var(--bg-color); color: var(--primary-text-color); overflow: hidden; border-radius: 12px; }
             .header { background: var(--header-bg); padding: 16px; color: var(--header-text); display: flex; align-items: center; gap: 12px; }
-            .header-logo { height: 36px; border-radius: 6px; background: white; padding: 4px; flex-shrink: 0; }
+            .header-logo { height: 36px; max-width: 110px; border-radius: 6px; background: white; padding: 4px; box-sizing: border-box; object-fit: contain; flex-shrink: 0; }
             .header-info { display: flex; flex-direction: column; flex: 1; }
             .header-title { font-weight: bold; font-size: 1.1em; }
             .header-stats { font-size: 0.8em; opacity: 0.9; }
@@ -1073,7 +1586,39 @@ class HkiParcelsCard extends HTMLElement {
             .tab.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent); }
             .header-animation { background-size: cover; background-position: center; background-repeat: no-repeat; padding: 16px; border-bottom: 1px solid var(--divider-color); height: 150px; box-sizing: border-box; }
             .header-animation.animation-active { background-image: none !important; background-color: var(--card-background-color); }
-            .visual-road { position: relative; height: 80px; display: flex; align-items: center; }
+            .header-animation.combo-placeholder { background-image: none !important; background-color: var(--card-background-color); display: flex; padding: 0 !important; }
+            .header-animation.status-tracker-active { height: auto; min-height: 150px; padding-top: 14px; padding-bottom: 12px; }
+            .status-tracker { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+            .status-steps { display: flex; align-items: flex-start; width: 100%; }
+            /* Columns hold their 72px size as long as there's room; lines (flex-shrink: 20)
+               absorb space pressure first so icons only shrink as a last resort on very
+               narrow cards — keeps the row from overflowing on mobile without shrinking
+               icons unnecessarily on normal-width cards. */
+            .status-step-col { display: flex; flex-direction: column; align-items: center; flex: 0 1 72px; min-width: 40px; }
+            .status-step-icon-wrap { position: relative; width: 100%; max-width: 72px; aspect-ratio: 1 / 1; border-radius: 16px; box-sizing: border-box; background: var(--secondary-background-color, #eee); border: 1px solid var(--divider-color); display: flex; align-items: center; justify-content: center; opacity: 0.5; filter: grayscale(70%); transition: opacity 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease; }
+            .status-step-icon-wrap.current, .status-step-icon-wrap.done { opacity: 1; filter: none; box-shadow: 0 0 0 2.5px var(--step-color); }
+            .status-step-icon { width: 100%; height: 100%; object-fit: contain; padding: 6px; box-sizing: border-box; }
+            .status-step-check { position: absolute; bottom: -7px; right: -7px; width: 26px; height: 26px; border-radius: 50%; background: var(--step-color); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px var(--card-background-color, #fff); }
+            .status-step-check ha-icon { --mdc-icon-size: 16px; color: #fff; }
+            .status-step-label { margin-top: 7px; font-size: 11.5px; line-height: 1.2; text-align: center; color: var(--secondary-text-color); }
+            .status-step-label.active { color: var(--primary-text-color); font-weight: 600; }
+            .status-step-line { flex: 1 20 12px; min-width: 0; height: 2px; background: var(--divider-color); margin-top: 35px; }
+            .status-step-line.done { background: var(--step-color); }
+            .status-hero-row { display: flex; align-items: center; gap: 16px; width: 100%; box-sizing: border-box; }
+            .status-hero { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; height: 118px; }
+            .status-hero-img { max-height: 100%; max-width: 100%; object-fit: contain; }
+            .status-hero-info { flex: 0 1 42%; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+            .status-hero-info-label { font-size: 14px; line-height: 1.35; color: var(--secondary-text-color); }
+            .status-hero-info-time { font-size: 16px; line-height: 1.35; font-weight: 700; color: var(--primary-text-color); margin-top: 2px; }
+            .combo-logo-row { display: flex; width: 100%; height: 100%; }
+            .combo-panel { flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+            .combo-panel:not(:last-child)::after { content: ''; position: absolute; right: 0; top: 24%; bottom: 24%; width: 1px; background: var(--divider-color); opacity: 0.7; }
+            .combo-panel-bg { position: absolute; inset: 0; background: var(--panel-color); opacity: 0.09; }
+            .combo-logo { max-height: 46%; max-width: 62%; object-fit: contain; position: relative; z-index: 1; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15)); transition: transform 0.2s ease; }
+            .combo-panel:hover .combo-logo { transform: scale(1.06); }
+            .combo-logo-chip { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; position: relative; z-index: 1; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+            .combo-logo-chip ha-icon { --mdc-icon-size: 22px; }
+            .visual-road { position: relative; flex: 1 1 auto; min-width: 0; height: 80px; display: flex; align-items: center; box-sizing: border-box; }
             .house-bg { position: absolute; right: 0; font-size: 32px; }
             .road-line { position: absolute; left: 0; right: 40px; height: 2px; background: var(--divider-color); top: 50%; }
             .carrier-chip { position: absolute; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; top: 50%; transform: translateY(-50%); transition: left 0.4s ease; }
@@ -1247,7 +1792,7 @@ class HkiParcelsCardEditor extends LitElement {
         const detectedEntry = detected.length === 1 ? detected[0] : null;
         const autoUser     = current.user != null ? current.user : (detectedEntry?.user ?? '');
         const slugFirst    = detectedEntry?.slugFirst ?? false;
-        const templated    = !isSingle && detectedEntry !== null ? buildTemplatedEntities(autoUser, type, slugFirst) : {};
+        const templated    = !isSingle && detectedEntry !== null ? buildTemplatedEntities(autoUser, type, slugFirst, this.hass) : {};
         carriers[index] = {
             ...current, type,
             name: preset.label, icon: getDefaultIcon(type), color: preset.color, schema: preset.schema,
@@ -1256,8 +1801,8 @@ class HkiParcelsCardEditor extends LitElement {
             _manualUser: !!current.user,
             entity_incoming:    isSingle ? '' : (templated.entity_incoming    ?? current.entity_incoming    ?? ''),
             entity_delivered:   isSingle ? '' : (templated.entity_delivered   ?? current.entity_delivered   ?? ''),
-            entity_outgoing:    isSingle ? '' : (templated.entity_outgoing    ?? current.entity_outgoing    ?? ''),
-            entity_outgoing_delivered: isSingle ? '' : (templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? ''),
+            entity_outgoing:    (isSingle || preset.supports_outgoing === false) ? '' : (templated.entity_outgoing    ?? current.entity_outgoing    ?? ''),
+            entity_outgoing_delivered: (isSingle || preset.supports_outgoing === false) ? '' : (templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? ''),
             entity:             isSingle ? (current.entity ?? '') : '',
             distribution_entity:isSingle ? (current.distribution_entity ?? '') : '',
             entity_letters:     preset.supports_letters ? (templated.entity_letters ?? current.entity_letters ?? '') : ''
@@ -1271,14 +1816,15 @@ class HkiParcelsCardEditor extends LitElement {
         const user    = this._val(ev);
         const carriers = [...(this._config.carriers || [])];
         const current = carriers[index] || {};
-        const templated = buildTemplatedEntities(user, current.type);
+        const templated = buildTemplatedEntities(user, current.type, false, this.hass);
+        const preset = CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom;
         carriers[index] = {
             ...current, user,
             entity_incoming:  templated.entity_incoming  ?? current.entity_incoming  ?? '',
             entity_delivered: templated.entity_delivered ?? current.entity_delivered ?? '',
-            entity_outgoing:  templated.entity_outgoing  ?? current.entity_outgoing  ?? '',
-            entity_outgoing_delivered: templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? '',
-            entity_letters:   (CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom).supports_letters
+            entity_outgoing:  preset.supports_outgoing === false ? '' : (templated.entity_outgoing  ?? current.entity_outgoing  ?? ''),
+            entity_outgoing_delivered: preset.supports_outgoing === false ? '' : (templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? ''),
+            entity_letters:   preset.supports_letters
                 ? (templated.entity_letters ?? current.entity_letters ?? '') : ''
         };
         this._config = { ...this._config, carriers };
@@ -1293,7 +1839,7 @@ class HkiParcelsCardEditor extends LitElement {
         const autoEntry = detected.length === 1 ? detected[0] : null;
         const autoUser  = autoEntry?.user ?? null;
         const slugFirst = autoEntry?.slugFirst ?? false;
-        const templated = autoUser !== null ? buildTemplatedEntities(autoUser, type, slugFirst) : {};
+        const templated = autoUser !== null ? buildTemplatedEntities(autoUser, type, slugFirst, this.hass) : {};
         const carriers = [...(this._config.carriers || []), {
             type, name: preset.label, icon: getDefaultIcon(type), color: preset.color,
             schema: preset.schema, logo_path: '', van_path: '', banner_path: '',
@@ -1335,30 +1881,21 @@ class HkiParcelsCardEditor extends LitElement {
     }
 
     // Returns { user, slugFirst }[] for all detected accounts of a carrier type.
-    // Checks both "sensor.<user>_<slug>_incoming_parcels" and "sensor.<slug>_<user>_<incoming_suffix>".
+    // Thin wrapper — see the module-level detectCarrierUsers() above, shared
+    // with HkiParcelsCard.getStubConfig().
     _detectUsers(carrierType) {
-        if (!this.hass) return [];
-        const preset = CARRIER_PRESETS[carrierType];
-        if (!preset?.sensor_slug) return [];
-        const slug = preset.sensor_slug;
-        const slugFirstIncoming = preset.slug_first_suffixes?.incoming ?? 'incoming_parcels';
-        const patternUserFirst = new RegExp(`^sensor\\.(.+)_${slug}_incoming_parcels$`);
-        const patternSlugFirst = new RegExp(`^sensor\\.${slug}_(.+)_${slugFirstIncoming}$`);
-        const patternNoPrefix  = new RegExp(`^sensor\\.${slug}_incoming_parcels$`);
-        const seen = new Map(); // user → slugFirst
-        for (const entityId of Object.keys(this.hass.states)) {
-            const m1 = patternUserFirst.exec(entityId);
-            if (m1 && !seen.has(m1[1])) { seen.set(m1[1], false); continue; }
-            const m2 = patternSlugFirst.exec(entityId);
-            if (m2 && !seen.has(m2[1])) { seen.set(m2[1], true); continue; }
-            if (patternNoPrefix.test(entityId) && !seen.has('')) { seen.set('', false); }
-        }
-        return [...seen.entries()].map(([user, slugFirst]) => ({ user, slugFirst }));
+        return detectCarrierUsers(this.hass, carrierType);
     }
 
     // Sanitizes free-text account input: lowercase, non-alnum → underscore, trim underscores.
+    // Dutch postcodes (e.g. "1234 AB", used as the GLS hub identifier) are a special case:
+    // HA's entity_id has no separator between the digits and letters, so the space is
+    // stripped outright rather than turned into an underscore ("1234 AB" → "1234ab").
     _sanitizeUserInput(value) {
-        return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const raw = String(value || '').trim();
+        const postcodeMatch = raw.match(/^(\d{4})\s*([a-zA-Z]{2})$/);
+        if (postcodeMatch) return (postcodeMatch[1] + postcodeMatch[2]).toLowerCase();
+        return raw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
     }
 
     _carrierUserInputChanged(index, ev) {
@@ -1370,15 +1907,15 @@ class HkiParcelsCardEditor extends LitElement {
         const carriers = [...(this._config.carriers || [])];
         const current  = carriers[index] || {};
         const slugFirst = current._slugFirst ?? false;
-        const templated = buildTemplatedEntities(user, current.type, slugFirst);
-        const supportsLetters = (CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom).supports_letters;
+        const templated = buildTemplatedEntities(user, current.type, slugFirst, this.hass);
+        const preset = CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom;
         carriers[index] = {
             ...current, user,
             entity_incoming:  templated.entity_incoming  ?? current.entity_incoming  ?? '',
             entity_delivered: templated.entity_delivered ?? current.entity_delivered ?? '',
-            entity_outgoing:  templated.entity_outgoing  ?? current.entity_outgoing  ?? '',
-            entity_outgoing_delivered: templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? '',
-            entity_letters:   supportsLetters ? (templated.entity_letters ?? current.entity_letters ?? '') : ''
+            entity_outgoing:  preset.supports_outgoing === false ? '' : (templated.entity_outgoing  ?? current.entity_outgoing  ?? ''),
+            entity_outgoing_delivered: preset.supports_outgoing === false ? '' : (templated.entity_outgoing_delivered ?? current.entity_outgoing_delivered ?? ''),
+            entity_letters:   preset.supports_letters ? (templated.entity_letters ?? current.entity_letters ?? '') : ''
         };
         this._config = { ...this._config, carriers };
         this._emit();
@@ -1390,7 +1927,7 @@ class HkiParcelsCardEditor extends LitElement {
         const detected = this._detectUsers(current.type);
         const entry    = detected.find(d => d.user === user);
         const slugFirst = entry?.slugFirst ?? current._slugFirst ?? false;
-        const templated = buildTemplatedEntities(user, current.type, slugFirst);
+        const templated = buildTemplatedEntities(user, current.type, slugFirst, this.hass);
         const supportsLetters = (CARRIER_PRESETS[current.type] || CARRIER_PRESETS.custom).supports_letters;
         carriers[index] = {
             ...current, user,
@@ -1863,14 +2400,16 @@ class HkiParcelsCardEditor extends LitElement {
 
     // Renders the user/account detection block: badge if 1 found, dropdown if multiple, manual if none.
     // Never mutates state during render — auto-fill happens in _addCarrier / _carrierTypeChanged.
-    _renderUserDetection(carrier, index, preset, supportsLetters) {
+    _renderUserDetection(carrier, index, preset, supportsLetters, supportsOutgoing = true) {
         const detected   = this._detectUsers(carrier.type);
         const entityPreview = carrier.entity_incoming ? html`
             <div class="templated-preview">
                 <div>${carrier.entity_incoming}</div>
                 <div>${carrier.entity_delivered}</div>
+                ${supportsOutgoing ? html`
                 <div>${carrier.entity_outgoing}</div>
                 <div>${carrier.entity_outgoing_delivered}</div>
+                ` : ''}
                 ${supportsLetters && carrier.entity_letters ? html`<div>${carrier.entity_letters}</div>` : ''}
             </div>` : '';
 
@@ -1964,11 +2503,11 @@ class HkiParcelsCardEditor extends LitElement {
                 </div>`}
             <div class="plain-field" style="margin-top:8px;">
                 <label for="hki-carrier-user-${index}">${this._t('label_account')}</label>
-                <input id="hki-carrier-user-${index}" type="text" placeholder="e.g. my_account"
+                <input id="hki-carrier-user-${index}" type="text" placeholder="${carrier.type === 'gls' ? 'e.g. 1234ab' : 'e.g. my_account'}"
                     .value=${carrier.user || ''}
                     @change=${(ev) => this._carrierUserInputChanged(index, ev)} />
             </div>
-            <div class="helper-text">"_${preset.sensor_slug}${this._t('account_help_suffix')}</div>
+            <div class="helper-text">${carrier.type === 'gls' ? this._t('gls_account_help') : html`"_${preset.sensor_slug}${this._t('account_help_suffix')}`}</div>
             ${entityPreview}`;
     }
 
@@ -1984,6 +2523,7 @@ class HkiParcelsCardEditor extends LitElement {
         const expanded = carrier._expanded !== false;
         const preset   = CARRIER_PRESETS[carrier.type] || CARRIER_PRESETS.custom;
         const supportsLetters = preset.supports_letters;
+        const supportsOutgoing = preset.supports_outgoing !== false;
 
         return html`
             <div class="carrier-card">
@@ -2005,6 +2545,7 @@ class HkiParcelsCardEditor extends LitElement {
                             { value: 'postnl_v4',     label: 'PostNL' },
                             { value: 'dhl',           label: 'DHL' },
                             { value: 'dpd',           label: 'DPD' },
+                            { value: 'gls',           label: 'GLS' },
                             { value: 'postnl',        label: 'PostNL (<v4.x)' },
                             { value: 'postnl_legacy', label: 'PostNL (ArjenBos)' },
                             { value: 'custom',        label: 'Custom' }
@@ -2025,7 +2566,7 @@ class HkiParcelsCardEditor extends LitElement {
                         </div>
                         ${this._renderEntityPicker(this._t('postnl_entity_label'), carrier.entity, 'e.g. sensor.postnl_delivery', (ev) => this._carrierChanged(index, 'entity', ev))}
                         ${this._renderEntityPicker(this._t('postnl_dist_label'), carrier.distribution_entity, 'e.g. sensor.postnl_distribution', (ev) => this._carrierChanged(index, 'distribution_entity', ev))}
-                    ` : this._renderUserDetection(carrier, index, preset, supportsLetters)}
+                    ` : this._renderUserDetection(carrier, index, preset, supportsLetters, supportsOutgoing)}
 
                     ${carrier.type !== 'postnl_legacy' ? (() => {
                         const sk = `sensors-${index}`;
@@ -2041,8 +2582,10 @@ class HkiParcelsCardEditor extends LitElement {
                             <div class="helper-text">${this._t('adv_sensors_help')}</div>
                             ${this._renderEntityPicker(this._t('entity_incoming'), carrier.entity_incoming, 'e.g. sensor.dhl_incoming_parcels', (ev) => this._carrierChanged(index, 'entity_incoming', ev))}
                             ${this._renderEntityPicker(this._t('entity_delivered'), carrier.entity_delivered, 'e.g. sensor.dhl_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_delivered', ev))}
+                            ${supportsOutgoing ? html`
                             ${this._renderEntityPicker(this._t('entity_outgoing'), carrier.entity_outgoing, 'e.g. sensor.dhl_outgoing_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing', ev))}
                             ${this._renderEntityPicker(this._t('entity_outgoing_delivered'), carrier.entity_outgoing_delivered, 'e.g. sensor.dhl_outgoing_delivered_parcels', (ev) => this._carrierChanged(index, 'entity_outgoing_delivered', ev))}
+                            ` : html`<div class="helper-text">${this._t('no_outgoing_support')}</div>`}
                             ${supportsLetters
                                 ? this._renderEntityPicker(this._t('entity_letters'), carrier.entity_letters, this._t('letters_entity_help'), (ev) => this._carrierChanged(index, 'entity_letters', ev))
                                 : html`<div class="helper-text">${this._t('no_letters_support')}</div>`}
@@ -2146,14 +2689,17 @@ class HkiParcelsCardEditor extends LitElement {
     }
 }
 
-
-customElements.define('hki-parcels-card', HkiParcelsCard);
-customElements.define('hki-parcels-card-editor', HkiParcelsCardEditor);
+if (!customElements.get('hki-parcels-card'))
+    customElements.define('hki-parcels-card', HkiParcelsCard);
+if (!customElements.get('hki-parcels-card-editor'))
+    customElements.define('hki-parcels-card-editor', HkiParcelsCardEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
     type: "hki-parcels-card",
     name: "HKI Parcels Card",
-    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD) — fork of jimz011/hki-elements",
+    description: "Multi-carrier parcel tracker (PostNL, DHL, DPD, GLS) — fork of jimz011/hki-elements",
     preview: true
 });
+
+})();

@@ -10,6 +10,7 @@ The card cannot find one or more sensor entities.
 2. The `user` field does not match your sensor prefix — check the actual sensor name in **Developer Tools → States** and adjust `user` accordingly.
 3. The sensors have no username prefix — leave `user` empty (`user: ""`).
 4. You selected the wrong PostNL type — if your sensor names include `postnl`, use `postnl_v4` (for ha-postnl ≥ 4.x) or `postnl` (for ha-postnl ≤ 3.x), not `postnl_legacy`.
+5. A brand-new sensor's entity_id doesn't match the guessed name — a `has_entity_name` entity's entity_id is derived from whichever language Home Assistant was showing when it was first created, so the exact same integration can end up with an English or a Dutch suffix depending on the install, and can even differ in ordering (`<account>_<carrier>_*` vs. `<carrier>_<account>_*`) from that same account's older sensors. The card checks both languages and both orderings automatically for every carrier; if it still can't find a sensor, add a manual override under **Advanced sensors** in the editor with the exact entity_id from Developer Tools.
 
 ---
 

@@ -31,7 +31,12 @@ carriers:
     user: my_account
   - type: dpd
     user: my_account
+  - type: gls
+    user: "1234ab"
 ```
+
+!!! tip
+    Adding the card for the first time auto-detects every carrier integration you have installed and pre-fills all of this for you — the YAML above is what you'd get automatically, without typing anything.
 
 ---
 

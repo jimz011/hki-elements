@@ -41,12 +41,18 @@ days_back: 7   # Show only the last 7 days
 
 ## Hiding Unused Tabs
 
-If you do not use DHL or DPD, or do not send parcels, you can hide the tabs you don't need:
+If you do not use DHL, DPD or GLS, or do not send parcels, you can hide the tabs you don't need:
 
 ```yaml
 show_sent: false
 show_letters: false
 ```
+
+---
+
+## GLS Postal Codes
+
+GLS has no login/account concept — the `user` field is the postal code of your local GLS hub instead, e.g. `1234ab`. Type it with or without a space (`1234 AB` also works — it's sanitised automatically); GLS has no Sent tab since there's no sender/account to track outgoing parcels against.
 
 ---
 

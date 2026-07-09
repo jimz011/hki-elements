@@ -70,6 +70,7 @@ When `type: postnl_legacy` these options apply instead.
 | `postnl_v4` | PostNL | peternijssen/ha-postnl ≥ 4.0.0 | ✅ |
 | `dhl` | DHL | peternijssen/ha-dhl-nl | — |
 | `dpd` | DPD | peternijssen/ha-dpd | — |
+| `gls` | GLS | peternijssen/ha-gls | — |
 | `postnl` | PostNL (&lt;v4.x) | peternijssen/ha-postnl ≤ 3.x | ✅ |
 | `postnl_legacy` | PostNL (ArjenBos) | arjenbos/ha-postnl | — |
 | `custom` | Custom | any | — |
@@ -78,6 +79,9 @@ When `type: postnl_legacy` these options apply instead.
     Use `postnl_v4` for new installations or if you have updated to peternijssen/ha-postnl 4.0.0 or later.
     Use `postnl` if you are still on version 3.x.
     Use `postnl_legacy` only for the arjenbos/ha-postnl integration.
+
+!!! note "GLS has no sender/account"
+    GLS tracks parcels by tracking number and postal code, not a login. The `user` field maps to the hub's postal code (e.g. `1234ab`), and `entity_outgoing` / `entity_outgoing_delivered` do not apply — the Sent tab is not available for this carrier.
 
 ---
 
@@ -121,4 +125,6 @@ carriers:
     user: my_account
   - type: dpd
     user: my_account
+  - type: gls
+    user: "1234ab"
 ```
