@@ -10,6 +10,7 @@ The card cannot find one or more sensor entities.
 2. The `user` field does not match your sensor prefix — check the actual sensor name in **Developer Tools → States** and adjust `user` accordingly.
 3. The sensors have no username prefix — leave `user` empty (`user: ""`).
 4. You selected the wrong PostNL type — if your sensor names include `postnl`, use `postnl_v4` (for ha-postnl ≥ 4.x) or `postnl` (for ha-postnl ≤ 3.x), not `postnl_legacy`.
+5. A brand-new sensor's entity_id doesn't match the guessed name — a `has_entity_name` entity's entity_id is derived from whichever language Home Assistant was showing when it was first created, so the exact same integration can end up with an English or a Dutch suffix depending on the install, and can even differ in ordering (`<account>_<carrier>_*` vs. `<carrier>_<account>_*`) from that same account's older sensors. The card checks both languages and both orderings automatically for every carrier; if it still can't find a sensor, add a manual override under **Advanced sensors** in the editor with the exact entity_id from Developer Tools.
 
 ---
 
@@ -34,6 +35,18 @@ Delivered parcels do not appear in the Bezorgd tab.
 1. `show_delivered` is set to `false` — enable it in the card options.
 2. The parcels are older than `days_back` — increase the value.
 3. Using `postnl_v4` type with an older ha-postnl version — ha-postnl ≥ 4.0.0 is required for `postnl_v4`. Use `postnl` for version 3.x.
+
+---
+
+## Delivered Sent Parcels Section Empty
+
+The *Delivered* section of the Verzonden tab shows no parcels.
+
+**Causes and solutions:**
+
+1. ha-postnl is older than 4.3.1 — the `sensor.*_postnl_outgoing_delivered_parcels` sensor was added in peternijssen/ha-postnl 4.3.1. Update the integration.
+2. The sensor exists but has a different entity ID — add a manual override: `entity_outgoing_delivered: sensor.<your_entity_id>`.
+3. No outgoing parcels have been delivered within the filter period — increase `days_back` or check the integration settings for the delivered filter.
 
 ---
 

@@ -25,7 +25,7 @@ carriers:
 
 ---
 
-## PostNL + DHL + DPD
+## PostNL + DHL + DPD + GLS
 
 ```yaml
 type: custom:hki-parcels-card
@@ -37,6 +37,8 @@ carriers:
     user: my_account
   - type: dpd
     user: my_account
+  - type: gls
+    user: "1234ab"
 ```
 
 ---

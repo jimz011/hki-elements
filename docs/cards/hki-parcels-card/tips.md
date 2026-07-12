@@ -41,12 +41,18 @@ days_back: 7   # Show only the last 7 days
 
 ## Hiding Unused Tabs
 
-If you do not use DHL or DPD, or do not send parcels, you can hide the tabs you don't need:
+If you do not use DHL, DPD or GLS, or do not send parcels, you can hide the tabs you don't need:
 
 ```yaml
 show_sent: false
 show_letters: false
 ```
+
+---
+
+## GLS Postal Codes
+
+GLS has no login/account concept — the `user` field is the postal code of your local GLS hub instead, e.g. `1234ab`. Type it with or without a space (`1234 AB` also works — it's sanitised automatically); GLS has no Sent tab since there's no sender/account to track outgoing parcels against.
 
 ---
 
@@ -101,6 +107,14 @@ Or use explicit hex values for a fixed colour scheme:
 header_color: "#1a1a2e"
 header_text_color: "#e0e0e0"
 ```
+
+---
+
+## Delivered Outgoing Parcels (Verzonden → Bezorgd)
+
+The Sent tab has two sections: *Still in transit* and *Delivered*. The Delivered section requires the `sensor.*_postnl_outgoing_delivered_parcels` sensor, which is available in peternijssen/ha-postnl ≥ 4.3.1.
+
+If the sensor is present, it is picked up automatically. If the Delivered section remains empty after upgrading ha-postnl, verify the sensor exists in **Developer Tools → States** and check that `entity_outgoing_delivered` is not overridden with an incorrect value.
 
 ---
 
