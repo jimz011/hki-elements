@@ -39,7 +39,12 @@ Floating navigation buttons with horizontal and vertical layouts, conditional vi
 [Screenshots](https://jimz011.github.io/hki-elements/cards/hki-notification-card/screenshots/)
 
 ---
-### 📦 HKI PostNL Card
+### 📦 HKI Parcels Card
+
+Package tracking for PostNL/UPS/GLS/DHL deliveries with animated visualizations and detailed shipment information.
+
+---
+### 📦 HKI PostNL Card *will be replaced by parcels card
 
 Package tracking for PostNL deliveries with animated visualizations and detailed shipment information.
 
