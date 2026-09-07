@@ -19,8 +19,8 @@ A fully customizable header card for Home Assistant with support for backgrounds
 - **Jinja2 Templates** - Dynamic content using Home Assistant's powerful template engine
 
 ### 🎯 Layout Options
-- **Top Bar Slots** - Three independently configurable positions (left, center, right)
-- **Slot Types** - Weather, datetime, buttons, notifications, custom cards or spacers
+- **Top & Bottom Bar Slots** - Three independently configurable positions (left, center, right) in each bar, with independent global styling defaults
+- **Slot Types** - Weather, datetime, buttons (single or multiple per slot), notifications, custom cards or spacers
 - **Per-Slot Styling** - Override global styling for individual slots
 - **Responsive Design** - Mobile-friendly with customizable breakpoints and offsets
 - **Fixed or Scrolling** - Keep header pinned to top or let it scroll naturally

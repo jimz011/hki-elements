@@ -24,14 +24,20 @@ tap_action:
   custom_popup_card:
     type: <card-type>
     # ... card config
-  popup_name: ""                 # Optional header name (supports Jinja2)
-  popup_state: ""                # Optional header state text (supports Jinja2)
-  popup_border_radius: 16        # Border radius in px (default: 16)
-  popup_width: auto              # Width: auto or a px value e.g. 400px
-  popup_open_animation: scale    # Entrance animation (see values below)
-  popup_close_animation: scale   # Exit animation (see values below)
-  popup_animation_duration: 500  # Animation duration in milliseconds
-  popup_blur_enabled: true       # Blur the backdrop
+  popup_name: ""                     # Optional header name (supports Jinja2)
+  popup_state: ""                    # Optional header state text (supports Jinja2)
+  popup_border_radius: 16            # Border radius in px (default: 16)
+  popup_width: auto                  # auto | default | custom
+  popup_width_custom: 400            # Width in px, used when popup_width: custom
+  popup_height: auto                 # auto | default | custom
+  popup_height_custom: 600           # Height in px, used when popup_height: custom
+  popup_open_animation: scale        # Entrance animation (see values below)
+  popup_close_animation: scale       # Exit animation (see values below)
+  popup_animation_duration: 300      # Animation duration in milliseconds
+  popup_blur_enabled: true           # Blur the backdrop (portal) behind the popup
+  popup_blur_amount: 10              # Backdrop blur amount in px
+  popup_card_blur_enabled: true      # Frosted-glass blur on the popup card itself
+  popup_card_blur_amount: 40         # Card blur amount in px
 ```
 
 | Key | Type | Default | Description |
@@ -41,11 +47,17 @@ tap_action:
 | `popup_name` | `string` | "" | Header name — supports Jinja2 templates |
 | `popup_state` | `string` | "" | Header state text — supports Jinja2 templates |
 | `popup_border_radius` | `number` | `16` | Popup container border radius (px) |
-| `popup_width` | `string` | `auto` | Popup width — `auto` or a px value such as `400px` |
-| `popup_open_animation` | `string` | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
-| `popup_close_animation` | `string` | `scale` | Available options: `none`, `fade`, `scale`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `zoom`, `rotate`, `drop`, `swing` |
-| `popup_animation_duration` | `number` | 300 | Set the animation duration |
-| `popup_blur_enabled` | `boolean` | `true` | Blur the backdrop behind the popup |
+| `popup_width` | `string` | `auto` | `auto` (responsive), `default` (400px), or `custom` |
+| `popup_width_custom` | `number` | `400` | Width in px, used only when `popup_width: custom` |
+| `popup_height` | `string` | `auto` | `auto` (responsive), `default` (600px), or `custom` |
+| `popup_height_custom` | `number` | `600` | Height in px, used only when `popup_height: custom` |
+| `popup_open_animation` | `string` | `scale` | Available options: `none`, `fade`, `scale`, `zoom`, `slide-up`, `slide-down`, `slide-left`, `slide-right`, `flip`, `bounce`, `rotate`, `drop`, `swing` |
+| `popup_close_animation` | `string` | `scale` | Same options as `popup_open_animation` (falls back to `popup_open_animation` if unset) |
+| `popup_animation_duration` | `number` | `300` | Animation duration in milliseconds |
+| `popup_blur_enabled` | `boolean` | `true` | Blur the page backdrop behind the popup |
+| `popup_blur_amount` | `number` | `10` | Backdrop blur amount (px), used when `popup_blur_enabled: true` |
+| `popup_card_blur_enabled` | `boolean` | `true` | Apply a frosted-glass blur to the popup card itself |
+| `popup_card_blur_amount` | `number` | `40` | Card blur amount (px), used when `popup_card_blur_enabled: true` |
 
 ---
 

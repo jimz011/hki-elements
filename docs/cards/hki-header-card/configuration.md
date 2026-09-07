@@ -39,7 +39,7 @@ subtitle: "{{ user }}"
 | `min_height` | number | 215 | Minimum height in pixels |
 | `max_height` | number | 240 | Maximum height in pixels |
 | `blend_enabled` | boolean | true | Enable bottom gradient blend |
-| `blend_color` | string | (primary bg color) | Color for bottom gradient |
+| `blend_color` | string | `var(--primary-background-color)` | Color for bottom gradient |
 | `blend_stop` | number | 95 | Gradient stop position (0-100%) |
 
 **Examples:**
@@ -144,28 +144,30 @@ The bottom bar is a horizontal container at the bottom of the header with three 
 
 ```yaml
 bottom_bar:
-  enabled: true        # Show/hide entire bottom  bar
-  offset_y: 15         # Vertical position (% from top)
+  enabled: true        # Show/hide entire bottom bar (disabled by default)
+  offset_y: 10         # Vertical position (% from top)
   padding_x: 0         # Horizontal padding (px)
 ```
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `bottom_bar.enabled` | boolean | true | Show/hide entire top bar |
-| `bottom_bar.offset_y` | number | 15 | Vertical position (% from top) |
+| `bottom_bar.enabled` | boolean | false | Show/hide entire bottom bar |
+| `bottom_bar.offset_y` | number | 10 | Vertical position (% from top) |
 | `bottom_bar.padding_x` | number | 0 | Horizontal padding in pixels |
 
 ---
 
 ### Info Styling
 
-Global styling that applies to all weather and datetime slots by default. Individual slots can override these with their own `styling` property.
+Global styling that applies to all **top bar** weather and datetime slots by default. Individual slots can override these with their own `styling` property. The bottom bar has its own independent set of defaults — see [Bottom Bar Info Styling](#bottom-bar-info-styling) below.
 
 ```yaml
 info:
   size_px: 12
   weight: medium
   color: ""
+  text_shadow: ""
+  icon_shadow: ""
   pill: true
   pill_background: rgba(0,0,0,0.25)
   pill_padding_x: 12
@@ -182,6 +184,8 @@ info:
 | `info.size_px` | number | 12 | Font size in pixels |
 | `info.weight` | string | `medium` | Font weight |
 | `info.color` | string | "" | Text color (empty = white) |
+| `info.text_shadow` | string | "" | CSS text-shadow value |
+| `info.icon_shadow` | string | "" | Icon shadow/filter (CSS `drop-shadow(...)` or a plain shadow value) |
 | `info.pill` | boolean | true | Enable pill background |
 | `info.pill_background` | string | `rgba(0,0,0,0.25)` | Pill background color |
 | `info.pill_padding_x` | number | 12 | Horizontal padding (px) |
@@ -194,13 +198,39 @@ info:
 
 ---
 
+### Bottom Bar Info Styling
+
+The bottom bar does **not** inherit its styling from `info` — it has its own global default block, `bottom_info`, with the same properties:
+
+```yaml
+bottom_info:
+  size_px: 12
+  weight: medium
+  color: ""
+  text_shadow: ""
+  icon_shadow: ""
+  pill: true
+  pill_background: rgba(0,0,0,0.25)
+  pill_padding_x: 12
+  pill_padding_y: 8
+  pill_radius: 999
+  pill_blur: 0
+  pill_border_style: none
+  pill_border_width: 0
+  pill_border_color: rgba(255,255,255,0.1)
+```
+
+All `bottom_info.*` properties mirror `info.*` above and share the same defaults. Individual bottom bar slots can still override these with their own `styling` property, same as top bar slots.
+
+---
+
 ### Slot Configuration
 
 Each slot (`top_bar_left`, `top_bar_center`, `top_bar_right`) has the same structure:
 
 ```yaml
 top_bar_left:
-  type: weather|datetime|button|custom|spacer|none
+  type: weather|datetime|button|notifications|card|spacer|none
   offset_x: 0                    # Horizontal offset (px)
   offset_y: 0                    # Vertical offset (px)  
   offset_x_mobile: 0             # Mobile horizontal offset (px)
@@ -233,7 +263,7 @@ top_bar_left:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `type` | string | `none` | Slot type: `weather`, `datetime`, `button`, `custom`, `spacer`, `none` |
+| `type` | string | `none` | Slot type: `weather`, `datetime`, `button`, `notifications`, `card`, `spacer`, `none` |
 | `offset_x` | number | 0 | Horizontal offset in pixels |
 | `offset_y` | number | 0 | Vertical offset in pixels |
 | `offset_x_mobile` | number | 0 | Mobile horizontal offset in pixels |
@@ -305,7 +335,7 @@ top_bar_left:
     show_date: true
     show_time: true
     time_format: HH:mm
-    date_format: MMM DD
+    date_format: D MMM
     separator: " • "
     icon: ""
     animate_icon: none
@@ -322,7 +352,7 @@ top_bar_left:
 | `datetime.show_date` | boolean | true | Show date |
 | `datetime.show_time` | boolean | true | Show time |
 | `datetime.time_format` | string | `HH:mm` | Time format pattern |
-| `datetime.date_format` | string | `MMM DD` | Date format pattern |
+| `datetime.date_format` | string | `D MMM` | Date format pattern |
 | `datetime.separator` | string | `" • "` | Separator between elements |
 | `datetime.icon` | string | "" | Optional icon to show |
 | `datetime.animate_icon` | string | `none` | Icon animation |
@@ -344,37 +374,94 @@ top_bar_left:
 
 ### Button Slot
 
-Interactive button with icon and label.
+An interactive icon/name/state button. It can bind directly to an entity, show a small badge, and be conditionally hidden. A slot can hold either a single button (simple form) or multiple buttons side by side (`buttons` array).
+
+#### Simple form (single button)
 
 ```yaml
 bottom_bar_center:
   type: button
   button:
     icon: mdi:lightbulb
-    label: Lights
-  actions:
-    tap_action:
-      action: toggle
-      entity: light.living_room
-    hold_action:
-      action: fire-dom-event
-      browser_mod:
-        service: browser_mod.popup
-        data:
-          title: All Lights
-          content:
-            type: light
-    double_tap_action:
-      action: navigate
-      navigation_path: /lovelace/lights
+    name: Lights
+    entity: light.living_room
+    icon_color: "#ffcc66"
+    show_badge: true
+    badge_source: entity
+    badge_entity: sensor.living_room_lights_on_count
 ```
 
-#### Button Properties
+> **Note:** In the simple form, tapping the button is **not** independently configurable — it automatically `toggle`s the entity for toggleable domains (`light`, `switch`, `climate`, `input_boolean`, `automation`) or opens a more-info dialog otherwise. To assign custom `tap_action` / `hold_action` / `double_tap_action` (e.g. `navigate`, `fire-dom-event`, `hki-more-info`), use the `buttons` array form below — the top-level slot `actions` block is not used by button-type slots.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `button.icon` | string | `mdi:gesture-tap` | MDI icon name |
-| `button.label` | string | "" | Button text label |
+| `button.icon` | string | `mdi:gesture-tap` | MDI icon name (falls back to the bound entity's default icon, then to `mdi:gesture-tap`) |
+| `button.name` | string | "" | Primary text label — supports Jinja2 (falls back to the entity's friendly name) |
+| `button.state` | string | "" | Secondary text line — supports Jinja2 (falls back to the entity's state) |
+| `button.entity` | string | "" | Entity to bind for icon/name/state/color and default tap behavior |
+| `button.show_icon` / `show_name` / `show_state` | boolean | true | Toggle visibility of each element |
+| `button.card_color` | string | "" | Background color of the button pill |
+| `button.icon_color` | string | "" | Icon color override (falls back to an automatic entity-state color) |
+| `button.name_color` / `state_color` | string | "" | Text color overrides |
+| `button.text_shadow` / `icon_shadow` | string | "" | CSS text-shadow / icon drop-shadow |
+| `button.name_offset_x` / `name_offset_y` / `state_offset_x` / `state_offset_y` | number | 0 | Fine-position the name/state text (px) |
+| `button.show_badge` | boolean | false | Show a small badge on the button |
+| `button.badge_source` | string | `entity` | `entity` or `template` |
+| `button.badge_entity` | string | "" | Entity whose state is shown in the badge (when `badge_source: entity`) |
+| `button.badge_template` | string | "" | Jinja2 template for the badge text (when `badge_source: template`) |
+| `button.badge_color` / `badge_text_color` | string | "" | Badge background/text color |
+| `button.visibility_mode` | string | `none` | `none`, `state`, or `attribute` — conditionally hide the button |
+| `button.visibility_entity` | string | "" | Entity checked by `visibility_mode` (falls back to `button.entity`) |
+| `button.visibility_state` | string | "" | Required state when `visibility_mode: state` |
+| `button.visibility_attribute` / `visibility_attribute_value` | string | "" | Required attribute (dot-path supported) and value when `visibility_mode: attribute` |
+
+#### Multiple buttons / custom actions: `buttons` array
+
+To place more than one button in a slot, or to set custom actions, badge border/shadow styling, or button container borders, use `button.buttons` — an array where each item accepts every property above (without the `button.` prefix) plus:
+
+```yaml
+top_bar_right:
+  type: button
+  button:
+    buttons:
+      - icon: mdi:lightbulb
+        name: Lights
+        entity: light.living_room
+        button_border_radius: 12
+        button_border_style: solid
+        button_border_width: 1
+        button_border_color: rgba(255,255,255,0.2)
+        button_box_shadow: 0 2px 8px rgba(0,0,0,0.3)
+        text_color: "#ffffff"
+        tap_action:
+          action: toggle
+        hold_action:
+          action: navigate
+          navigation_path: /lovelace/lights
+        double_tap_action:
+          action: none
+      - icon: mdi:thermostat
+        name: Climate
+        entity: climate.living_room
+        tap_action:
+          action: hki-more-info
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `tap_action` / `hold_action` / `double_tap_action` | map | `{ action: none }` | Per-button actions (see [Actions](#actions)) — when left as `none`, the same automatic toggle/more-info behavior as the simple form applies |
+| `text_color` | string | "" | Fallback text color for both name and state when their own color isn't set |
+| `button_border_radius` / `button_border_width` | number | "" | Button pill border radius/width (px) |
+| `button_border_style` | string | "" | Button pill border style |
+| `button_border_color` | string | "" | Button pill border color |
+| `button_box_shadow` | string | "" | CSS box-shadow for the button pill |
+| `badge_border_radius` / `badge_border_width` | number | "" | Badge border radius/width (px) |
+| `badge_border_style` / `badge_border_color` | string | "" | Badge border style/color |
+| `badge_box_shadow` | string | "" | CSS box-shadow for the badge |
+| `badge_font_size` | number | "" | Badge font size (px) |
+| `badge_font_weight` | string | "" | Badge font weight |
+| `badge_font_family` | string | "" | Badge font family preset, or `custom` |
+| `badge_font_custom` | string | "" | Custom badge font family CSS (when `badge_font_family: custom`) |
 
 ---
 
