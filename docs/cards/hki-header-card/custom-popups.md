@@ -66,74 +66,84 @@ tap_action:
 ### Slot with a markdown card
 
 ```yaml
-top_bar_left_tap_action:
-  action: hki-more-info
-  popup_name: Info
-  custom_popup_card:
-    type: markdown
-    content: "## Hello\nThis is a custom popup."
+top_bar_left:
+  actions:
+    tap_action:
+      action: hki-more-info
+      popup_name: Info
+      custom_popup_card:
+        type: markdown
+        content: "## Hello\nThis is a custom popup."
 ```
 
 ### Slot with an entities card
 
 ```yaml
-top_bar_right_tap_action:
-  action: hki-more-info
-  popup_name: Living Room
-  popup_width: 380px
-  custom_popup_card:
-    type: entities
-    title: Living Room
-    entities:
-      - light.living_room_main
-      - light.living_room_floor_lamp
-      - switch.living_room_fan
+top_bar_right:
+  actions:
+    tap_action:
+      action: hki-more-info
+      popup_name: Living Room
+      popup_width: custom
+      popup_width_custom: 380
+      custom_popup_card:
+        type: entities
+        title: Living Room
+        entities:
+          - light.living_room_main
+          - light.living_room_floor_lamp
+          - switch.living_room_fan
 ```
 
 ### Slot with a custom media player card
 
 ```yaml
-top_bar_left_hold_action:
-  action: hki-more-info
-  popup_name: TV
-  popup_open_animation: slide-up
-  custom_popup_card:
-    type: custom:mini-media-player
-    entity: media_player.living_room_tv
-    artwork: cover
+top_bar_left:
+  actions:
+    hold_action:
+      action: hki-more-info
+      popup_name: TV
+      popup_open_animation: slide-up
+      custom_popup_card:
+        type: custom:mini-media-player
+        entity: media_player.living_room_tv
+        artwork: cover
 ```
 
 ### Slot with a vertical stack
 
 ```yaml
-top_bar_right_tap_action:
-  action: hki-more-info
-  popup_name: Climate
-  popup_blur_enabled: false
-  custom_popup_card:
-    type: vertical-stack
-    cards:
-      - type: thermostat
-        entity: climate.living_room
-      - type: entities
-        entities:
-          - sensor.living_room_temperature
-          - sensor.living_room_humidity
+top_bar_right:
+  actions:
+    tap_action:
+      action: hki-more-info
+      popup_name: Climate
+      popup_blur_enabled: false
+      custom_popup_card:
+        type: vertical-stack
+        cards:
+          - type: thermostat
+            entity: climate.living_room
+          - type: entities
+            entities:
+              - sensor.living_room_temperature
+              - sensor.living_room_humidity
 ```
 
 ### Person with a Jinja2 header
 
 ```yaml
-persons_entities:
-  - entity: person.jimmy
-    tap_action:
-      action: hki-more-info
-      popup_name: "{{ state_attr('person.jimmy', 'friendly_name') }}"
-      popup_state: "{{ states('person.jimmy') | title }}"
-      custom_popup_card:
-        type: map
-        entities:
-          - person.jimmy
+persons:
+  entities:
+    - entity: person.jimmy
+      tap_action:
+        action: hki-more-info
+        popup_name: "{{ state_attr('person.jimmy', 'friendly_name') }}"
+        popup_state: "{{ states('person.jimmy') | title }}"
+        custom_popup_card:
+          type: map
+          entities:
+            - person.jimmy
 ```
 
 ---
