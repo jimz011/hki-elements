@@ -6,14 +6,13 @@ theme:
   name: material
   logo: assets/hki-elements.png
   features:
-    - navigation.sections        
-    - navigation.indexes         
-    - navigation.path 
+    - navigation.indexes
+    - navigation.path
     - navigation.tracking
     - navigation.instant
-    - toc.follow                 
-    - content.code.copy          
-    - content.tabs.link   
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
