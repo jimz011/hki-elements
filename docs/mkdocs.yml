@@ -105,6 +105,38 @@ nav:
           - Installation: components/hki-esphome-humidifier/installation.md
           - Configuration: components/hki-esphome-humidifier/configuration.md
           - Troubleshooting: components/hki-esphome-humidifier/troubleshooting.md
+  - Personal Config:
+      - Overview: personal-config/overview.md
+      - Home: personal-config/home.md
+      - Security: personal-config/security.md
+      - Rooms:
+          - Rooms Hub: personal-config/rooms-overview.md
+          - Living Room: personal-config/rooms/living-room.md
+          - Dining Room: personal-config/rooms/dining-room.md
+          - Kitchen: personal-config/rooms/kitchen.md
+          - Toilet: personal-config/rooms/toilet.md
+          - Hallway Downstairs: personal-config/rooms/hallway-downstairs.md
+          - Bedroom: personal-config/rooms/bedroom.md
+          - Office: personal-config/rooms/office.md
+          - Bathroom: personal-config/rooms/bathroom.md
+          - Walk-in-Closet: personal-config/rooms/walk-in-closet.md
+          - Hallway Upstairs: personal-config/rooms/hallway-upstairs.md
+          - Attic Front: personal-config/rooms/attic-front.md
+          - Attic Back: personal-config/rooms/attic-back.md
+          - Laundry Room: personal-config/rooms/laundry-room.md
+          - Front Yard: personal-config/rooms/front-yard.md
+          - Back Yard: personal-config/rooms/back-yard.md
+          - Garage: personal-config/rooms/garage.md
+      - Energy: personal-config/energy.md
+      - Find My: personal-config/find-my.md
+      - Roborock: personal-config/roborock.md
+      - Waste: personal-config/waste.md
+      - F1: personal-config/f1.md
+      - P2000: personal-config/p2000.md
+      - Parcel: personal-config/parcel.md
+      - Climate: personal-config/climate.md
+      - Lights: personal-config/lights.md
+      - Development: personal-config/development.md
   - Migration: migration.md
 
 
