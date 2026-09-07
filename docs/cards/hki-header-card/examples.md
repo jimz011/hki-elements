@@ -30,7 +30,7 @@ top_bar:
   enabled: true
 
 top_bar_left:
-  type: custom
+  type: custom   # legacy alias, auto-migrated to "notifications" — new configs should use `type: notifications`
   offset_x: 0
   custom:
     card:
@@ -111,20 +111,20 @@ top_bar:
   enabled: true
 
 top_bar_left:
-  type: button
+  type: button          # shown as "Badge" in the visual editor
   button:
-    icon: mdi:lightbulb
-    label: Lights
-  actions:
-    tap_action:
-      action: fire-dom-event
-      browser_mod:
-        service: browser_mod.popup
-        data:
-          title: All Lights
-          size: wide
-          content:
-            type: light
+    buttons:
+      - icon: mdi:lightbulb
+        name: Lights
+        tap_action:
+          action: fire-dom-event
+          browser_mod:
+            service: browser_mod.popup
+            data:
+              title: All Lights
+              size: wide
+              content:
+                type: light
 
 top_bar_center:
   type: datetime
@@ -137,12 +137,12 @@ top_bar_center:
 top_bar_right:
   type: button
   button:
-    icon: mdi:thermostat
-    label: Climate
-  actions:
-    tap_action:
-      action: navigate
-      navigation_path: /lovelace/climate
+    buttons:
+      - icon: mdi:thermostat
+        name: Climate
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/climate
 
 info:
   pill: true

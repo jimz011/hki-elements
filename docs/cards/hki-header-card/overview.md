@@ -20,7 +20,7 @@ A fully customizable header card for Home Assistant with support for backgrounds
 
 ### 🎯 Layout Options
 - **Top & Bottom Bar Slots** - Three independently configurable positions (left, center, right) in each bar, with independent global styling defaults
-- **Slot Types** - Weather, datetime, buttons (single or multiple per slot), notifications, custom cards or spacers
+- **Slot Types** - Weather, datetime, buttons/badges (single or multiple per slot, called "Badge" in the visual editor), notifications, custom cards or spacers
 - **Per-Slot Styling** - Override global styling for individual slots
 - **Responsive Design** - Mobile-friendly with customizable breakpoints and offsets
 - **Fixed or Scrolling** - Keep header pinned to top or let it scroll naturally

@@ -124,13 +124,11 @@ top_bar_center:
     show_time: true
 
 top_bar_right:
-  type: button
+  type: button          # shown as "Badge" in the visual editor
   button:
     icon: mdi:lightbulb
-    label: Lights
-  actions:
-    tap_action:
-      action: toggle
+    name: Lights
+    entity: light.living_room   # tapping toggles the entity automatically
 
 # Person entities
 persons:

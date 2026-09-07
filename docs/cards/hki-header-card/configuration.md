@@ -263,7 +263,7 @@ top_bar_left:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `type` | string | `none` | Slot type: `weather`, `datetime`, `button`, `notifications`, `card`, `spacer`, `none` |
+| `type` | string | `none` | Slot type: `weather`, `datetime`, `button`, `notifications`, `card`, `spacer`, `none`. Note: `button` is labeled **"Badge"** in the visual editor's Content Type picker — see [Button Slot](#button-slot) |
 | `offset_x` | number | 0 | Horizontal offset in pixels |
 | `offset_y` | number | 0 | Vertical offset in pixels |
 | `offset_x_mobile` | number | 0 | Mobile horizontal offset in pixels |
@@ -373,6 +373,8 @@ top_bar_left:
 ---
 
 ### Button Slot
+
+> **Called "Badge" in the visual editor.** The Content Type picker for a slot lists this option as **Badge**, not "Button" — it's the native, built-in way to put a badge-like widget directly in the header without embedding a separate card. (This is different from embedding the standalone HKI Button Card's own "badge" layout via the [Custom Card Slot](#custom-card-slot) — see the note there.) The YAML config key remains `type: button` / `button:` regardless of the editor label.
 
 An interactive icon/name/state button. It can bind directly to an entity, show a small badge, and be conditionally hidden. A slot can hold either a single button (simple form) or multiple buttons side by side (`buttons` array).
 
@@ -496,7 +498,7 @@ bottom_bar_center:
           entities:
             - sensor.office_temperature
 ```
-You can also use this feature in conjunction with HA Badges or HKI Button Card (badge style selected) to replace the default HA Badges slot. You have much more control over the badge placements using this feature!
+You can also use this feature in conjunction with Home Assistant's native badges or the standalone HKI Button Card (with its own "Badge" layout style selected) to replace the default HA Badges row entirely. You have much more control over the badge placements using this feature! For simpler cases, the built-in [Button Slot](#button-slot) (labeled "Badge" in the editor) may be enough on its own, without needing to embed a separate card here.
 
 For custom cards you can set `align: stretch` to make the card stretch the full width of the top or bottom bar. You could integrate a graph into the header for example with this.
 
